@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id            String   @id @default(cuid())
+  nome          String
+  email         String   @unique
+  senha         String   
+  latitudeBase  Float    
+  longitudeBase Float    
+  raioPermitido Int      @default(100) 
+  pontos        Ponto[]
+  criadoEm      DateTime @default(now())
+}
+
+model Ponto {
+  id        String   @id @default(cuid())
+  dataHora  DateTime @default(now())
+  latitude  Float
+  longitude Float
+  fotoUrl   String?
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+}
