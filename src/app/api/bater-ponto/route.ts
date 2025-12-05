@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { usuarioId, latitude, longitude, fotoBase64 } = body;
+    const { usuarioId, latitude, longitude, fotoBase64, tipo } = body;
 
     console.log("📍 Processando ponto para:", usuarioId);
 
@@ -82,6 +82,7 @@ export async function POST(request: Request) {
         longitude,
         fotoUrl: fotoUrlFinal, 
         endereco: enderecoLegivel,
+        tipo: tipo || "NORMAL",
       },
     });
 

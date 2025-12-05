@@ -49,6 +49,7 @@ model Ponto {
   longitude Float
   endereco  String?
   fotoUrl   String?
+  tipo      String   @default("NORMAL") // Pode ser: ENTRADA, SAIDA_ALMOCO, VOLTA_ALMOCO, SAIDA
   usuarioId String
   usuario   Usuario  @relation(fields: [usuarioId], references: [id])
 }
