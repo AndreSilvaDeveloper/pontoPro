@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.943.0",
     "@prisma/client": "^5.19.1",
     "@vercel/blob": "^2.0.0",
     "axios": "^1.13.2",

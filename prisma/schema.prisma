@@ -21,7 +21,8 @@ model Usuario {
   id            String   @id @default(cuid())
   nome          String
   email         String   @unique
-  senha         String   
+  senha         String
+  fotoPerfilUrl String?   
   
   // Controle de Acesso
   cargo         String   @default("FUNCIONARIO") // Pode ser: "ADMIN" ou "FUNCIONARIO"

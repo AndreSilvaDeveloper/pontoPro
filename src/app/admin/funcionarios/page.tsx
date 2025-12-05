@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, MapPin, RefreshCw, Trash2, User } from 'lucide-react';
+import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload } from 'lucide-react';
 
 interface Funcionario {
   id: string;
@@ -11,17 +11,19 @@ interface Funcionario {
   email: string;
   latitudeBase: number;
   longitudeBase: number;
+  fotoPerfilUrl?: string; // Novo
 }
 
 export default function GestaoFuncionarios() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  
+  // Campos do Formulário
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  
-  // Novos campos de Geofencing
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
-  const [raio, setRaio] = useState('100'); // 100 metros padrão
+  const [raio, setRaio] = useState('100');
+  const [fotoArquivo, setFotoArquivo] = useState<File | null>(null); // Novo estado para o arquivo
 
   const [loading, setLoading] = useState(false);
 
@@ -34,7 +36,6 @@ export default function GestaoFuncionarios() {
     setFuncionarios(res.data);
   };
 
-  // Função mágica para pegar o GPS do Admin na hora do cadastro
   const pegarLocalizacaoAtual = () => {
     if (!navigator.geolocation) return alert('Sem GPS');
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -45,16 +46,30 @@ export default function GestaoFuncionarios() {
 
   const cadastrar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lat || !lng) return alert('Por favor, defina a localização da empresa (clique no botão azul)');
+    if (!lat || !lng) return alert('Defina a localização da empresa!');
     
     setLoading(true);
     try {
-      await axios.post('/api/admin/funcionarios', { 
-        nome, email, latitude: lat, longitude: lng, raio 
-      });
-      setNome(''); setEmail('');
+      // Prepara o pacote de dados (FormData)
+      const formData = new FormData();
+      formData.append('nome', nome);
+      formData.append('email', email);
+      formData.append('latitude', lat);
+      formData.append('longitude', lng);
+      formData.append('raio', raio);
+      
+      if (fotoArquivo) {
+        formData.append('foto', fotoArquivo); // Anexa o arquivo
+      }
+
+      // Envia para a API (Note que não precisamos setar headers manualmente, o axios faz isso)
+      await axios.post('/api/admin/funcionarios', formData);
+      
+      // Limpa tudo
+      setNome(''); setEmail(''); setFotoArquivo(null);
+      // Opcional: limpar GPS também se quiser
       carregarLista();
-      alert('Funcionário cadastrado com as regras de local!');
+      alert('Funcionário cadastrado com Foto Oficial!');
     } catch (error) {
       alert('Erro ao cadastrar.');
     } finally {
@@ -63,10 +78,10 @@ export default function GestaoFuncionarios() {
   };
 
   const resetarSenha = async (id: string, nomeFunc: string) => {
-    if (!confirm(`Deseja resetar a senha de ${nomeFunc} para "mudar123"?`)) return;
+    if (!confirm(`Resetar senha de ${nomeFunc}?`)) return;
     try {
       await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id });
-      alert('Senha resetada com sucesso!');
+      alert('Senha resetada!');
     } catch (error) {
       alert('Erro ao resetar.');
     }
@@ -78,15 +93,15 @@ export default function GestaoFuncionarios() {
         
         <div className="flex items-center justify-between border-b border-slate-800 pb-6">
           <div>
-            <h1 className="text-2xl font-bold text-blue-400">Gestão de Equipe & Regras</h1>
-            <p className="text-slate-400 text-sm">Defina quem pode bater ponto e onde.</p>
+            <h1 className="text-2xl font-bold text-blue-400">Gestão de Equipe</h1>
+            <p className="text-slate-400 text-sm">Cadastre funcionários com biometria facial.</p>
           </div>
           <Link href="/admin" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft size={20} /> Voltar
           </Link>
         </div>
 
-        {/* Formulário Poderoso */}
+        {/* Formulário */}
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
           <h2 className="font-bold mb-4 flex items-center gap-2 text-green-400">
             <UserPlus size={20}/> Novo Cadastro
@@ -107,10 +122,22 @@ export default function GestaoFuncionarios() {
               />
             </div>
 
+            {/* Upload da Foto de Referência */}
+            <div className="bg-slate-950 p-4 rounded-lg border border-slate-700 border-dashed">
+               <label className="block text-sm text-slate-400 mb-2 font-bold flex items-center gap-2">
+                 <Upload size={16} /> Foto de Rosto (Para Reconhecimento Facial)
+               </label>
+               <input 
+                 type="file" 
+                 accept="image/*"
+                 onChange={(e) => setFotoArquivo(e.target.files?.[0] || null)}
+                 className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800 cursor-pointer"
+               />
+               <p className="text-xs text-slate-600 mt-1">Envie uma foto clara, de frente, estilo 3x4.</p>
+            </div>
+
             {/* Área de Regras Geográficas */}
             <div className="bg-slate-950 p-4 rounded-lg border border-slate-700">
-              <p className="text-sm text-slate-400 mb-3 font-bold">📍 Regra de Localização (Cerca Eletrônica)</p>
-              
               <div className="flex flex-col md:flex-row gap-4 items-end">
                 <div className="flex-1 w-full">
                   <label className="text-xs text-slate-500">Latitude</label>
@@ -121,26 +148,19 @@ export default function GestaoFuncionarios() {
                   <input value={lng} readOnly className="w-full bg-slate-800 p-2 rounded text-slate-400 cursor-not-allowed" />
                 </div>
                 <div className="w-full md:w-32">
-                   <label className="text-xs text-slate-500">Raio (metros)</label>
+                   <label className="text-xs text-slate-500">Raio (m)</label>
                    <input 
-                    type="number"
-                    value={raio} 
-                    onChange={e => setRaio(e.target.value)}
+                    type="number" value={raio} onChange={e => setRaio(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-600 p-2 rounded text-white" 
                    />
                 </div>
-                
                 <button 
-                  type="button"
-                  onClick={pegarLocalizacaoAtual}
+                  type="button" onClick={pegarLocalizacaoAtual}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-bold text-sm h-[42px] whitespace-nowrap"
                 >
-                  <MapPin size={16} /> Pegar Local Atual
+                  <MapPin size={16} /> Pegar GPS Atual
                 </button>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                * Clique no botão estando na empresa. O funcionário só conseguirá bater ponto num raio de {raio}m desse local.
-              </p>
             </div>
 
             <button 
@@ -154,33 +174,32 @@ export default function GestaoFuncionarios() {
 
         {/* Lista de Funcionários */}
         <div className="space-y-3">
-          <h3 className="font-bold text-slate-400">Funcionários Ativos</h3>
+          <h3 className="font-bold text-slate-400">Equipe Ativa</h3>
           {funcionarios.map(func => (
-            <div key={func.id} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div key={func.id} className="bg-slate-900 p-4 rounded-lg border border-slate-800 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center">
-                  <User size={20} className="text-blue-400" />
-                </div>
+                {/* Mostra a foto se tiver, senão ícone */}
+                {func.fotoPerfilUrl ? (
+                  <img src={func.fotoPerfilUrl} alt={func.nome} className="w-12 h-12 rounded-full object-cover border-2 border-slate-700" />
+                ) : (
+                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
+                    <User size={24} className="text-slate-500" />
+                  </div>
+                )}
+                
                 <div>
-                  <h3 className="font-bold">{func.nome}</h3>
+                  <h3 className="font-bold text-white">{func.nome}</h3>
                   <p className="text-sm text-slate-400">{func.email}</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
-                 <div className="px-3 py-1 rounded bg-slate-950 border border-slate-700 text-xs text-slate-400 flex items-center gap-1">
-                    <MapPin size={12} />
-                    {func.latitudeBase.toFixed(4)}, {func.longitudeBase.toFixed(4)}
-                 </div>
-
-                 <button 
-                   onClick={() => resetarSenha(func.id, func.nome)}
-                   className="flex items-center gap-2 px-3 py-2 bg-yellow-600/10 text-yellow-500 hover:bg-yellow-600 hover:text-white rounded-lg transition-colors text-sm border border-yellow-600/20"
-                   title="Resetar Senha"
-                 >
-                   <RefreshCw size={14} /> Resetar Senha
-                 </button>
-              </div>
+              <button 
+                onClick={() => resetarSenha(func.id, func.nome)}
+                className="p-2 text-yellow-600 hover:text-yellow-500 transition-colors"
+                title="Resetar Senha"
+              >
+                <RefreshCw size={18} />
+              </button>
             </div>
           ))}
         </div>

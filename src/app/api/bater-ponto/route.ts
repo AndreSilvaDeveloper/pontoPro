@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { calcularDistancia } from '../../utils/geo';
-import { put } from '@vercel/blob'; // Ferramenta oficial da Vercel
+import { calcularDistancia } from '@/utils/geo';
+import { put } from '@vercel/blob';
+import { compararRostos } from '@/lib/rekognition'; // <--- IMPORTADO
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 });
     }
 
-    // 2. Validar Geofencing
+    // 2. Validar Geofencing (Localização)
     const distancia = calcularDistancia(
       latitude,
       longitude,
@@ -34,31 +35,36 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. UPLOAD DA FOTO PARA A NUVEM ☁️📸
-    let fotoUrlFinal = null;
+    // === 3. VALIDAÇÃO BIOMÉTRICA (NOVIDADE!) ===
+    // Só validamos se o usuário tiver foto de perfil cadastrada e enviou foto agora
+    if (usuario.fotoPerfilUrl && fotoBase64) {
+      console.log("🔍 Iniciando validação facial na AWS...");
+      const resultado = await compararRostos(usuario.fotoPerfilUrl, fotoBase64);
+      
+      if (!resultado.igual) {
+         return NextResponse.json(
+          { erro: 'Reconhecimento Facial Falhou! Rosto não confere com o cadastro.' },
+          { status: 403 }
+        );
+      }
+    }
+    // ============================================
 
+    // 4. Upload da Foto do Ponto
+    let fotoUrlFinal = null;
     if (fotoBase64) {
       try {
-        // Limpa o cabeçalho do base64 para pegar só os dados
         const base64Data = fotoBase64.replace(/^data:image\/\w+;base64,/, "");
-        // Converte texto em arquivo binário (Buffer)
         const buffer = Buffer.from(base64Data, 'base64');
-
-        // Cria um nome único para o arquivo: ID-DATA.jpg
         const filename = `${usuario.id}-${Date.now()}.jpg`;
-
-        // Envia para o Vercel Blob
-        const blob = await put(filename, buffer, {
-          access: 'public',
-        });
-
-        fotoUrlFinal = blob.url; // Recebe o link curto (https://...)
+        const blob = await put(filename, buffer, { access: 'public' });
+        fotoUrlFinal = blob.url;
       } catch (err) {
-        console.error("Erro ao subir foto:", err);
+        console.error("Erro upload:", err);
       }
     }
 
-    // 4. Salvar o Ponto com o LINK (e não mais o texto gigante)
+    // 5. Salvar
     const ponto = await prisma.ponto.create({
       data: {
         usuarioId: usuario.id,
@@ -76,7 +82,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error("Erro no servidor:", error);
-    return NextResponse.json({ erro: 'Erro interno do servidor' }, { status: 500 });
+    console.error("Erro servidor:", error);
+    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 });
   }
 }
