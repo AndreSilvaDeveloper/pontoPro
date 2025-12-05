@@ -3,8 +3,11 @@ import { prisma } from '@/lib/db';
 import { calcularDistancia } from '@/utils/geo';
 import { put } from '@vercel/blob';
 import { compararRostos } from '@/lib/rekognition'; 
+import { obterEndereco } from '@/utils/geocoding'; 
 
 export async function POST(request: Request) {
+
+
   try {
     const body = await request.json();
     const { usuarioId, latitude, longitude, fotoBase64 } = body;
@@ -18,6 +21,13 @@ export async function POST(request: Request) {
 
     if (!usuario) {
       return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 });
+    }
+
+    let enderecoLegivel = "Localização desconhecida";
+    try {
+      enderecoLegivel = await obterEndereco(latitude, longitude);
+    } catch (err) {
+      console.log("Falha ao obter endereço, salvando apenas GPS");
     }
 
     // 2. Validar Geofencing (Localização)
@@ -71,6 +81,7 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         fotoUrl: fotoUrlFinal, 
+        endereco: enderecoLegivel,
       },
     });
 

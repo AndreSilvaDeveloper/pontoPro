@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 interface Ponto {
   id: string;
   dataHora: Date;
+  endereco?: string | null;
   usuario: {
     nome: string;
     email: string;

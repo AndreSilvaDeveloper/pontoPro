@@ -135,15 +135,24 @@ export default async function AdminDashboard() {
                     </td>
 
                     <td className="p-4">
-                      <a 
-                        href={`https://www.google.com/maps/search/?api=1&query=${ponto.latitude},${ponto.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all text-sm font-medium border border-blue-600/20 hover:border-blue-500"
-                      >
-                        <MapPin size={16} />
-                        Ver no Mapa
-                      </a>
+                      <div className="flex flex-col gap-1">
+                        {/* Mostra o endereço se existir, senão mostra as coordenadas */}
+                        <span className="text-xs text-slate-300 max-w-[200px] truncate" title={ponto.endereco || ''}>
+                          {ponto.endereco 
+                            ? ponto.endereco.split(',')[0] + ', ' + (ponto.endereco.split(',')[1] || '') // Pega só Rua e Número pra não ficar gigante
+                            : `${ponto.latitude.toFixed(4)}, ${ponto.longitude.toFixed(4)}`
+                          }
+                        </span>
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${ponto.latitude},${ponto.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all text-sm font-medium border border-blue-600/20 hover:border-blue-500"
+                        >
+                          <MapPin size={16} />
+                          Ver no Mapa
+                        </a>
+                      </div>
                     </td>
 
                   </tr>

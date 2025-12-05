@@ -46,6 +46,7 @@ model Ponto {
   dataHora  DateTime @default(now())
   latitude  Float
   longitude Float
+  endereco  String?
   fotoUrl   String?
   
   usuarioId String
