@@ -7,33 +7,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Nova Tabela: A Empresa que paga o software
 model Empresa {
   id        String    @id @default(cuid())
   nome      String
   cnpj      String?
-  usuarios  Usuario[] // Uma empresa tem vários funcionários
+  usuarios  Usuario[]
   criadoEm  DateTime  @default(now())
 }
 
-// Atualizamos o Usuário com novos poderes
 model Usuario {
   id            String   @id @default(cuid())
   nome          String
   email         String   @unique
-  senha         String
-  fotoPerfilUrl String?   
-  horasDiarias  Int?
+  senha         String   
   
-  // Controle de Acesso
-  cargo         String   @default("FUNCIONARIO") // Pode ser: "ADMIN" ou "FUNCIONARIO"
-  deveTrocarSenha Boolean @default(false)      // Para o primeiro acesso
-
-  // Vínculo com a Empresa (Multi-Tenancy)
+  // Biometria e Regras
+  fotoPerfilUrl String?  
+  jornada       Json?    // Ex: { "seg": 8, "ter": 8 ... }
+  
+  // Controle
+  cargo         String   @default("FUNCIONARIO")
+  deveTrocarSenha Boolean @default(false)
+  
+  // Vínculo
   empresaId     String?  
   empresa       Empresa? @relation(fields: [empresaId], references: [id])
 
-  // Configurações de Ponto (Agora ficam no usuário, mas poderiam ser globais da empresa)
+  // Geofencing
   latitudeBase  Float    @default(0)
   longitudeBase Float    @default(0)
   raioPermitido Int      @default(100) 
@@ -49,7 +49,6 @@ model Ponto {
   longitude Float
   endereco  String?
   fotoUrl   String?
-  
   usuarioId String
   usuario   Usuario  @relation(fields: [usuarioId], references: [id])
 }

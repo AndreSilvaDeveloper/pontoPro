@@ -27,7 +27,8 @@ export async function GET(request: Request) {
             id: true,
             nome: true,
             email: true,
-            horasDiarias: true
+            jornada: true, // <--- USE O NOVO CAMPO 'JORNADA'
+            fotoPerfilUrl: true
           }
         }
       },
