@@ -20,10 +20,11 @@ export default function GestaoFuncionarios() {
   // Campos do Formulário
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [horas, setHoras] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('100');
-  const [fotoArquivo, setFotoArquivo] = useState<File | null>(null); // Novo estado para o arquivo
+  const [fotoArquivo, setFotoArquivo] = useState<File | null>(null); 
 
   const [loading, setLoading] = useState(false);
 
@@ -54,6 +55,7 @@ export default function GestaoFuncionarios() {
       const formData = new FormData();
       formData.append('nome', nome);
       formData.append('email', email);
+      formData.append('horas', horas);
       formData.append('latitude', lat);
       formData.append('longitude', lng);
       formData.append('raio', raio);
@@ -119,6 +121,17 @@ export default function GestaoFuncionarios() {
                 type="email"
                 className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
                 value={email} onChange={e => setEmail(e.target.value)} required
+              />
+            </div>
+
+            <div className="w-full md:w-32">
+              <label className="text-xs text-slate-500">Carga Horária (h)</label>
+              <input 
+                type="number" 
+                placeholder="Ex: 8"
+                value={horas} 
+                onChange={e => setHoras(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white"
               />
             </div>
 

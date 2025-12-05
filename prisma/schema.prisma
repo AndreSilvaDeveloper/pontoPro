@@ -23,6 +23,7 @@ model Usuario {
   email         String   @unique
   senha         String
   fotoPerfilUrl String?   
+  horasDiarias  Int?
   
   // Controle de Acesso
   cargo         String   @default("FUNCIONARIO") // Pode ser: "ADMIN" ou "FUNCIONARIO"

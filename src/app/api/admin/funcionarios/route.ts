@@ -15,7 +15,6 @@ export async function GET(request: Request) {
     const funcionarios = await prisma.usuario.findMany({
       where: {
         empresaId: session.user.empresaId,
-        cargo: 'FUNCIONARIO',
       },
       orderBy: { nome: 'asc' }
     });
@@ -24,7 +23,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ erro: 'Erro ao buscar' }, { status: 500 });
   }
 }
-
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
@@ -41,6 +39,7 @@ export async function POST(request: Request) {
     const longitude = formData.get('longitude') as string;
     const raio = formData.get('raio') as string;
     const fotoArquivo = formData.get('foto') as File | null;
+    const horas = formData.get('horas') as string;
 
     // 2. Upload da Foto de Referência (se tiver)
     let fotoPerfilUrl = null;
@@ -68,7 +67,8 @@ export async function POST(request: Request) {
         latitudeBase: parseFloat(latitude),
         longitudeBase: parseFloat(longitude),
         raioPermitido: parseInt(raio) || 100,
-        fotoPerfilUrl: fotoPerfilUrl, // Salvamos o link da foto oficial!
+        fotoPerfilUrl: fotoPerfilUrl, 
+        horasDiarias: horas ? parseInt(horas) : null,
       }
     });
 
