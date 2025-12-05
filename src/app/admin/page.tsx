@@ -4,6 +4,7 @@ import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, Clock, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio'; 
+import { Users } from 'lucide-react'; // Importe o ícone Users
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,13 @@ export default async function AdminDashboard() {
           </div>
           
           <div className="flex gap-3">
+            <Link 
+              href="/admin/funcionarios" 
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+            >
+              <Users size={18} />
+              Equipe
+            </Link>
             {/* BOTÃO NOVO AQUI 👇 */}
             <BotaoRelatorio pontos={pontos} />
             

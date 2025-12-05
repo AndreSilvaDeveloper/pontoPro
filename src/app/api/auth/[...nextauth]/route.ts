@@ -1,8 +1,26 @@
-import NextAuth from "next-auth";
+import NextAuth, { AuthOptions, DefaultSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
 
-const handler = NextAuth({
+// Tipagem para o TypeScript
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      cargo: string;
+      empresaId: string;
+      deveTrocarSenha: boolean;
+    } & DefaultSession["user"]
+  }
+  interface User {
+    cargo: string;
+    empresaId: string;
+    deveTrocarSenha: boolean;
+  }
+}
+
+// === AQUI ESTÁ A MUDANÇA: Exportamos as opções separadamente ===
+export const authOptions: AuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -13,37 +31,49 @@ const handler = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Busca o usuário no banco
         const user = await prisma.usuario.findUnique({
           where: { email: credentials.email }
         });
 
-        // Verifica se usuário existe e se a senha bate
-        // (Nota: Em produção, usaríamos bcrypt para comparar hash, mas vamos usar texto puro para seu teste com '123')
         if (user && user.senha === credentials.password) {
           return {
             id: user.id,
             name: user.nome,
             email: user.email,
+            cargo: user.cargo,
+            empresaId: user.empresaId || "",
+            deveTrocarSenha: user.deveTrocarSenha
           };
         }
-
-        return null; // Login falhou
+        return null;
       }
     })
   ],
   pages: {
-    signIn: '/login', // Nossa página de login personalizada
+    signIn: '/login',
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.cargo = user.cargo;
+        token.empresaId = user.empresaId;
+        token.deveTrocarSenha = user.deveTrocarSenha;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session?.user) {
-        // @ts-ignore
-        session.user.id = token.sub; // Passa o ID do usuário para a sessão
+        session.user.id = token.id as string;
+        session.user.cargo = token.cargo as string;
+        session.user.empresaId = token.empresaId as string;
+        session.user.deveTrocarSenha = token.deveTrocarSenha as boolean;
       }
       return session;
     }
   }
-});
+};
+
+const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };

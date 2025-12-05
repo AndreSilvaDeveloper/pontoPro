@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import { MapPin, Camera, LogOut } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react'; // Importamos o hook de sessão
+import { MapPin, Camera, LogOut, LayoutDashboard } from 'lucide-react'; // Adicionei ícone novo
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function Home() {
-  const { data: session, status } = useSession(); // Pega dados da sessão
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -16,16 +17,29 @@ export default function Home() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const webcamRef = useRef<Webcam>(null);
 
-  // Se não estiver logado, redireciona para login
+  // === O GUARDA DE TRÂNSITO 🚦 ===
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
-    }
-  }, [status, router]);
+    } 
+    else if (status === 'authenticated') {
+      
+      // 1. Se precisar trocar senha, PÁRA TUDO e manda pra lá
+      // @ts-ignore
+      if (session?.user?.deveTrocarSenha) {
+        router.push('/trocar-senha');
+        return; // Importante: pára a execução aqui
+      }
 
-  if (status === 'loading') {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">Carregando...</div>;
-  }
+      // 2. Se for ADMIN, manda pro escritório
+      if (session?.user?.cargo === 'ADMIN') {
+        router.push('/admin');
+      }
+    }
+  }, [status, router, session]);
+
+  // Se o admin por acaso quiser ficar nessa tela, ele não vai ver nada porque foi redirecionado.
+  // Mas caso a internet esteja lenta, mostramos a tela normal.
 
   const capturarLocalizacao = () => {
     setStatusMsg({ tipo: 'info', texto: 'Obtendo GPS...' });
@@ -56,7 +70,6 @@ export default function Home() {
 
     try {
       const response = await axios.post('/api/bater-ponto', {
-        // AGORA USAMOS O ID REAL DO USUÁRIO LOGADO!
         // @ts-ignore
         usuarioId: session?.user?.id, 
         latitude: location.lat,
@@ -81,19 +94,30 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-slate-900 text-white">
       <div className="w-full max-w-md bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-700">
         
-        {/* Cabeçalho com Logout */}
+        {/* Cabeçalho */}
         <div className="p-4 flex justify-between items-center border-b border-slate-700 bg-slate-950">
           <div>
             <h1 className="font-bold text-blue-400">Olá, {session?.user?.name}</h1>
-            <p className="text-xs text-slate-500">Pronto para trabalhar?</p>
+            <span className="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded uppercase font-bold border border-slate-700">
+              {session?.user?.cargo}
+            </span>
           </div>
-          <button 
-            onClick={() => signOut()}
-            className="p-2 text-slate-400 hover:text-red-400 transition-colors"
-            title="Sair"
-          >
-            <LogOut size={20} />
-          </button>
+          
+          <div className="flex gap-2">
+            {/* Se for Admin e voltou pra cá, mostra botão para ir pro painel */}
+            {session?.user?.cargo === 'ADMIN' && (
+              <Link href="/admin" className="p-2 text-blue-400 hover:text-blue-300 transition-colors" title="Painel Admin">
+                <LayoutDashboard size={20} />
+              </Link>
+            )}
+            <button 
+              onClick={() => signOut()}
+              className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+              title="Sair"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">
