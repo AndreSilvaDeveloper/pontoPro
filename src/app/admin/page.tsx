@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, Clock, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import BotaoRelatorio from '@/components/BotaoRelatorio'; // <--- IMPORTADO AQUI
+import BotaoRelatorio from '@/components/BotaoRelatorio'; 
 
 export const dynamic = 'force-dynamic';
 

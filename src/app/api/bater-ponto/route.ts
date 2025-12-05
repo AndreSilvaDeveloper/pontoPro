@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { calcularDistancia } from '@/utils/geo';
+import { calcularDistancia } from '../../utils/geo';
 import { put } from '@vercel/blob'; // Ferramenta oficial da Vercel
 
 export async function POST(request: Request) {
