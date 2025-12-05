@@ -33,23 +33,27 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { nome, email } = await request.json();
+    // Agora recebemos também as coordenadas e o raio
+    const { nome, email, latitude, longitude, raio } = await request.json();
 
-    // Cria o funcionário novo
     const novoUsuario = await prisma.usuario.create({
       data: {
         nome,
         email,
-        senha: 'mudar123', // Senha Padrão
-        deveTrocarSenha: true, // Força troca
+        senha: 'mudar123',
+        deveTrocarSenha: true,
         cargo: 'FUNCIONARIO',
-        empresaId: session.user.empresaId, // Vincula à empresa do chefe
+        empresaId: session.user.empresaId,
+        // Salvamos a regra geográfica específica deste funcionário
+        latitudeBase: parseFloat(latitude),
+        longitudeBase: parseFloat(longitude),
+        raioPermitido: parseInt(raio) || 100, // Padrão 100 metros se não informar
       }
     });
 
     return NextResponse.json(novoUsuario);
 
   } catch (error) {
-    return NextResponse.json({ erro: 'Erro ao criar (Email já existe?)' }, { status: 500 });
+    return NextResponse.json({ erro: 'Erro ao criar' }, { status: 500 });
   }
 }

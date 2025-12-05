@@ -37,6 +37,14 @@ export default async function AdminDashboard() {
               <Users size={18} />
               Equipe
             </Link>
+            <Link 
+              href="/admin/perfil" 
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm"
+              title="Minha Conta"
+            >
+              <User size={18} />
+              Minha Conta
+            </Link>
             {/* BOTÃO NOVO AQUI 👇 */}
             <BotaoRelatorio pontos={pontos} />
             
