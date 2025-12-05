@@ -1,27 +1,22 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { calcularDistancia } from '../../utils/geo';
-
-
-// Versão limpa e estável para Prisma 5
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-const prisma = globalForPrisma.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+import { prisma } from '@/lib/db';
+import { calcularDistancia } from '@/utils/geo';
+import { put } from '@vercel/blob'; // Ferramenta oficial da Vercel
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { usuarioId, latitude, longitude, fotoBase64 } = body;
 
-    console.log("📍 Recebendo ponto:", { latitude, longitude });
+    console.log("📍 Processando ponto para:", usuarioId);
 
-    // 1. Buscar usuário de teste (fixo por enquanto)
+    // 1. Buscar usuário
     const usuario = await prisma.usuario.findUnique({
-      where: { email: 'funcionario@teste.com' }, 
+      where: { id: usuarioId },
     });
 
     if (!usuario) {
-      return NextResponse.json({ erro: 'Usuário de teste não encontrado no banco.' }, { status: 404 });
+      return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 });
     }
 
     // 2. Validar Geofencing
@@ -32,22 +27,44 @@ export async function POST(request: Request) {
       usuario.longitudeBase
     );
 
-    console.log(`📏 Distância: ${Math.round(distancia)}m (Permitido: ${usuario.raioPermitido}m)`);
-
     if (distancia > usuario.raioPermitido) {
       return NextResponse.json(
-        { erro: `Fora da área! Você está a ${Math.round(distancia)}m da empresa.` },
+        { erro: `Fora da área! Distância: ${Math.round(distancia)}m.` },
         { status: 400 }
       );
     }
 
-    // 3. Salvar o Ponto
+    // 3. UPLOAD DA FOTO PARA A NUVEM ☁️📸
+    let fotoUrlFinal = null;
+
+    if (fotoBase64) {
+      try {
+        // Limpa o cabeçalho do base64 para pegar só os dados
+        const base64Data = fotoBase64.replace(/^data:image\/\w+;base64,/, "");
+        // Converte texto em arquivo binário (Buffer)
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Cria um nome único para o arquivo: ID-DATA.jpg
+        const filename = `${usuario.id}-${Date.now()}.jpg`;
+
+        // Envia para o Vercel Blob
+        const blob = await put(filename, buffer, {
+          access: 'public',
+        });
+
+        fotoUrlFinal = blob.url; // Recebe o link curto (https://...)
+      } catch (err) {
+        console.error("Erro ao subir foto:", err);
+      }
+    }
+
+    // 4. Salvar o Ponto com o LINK (e não mais o texto gigante)
     const ponto = await prisma.ponto.create({
       data: {
         usuarioId: usuario.id,
         latitude,
         longitude,
-        fotoUrl: fotoBase64,
+        fotoUrl: fotoUrlFinal, 
       },
     });
 
