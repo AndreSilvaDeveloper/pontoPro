@@ -3,15 +3,14 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { MapPin, Calendar, Clock, User, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import BotaoRelatorio from '@/components/BotaoRelatorio'; // <--- IMPORTADO AQUI
 
-// Esta função diz ao Next.js para não guardar cache desta página (dados sempre frescos)
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboard() {
-  // 1. Buscar os pontos no banco de dados (os mais recentes primeiro)
   const pontos = await prisma.ponto.findMany({
     include: {
-      usuario: true, // Traz os dados do funcionário junto
+      usuario: true,
     },
     orderBy: {
       dataHora: 'desc',
@@ -28,13 +27,19 @@ export default async function AdminDashboard() {
             <h1 className="text-3xl font-bold text-blue-400">Painel do Gestor</h1>
             <p className="text-slate-400">Monitoramento de Ponto em Tempo Real</p>
           </div>
-          <Link 
-            href="/" 
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-colors text-sm"
-          >
-            <ArrowLeft size={16} />
-            Voltar para o App
-          </Link>
+          
+          <div className="flex gap-3">
+            {/* BOTÃO NOVO AQUI 👇 */}
+            <BotaoRelatorio pontos={pontos} />
+            
+            <Link 
+              href="/" 
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg transition-colors text-sm"
+            >
+              <ArrowLeft size={16} />
+              Voltar
+            </Link>
+          </div>
         </div>
 
         {/* Resumo Rápido */}
@@ -69,7 +74,6 @@ export default async function AdminDashboard() {
                 {pontos.map((ponto) => (
                   <tr key={ponto.id} className="hover:bg-slate-800/50 transition-colors">
                     
-                    {/* Coluna Funcionário */}
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-blue-900/50 flex items-center justify-center text-blue-200">
@@ -82,7 +86,6 @@ export default async function AdminDashboard() {
                       </div>
                     </td>
 
-                    {/* Coluna Data e Hora */}
                     <td className="p-4">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 text-slate-300">
@@ -96,26 +99,28 @@ export default async function AdminDashboard() {
                       </div>
                     </td>
 
-                    {/* Coluna Foto */}
                     <td className="p-4">
-                      {ponto.fotoUrl && ponto.fotoUrl.length > 50 ? (
-                        <div className="relative group w-16 h-16">
-                           {/* Exibe a foto pequena, mas mostra grande se passar o mouse (hover) */}
-                          <img 
-                            src={ponto.fotoUrl} 
-                            alt="Registro" 
-                            className="w-16 h-16 rounded-lg object-cover border border-slate-600 group-hover:scale-[3] group-hover:z-50 transition-transform origin-left absolute top-0 left-0 bg-black"
-                          />
+                      {ponto.fotoUrl ? (
+                        <div className="relative group w-16 h-16 cursor-pointer">
+                          {/* DICA: Adicionei target="_blank" aqui para abrir a foto original 
+                              numa nova aba se clicar nela 
+                          */}
+                          <a href={ponto.fotoUrl} target="_blank" rel="noopener noreferrer">
+                            <img 
+                              src={ponto.fotoUrl} 
+                              alt="Registro" 
+                              className="w-16 h-16 rounded-lg object-cover border border-slate-600 group-hover:scale-[3] group-hover:z-50 transition-transform origin-left absolute top-0 left-0 bg-black shadow-xl"
+                            />
+                          </a>
                         </div>
                       ) : (
                         <span className="text-xs text-slate-600 italic">Sem foto</span>
                       )}
                     </td>
 
-                    {/* Coluna Mapa */}
                     <td className="p-4">
                       <a 
-                        href={`https://www.google.com/maps?q=${ponto.latitude},${ponto.longitude}`}
+                        href={`https://www.google.com/maps/search/?api=1&query=${ponto.latitude},${ponto.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-all text-sm font-medium border border-blue-600/20 hover:border-blue-500"
