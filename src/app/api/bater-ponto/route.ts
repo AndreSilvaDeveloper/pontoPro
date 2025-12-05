@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { calcularDistancia } from '@/utils/geo';
 import { put } from '@vercel/blob';
-import { compararRostos } from '@/lib/rekognition'; // <--- IMPORTADO
+import { compararRostos } from '@/lib/rekognition'; 
 
 export async function POST(request: Request) {
   try {
