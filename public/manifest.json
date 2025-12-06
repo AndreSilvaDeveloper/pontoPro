@@ -1,6 +1,6 @@
 {
-  "name": "Ponto Pro App",
-  "short_name": "PontoPro",
+  "name": "WorkID App",
+  "short_name": "WorkID",
   "description": "Sistema de Ponto Inteligente",
   "start_url": "/",
   "display": "standalone",

@@ -27,7 +27,6 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
-    // (Lógica de criação igual a antes...)
     const nome = formData.get('nome') as string;
     const email = formData.get('email') as string;
     const latitude = formData.get('latitude') as string;
@@ -59,14 +58,14 @@ export async function POST(request: Request) {
   }
 }
 
-// === ATUALIZAR (NOVO!) ===
+// === ATUALIZAR ===
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
 
   try {
     const formData = await request.formData();
-    const id = formData.get('id') as string; // Precisamos do ID para saber quem editar
+    const id = formData.get('id') as string;
     
     if (!id) return NextResponse.json({ erro: 'ID não informado' }, { status: 400 });
 
@@ -78,17 +77,13 @@ export async function PUT(request: Request) {
     const fotoArquivo = formData.get('foto') as File | null;
     const jornadaTexto = formData.get('jornada') as string;
 
-    // Prepara os dados para atualização
     const dadosParaAtualizar: any = {
-      nome,
-      email,
-      latitudeBase: parseFloat(latitude),
-      longitudeBase: parseFloat(longitude),
+      nome, email,
+      latitudeBase: parseFloat(latitude), longitudeBase: parseFloat(longitude),
       raioPermitido: parseInt(raio) || 100,
       jornada: jornadaTexto ? JSON.parse(jornadaTexto) : undefined,
     };
 
-    // Só atualiza a foto se o admin enviou uma nova
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
       const blob = await put(filename, fotoArquivo, { access: 'public' });
@@ -101,9 +96,36 @@ export async function PUT(request: Request) {
     });
 
     return NextResponse.json(usuarioAtualizado);
+  } catch (error) {
+    return NextResponse.json({ erro: 'Erro ao atualizar' }, { status: 500 });
+  }
+}
+
+// === EXCLUIR (NOVO!) ===
+export async function DELETE(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
+
+    // 1. Apagar TODOS os pontos desse funcionário primeiro (Limpeza)
+    await prisma.ponto.deleteMany({
+      where: { usuarioId: id }
+    });
+
+    // 2. Apagar o funcionário
+    await prisma.usuario.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ erro: 'Erro ao atualizar' }, { status: 500 });
+    return NextResponse.json({ erro: 'Erro ao excluir' }, { status: 500 });
   }
 }

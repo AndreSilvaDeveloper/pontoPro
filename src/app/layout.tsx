@@ -6,8 +6,8 @@ import Provider from "@/providers/SessionProvider"; // Importe o Provider
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ponto Pro",
-  description: "Sistema de Ponto Inteligente",
+  title: "WorkID - Gestão Inteligente",
+  description: "Sistema de Ponto com Biometria e Geolocalização",
   manifest: "/manifest.json",
 };
 
