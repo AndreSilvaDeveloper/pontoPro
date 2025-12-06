@@ -3,10 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import { MapPin, Camera, LogOut, LayoutDashboard, AlertCircle } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react';
+import { MapPin, Camera, LogOut, LayoutDashboard, AlertCircle, History } from 'lucide-react';import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -108,11 +108,23 @@ export default function Home() {
             </span>
           </div>
           <div className="flex gap-2">
+            {/* Se for Admin */}
             {session?.user?.cargo === 'ADMIN' && (
               <Link href="/admin" className="p-2 text-blue-400 hover:text-blue-300 transition-colors">
                 <LayoutDashboard size={20} />
               </Link>
             )}
+            
+            {/* NOVO: Botão de Histórico para TODOS (Inclusive funcionário) */}
+            <Link 
+              href="/funcionario/historico" 
+              className="p-2 text-green-400 hover:text-green-300 transition-colors"
+              title="Meu Histórico"
+            >
+              <History size={20} />
+            </Link>
+
+            {/* Logout */}
             <button 
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="p-2 text-slate-400 hover:text-red-400 transition-colors"
