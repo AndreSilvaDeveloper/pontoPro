@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import { MapPin, Camera, LogOut, LayoutDashboard } from 'lucide-react';
+import { MapPin, Camera, LogOut, LayoutDashboard, AlertCircle } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -15,9 +15,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  
-  // CORREÇÃO AQUI: Criamos o estado que faltava
   const [tipoPonto, setTipoPonto] = useState('ENTRADA'); 
+  const [cameraErro, setCameraErro] = useState(false); // Novo estado para saber se a câmera falhou
   
   const webcamRef = useRef<Webcam>(null);
 
@@ -57,12 +56,26 @@ export default function Home() {
   };
 
   const baterPonto = async () => {
+    // 1. Validação de Localização
     if (!location) {
       setStatusMsg({ tipo: 'erro', texto: 'Preciso da localização!' });
       return;
     }
-    setLoading(true);
+
+    // 2. VALIDAÇÃO DE SEGURANÇA DA CÂMERA (NOVO) 🔒
+    // Tenta tirar o screenshot. Se a câmera estiver bloqueada ou quebrada, isso retorna null.
     const imageSrc = webcamRef.current?.getScreenshot();
+
+    if (!imageSrc) {
+      setCameraErro(true);
+      setStatusMsg({ 
+        tipo: 'erro', 
+        texto: '🚫 ERRO CRÍTICO: Câmera não detectada! Você precisa permitir o acesso à câmera para bater o ponto.' 
+      });
+      return; // PÁRA TUDO AQUI. Não envia nada pro servidor.
+    }
+
+    setLoading(true);
 
     try {
       const response = await axios.post('/api/bater-ponto', {
@@ -70,8 +83,8 @@ export default function Home() {
         usuarioId: session?.user?.id, 
         latitude: location.lat,
         longitude: location.lng,
-        fotoBase64: imageSrc,
-        tipo: tipoPonto // Agora essa variável existe!
+        fotoBase64: imageSrc, // Agora garantimos que isso não é null
+        tipo: tipoPonto 
       });
       setStatusMsg({ tipo: 'sucesso', texto: `✅ ${response.data.mensagem}` });
     } catch (error: any) {
@@ -110,19 +123,38 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Câmera e Status */}
+        {/* Câmera */}
         <div className="p-6 space-y-6">
-          <div className="relative rounded-xl overflow-hidden border-2 border-slate-600 bg-black aspect-video">
-            <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" className="w-full h-full object-cover"/>
+          <div className={`relative rounded-xl overflow-hidden border-2 bg-black aspect-video ${cameraErro ? 'border-red-500 shadow-red-900/50 shadow-lg' : 'border-slate-600'}`}>
+            <Webcam 
+              audio={false} 
+              ref={webcamRef} 
+              screenshotFormat="image/jpeg" 
+              className="w-full h-full object-cover"
+              // Se o navegador bloquear, avisa na hora
+              onUserMediaError={() => {
+                setCameraErro(true);
+                setStatusMsg({ tipo: 'erro', texto: 'Câmera bloqueada pelo navegador!' });
+              }}
+              onUserMedia={() => setCameraErro(false)}
+            />
+            
+            {/* Aviso visual se a câmera falhar */}
+            {cameraErro && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-center p-4">
+                <AlertCircle size={48} className="text-red-500 mb-2" />
+                <p className="text-red-400 font-bold">Câmera Indisponível</p>
+                <p className="text-xs text-gray-400 mt-2">Verifique as permissões do navegador ou se outra aba está usando a câmera.</p>
+              </div>
+            )}
           </div>
-          
+
           {statusMsg && (
             <div className={`p-3 rounded-lg text-sm text-center font-bold ${statusMsg.tipo === 'erro' ? 'bg-red-900/50 text-red-200' : 'bg-blue-900/50 text-blue-200'}`}>
               {statusMsg.texto}
             </div>
           )}
 
-          {/* Botões de Ação */}
           <div className="space-y-3">
             {!location ? (
               <button 
@@ -134,13 +166,12 @@ export default function Home() {
             ) : (
               <div className="space-y-4">
                 
-                {/* GRID DE BOTÕES DE TIPO DE PONTO */}
                 <div className="grid grid-cols-2 gap-2">
                   <button 
                     onClick={() => setTipoPonto('ENTRADA')}
                     className={`p-3 rounded-lg text-xs font-bold border transition-colors ${tipoPonto === 'ENTRADA' ? 'bg-green-600 border-green-500' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
                   >
-                    INÍCIO
+                    INÍCIO EXPEDIENTE
                   </button>
                   <button 
                     onClick={() => setTipoPonto('SAIDA_ALMOCO')}
@@ -162,15 +193,14 @@ export default function Home() {
                   </button>
                 </div>
 
-                {/* BOTÃO PRINCIPAL DE REGISTRO */}
                 <button
                   onClick={baterPonto}
-                  disabled={loading}
+                  disabled={loading || cameraErro} // Bloqueia o botão fisicamente se tiver erro
                   className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 ${
-                    loading ? 'bg-slate-600' : 'bg-blue-600 hover:bg-blue-700'
+                    loading || cameraErro ? 'bg-slate-600 cursor-not-allowed opacity-50' : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
-                  {loading ? 'Registrando...' : (
+                  {loading ? 'Validando...' : (
                     <>
                       <Camera size={20} /> 
                       REGISTRAR: {tipoPonto.replace('_', ' ')}
