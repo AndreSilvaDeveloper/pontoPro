@@ -30,6 +30,10 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const nome = formData.get('nome') as string;
     const email = formData.get('email') as string;
+    
+    // NOVO CAMPO
+    const tituloCargo = formData.get('tituloCargo') as string; 
+
     const latitude = formData.get('latitude') as string;
     const longitude = formData.get('longitude') as string;
     const raio = formData.get('raio') as string;
@@ -48,6 +52,7 @@ export async function POST(request: Request) {
     const novoUsuario = await prisma.usuario.create({
       data: {
         nome, email, senha: senhaPadraoHash, deveTrocarSenha: true, cargo: 'FUNCIONARIO',
+        tituloCargo: tituloCargo || null, // Salva o cargo
         empresaId: session.user.empresaId,
         latitudeBase: parseFloat(latitude), longitudeBase: parseFloat(longitude),
         raioPermitido: parseInt(raio) || 100,
@@ -69,11 +74,11 @@ export async function PUT(request: Request) {
   try {
     const formData = await request.formData();
     const id = formData.get('id') as string;
-    
     if (!id) return NextResponse.json({ erro: 'ID não informado' }, { status: 400 });
 
     const nome = formData.get('nome') as string;
     const email = formData.get('email') as string;
+    const tituloCargo = formData.get('tituloCargo') as string; // NOVO CAMPO
     const latitude = formData.get('latitude') as string;
     const longitude = formData.get('longitude') as string;
     const raio = formData.get('raio') as string;
@@ -82,6 +87,7 @@ export async function PUT(request: Request) {
 
     const dadosParaAtualizar: any = {
       nome, email,
+      tituloCargo: tituloCargo || null, // Atualiza o cargo
       latitudeBase: parseFloat(latitude), longitudeBase: parseFloat(longitude),
       raioPermitido: parseInt(raio) || 100,
       jornada: jornadaTexto ? JSON.parse(jornadaTexto) : undefined,
@@ -104,7 +110,7 @@ export async function PUT(request: Request) {
   }
 }
 
-// === EXCLUIR (NOVO!) ===
+// === EXCLUIR ===
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
@@ -112,23 +118,13 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-
     if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
 
-    // 1. Apagar TODOS os pontos desse funcionário primeiro (Limpeza)
-    await prisma.ponto.deleteMany({
-      where: { usuarioId: id }
-    });
-
-    // 2. Apagar o funcionário
-    await prisma.usuario.delete({
-      where: { id }
-    });
+    await prisma.ponto.deleteMany({ where: { usuarioId: id } });
+    await prisma.usuario.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
-
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ erro: 'Erro ao excluir' }, { status: 500 });
   }
 }

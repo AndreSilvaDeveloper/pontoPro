@@ -20,6 +20,7 @@ model Usuario {
   nome          String
   email         String   @unique
   senha         String   
+  tituloCargo   String?
   
   // Biometria e Regras
   fotoPerfilUrl String?  
