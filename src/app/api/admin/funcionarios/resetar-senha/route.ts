@@ -1,8 +1,8 @@
-// src/app/api/admin/funcionarios/resetar-senha/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
+import bcrypt from 'bcryptjs'; // <--- O INGREDIENTE QUE FALTAVA
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -15,11 +15,14 @@ export async function POST(request: Request) {
   try {
     const { usuarioId } = await request.json();
 
-    // Reseta para a senha padrão e obriga a trocar
+    // 1. Criptografa a senha padrão "mudar123"
+    const senhaPadraoHash = await bcrypt.hash('mudar123', 10);
+
+    // 2. Salva o HASH no banco, não o texto puro
     await prisma.usuario.update({
       where: { id: usuarioId },
       data: {
-        senha: 'mudar123',
+        senha: senhaPadraoHash, // <--- Agora salva o código seguro ($2a$10$...)
         deveTrocarSenha: true, 
       }
     });
@@ -27,6 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ sucesso: true, mensagem: 'Senha resetada para mudar123' });
 
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ erro: 'Erro ao resetar' }, { status: 500 });
   }
 }

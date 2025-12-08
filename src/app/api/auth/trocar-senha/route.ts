@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../[...nextauth]/route'; 
+import { authOptions } from '../[...nextauth]/route';
+import bcrypt from 'bcryptjs'; 
 
 export async function POST(request: Request) {
-  // Passamos as opções corretas aqui
   const session = await getServerSession(authOptions);
-  
-  if (!session?.user?.email) {
+
+  if (!session) {
     return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
   }
 
@@ -15,20 +15,25 @@ export async function POST(request: Request) {
     const { novaSenha } = await request.json();
 
     if (!novaSenha || novaSenha.length < 4) {
-      return NextResponse.json({ erro: 'A senha deve ter no mínimo 4 caracteres' }, { status: 400 });
+      return NextResponse.json({ erro: 'A senha deve ter no mínimo 4 caracteres.' }, { status: 400 });
     }
 
+    // === A CORREÇÃO ESTÁ AQUI ===
+    // Antes de salvar, transformamos a senha em HASH
+    const senhaCriptografada = await bcrypt.hash(novaSenha, 10); 
+
     await prisma.usuario.update({
-      where: { email: session.user.email },
+      where: { id: session.user.id },
       data: {
-        senha: novaSenha,
-        deveTrocarSenha: false,
-      },
+        senha: senhaCriptografada, // Salva o código seguro ($2a$10$...)
+        deveTrocarSenha: false // Libera o acesso
+      }
     });
 
-    return NextResponse.json({ sucesso: true, mensagem: 'Senha alterada com sucesso!' });
+    return NextResponse.json({ sucesso: true, mensagem: 'Senha alterada com segurança!' });
 
   } catch (error) {
-    return NextResponse.json({ erro: 'Erro ao atualizar senha' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ erro: 'Erro ao trocar senha' }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { put } from '@vercel/blob';
+import bcrypt from 'bcryptjs';
 
 // === LISTAR ===
 export async function GET(request: Request) {
@@ -42,9 +43,11 @@ export async function POST(request: Request) {
       fotoPerfilUrl = blob.url;
     }
 
+    const senhaPadraoHash = await bcrypt.hash('mudar123', 10);
+
     const novoUsuario = await prisma.usuario.create({
       data: {
-        nome, email, senha: 'mudar123', deveTrocarSenha: true, cargo: 'FUNCIONARIO',
+        nome, email, senha: senhaPadraoHash, deveTrocarSenha: true, cargo: 'FUNCIONARIO',
         empresaId: session.user.empresaId,
         latitudeBase: parseFloat(latitude), longitudeBase: parseFloat(longitude),
         raioPermitido: parseInt(raio) || 100,

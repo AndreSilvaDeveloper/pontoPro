@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import bcrypt from 'bcryptjs'; 
 
 export async function POST(request: Request) {
   try {
@@ -25,15 +26,17 @@ export async function POST(request: Request) {
       }
     });
 
+    const senhaHash = await bcrypt.hash(senhaInicial, 10); 
+
     // 3. Criar o Usuário Dono (Admin)
     const dono = await prisma.usuario.create({
       data: {
         nome: nomeDono,
         email: emailDono,
-        senha: senhaInicial, // Em produção, lembre-se do Hash!
+        senha: senhaHash, 
         cargo: 'ADMIN',
         empresaId: empresa.id,
-        deveTrocarSenha: true, // Obriga ele a trocar a senha ao entrar
+        deveTrocarSenha: true, 
       }
     });
 

@@ -19,6 +19,7 @@ import {
   Calendar,
   Clock,
   ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
@@ -186,6 +187,10 @@ export default function AdminDashboard() {
             <p className="text-slate-400 text-sm">Visão Geral da Empresa</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
+            <Link href="/admin/solicitacoes" className="px-4 py-2 bg-purple-900/50 text-purple-300 border border-purple-800 rounded-lg hover:bg-purple-900 transition text-sm flex items-center gap-2">
+              <AlertCircle size={16} /> Ajustes
+            </Link>
+           
             <Link
               href="/admin/funcionarios"
               className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700"
