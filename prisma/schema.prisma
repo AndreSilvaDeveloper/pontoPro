@@ -67,13 +67,17 @@ model SolicitacaoAjuste {
   id          String   @id @default(cuid())
   novoHorario DateTime
   motivo      String
-  status      String   @default("PENDENTE") // PENDENTE, APROVADO, REJEITADO
+  status      String   @default("PENDENTE") 
   
+  // NOVO: Tipo do ponto a ser criado (ex: ENTRADA)
+  tipo        String?  
+
   usuarioId   String
   usuario     Usuario  @relation(fields: [usuarioId], references: [id])
   
-  pontoId     String
-  ponto       Ponto    @relation(fields: [pontoId], references: [id], onDelete: Cascade)
+  // ALTERADO: Agora é opcional (String? e Ponto?)
+  pontoId     String?  
+  ponto       Ponto?   @relation(fields: [pontoId], references: [id], onDelete: Cascade)
 
   criadoEm    DateTime @default(now())
 }

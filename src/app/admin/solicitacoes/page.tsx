@@ -57,24 +57,36 @@ export default function SolicitacoesAjuste() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded text-xs font-bold uppercase">{sol.usuario.nome}</span>
-                    <span className="text-slate-500 text-xs">{format(new Date(sol.criadoEm), "dd/MM 'às' HH:mm")}</span>
+                    
+                    {/* TAG PARA DIFERENCIAR */}
+                    {!sol.pontoId ? (
+                        <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">NOVO PONTO</span>
+                    ) : (
+                        <span className="bg-yellow-600 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">AJUSTE</span>
+                    )}
                   </div>
                   
                   <div className="flex items-center gap-4 text-sm">
-                    <div className="text-slate-400">
-                      <p className="text-[10px] uppercase">Batido às</p>
-                      <p className="font-mono text-red-400 line-through decoration-red-500/50">{format(new Date(sol.ponto.dataHora), 'HH:mm')}</p>
-                    </div>
-                    <div className="text-slate-400">➡️</div>
+                    {/* LÓGICA VISUAL: Se tem pontoId, mostra o antigo. Se não, mostra só o novo. */}
+                    {sol.ponto ? (
+                        <>
+                            <div className="text-slate-400">
+                                <p className="text-[10px] uppercase">Original</p>
+                                <p className="font-mono text-red-400 line-through decoration-red-500/50">{format(new Date(sol.ponto.dataHora), 'HH:mm')}</p>
+                            </div>
+                            <div className="text-slate-400">➡️</div>
+                        </>
+                    ) : (
+                        <div className="text-slate-400">
+                            <p className="text-[10px] uppercase">Data</p>
+                            <p className="font-mono text-white">{format(new Date(sol.novoHorario), 'dd/MM/yyyy')}</p>
+                        </div>
+                    )}
+
                     <div>
-                      <p className="text-[10px] uppercase text-slate-400">Solicitado</p>
+                      <p className="text-[10px] uppercase text-slate-400">Solicitado ({sol.tipo || sol.ponto?.tipo})</p>
                       {editandoId === sol.id ? (
-                        <input 
-                          type="time" 
-                          value={horarioAdmin} 
-                          onChange={e => setHorarioAdmin(e.target.value)}
-                          className="bg-slate-800 border border-purple-500 rounded px-2 py-1 text-white font-bold"
-                        />
+                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-slate-800 border border-purple-500 rounded px-2 py-1 text-white font-bold"/>
                       ) : (
                         <p className="font-mono text-green-400 font-bold text-lg">{format(new Date(sol.novoHorario), 'HH:mm')}</p>
                       )}

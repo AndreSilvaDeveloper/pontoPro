@@ -8,12 +8,14 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
 
   try {
-    const { pontoId, novoHorario, motivo } = await request.json();
+    const { pontoId, novoHorario, motivo, tipo } = await request.json();
 
+    // Cria a solicitação (pontoId pode ser null agora)
     await prisma.solicitacaoAjuste.create({
       data: {
         usuarioId: session.user.id,
-        pontoId,
+        pontoId: pontoId || null, // Se vier vazio, é null
+        tipo: tipo || null,       // Salva o tipo (ENTRADA, SAIDA...)
         novoHorario: new Date(novoHorario),
         motivo
       }

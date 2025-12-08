@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format, differenceInMinutes, startOfWeek, startOfMonth, startOfYear, isSameDay, isAfter, getDay } from 'date-fns';
-import { LogOut, MapPin, User, Calendar, Clock, ExternalLink, AlertCircle, LayoutDashboard } from 'lucide-react'; 
+import { LogOut, MapPin, User, Calendar, Clock, ExternalLink, AlertCircle, LayoutDashboard, Bell } from 'lucide-react'; 
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
@@ -25,7 +25,7 @@ interface Ponto {
     id: string;
     nome: string;
     email: string;
-    tituloCargo?: string; // Adicionado para exibir cargo se quiser
+    tituloCargo?: string;
     jornada?: any; 
   };
 }
@@ -40,6 +40,9 @@ export default function AdminDashboard() {
   const [usuarios, setUsuarios] = useState<UsuarioResumo[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Estado da Notificação
+  const [notificacao, setNotificacao] = useState<{qtd: number, visivel: boolean}>({ qtd: 0, visivel: false });
+
   const [filtroUsuario, setFiltroUsuario] = useState('');
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -52,8 +55,24 @@ export default function AdminDashboard() {
     try {
       const resPontos = await axios.get('/api/admin/pontos-todos');
       setPontos(resPontos.data);
+      
       const resUsers = await axios.get('/api/admin/funcionarios');
       setUsuarios(resUsers.data);
+
+      // === NOVO: VERIFICAR SOLICITAÇÕES PENDENTES ===
+      const resSolicitacoes = await axios.get('/api/admin/solicitacoes');
+      const pendentes = resSolicitacoes.data.length;
+
+      if (pendentes > 0) {
+        setNotificacao({ qtd: pendentes, visivel: true });
+        
+        // Sumir depois de 5 segundos (5000ms)
+        setTimeout(() => {
+          setNotificacao(prev => ({ ...prev, visivel: false }));
+        }, 5000);
+      }
+      // ==============================================
+
     } catch (error) {
       console.error("Erro ao carregar", error);
     } finally {
@@ -61,7 +80,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Filtra visualmente a lista da tela
   const pontosFiltrados = pontos.filter(p => {
     const dataPontoTexto = format(new Date(p.dataHora), 'yyyy-MM-dd');
     const passaData = dataPontoTexto >= dataInicio && dataPontoTexto <= dataFim;
@@ -73,24 +91,21 @@ export default function AdminDashboard() {
     if (!filtroUsuario) return null;
 
     const agora = new Date();
-    // Filtra pontos APENAS do usuário selecionado para calcular métricas
     const pontosDoUsuario = pontos.filter(p => p.usuario.id === filtroUsuario);
     const dadosUsuario = pontosDoUsuario[0]?.usuario || usuarios.find(u => u.id === filtroUsuario);
     // @ts-ignore
     const jornadaConfig = dadosUsuario?.jornada || {};
 
-    // Ordena cronologicamente
     pontosDoUsuario.sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
     let minutosHoje = 0;
     let minutosSemana = 0;
     let minutosMes = 0;
     let minutosAno = 0;
-    let minutosTotalPeriodo = 0; // <--- NOVA VARIÁVEL PARA O PDF
+    let minutosTotalPeriodo = 0;
     let statusAtual = "Ausente";
     let tempoDecorridoAgora = 0;
     
-    // Calcula Meta do Dia (Visual)
     const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
     const diaSemanaHoje = diasMap[getDay(agora)];
     const configHoje = jornadaConfig[diaSemanaHoje];
@@ -106,7 +121,6 @@ export default function AdminDashboard() {
         metaHojeMinutos += calcDiff(configHoje.e2, configHoje.s2);
     }
 
-    // Agrupa por dia
     const pontosPorDia: Record<string, typeof pontosDoUsuario> = {};
     pontosDoUsuario.forEach(p => {
       const dia = format(new Date(p.dataHora), 'yyyy-MM-dd');
@@ -117,8 +131,6 @@ export default function AdminDashboard() {
     Object.keys(pontosPorDia).forEach(dia => {
       const batidas = pontosPorDia[dia];
       let minutosNoDia = 0;
-      
-      // Calcula minutos do dia (pares Entrada/Saída)
       for (let i = 0; i < batidas.length; i += 2) {
         const entrada = new Date(batidas[i].dataHora);
         const saida = batidas[i+1] ? new Date(batidas[i+1].dataHora) : null;
@@ -131,17 +143,12 @@ export default function AdminDashboard() {
              tempoDecorridoAgora = trab;
         }
       }
-
       const dataObj = criarDataLocal(dia);
-      
-      // Acumuladores de métricas gerais
       if (isSameDay(dataObj, agora)) minutosHoje += minutosNoDia;
       if (isAfter(dataObj, startOfWeek(agora))) minutosSemana += minutosNoDia;
       if (isAfter(dataObj, startOfMonth(agora))) minutosMes += minutosNoDia;
       if (isAfter(dataObj, startOfYear(agora))) minutosAno += minutosNoDia;
 
-      // === CORREÇÃO DO PDF ===
-      // Se este dia estiver dentro do filtro (dataInicio ~ dataFim), soma no total do período
       if (dia >= dataInicio && dia <= dataFim) {
         minutosTotalPeriodo += minutosNoDia;
       }
@@ -157,7 +164,7 @@ export default function AdminDashboard() {
       semana: formatarHoras(minutosSemana),
       mes: formatarHoras(minutosMes),
       ano: formatarHoras(minutosAno),
-      total: formatarHoras(minutosTotalPeriodo) // <--- O CAMPO QUE O PDF PRECISA
+      total: formatarHoras(minutosTotalPeriodo)
     };
   };
 
@@ -168,7 +175,28 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6 relative">
+      
+      
+      {notificacao.visivel && (
+        <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-right duration-500 fade-in">
+          <Link href="/admin/solicitacoes">
+            <div className="bg-purple-600 text-white p-4 rounded-xl shadow-2xl border border-purple-400 flex items-center gap-4 cursor-pointer hover:bg-purple-700 transition-colors">
+              <div className="bg-white/20 p-2 rounded-full animate-bounce">
+                <Bell size={24} />
+              </div>
+              <div>
+                <p className="font-bold text-sm">Atenção, Gestor!</p>
+                <p className="text-xs text-purple-100">
+                  Você tem {notificacao.qtd} {notificacao.qtd === 1 ? 'solicitação' : 'solicitações'} pendente(s).
+                </p>
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
+      {/* ================================ */}
+
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Cabeçalho */}
@@ -178,8 +206,10 @@ export default function AdminDashboard() {
             <p className="text-slate-400 text-sm">Visão Geral da Empresa</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
-            <Link href="/admin/solicitacoes" className="px-4 py-2 bg-purple-900/50 text-purple-300 border border-purple-800 rounded-lg hover:bg-purple-900 transition text-sm flex items-center gap-2">
+            <Link href="/admin/solicitacoes" className="px-4 py-2 bg-purple-900/50 text-purple-300 border border-purple-800 rounded-lg hover:bg-purple-900 transition text-sm flex items-center gap-2 relative">
               <AlertCircle size={16} /> Ajustes
+              {/* Bolinha vermelha no menu também se tiver pendencia */}
+              {notificacao.qtd > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>}
             </Link>
             
             <Link href="/admin/funcionarios" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700">Equipe</Link>
@@ -258,7 +288,6 @@ export default function AdminDashboard() {
                     <p className="font-bold text-white text-sm md:text-base">{ponto.usuario.nome}</p>
                     <div className="flex flex-col md:flex-row gap-1">
                         <p className="text-xs text-slate-500">{ponto.usuario.email}</p>
-                        {/* Cargo aparece aqui se existir */}
                         {ponto.usuario.tituloCargo && (
                             <span className="text-[10px] bg-slate-800 px-1.5 rounded text-purple-400 border border-slate-700 md:hidden w-fit">
                                 {ponto.usuario.tituloCargo}
