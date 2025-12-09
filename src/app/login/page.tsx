@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Lock, Mail } from "lucide-react";
+import InstallPrompt from '@/components/InstallPrompt';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-slate-900 p-8 rounded-2xl border border-slate-800 shadow-2xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">WorkID 🚀</h1>
-          <p className="text-slate-400">Entre para bater seu ponto</p>
+          <p className="text-slate-400">Faça Login</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -92,6 +93,9 @@ export default function LoginPage() {
           >
             {loading ? "Entrando..." : "ACESSAR SISTEMA"}
           </button>
+          <div className="mt-6">
+            <InstallPrompt />
+          </div>
         </form>
       </div>
     </div>
