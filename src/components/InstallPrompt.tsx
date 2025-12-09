@@ -100,7 +100,7 @@ export default function InstallPrompt() {
                 </div>
                 <div className="flex items-center gap-3 text-sm text-slate-200">
                   <span className="bg-slate-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">3</span>
-                  <span>Antes de Adicionar <span className="font-bold text-white inline-flex items-center gap-1"><PlusSquare size={14}/>Você deve que permitir o uso da camera</span>.</span>
+                  <span>Antes de Adicionar <span className="font-bold text-white inline-flex items-center gap-1"><Share size={14}/>Você deve que permitir o uso da camera.</span></span>
                 </div>
               </div>
 
