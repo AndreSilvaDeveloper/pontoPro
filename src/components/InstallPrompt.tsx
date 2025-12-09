@@ -98,6 +98,10 @@ export default function InstallPrompt() {
                   <span className="bg-slate-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">2</span>
                   <span>Role para cima e selecione <span className="font-bold text-white inline-flex items-center gap-1"><PlusSquare size={14}/> Adicionar à Tela de Início</span>.</span>
                 </div>
+                <div className="flex items-center gap-3 text-sm text-slate-200">
+                  <span className="bg-slate-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">3</span>
+                  <span><span className="font-bold text-white inline-flex items-center gap-1"><PlusSquare size={14}/> Antes de Adicionar você tem que permitir o uso da camera</span>.</span>
+                </div>
               </div>
 
               <button 
