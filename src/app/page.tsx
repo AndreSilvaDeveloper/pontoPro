@@ -7,6 +7,7 @@ import { MapPin, Camera, LogOut, LayoutDashboard, AlertCircle, History, Settings
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import DashboardGraficos from '@/components/DashboardGraficos';
 
 export default function Home() {
   const { data: session, status } = useSession();
