@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import axios from 'axios';
-import { MapPin, Camera, LogOut, LayoutDashboard, AlertCircle, History, Settings, RefreshCcw } from 'lucide-react';
+import { MapPin, Camera, LogOut, LayoutDashboard, AlertCircle, History, Settings, RefreshCcw, FileText } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -120,14 +120,22 @@ export default function Home() {
           </div>
           <div className="flex gap-2">
             
-            {/* Se for Admin, mostra o painel */}
             {session?.user?.cargo === 'ADMIN' && (
               <Link href="/admin" className="p-2 text-purple-400 hover:text-purple-300 transition-colors">
                 <LayoutDashboard size={20} />
               </Link>
             )}
 
-            {/* BOTÃO DE HISTÓRICO (ESTÁ AQUI!) */}
+            <Link 
+              href="/funcionario/ausencias" 
+              className="p-2 text-yellow-500 hover:text-yellow-400 transition-colors"
+              title="Justificar Ausência"
+            >
+              <FileText size={20} /> {/* Importe FileText de lucide-react */}
+            </Link>
+
+            
+
             <Link 
               href="/funcionario/historico" 
               className="p-2 text-green-400 hover:text-green-300 transition-colors"
@@ -136,7 +144,7 @@ export default function Home() {
               <History size={20} />
             </Link>
 
-            {/* Sair */}
+         
             <button 
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="p-2 text-slate-400 hover:text-red-400 transition-colors"
