@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     }
 
     // Hash da senha
-    const hashedPassword = await hash('123456', 10);
+    const hashedPassword = await hash('1234', 10);
 
     // Tratamento da Jornada (Converter string JSON para Objeto)
     let jornadaDados = undefined;
@@ -95,6 +95,7 @@ export async function POST(request: Request) {
         
         // Banco de Horas
         jornada: jornadaDados 
+        
       }
     });
 
