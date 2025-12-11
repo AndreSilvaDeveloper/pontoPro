@@ -27,6 +27,7 @@ model Usuario {
   // Biometria e Regras
   fotoPerfilUrl String?  
   jornada       Json?    
+  assinaturaUrl String?
   
   // Controle
   cargo         String   @default("FUNCIONARIO")
