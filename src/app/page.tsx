@@ -88,7 +88,7 @@ export default function Home() {
       
       <div className="w-full max-w-md space-y-4">
         
-        {/* === 1. CABEÇALHO SIMPLIFICADO === */}
+        {/* === 1. CABEÇALHO === */}
         <div className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-md">
             <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center text-xl font-bold shadow-lg shadow-purple-900/50 border-2 border-purple-400">
@@ -104,7 +104,7 @@ export default function Home() {
             </button>
         </div>
 
-        {/* === 2. MENU DE AÇÕES RÁPIDAS (TEXTO CLARO!) === */}
+        {/* === 2. MENU DE AÇÕES RÁPIDAS === */}
         <div className="grid grid-cols-3 gap-2">
             
             <Link href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 transition-all active:scale-95 group">
@@ -121,7 +121,8 @@ export default function Home() {
                 <span className="text-[10px] font-bold uppercase text-slate-300">Justificar</span>
             </Link>
 
-            <Link href="/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 transition-all active:scale-95 group">
+            {/* CORREÇÃO DO LINK AQUI: De /historico para /funcionario/historico */}
+            <Link href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 transition-all active:scale-95 group">
                 <div className="bg-blue-900/30 text-blue-400 p-2 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-colors">
                     <History size={20} />
                 </div>
@@ -130,10 +131,8 @@ export default function Home() {
 
         </div>
 
-        {/* === 3. ÁREA DE PONTO (CÂMERA) === */}
+        {/* === 3. ÁREA DE PONTO === */}
         <div className="bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-700 p-4 space-y-4">
-            
-            {/* Webcam */}
             <div className={`relative rounded-xl overflow-hidden bg-black aspect-video border-2 ${cameraErro ? 'border-red-500' : 'border-slate-600'}`}>
                 {!cameraErro ? (
                     <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" className="w-full h-full object-cover" onUserMediaError={() => setCameraErro(true)} />
@@ -146,14 +145,12 @@ export default function Home() {
                 )}
             </div>
 
-            {/* Mensagem Status */}
             {statusMsg && (
                 <div className={`p-3 rounded-lg text-sm text-center font-bold animate-pulse ${statusMsg.tipo === 'erro' ? 'bg-red-900/50 text-red-200' : 'bg-green-900/50 text-green-200'}`}>
                     {statusMsg.texto}
                 </div>
             )}
 
-            {/* Botões de Ponto */}
             {!location ? (
                 <button onClick={capturarLocalizacao} className="w-full py-4 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/30 animate-bounce">
                     <MapPin size={20} /> ATIVAR LOCALIZAÇÃO
@@ -172,10 +169,6 @@ export default function Home() {
                 </div>
             )}
         </div>
-
-        {/* Rodapé Informativo */}
-        <p className="text-center text-[10px] text-slate-600 mt-4">WorkID v2.0 • Geolocalização Ativa</p>
-
       </div>
     </main>
   );

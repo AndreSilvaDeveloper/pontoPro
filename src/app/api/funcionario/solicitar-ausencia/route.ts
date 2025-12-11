@@ -4,7 +4,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { put, del } from '@vercel/blob';
 
-// === GET: LISTAR HISTÓRICO (Faltava essa função!) ===
+// === HELPER PARA CORRIGIR DATA (FUSO HORÁRIO) ===
+// Adiciona T12:00:00 para garantir que a data caia no meio do dia,
+// evitando que o fuso horário (UTC-3) jogue para o dia anterior.
+const criarDataAjustada = (dataString: string) => {
+  if (!dataString) return new Date();
+  return new Date(`${dataString}T12:00:00`);
+};
+
+// === GET: LISTAR HISTÓRICO ===
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
@@ -37,18 +45,20 @@ export async function POST(request: Request) {
     let comprovanteUrl = null;
 
     if (arquivo && arquivo.size > 0) {
-      const extensao = arquivo.name.split('.').pop() || 'jpg'; // Fallback para jpg se não tiver extensão
+      const extensao = arquivo.name.split('.').pop() || 'jpg';
       const filename = `atestado-${session.user.id}-${Date.now()}.${extensao}`;
       const blob = await put(filename, arquivo, { access: 'public' });
       comprovanteUrl = blob.url;
     }
 
-    const fim = dataFim ? new Date(dataFim) : new Date(dataInicio);
+    // AQUI ESTÁ A CORREÇÃO: Usamos a função criarDataAjustada
+    const inicio = criarDataAjustada(dataInicio);
+    const fim = dataFim ? criarDataAjustada(dataFim) : inicio;
 
     await prisma.ausencia.create({
       data: {
         usuarioId: session.user.id,
-        dataInicio: new Date(dataInicio),
+        dataInicio: inicio,
         dataFim: fim,
         tipo,
         motivo,
@@ -64,9 +74,7 @@ export async function POST(request: Request) {
   }
 }
 
-// ... imports existentes ...
-
-// === PUT: EDITAR SOLICITAÇÃO (Enquanto Pendente) ===
+// === PUT: EDITAR SOLICITAÇÃO ===
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
@@ -82,7 +90,6 @@ export async function PUT(request: Request) {
 
     if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
 
-    // Verifica se a ausência existe, é do usuário e está pendente
     const ausenciaAtual = await prisma.ausencia.findUnique({ where: { id } });
 
     if (!ausenciaAtual || ausenciaAtual.usuarioId !== session.user.id) {
@@ -92,31 +99,29 @@ export async function PUT(request: Request) {
         return NextResponse.json({ erro: 'Só é possível editar solicitações pendentes.' }, { status: 400 });
     }
 
-    let comprovanteUrl = undefined; // Undefined não altera o campo no update do Prisma
+    let comprovanteUrl = undefined;
 
-    // Se mandou arquivo novo, faz upload e substitui
     if (arquivo && arquivo.size > 0) {
-        // (Opcional) Deletar o antigo para economizar espaço
         if (ausenciaAtual.comprovanteUrl) {
             try { await del(ausenciaAtual.comprovanteUrl); } catch(e) {}
         }
-
         const extensao = arquivo.name.split('.').pop() || 'jpg';
         const filename = `atestado-${session.user.id}-${Date.now()}.${extensao}`;
         const blob = await put(filename, arquivo, { access: 'public' });
         comprovanteUrl = blob.url;
     }
 
-    const fim = dataFim ? new Date(dataFim) : new Date(dataInicio);
+    // AQUI ESTÁ A CORREÇÃO NO EDITAR TAMBÉM
+    const inicio = criarDataAjustada(dataInicio);
+    const fim = dataFim ? criarDataAjustada(dataFim) : inicio;
 
     await prisma.ausencia.update({
       where: { id },
       data: {
-        dataInicio: new Date(dataInicio),
+        dataInicio: inicio,
         dataFim: fim,
         tipo,
         motivo,
-        // Só atualiza a URL se tiver enviado um novo, senão mantém a antiga (se for undefined não mexe)
         ...(comprovanteUrl && { comprovanteUrl }) 
       }
     });

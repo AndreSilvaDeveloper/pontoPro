@@ -19,34 +19,47 @@ export default function MeuHistorico() {
   const [modalAberto, setModalAberto] = useState(false);
   const [modoModal, setModoModal] = useState<'EDICAO' | 'INCLUSAO'>('EDICAO');
   
-  const [pontoSelecionado, setPontoSelecionado] = useState<any>(null); // Só para edição
-  const [dataNova, setDataNova] = useState(''); // Para inclusão (Dia)
-  const [horaNova, setHoraNova] = useState(''); // Para inclusão/edição (Hora)
-  const [tipoNovo, setTipoNovo] = useState('ENTRADA'); // Para inclusão
+  const [pontoSelecionado, setPontoSelecionado] = useState<any>(null); 
+  const [dataNova, setDataNova] = useState(''); 
+  const [horaNova, setHoraNova] = useState(''); 
+  const [tipoNovo, setTipoNovo] = useState('ENTRADA'); 
   const [motivo, setMotivo] = useState('');
 
-  // ... (Cálculo de horas MANTIDO IGUAL - Copie do seu código anterior para economizar espaço) ...
+  // === NOVA LÓGICA DE CÁLCULO (Compatível com Escala Noturna) ===
   const calcularHoras = (listaPontos: any[]) => {
     if (!listaPontos || listaPontos.length === 0) return { total: '0h 0m', minutos: 0 };
+    
+    // 1. Ordena tudo cronologicamente (Antigo -> Novo)
     const sorted = [...listaPontos].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
     let minutosTotal = 0;
-    const pontosPorDia: Record<string, any[]> = {};
-    sorted.forEach(p => {
-      const dataIso = new Date(p.dataHora).toISOString().split('T')[0];
-      if (!pontosPorDia[dataIso]) pontosPorDia[dataIso] = [];
-      pontosPorDia[dataIso].push(p);
-    });
-    Object.keys(pontosPorDia).forEach(dia => {
-      const batidas = pontosPorDia[dia];
-      for (let i = 0; i < batidas.length; i += 2) {
-        const entrada = new Date(batidas[i].dataHora);
-        if (batidas[i+1]) {
-          const saida = new Date(batidas[i+1].dataHora);
-          const diffMins = Math.floor((saida.getTime() - entrada.getTime()) / 1000 / 60);
-          if (diffMins > 0) minutosTotal += diffMins;
+
+    // 2. Percorre a lista linearmente procurando pares
+    for (let i = 0; i < sorted.length; i++) {
+        const pAtual = sorted[i];
+        
+        // Se for início de período (ENTRADA ou VOLTA DO ALMOÇO)
+        if (pAtual.tipo === 'ENTRADA' || pAtual.tipo === 'VOLTA_ALMOCO') {
+            const proximo = sorted[i+1];
+
+            // Verifica se o próximo é um fechamento válido (SAIDA ou SAIDA P/ ALMOÇO)
+            if (proximo && (proximo.tipo === 'SAIDA' || proximo.tipo === 'SAIDA_ALMOCO')) {
+                const entrada = new Date(pAtual.dataHora);
+                const saida = new Date(proximo.dataHora);
+                
+                // Calcula diferença em minutos
+                const diff = differenceInMinutes(saida, entrada);
+                
+                // Trava de segurança: só soma se for positivo e menor que 24h (evita erros grotescos)
+                if (diff > 0 && diff < 1440) {
+                    minutosTotal += diff;
+                }
+
+                // Pula o próximo pois já foi usado como par
+                i++; 
+            }
         }
-      }
-    });
+    }
+
     const horas = Math.floor(minutosTotal / 60);
     const min = minutosTotal % 60;
     return { total: `${horas}h ${min}m`, minutos: minutosTotal };
@@ -63,21 +76,19 @@ export default function MeuHistorico() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // Abrir Modal de EDIÇÃO (Alterar existente)
   const abrirEdicao = (ponto: any) => {
     setModoModal('EDICAO');
     setPontoSelecionado(ponto);
-    setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); // Data fixa visual
+    setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); 
     setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); 
     setMotivo('');
     setModalAberto(true);
   };
 
-  // Abrir Modal de INCLUSÃO (Novo ponto)
   const abrirInclusao = () => {
     setModoModal('INCLUSAO');
     setPontoSelecionado(null);
-    setDataNova(format(new Date(), 'yyyy-MM-dd')); // Hoje como padrão
+    setDataNova(format(new Date(), 'yyyy-MM-dd')); 
     setHoraNova('');
     setTipoNovo('ENTRADA');
     setMotivo('');
@@ -87,14 +98,12 @@ export default function MeuHistorico() {
   const enviarSolicitacao = async () => {
     if (!motivo || !horaNova || (modoModal === 'INCLUSAO' && !dataNova)) return alert('Preencha tudo!');
     
-    // Constrói a data final
-    // Na edição, usa a data do ponto original. Na inclusão, usa a data que o usuário escolheu.
     const dataBase = modoModal === 'EDICAO' ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd') : dataNova;
     const dataHoraFinal = new Date(`${dataBase}T${horaNova}:00`);
 
     try {
       await axios.post('/api/funcionario/solicitar-ajuste', {
-        pontoId: pontoSelecionado?.id, // Se for inclusão, isso vai null
+        pontoId: pontoSelecionado?.id, 
         tipo: modoModal === 'INCLUSAO' ? tipoNovo : null,
         novoHorario: dataHoraFinal.toISOString(),
         motivo
@@ -103,6 +112,16 @@ export default function MeuHistorico() {
       setModalAberto(false);
     } catch (error) { alert('Erro ao enviar.'); }
   };
+
+  // === ADAPTAÇÃO PARA O COMPONENTE DE PDF ===
+  // O componente BotaoRelatorio espera { tipo: 'PONTO', subTipo: 'ENTRADA' }
+  // Mas a API de histórico retorna direto { tipo: 'ENTRADA' }. Vamos mapear:
+  const pontosParaRelatorio = pontos.map(p => ({
+      ...p,
+      tipo: 'PONTO',        // Força o tipo macro
+      subTipo: p.tipo,      // Move o tipo real (ENTRADA) para subTipo
+      descricao: 'Registro Manual/App'
+  }));
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4">
@@ -129,9 +148,8 @@ export default function MeuHistorico() {
           </div>
         )}
 
-        {/* Filtros e Botão de Inclusão */}
+        {/* Filtros e Botão */}
         <div className="space-y-3">
-            {/* BOTÃO ESQUECI DE BATER (NOVO) */}
             <button 
                 onClick={abrirInclusao}
                 className="w-full bg-slate-800 hover:bg-slate-700 text-purple-400 border border-slate-700 border-dashed py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
@@ -146,16 +164,17 @@ export default function MeuHistorico() {
                 </div>
                 <div className="flex gap-2">
                     <button onClick={carregar} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"><Search size={16} /> Filtrar</button>
-                    {pontos.length > 0 && <div className="flex-1"><BotaoRelatorio pontos={pontos} filtro={{ inicio: dataInicio, fim: dataFim, usuario: pontos[0]?.usuario.nome || 'Eu' }} resumoHoras={resumo} /></div>}
+                    {/* Passamos os pontos mapeados para o PDF funcionar com a nova lógica */}
+                    {pontos.length > 0 && <div className="flex-1"><BotaoRelatorio pontos={pontosParaRelatorio} filtro={{ inicio: dataInicio, fim: dataFim, usuario: pontos[0]?.usuario?.nome || 'Eu' }} resumoHoras={resumo} /></div>}
                 </div>
             </div>
         </div>
 
-        {/* Lista */}
+        {/* Lista Visual */}
         <div className="space-y-3">
           {pontos.map((ponto) => (
             <div key={ponto.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex justify-between items-center relative overflow-hidden">
-              <div className={`absolute left-0 top-0 bottom-0 w-1 ${ponto.tipo === 'ENTRADA' ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div className={`absolute left-0 top-0 bottom-0 w-1 ${['ENTRADA', 'VOLTA_ALMOCO'].includes(ponto.tipo) ? 'bg-green-500' : 'bg-red-500'}`} />
               <div className="pl-3">
                 <p className="font-bold text-lg text-white">{format(new Date(ponto.dataHora), 'HH:mm')}</p>
                 <div className="flex items-center gap-1 text-xs text-slate-400"><Calendar size={10} />{format(new Date(ponto.dataHora), 'dd/MM/yyyy')}</div>
@@ -168,7 +187,7 @@ export default function MeuHistorico() {
           ))}
         </div>
 
-        {/* MODAL UNIVERSAL (SERVE PARA INCLUSÃO E EDIÇÃO) */}
+        {/* Modal */}
         {modalAberto && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-700 shadow-2xl p-6 space-y-4">
@@ -176,39 +195,17 @@ export default function MeuHistorico() {
                   {modoModal === 'EDICAO' ? <><Edit3 size={20}/> Ajustar Ponto</> : <><PlusCircle size={20}/> Incluir Ponto</>}
               </h3>
               
-              {/* Se for Inclusão, permite escolher a DATA e o TIPO */}
               {modoModal === 'INCLUSAO' && (
                   <div className="grid grid-cols-2 gap-3">
-                      <div>
-                          <label className="text-xs text-slate-500 block mb-1">Data</label>
-                          <input type="date" value={dataNova} onChange={e=>setDataNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm text-center" />
-                      </div>
-                      <div>
-                          <label className="text-xs text-slate-500 block mb-1">Tipo</label>
-                          <select value={tipoNovo} onChange={e=>setTipoNovo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm">
-                              <option value="ENTRADA">ENTRADA</option>
-                              <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
-                              <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
-                              <option value="SAIDA">SAÍDA</option>
-                          </select>
-                      </div>
+                      <div><label className="text-xs text-slate-500 block mb-1">Data</label><input type="date" value={dataNova} onChange={e=>setDataNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm text-center" /></div>
+                      <div><label className="text-xs text-slate-500 block mb-1">Tipo</label><select value={tipoNovo} onChange={e=>setTipoNovo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm"><option value="ENTRADA">ENTRADA</option><option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option><option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option><option value="SAIDA">SAÍDA</option></select></div>
                   </div>
               )}
 
-              {/* Se for Edição, mostra a data fixa */}
-              {modoModal === 'EDICAO' && (
-                  <p className="text-sm text-slate-400">Data: {format(new Date(pontoSelecionado.dataHora), 'dd/MM/yyyy')}</p>
-              )}
+              {modoModal === 'EDICAO' && (<p className="text-sm text-slate-400">Data: {format(new Date(pontoSelecionado.dataHora), 'dd/MM/yyyy')}</p>)}
               
-              <div>
-                <label className="text-xs text-slate-500 block mb-1">Horário</label>
-                <input type="time" value={horaNova} onChange={e=>setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-lg font-bold text-center focus:border-purple-500 outline-none" />
-              </div>
-              
-              <div>
-                <label className="text-xs text-slate-500 block mb-1">Motivo (Obrigatório)</label>
-                <textarea value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-sm h-24 resize-none focus:border-purple-500 outline-none" />
-              </div>
+              <div><label className="text-xs text-slate-500 block mb-1">Horário</label><input type="time" value={horaNova} onChange={e=>setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-lg font-bold text-center focus:border-purple-500 outline-none" /></div>
+              <div><label className="text-xs text-slate-500 block mb-1">Motivo (Obrigatório)</label><textarea value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-sm h-24 resize-none focus:border-purple-500 outline-none" /></div>
 
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setModalAberto(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg font-bold text-sm">Cancelar</button>

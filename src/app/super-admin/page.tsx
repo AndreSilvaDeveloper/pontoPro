@@ -10,7 +10,7 @@ export default function SuperAdminPage() {
   const [cnpj, setCnpj] = useState('');
   const [nomeDono, setNomeDono] = useState('');
   const [emailDono, setEmailDono] = useState('');
-  const [senhaInicial, setSenhaInicial] = useState('mudar123');
+  const [senhaInicial, setSenhaInicial] = useState('1234');
 
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState<any>(null);

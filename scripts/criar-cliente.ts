@@ -1,14 +1,17 @@
 // scripts/criar-cliente.ts
 const { PrismaClient } = require('@prisma/client');
+const { hash } = require('bcryptjs'); // <--- IMPORTANTE: Adicionamos o bcrypt aqui
 const prisma = new PrismaClient();
 
 async function criarCliente() {
-  // --- DADOS DO NOVO CLIENTE (Edite aqui para cada venda) ---
+  // --- DADOS DO NOVO CLIENTE ---
   const NOME_EMPRESA = "Mercadinho do Bairro";
   const CNPJ = "99.999.999/0001-99";
   const EMAIL_DONO = "dono@mercadinho.com";
   const NOME_DONO = "Sr. Manoel";
-  const SENHA_INICIAL = "mudar123";
+  
+  // AQUI ESTÁ A MUDANÇA:
+  const SENHA_INICIAL = "1234"; 
   // ---------------------------------------------------------
 
   console.log(`🚀 Criando cliente: ${NOME_EMPRESA}...`);
@@ -24,15 +27,22 @@ async function criarCliente() {
 
     console.log(`✅ Empresa criada! ID: ${empresa.id}`);
 
-    // 2. Cria o Usuário Admin (Dono)
+    // 2. Criptografa a senha antes de salvar
+    const senhaCriptografada = await hash(SENHA_INICIAL, 10);
+
+    // 3. Cria o Usuário Admin (Dono)
     const dono = await prisma.usuario.create({
       data: {
         nome: NOME_DONO,
         email: EMAIL_DONO,
-        senha: SENHA_INICIAL,
+        password: senhaCriptografada, // <--- Atenção: O campo no seu banco é 'password' ou 'senha'? 
+        // Se no seu schema.prisma o campo for 'password', mantenha 'password'. 
+        // Se for 'senha', mude para 'senha: senhaCriptografada'.
+        // Baseado no seu último código de API, parece ser 'password'.
+        
         cargo: 'ADMIN',
-        empresaId: empresa.id, // VINCULA À EMPRESA NOVA
-        deveTrocarSenha: true, // Força ele a trocar a senha
+        empresaId: empresa.id,
+        deveTrocarSenha: true,
       }
     });
 
@@ -43,8 +53,6 @@ async function criarCliente() {
     Login:   ${EMAIL_DONO}
     Senha:   ${SENHA_INICIAL}
     -----------------------------------
-    Entregue esses dados para o cliente.
-    Ele vai logar e o sistema será SÓ DELE.
     `);
 
   } catch (e) {
