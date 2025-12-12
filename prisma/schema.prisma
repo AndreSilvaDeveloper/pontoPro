@@ -3,49 +3,57 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql" // Ou "sqlite" se estiver usando local
   url      = env("DATABASE_URL")
 }
 
 model Empresa {
-  id        String    @id @default(cuid())
-  nome      String
-  cnpj      String?
-  usuarios  Usuario[]
-  feriados  Feriado[]
-  criadoEm  DateTime  @default(now())
+  id            String    @id @default(cuid())
+  nome          String
+  cnpj          String?
+  criadoEm      DateTime  @default(now())
   
+  // Configurações do SaaS e do App
+  configuracoes Json?     // Ex: { "bloquearForaDoRaio": true, "exigirFoto": true }
+  status        String    @default("ATIVO") // "ATIVO", "BLOQUEADO"
+  
+  usuarios      Usuario[]
+  feriados      Feriado[]
 }
 
 model Usuario {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   nome          String
-  email         String   @unique
-  senha         String   
+  email         String    @unique
+  
+  
+  senha      String    
+  
   tituloCargo   String?
   
   // Biometria e Regras
-  fotoPerfilUrl String?  
-  jornada       Json?    
+  fotoPerfilUrl String?   
+  jornada       Json?     
   assinaturaUrl String?
   
   // Controle
-  cargo         String   @default("FUNCIONARIO")
+  cargo         String    @default("FUNCIONARIO") // ADMIN, SUPER_ADMIN, FUNCIONARIO
   deveTrocarSenha Boolean @default(false)
   
   // Vínculo
-  empresaId     String?  
-  empresa       Empresa? @relation(fields: [empresaId], references: [id])
+  empresaId     String?   
+  empresa       Empresa?  @relation(fields: [empresaId], references: [id])
 
-  // Geofencing
-  latitudeBase  Float    @default(0)
-  longitudeBase Float    @default(0)
-  raioPermitido Int      @default(100) 
+  // Geofencing Avançado
+  latitudeBase  Float     @default(0)
+  longitudeBase Float     @default(0)
+  raioPermitido Int       @default(100)
+  pontoLivre    Boolean   @default(false) 
+  locaisAdicionais Json?
 
+  // Relacionamentos
   pontos        Ponto[]
   ausencias     Ausencia[]
-  
-  // CORREÇÃO 1: Adicionado o campo oposto da relação
   solicitacoes  SolicitacaoAjuste[] 
 
   criadoEm      DateTime @default(now())
@@ -60,10 +68,12 @@ model Ponto {
   fotoUrl   String?
   tipo      String   @default("NORMAL")
   
-  usuarioId String
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  // Campo para motivo de edição do Admin
+  descricao String?
 
-  // CORREÇÃO 2: Adicionado o campo oposto da relação
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
   solicitacoes SolicitacaoAjuste[]
 }
 
@@ -73,13 +83,13 @@ model SolicitacaoAjuste {
   motivo      String
   status      String   @default("PENDENTE") 
   
-  // NOVO: Tipo do ponto a ser criado (ex: ENTRADA)
+  // Tipo do ponto (ENTRADA, SAIDA) para quando for inclusão de ponto esquecido
   tipo        String?  
 
   usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id])
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   
-  // ALTERADO: Agora é opcional (String? e Ponto?)
+  // Opcional: Se for ajuste de um ponto existente
   pontoId     String?  
   ponto       Ponto?   @relation(fields: [pontoId], references: [id], onDelete: Cascade)
 
@@ -92,11 +102,11 @@ model Ausencia {
   dataFim        DateTime
   tipo           String   // ATESTADO, FERIAS, FALTA_JUSTIFICADA
   motivo         String
-  comprovanteUrl String?  // Link da foto do atestado
-  status         String   @default("PENDENTE") // PENDENTE, APROVADO, REJEITADO
+  comprovanteUrl String?  
+  status         String   @default("PENDENTE") 
   
   usuarioId      String
-  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   criadoEm       DateTime @default(now())
 }
@@ -104,10 +114,21 @@ model Ausencia {
 model Feriado {
   id        String   @id @default(cuid())
   data      DateTime
-  nome      String   // Ex: "Natal", "Ano Novo"
+  nome      String   
   
   empresaId String?
   empresa   Empresa? @relation(fields: [empresaId], references: [id])
 
   criadoEm  DateTime @default(now())
+}
+
+model LogAuditoria {
+  id        String   @id @default(cuid())
+  dataHora  DateTime @default(now())
+  acao      String   
+  detalhes  String   
+  
+  adminNome String   
+  adminId   String   
+  empresaId String   
 }

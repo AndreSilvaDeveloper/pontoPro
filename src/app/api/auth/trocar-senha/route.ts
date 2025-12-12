@@ -2,38 +2,44 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
-import bcrypt from 'bcryptjs'; 
+import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-
+  
   if (!session) {
     return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
   }
+
+  // === PROTEÇÃO: SUPER ADMIN NÃO TROCA SENHA NO BANCO ===
+  // @ts-ignore
+  if (session.user.cargo === 'SUPER_ADMIN') {
+      return NextResponse.json({ erro: 'Super Admin não troca senha por aqui.' }, { status: 403 });
+  }
+  // ======================================================
 
   try {
     const { novaSenha } = await request.json();
 
     if (!novaSenha || novaSenha.length < 4) {
-      return NextResponse.json({ erro: 'A senha deve ter no mínimo 4 caracteres.' }, { status: 400 });
+      return NextResponse.json({ erro: 'Senha muito curta.' }, { status: 400 });
     }
 
-    // === A CORREÇÃO ESTÁ AQUI ===
-    // Antes de salvar, transformamos a senha em HASH
-    const senhaCriptografada = await bcrypt.hash(novaSenha, 10); 
+    const senhaCriptografada = await bcrypt.hash(novaSenha, 10);
 
+    // Atualiza a senha e remove a obrigação de trocar
     await prisma.usuario.update({
       where: { id: session.user.id },
       data: {
-        senha: senhaCriptografada, // Salva o código seguro ($2a$10$...)
-        deveTrocarSenha: false // Libera o acesso
+        senha: senhaCriptografada,
+        deveTrocarSenha: false 
       }
     });
 
-    return NextResponse.json({ sucesso: true, mensagem: 'Senha alterada com segurança!' });
+    return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ erro: 'Erro ao trocar senha' }, { status: 500 });
+    console.error("Erro ao trocar senha:", error);
+    return NextResponse.json({ erro: 'Erro interno ao salvar.' }, { status: 500 });
   }
 }

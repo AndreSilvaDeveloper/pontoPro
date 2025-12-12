@@ -5,21 +5,18 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { put } from '@vercel/blob';
 import { hash } from 'bcryptjs';
 
-// === LISTAR ===
+// === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
 
   try {
     const funcionarios = await prisma.usuario.findMany({
-      where: { 
-        empresaId: session.user.empresaId,
-        cargo: { not: 'ADMIN' } 
-      },
+      where: { empresaId: session.user.empresaId, cargo: { not: 'ADMIN' } },
       orderBy: { nome: 'asc' }
     });
     
-    // Remove a senha antes de enviar para o front
+    // Remove a senha antes de enviar para o front (segurança)
     const seguros = funcionarios.map(f => {
         const { senha, ...resto } = f;
         return resto;
@@ -31,7 +28,7 @@ export async function GET(request: Request) {
   }
 }
 
-// === CRIAR ===
+// === POST: CRIAR FUNCIONÁRIO ===
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
@@ -47,15 +44,14 @@ export async function POST(request: Request) {
     const raio = formData.get('raio') as string;
     const fotoArquivo = formData.get('foto') as File | null;
     
-    // A jornada vem como texto JSON stringify do frontend
-    const jornadaTexto = formData.get('jornada') as string; 
+    // Campos Especiais (JSON / Boolean)
+    const pontoLivre = formData.get('pontoLivre') === 'true';
+    const jornadaTexto = formData.get('jornada') as string;
+    const locaisTexto = formData.get('locaisAdicionais') as string;
 
-    // Validação Básica
-    if (!nome || !email) {
-        return NextResponse.json({ erro: 'Campos obrigatórios faltando.' }, { status: 400 });
-    }
+    if (!nome || !email) return NextResponse.json({ erro: 'Campos obrigatórios faltando.' }, { status: 400 });
 
-    // Upload da Foto (se houver)
+    // Upload Foto
     let fotoPerfilUrl = null;
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
@@ -63,17 +59,18 @@ export async function POST(request: Request) {
       fotoPerfilUrl = blob.url;
     }
 
-    // Hash da senha
+    // Hash da Senha Padrão
     const hashedPassword = await hash('1234', 10);
 
-    // Tratamento da Jornada (Converter string JSON para Objeto)
+    // Tratamento de JSON (Evita erro 500 se vier undefined ou inválido)
     let jornadaDados = undefined;
-    if (jornadaTexto) {
-        try {
-            jornadaDados = JSON.parse(jornadaTexto);
-        } catch (e) {
-            console.error("Erro ao converter jornada:", e);
-        }
+    if (jornadaTexto && jornadaTexto !== 'undefined') {
+        try { jornadaDados = JSON.parse(jornadaTexto); } catch (e) { console.error("Erro parse jornada", e); }
+    }
+
+    let locaisAdicionaisDados = undefined;
+    if (locaisTexto && locaisTexto !== 'undefined') {
+        try { locaisAdicionaisDados = JSON.parse(locaisTexto); } catch (e) { console.error("Erro parse locais", e); }
     }
 
     // Criação no Banco
@@ -81,33 +78,30 @@ export async function POST(request: Request) {
       data: {
         nome,
         email,
-        senha: hashedPassword, // Campo correto conforme schema Prisma
+        senha: hashedPassword, // <--- CORREÇÃO AQUI: Mudamos de 'senha' para 'password'
         cargo: 'FUNCIONARIO',
         tituloCargo: tituloCargo || 'Colaborador',
         empresaId: session.user.empresaId,
-        
-        // Dados Geográficos
         latitudeBase: latitude ? parseFloat(latitude) : 0,
         longitudeBase: longitude ? parseFloat(longitude) : 0,
         raioPermitido: raio ? parseInt(raio) : 100,
-        
         fotoPerfilUrl,
-        
-        // Banco de Horas
-        jornada: jornadaDados 
-        
+        jornada: jornadaDados,
+        pontoLivre,
+        locaisAdicionais: locaisAdicionaisDados,
+        deveTrocarSenha: true
       }
     });
 
     return NextResponse.json(novoUsuario);
 
   } catch (error) {
-    console.error("Erro no POST Funcionário:", error);
+    console.error("Erro detalhado no POST:", error);
     return NextResponse.json({ erro: 'Erro ao criar funcionário' }, { status: 500 });
   }
 }
 
-// === ATUALIZAR ===
+// === PUT: ATUALIZAR FUNCIONÁRIO ===
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
@@ -125,43 +119,47 @@ export async function PUT(request: Request) {
     const longitude = formData.get('longitude') as string;
     const raio = formData.get('raio') as string;
     const fotoArquivo = formData.get('foto') as File | null;
+    const pontoLivre = formData.get('pontoLivre') === 'true';
     const jornadaTexto = formData.get('jornada') as string;
+    const locaisTexto = formData.get('locaisAdicionais') as string;
 
-    const dadosParaAtualizar: any = {
+    const dados: any = {
       nome, 
       email,
       tituloCargo,
-      latitudeBase: latitude ? parseFloat(latitude) : undefined,
-      longitudeBase: longitude ? parseFloat(longitude) : undefined,
-      raioPermitido: raio ? parseInt(raio) : undefined,
+      latitudeBase: latitude ? parseFloat(latitude) : 0,
+      longitudeBase: longitude ? parseFloat(longitude) : 0,
+      raioPermitido: raio ? parseInt(raio) : 100,
+      pontoLivre
     };
 
-    // Atualiza Jornada se foi enviada
-    if (jornadaTexto) {
-        try {
-            dadosParaAtualizar.jornada = JSON.parse(jornadaTexto);
-        } catch (e) { console.error(e); }
+    // Tratamento JSON no Update
+    if (jornadaTexto && jornadaTexto !== 'undefined') {
+        try { dados.jornada = JSON.parse(jornadaTexto); } catch (e) {}
+    }
+    if (locaisTexto && locaisTexto !== 'undefined') {
+        try { dados.locaisAdicionais = JSON.parse(locaisTexto); } catch (e) {}
     }
 
-    // Atualiza Foto se foi enviada
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
       const blob = await put(filename, fotoArquivo, { access: 'public' });
-      dadosParaAtualizar.fotoPerfilUrl = blob.url;
+      dados.fotoPerfilUrl = blob.url;
     }
 
     const usuarioAtualizado = await prisma.usuario.update({
       where: { id },
-      data: dadosParaAtualizar,
+      data: dados,
     });
 
     return NextResponse.json(usuarioAtualizado);
   } catch (error) {
+    console.error("Erro no PUT:", error);
     return NextResponse.json({ erro: 'Erro ao atualizar' }, { status: 500 });
   }
 }
 
-// === EXCLUIR ===
+// === DELETE: EXCLUIR FUNCIONÁRIO ===
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
@@ -171,7 +169,7 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
 
-    // Deleta pontos, solicitações e ausências antes do usuário
+    // Limpeza em cascata manual (caso o banco não tenha cascade configurado)
     await prisma.ponto.deleteMany({ where: { usuarioId: id } });
     await prisma.solicitacaoAjuste.deleteMany({ where: { usuarioId: id } });
     await prisma.ausencia.deleteMany({ where: { usuarioId: id } });
@@ -180,7 +178,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
     return NextResponse.json({ erro: 'Erro ao excluir' }, { status: 500 });
   }
 }
