@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { format, differenceInMinutes, isSameDay, eachDayOfInterval, getDay } from 'date-fns';
+import { format, differenceInMinutes, isSameDay, eachDayOfInterval, getDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ArrowLeft, History, Calendar, Search, Clock, Edit3, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
@@ -11,18 +11,16 @@ export default function MeuHistorico() {
   const [pontos, setPontos] = useState<any[]>([]);
   const [empresaNome, setEmpresaNome] = useState('Carregando...');
   
-  // Dados auxiliares
   const [jornada, setJornada] = useState<any>(null);
   const [feriados, setFeriados] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [resumo, setResumo] = useState<{ total: string; minutos: number } | null>(null);
   
-  // === 1. FILTRO PADRÃO: HOJE ===
+  // Filtro Padrão: Hoje
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Estados do Modal
   const [modalAberto, setModalAberto] = useState(false);
   const [modoModal, setModoModal] = useState<'EDICAO' | 'INCLUSAO'>('EDICAO');
   const [pontoSelecionado, setPontoSelecionado] = useState<any>(null); 
@@ -31,39 +29,56 @@ export default function MeuHistorico() {
   const [tipoNovo, setTipoNovo] = useState('ENTRADA'); 
   const [motivo, setMotivo] = useState('');
 
-  // === 2. FUNÇÃO DE TOLERÂNCIA (10 min) ===
   const aplicarTolerancia = (dataReal: Date, horarioMetaString: string) => {
       if (!horarioMetaString) return dataReal; 
       const [h, m] = horarioMetaString.split(':').map(Number);
       const dataMeta = new Date(dataReal);
       dataMeta.setHours(h, m, 0, 0);
-      
       const diff = Math.abs(differenceInMinutes(dataReal, dataMeta));
-      if (diff <= 10) return dataMeta; // Arredonda se estiver na margem
+      if (diff <= 10) return dataMeta;
       return dataReal;
   };
 
-  // === 3. CORREÇÃO DE FUSO HORÁRIO PARA DATA ===
   const fixData = (d: any) => {
       if(!d) return new Date();
       const str = typeof d === 'string' ? d : d.toISOString();
       const [ano, mes, dia] = str.split('T')[0].split('-').map(Number);
-      return new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar -3h
+      return new Date(ano, mes - 1, dia, 12, 0, 0);
   };
 
-  // === 4. MOTOR DE CÁLCULO ===
+  // === NOVO CÁLCULO (IGNORA META EM DIAS DE FOLGA/FÉRIAS) ===
   const calcularHoras = (listaRegistros: any[], jornadaConfig: any, listaFeriados: string[]) => {
     if (!listaRegistros || listaRegistros.length === 0) return { total: '0h 0m', minutos: 0 };
     
     const agora = new Date(); 
 
+    // 1. Mapear quais dias são "Ausência Aprovada" (Férias/Atestado)
+    // Esses dias terão Meta 0 e Trabalho 0.
+    const diasIsentos = new Set<string>();
+    
+    const ausencias = listaRegistros.filter(p => p.tipo === 'AUSENCIA');
+    ausencias.forEach(aus => {
+        const inicio = fixData(aus.dataHora);
+        const fim = aus.extra?.dataFim ? fixData(aus.extra.dataFim) : inicio;
+        try {
+            eachDayOfInterval({ start: inicio, end: fim }).forEach(dia => {
+                diasIsentos.add(format(dia, 'yyyy-MM-dd'));
+            });
+        } catch(e) {}
+    });
+
+    // Função de Meta (Agora verifica se o dia é isento)
     const getMetaDoDia = (data: Date) => {
         const dataString = format(data, 'yyyy-MM-dd');
-        if (listaFeriados.includes(dataString)) return 0;
+        
+        // Se for feriado OU dia de atestado/férias, a meta é 0
+        if (listaFeriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
+
         const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
         const diaSemana = diasMap[getDay(data)];
         const config = jornadaConfig?.[diaSemana];
         if (!config || !config.ativo) return 0;
+        
         const calcDiff = (i:string, f:string) => {
             if(!i || !f) return 0;
             const [h1, m1] = i.split(':').map(Number);
@@ -75,21 +90,19 @@ export default function MeuHistorico() {
         return calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2);
     };
 
-    let minutosTrabalhados = 0;
+    let minutosTrabalhadosReais = 0; // Só conta o que trabalhou fisicamente
     const contagemDia: Record<string, number> = {};
 
-    // A. Soma Pontos Batidos
+    // 2. Soma APENAS Pontos Batidos (Físicos)
     const pontosApenas = listaRegistros.filter(p => p.tipo === 'PONTO' || p.tipo === 'NORMAL');
     const sorted = [...pontosApenas].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
     
     for (let i = 0; i < sorted.length; i++) {
         const pAtual = sorted[i];
-        
         if (['ENTRADA', 'VOLTA_ALMOCO'].includes(pAtual.subTipo || pAtual.tipo)) {
             const dataEntradaReal = new Date(pAtual.dataHora);
             const diaStr = format(dataEntradaReal, 'yyyy-MM-dd');
 
-            // Lógica Manhã/Tarde
             if (!contagemDia[diaStr]) contagemDia[diaStr] = 0; 
             const parIndex = contagemDia[diaStr]; 
             contagemDia[diaStr]++;
@@ -105,50 +118,32 @@ export default function MeuHistorico() {
             const proximo = sorted[i+1];
             
             if (proximo && ['SAIDA', 'SAIDA_ALMOCO'].includes(proximo.subTipo || proximo.tipo)) {
-                // Par Fechado
                 const dataSaidaReal = new Date(proximo.dataHora);
                 const dataSaidaCalc = aplicarTolerancia(dataSaidaReal, metaSaidaStr);
                 const diff = differenceInMinutes(dataSaidaCalc, dataEntradaCalc);
-                
-                if (diff > 0 && diff < 1440) minutosTrabalhados += diff;
+                if (diff > 0 && diff < 1440) minutosTrabalhadosReais += diff;
                 i++; 
             } else {
-                // Par Aberto (Trabalhando agora) - SOMA EM TEMPO REAL
                 if (isSameDay(dataEntradaReal, agora)) {
                     const diff = differenceInMinutes(agora, dataEntradaCalc);
-                    if (diff > 0 && diff < 1440) minutosTrabalhados += diff;
+                    if (diff > 0 && diff < 1440) minutosTrabalhadosReais += diff;
                 }
             }
         }
     }
 
-    // B. Soma Abonos (Atestados)
-    const ausencias = listaRegistros.filter(p => p.tipo === 'AUSENCIA');
-    ausencias.forEach(aus => {
-        const inicio = fixData(aus.dataHora);
-        const fim = aus.extra?.dataFim ? fixData(aus.extra.dataFim) : inicio;
-        
-        try {
-            eachDayOfInterval({ start: inicio, end: fim }).forEach(dia => {
-                const diaStr = format(dia, 'yyyy-MM-dd');
-                // Abona se estiver dentro do filtro
-                if (diaStr >= dataInicio && diaStr <= dataFim) {
-                    minutosTrabalhados += getMetaDoDia(dia);
-                }
-            });
-        } catch(e) {}
-    });
+    // 3. NÃO SOMAMOS MAIS O ABONO NO "TRABALHADO"
+    // O dia de férias agora tem Meta 0 e Trabalhado 0. O saldo fica 0 - 0 = 0.
 
-    const horas = Math.floor(minutosTrabalhados / 60);
-    const min = minutosTrabalhados % 60;
-    return { total: `${horas}h ${min}m`, minutos: minutosTrabalhados };
+    const horas = Math.floor(minutosTrabalhadosReais / 60);
+    const min = minutosTrabalhadosReais % 60;
+    return { total: `${horas}h ${min}m`, minutos: minutosTrabalhadosReais };
   };
 
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axios.get(`/api/funcionario/historico?inicio=${dataInicio}&fim=${dataFim}`);
-      
       if (res.data.pontos) {
           setPontos(res.data.pontos);
           setEmpresaNome(res.data.empresaNome);
@@ -161,12 +156,15 @@ export default function MeuHistorico() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  // === 5. FILTRO VISUAL INTELIGENTE (INTERSEÇÃO) ===
+  // ... (Funções Modal e Renderização - MANTIDOS) ...
+  const abrirEdicao = (ponto: any) => { setModoModal('EDICAO'); setPontoSelecionado(ponto); setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); setMotivo(''); setModalAberto(true); };
+  const abrirInclusao = () => { setModoModal('INCLUSAO'); setPontoSelecionado(null); setDataNova(format(new Date(), 'yyyy-MM-dd')); setHoraNova(''); setTipoNovo('ENTRADA'); setMotivo(''); setModalAberto(true); };
+  const enviarSolicitacao = async () => { if (!motivo || !horaNova || (modoModal === 'INCLUSAO' && !dataNova)) return alert('Preencha tudo!'); const dataBase = modoModal === 'EDICAO' ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd') : dataNova; const dataHoraFinal = new Date(`${dataBase}T${horaNova}:00`); try { await axios.post('/api/funcionario/solicitar-ajuste', { pontoId: pontoSelecionado?.id, tipo: modoModal === 'INCLUSAO' ? tipoNovo : null, novoHorario: dataHoraFinal.toISOString(), motivo }); alert('Solicitação enviada!'); setModalAberto(false); } catch (error) { alert('Erro ao enviar.'); } };
+
   const pontosFiltrados = pontos.filter(p => {
       if (p.tipo === 'AUSENCIA') {
           const ini = format(new Date(p.dataHora), 'yyyy-MM-dd');
           const fim = p.extra?.dataFim ? format(new Date(p.extra.dataFim), 'yyyy-MM-dd') : ini;
-          // Mostra se o período da ausência toca o período selecionado
           return ini <= dataFim && fim >= dataInicio;
       } else {
           const dia = format(new Date(p.dataHora), 'yyyy-MM-dd');
@@ -174,17 +172,7 @@ export default function MeuHistorico() {
       }
   });
 
-  const pontosParaRelatorio = pontosFiltrados.map(p => ({
-      ...p, 
-      tipo: p.tipo === 'AUSENCIA' ? 'AUSENCIA' : 'PONTO', 
-      subTipo: p.subTipo || p.tipo, 
-      descricao: p.descricao || (p.tipo === 'AUSENCIA' ? 'Atestado/Férias' : 'Registro Manual')
-  }));
-
-  // Modais e Ações
-  const abrirEdicao = (ponto: any) => { setModoModal('EDICAO'); setPontoSelecionado(ponto); setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); setMotivo(''); setModalAberto(true); };
-  const abrirInclusao = () => { setModoModal('INCLUSAO'); setPontoSelecionado(null); setDataNova(format(new Date(), 'yyyy-MM-dd')); setHoraNova(''); setTipoNovo('ENTRADA'); setMotivo(''); setModalAberto(true); };
-  const enviarSolicitacao = async () => { if (!motivo || !horaNova || (modoModal === 'INCLUSAO' && !dataNova)) return alert('Preencha tudo!'); const dataBase = modoModal === 'EDICAO' ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd') : dataNova; const dataHoraFinal = new Date(`${dataBase}T${horaNova}:00`); try { await axios.post('/api/funcionario/solicitar-ajuste', { pontoId: pontoSelecionado?.id, tipo: modoModal === 'INCLUSAO' ? tipoNovo : null, novoHorario: dataHoraFinal.toISOString(), motivo }); alert('Solicitação enviada!'); setModalAberto(false); } catch (error) { alert('Erro ao enviar.'); } };
+  const pontosParaRelatorio = pontosFiltrados.map(p => ({ ...p, tipo: p.tipo === 'AUSENCIA' ? 'AUSENCIA' : 'PONTO', subTipo: p.subTipo || p.tipo, descricao: p.descricao || (p.tipo === 'AUSENCIA' ? 'Atestado/Férias' : 'Registro Manual') }));
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4">
@@ -195,14 +183,12 @@ export default function MeuHistorico() {
           <Link href="/" className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition"><ArrowLeft size={20} /></Link>
         </div>
 
-        {/* Resumo */}
         {resumo && (
           <div className="bg-purple-900/20 border border-purple-800 p-4 rounded-xl flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-3"><div className="bg-purple-600 p-2.5 rounded-lg text-white"><Clock size={24} /></div><div><p className="text-[10px] text-purple-300 uppercase font-bold tracking-wider">Total (Trabalhado + Abonos)</p><p className="text-2xl font-bold text-white">{resumo.total}</p></div></div>
+            <div className="flex items-center gap-3"><div className="bg-purple-600 p-2.5 rounded-lg text-white"><Clock size={24} /></div><div><p className="text-[10px] text-purple-300 uppercase font-bold tracking-wider">Total Trabalhado (Real)</p><p className="text-2xl font-bold text-white">{resumo.total}</p></div></div>
           </div>
         )}
 
-        {/* Filtros */}
         <div className="space-y-3">
             <button onClick={abrirInclusao} className="w-full bg-slate-800 hover:bg-slate-700 text-purple-400 border border-slate-700 border-dashed py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"><PlusCircle size={20} /> Esqueci de Bater o Ponto</button>
             <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
@@ -217,7 +203,6 @@ export default function MeuHistorico() {
             </div>
         </div>
 
-        {/* Lista Visual */}
         <div className="space-y-3">
           {pontosFiltrados.length === 0 && <p className="text-center text-slate-500 py-4">Nenhum registro para esta data.</p>}
           {pontosFiltrados.map((ponto) => (
@@ -226,7 +211,7 @@ export default function MeuHistorico() {
               <div className="pl-3">
                 <p className="font-bold text-lg text-white">
                     {format(new Date(ponto.dataHora), 'HH:mm')}
-                    {ponto.tipo === 'AUSENCIA' && <span className="text-xs ml-2 font-normal text-yellow-400">(Abonado)</span>}
+                    {ponto.tipo === 'AUSENCIA' && <span className="text-xs ml-2 font-normal text-yellow-400">({ponto.subTipo})</span>}
                 </p>
                 <div className="flex items-center gap-1 text-xs text-slate-400"><Calendar size={10} />{format(new Date(ponto.dataHora), 'dd/MM/yyyy')}</div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-1 block">{(ponto.subTipo || ponto.tipo)?.replace('_', ' ')}</span>
@@ -236,7 +221,6 @@ export default function MeuHistorico() {
           ))}
         </div>
 
-        {/* Modal */}
         {modalAberto && (<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"><div className="bg-slate-900 w-full max-w-sm rounded-2xl border border-slate-700 shadow-2xl p-6 space-y-4"><h3 className="text-lg font-bold text-white flex items-center gap-2">{modoModal === 'EDICAO' ? <><Edit3 size={20}/> Ajustar Ponto</> : <><PlusCircle size={20}/> Incluir Ponto</>}</h3>{modoModal === 'INCLUSAO' && (<div className="grid grid-cols-2 gap-3"><div><label className="text-xs text-slate-500 block mb-1">Data</label><input type="date" value={dataNova} onChange={e=>setDataNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm text-center" /></div><div><label className="text-xs text-slate-500 block mb-1">Tipo</label><select value={tipoNovo} onChange={e=>setTipoNovo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-sm"><option value="ENTRADA">ENTRADA</option><option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option><option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option><option value="SAIDA">SAÍDA</option></select></div></div>)}{modoModal === 'EDICAO' && (<p className="text-sm text-slate-400">Data: {format(new Date(pontoSelecionado.dataHora), 'dd/MM/yyyy')}</p>)}<div><label className="text-xs text-slate-500 block mb-1">Horário</label><input type="time" value={horaNova} onChange={e=>setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-lg font-bold text-center focus:border-purple-500 outline-none" /></div><div><label className="text-xs text-slate-500 block mb-1">Motivo</label><textarea value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-sm h-24 resize-none focus:border-purple-500 outline-none" /></div><div className="flex gap-2 pt-2"><button onClick={() => setModalAberto(false)} className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-3 rounded-lg font-bold text-sm">Cancelar</button><button onClick={enviarSolicitacao} className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-bold text-sm">Enviar</button></div></div></div>)}
       </div>
     </div>

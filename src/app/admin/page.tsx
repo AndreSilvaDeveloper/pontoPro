@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format, differenceInMinutes, isSameDay, getDay, eachDayOfInterval } from 'date-fns';
-import { LogOut, Bell, AlertCircle, ShieldAlert, CalendarDays, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, ExternalLink, Edit2, Save, X, Plane, PlusCircle, Search, Settings, ScrollText } from 'lucide-react'; 
+import { LogOut, Bell, AlertCircle, ShieldAlert, CalendarDays, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, ExternalLink, Edit2, Save, X, Plane, PlusCircle, Settings, ScrollText } from 'lucide-react'; 
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
@@ -101,68 +101,26 @@ export default function AdminDashboard() {
     } catch (error) { console.error("Erro ao carregar", error); } finally { setLoading(false); }
   };
 
-  const abrirModalEdicao = (ponto: any) => {
-      setPontoEmEdicao(ponto);
-      setNovaHora(format(new Date(ponto.dataHora), 'HH:mm'));
-      setMotivoEdicao('');
-      setModalEdicaoAberto(true);
-  };
+  const abrirModalEdicao = (ponto: any) => { setPontoEmEdicao(ponto); setNovaHora(format(new Date(ponto.dataHora), 'HH:mm')); setMotivoEdicao(''); setModalEdicaoAberto(true); };
+  const salvarEdicaoPonto = async () => { if (!novaHora || !pontoEmEdicao) return; setSalvandoEdicao(true); try { const dataOriginal = format(new Date(pontoEmEdicao.dataHora), 'yyyy-MM-dd'); const dataHoraFinal = new Date(`${dataOriginal}T${novaHora}:00`); await axios.put('/api/admin/ponto/editar', { id: pontoEmEdicao.id, novoHorario: dataHoraFinal.toISOString(), motivo: motivoEdicao }); alert('Horário corrigido!'); setModalEdicaoAberto(false); carregarDados(); } catch (error) { alert('Erro ao editar.'); } finally { setSalvandoEdicao(false); } };
+  const abrirModalAusencia = () => { setAusenciaUser(''); setAusenciaTipo('FERIAS'); setAusenciaInicio(''); setAusenciaFim(''); setAusenciaMotivo(''); setModalAusenciaAberto(true); };
+  const salvarAusenciaAdmin = async () => { if (!ausenciaUser || !ausenciaInicio) return alert("Preencha funcionário e data de início."); setSalvandoAusencia(true); try { await axios.post('/api/admin/ausencias/criar', { usuarioId: ausenciaUser, tipo: ausenciaTipo, dataInicio: ausenciaInicio, dataFim: ausenciaFim || ausenciaInicio, motivo: ausenciaMotivo }); alert('Lançamento realizado!'); setModalAusenciaAberto(false); carregarDados(); } catch (error) { alert('Erro ao lançar.'); } finally { setSalvandoAusencia(false); } };
 
-  const salvarEdicaoPonto = async () => {
-      if (!novaHora || !pontoEmEdicao) return;
-      setSalvandoEdicao(true);
-      try {
-          const dataOriginal = format(new Date(pontoEmEdicao.dataHora), 'yyyy-MM-dd');
-          const dataHoraFinal = new Date(`${dataOriginal}T${novaHora}:00`);
-          await axios.put('/api/admin/ponto/editar', {
-              id: pontoEmEdicao.id, novoHorario: dataHoraFinal.toISOString(), motivo: motivoEdicao
-          });
-          alert('Horário corrigido!');
-          setModalEdicaoAberto(false);
-          carregarDados();
-      } catch (error) { alert('Erro ao editar.'); } finally { setSalvandoEdicao(false); }
-  };
-
-  const abrirModalAusencia = () => {
-      setAusenciaUser(''); setAusenciaTipo('FERIAS'); setAusenciaInicio(''); setAusenciaFim(''); setAusenciaMotivo('');
-      setModalAusenciaAberto(true);
-  };
-
-  const salvarAusenciaAdmin = async () => {
-      if (!ausenciaUser || !ausenciaInicio) return alert("Preencha funcionário e data de início.");
-      setSalvandoAusencia(true);
-      try {
-          await axios.post('/api/admin/ausencias/criar', {
-              usuarioId: ausenciaUser, tipo: ausenciaTipo,
-              dataInicio: ausenciaInicio, dataFim: ausenciaFim || ausenciaInicio, motivo: ausenciaMotivo
-          });
-          alert('Lançamento realizado!'); setModalAusenciaAberto(false); carregarDados();
-      } catch (error) { alert('Erro ao lançar.'); } finally { setSalvandoAusencia(false); }
-  };
-
+  // === 1. FILTRO INTELIGENTE (CORRIGIDO PARA INTERSEÇÃO DE DATAS) ===
   const registrosFiltrados = registros.filter(r => {
-    // Se for filtro de usuário e não bater, tchau
     if (filtroUsuario && r.usuario.id !== filtroUsuario) return false;
-
-    // Se for PONTO (Data Única)
+    
+    // Ponto Normal
     if (r.tipo === 'PONTO') {
         const diaPonto = format(new Date(r.dataHora), 'yyyy-MM-dd');
         return diaPonto >= dataInicio && diaPonto <= dataFim;
     }
-
-    // Se for AUSENCIA (Período)
+    // Ausência (Verifica se o período toca o filtro)
     if (r.tipo === 'AUSENCIA') {
-        // Pega Início e Fim da Ausência (YYYY-MM-DD)
         const iniAus = format(new Date(r.dataHora), 'yyyy-MM-dd');
-        const fimAus = r.extra?.dataFim 
-            ? format(new Date(r.extra.dataFim), 'yyyy-MM-dd') 
-            : iniAus;
-
-        // Lógica de Interseção: (InicioAusencia <= FimFiltro) E (FimAusencia >= InicioFiltro)
-        // Isso garante que mostre se houver qualquer sobreposição
+        const fimAus = r.extra?.dataFim ? format(new Date(r.extra.dataFim), 'yyyy-MM-dd') : iniAus;
         return iniAus <= dataFim && fimAus >= dataInicio;
     }
-
     return false;
   });
 
@@ -176,6 +134,7 @@ export default function AdminDashboard() {
       return dataReal;
   };
 
+  // === 2. CÁLCULO ATUALIZADO (META ZERO EM FÉRIAS) ===
   const calcularEstatisticas = () => {
     if (!filtroUsuario) return null;
 
@@ -187,8 +146,7 @@ export default function AdminDashboard() {
     const usuarioInfo = usuarios.find(u => u.id === filtroUsuario);
     const jornadaConfig = usuarioInfo?.jornada || {};
 
-    // Helper para corrigir datas de ausência (Evita erro de fuso -3h)
-    // IGUAL AO DO FUNCIONÁRIO AGORA
+    // Helper: Correção de Fuso
     const fixData = (d: any) => {
         if(!d) return new Date();
         const str = typeof d === 'string' ? d : d.toISOString();
@@ -196,13 +154,29 @@ export default function AdminDashboard() {
         return new Date(ano, mes - 1, dia, 12, 0, 0);
     };
 
+    // Mapear Dias Isentos (Meta 0)
+    const diasIsentos = new Set<string>();
+    const ausencias = registros.filter(r => r.usuario.id === filtroUsuario && r.tipo === 'AUSENCIA');
+    ausencias.forEach(aus => {
+        const inicio = fixData(aus.dataHora);
+        const fim = aus.extra?.dataFim ? fixData(aus.extra.dataFim) : inicio;
+        try {
+            eachDayOfInterval({ start: inicio, end: fim }).forEach(dia => {
+                diasIsentos.add(format(dia, 'yyyy-MM-dd'));
+            });
+        } catch(e) {}
+    });
+
     const getMetaDoDia = (data: Date) => {
         const dataString = format(data, 'yyyy-MM-dd');
-        if (feriados.includes(dataString)) return 0;
+        // Feriado ou Ausência = Meta 0
+        if (feriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
+
         const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
         const diaSemana = diasMap[getDay(data)];
         const config = jornadaConfig[diaSemana];
         if (!config || !config.ativo) return 0;
+        
         const calcDiff = (i:string, f:string) => {
             if(!i || !f) return 0;
             const [h1, m1] = i.split(':').map(Number);
@@ -221,7 +195,6 @@ export default function AdminDashboard() {
 
     const contagemDia: Record<string, number> = {};
 
-    // 1. PONTOS BATIDOS
     for (let i = 0; i < pontosOrdenados.length; i++) {
         const pEntrada = pontosOrdenados[i];
         
@@ -233,7 +206,8 @@ export default function AdminDashboard() {
             const parIndex = contagemDia[diaStr]; 
             contagemDia[diaStr]++;
 
-            const diaSemana = ['dom','seg','ter','qua','qui','sex','sab'][getDay(dataEntradaReal)]; 
+            const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+            const diaSemana = diasMap[getDay(dataEntradaReal)]; 
             const configDia = jornadaConfig[diaSemana] || {};
             
             const metaEntradaStr = parIndex === 0 ? configDia.e1 : configDia.e2;
@@ -252,7 +226,7 @@ export default function AdminDashboard() {
                 if (isSameDay(dataEntradaReal, agora)) minutosHoje += diff;
                 i++; 
             } else {
-                // Par Aberto (Trabalhando agora)
+                // Par Aberto (Trabalhando)
                 if (isSameDay(dataEntradaReal, agora)) {
                     const diff = differenceInMinutes(agora, dataEntradaCalc);
                     minutosHoje += diff;
@@ -263,34 +237,6 @@ export default function AdminDashboard() {
             }
         }
     }
-
-    // 2. AUSÊNCIAS (COM FIX DE DATA)
-    const ausencias = registros.filter(r => r.usuario.id === filtroUsuario && r.tipo === 'AUSENCIA');
-    
-    ausencias.forEach(aus => {
-        // Usa o fixData
-        const inicio = fixData(aus.dataHora);
-        const fim = aus.extra?.dataFim ? fixData(aus.extra.dataFim) : inicio;
-        
-        try {
-            const diasAbonados = eachDayOfInterval({ start: inicio, end: fim });
-            
-            diasAbonados.forEach(dia => {
-                const diaStr = format(dia, 'yyyy-MM-dd');
-                
-                // Se está dentro do filtro selecionado
-                if (diaStr >= dataInicio && diaStr <= dataFim) {
-                    const metaDoDia = getMetaDoDia(dia);
-                    minutosTotalPeriodo += metaDoDia; // Abona
-                    
-                    if (isSameDay(dia, agora)) {
-                        minutosHoje += metaDoDia;
-                        statusAtual = "Abonado/Ausente";
-                    }
-                }
-            });
-        } catch(e) { console.error("Erro datas", e); }
-    });
 
     let minutosEsperadosPeriodo = 0;
     let loopData = criarDataLocal(dataInicio);
@@ -314,7 +260,7 @@ export default function AdminDashboard() {
       tempoAgora: statusAtual === "Trabalhando" ? formatarHoras(tempoDecorridoAgora) : "--",
       hoje: formatarHoras(minutosHoje),
       metaHoje: formatarHoras(getMetaDoDia(agora)),
-      total: formatarHoras(minutosTotalPeriodo),
+      total: formatarHoras(minutosTotalPeriodo), // Total Real
       saldo: formatarHoras(saldoMinutos),
       saldoPositivo: saldoMinutos >= 0
     };
@@ -354,11 +300,7 @@ export default function AdminDashboard() {
             )}
             
             <Link href="/admin/configuracoes" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2"><Settings size={16} /> Configurações</Link>
-            
-            <Link href="/admin/logs" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2">
-                <ScrollText size={16} /> Logs
-            </Link>
-
+            <Link href="/admin/logs" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2"><ScrollText size={16} /> Logs</Link>
             <Link href="/admin/feriados" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2"><CalendarDays size={16} /> Feriados</Link>
             <Link href="/admin/funcionarios" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700">Equipe</Link>
             <Link href="/admin/perfil" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700">Minha Conta</Link>
