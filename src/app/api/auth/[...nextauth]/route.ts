@@ -58,7 +58,7 @@ export const authOptions: NextAuthOptions = {
           name: usuario.nome,
           email: usuario.email,
           cargo: usuario.cargo,
-          empresaId: usuario.empresaId,
+          empresaId: usuario.empresaId || "",
           deveTrocarSenha: usuario.deveTrocarSenha
         };
       }
