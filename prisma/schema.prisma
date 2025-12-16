@@ -19,6 +19,7 @@ model Empresa {
   
   usuarios      Usuario[]
   feriados      Feriado[]
+  adminsPermitidos AdminLoja[]
 }
 
 model Usuario {
@@ -44,6 +45,8 @@ model Usuario {
   empresaId     String?   
   empresa       Empresa?  @relation(fields: [empresaId], references: [id])
 
+  lojasPermitidas AdminLoja[]
+
   // Geofencing Avançado
   latitudeBase  Float     @default(0)
   longitudeBase Float     @default(0)
@@ -58,6 +61,19 @@ model Usuario {
 
   criadoEm      DateTime @default(now())
 }
+
+
+model AdminLoja {
+  id        String  @id @default(cuid())
+  usuarioId String
+  empresaId String
+  
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  @@unique([usuarioId, empresaId]) // Evita duplicatas
+}
+
 
 model Ponto {
   id        String   @id @default(cuid())

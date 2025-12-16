@@ -1,92 +1,83 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
-import { compare } from "bcryptjs"; // <--- 1. IMPORT CORRIGIDO
-
-const SUPER_EMAIL = "super@workid.com";
-const MASTER_KEY_ENV = process.env.SAAS_MASTER_KEY || "minha-senha-secreta";
+import { compare } from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // 1. SUPER ADMIN
-        if (credentials.email === SUPER_EMAIL && credentials.password === MASTER_KEY_ENV) {
-            return {
-                id: 'super-admin-id',
-                name: 'Super Admin',
-                email: SUPER_EMAIL,
-                cargo: 'SUPER_ADMIN',
-                empresaId: 'saas-global',
-                deveTrocarSenha: false
-            };
-        }
-
-        // 2. LOGIN NORMAL
         const usuario = await prisma.usuario.findUnique({
-          where: { email: credentials.email },
-          include: { empresa: true }
+          where: { email: credentials.email }
         });
 
         if (!usuario) return null;
 
-        // 3. BLOQUEIO SAAS
-        // @ts-ignore - Ignora erro se o TS ainda não reconhecer 'status'
-        if (usuario.empresa && usuario.empresa.status === 'BLOQUEADO') {
-            throw new Error('ACESSO SUSPENSO. Contate o suporte.');
-        }
+        const senhaCorreta = await compare(credentials.password, usuario.senha);
 
-        // 4. VERIFICAÇÃO DE SENHA (CORRIGIDA PARA 'senha')
-        // @ts-ignore - Ignora erro se o TS ainda achar que é 'password'
-        if (!usuario.senha) return null;
-
-        // Compara a senha digitada (credentials.password) com a do banco (usuario.senha)
-        // @ts-ignore
-        const senhaValida = await compare(credentials.password, usuario.senha);
-        
-        if (!senhaValida) return null;
+        if (!senhaCorreta) return null;
 
         return {
           id: usuario.id,
           name: usuario.nome,
           email: usuario.email,
           cargo: usuario.cargo,
-          empresaId: usuario.empresaId || "",
+          // Aqui garantimos que não quebra se for nulo, mas o dado real vem do callback abaixo
+          empresaId: usuario.empresaId || "", 
           deveTrocarSenha: usuario.deveTrocarSenha
         };
       }
     })
   ],
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.cargo = user.cargo;
-        token.empresaId = user.empresaId;
-        token.deveTrocarSenha = user.deveTrocarSenha;
       }
       return token;
     },
-    async session({ session, token }: any) {
-      if (session.user) {
-        session.user.id = token.id;
-        session.user.cargo = token.cargo;
-        session.user.empresaId = token.empresaId;
-        session.user.deveTrocarSenha = token.deveTrocarSenha;
+    async session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+
+        // === CORREÇÃO FUNDAMENTAL ===
+        // Busca o usuário no banco AGORA para pegar a loja que está ativa neste momento.
+        // Sem isso, ele ficaria preso na loja do momento do login.
+        try {
+            const usuarioAtualizado = await prisma.usuario.findUnique({
+                where: { id: token.sub },
+                select: { empresaId: true, cargo: true, nome: true }
+            });
+
+            if (usuarioAtualizado) {
+                session.user.empresaId = usuarioAtualizado.empresaId || "";
+                session.user.cargo = usuarioAtualizado.cargo;
+                session.user.name = usuarioAtualizado.nome;
+            }
+        } catch (error) {
+            console.error("Erro ao atualizar sessão:", error);
+        }
+        // ============================
       }
       return session;
     }
   },
-  pages: { signIn: '/login' },
+  pages: {
+    signIn: '/login',
+  },
+  session: {
+    strategy: "jwt",
+  },
   secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
+
 export { handler as GET, handler as POST };

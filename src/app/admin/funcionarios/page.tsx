@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Search } from 'lucide-react';
+import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Search, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Importa o Mapa dinamicamente para não quebrar no servidor
@@ -28,6 +28,7 @@ interface Funcionario {
 
 export default function GestaoFuncionarios() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
+  const [lojaAtual, setLojaAtual] = useState('Carregando...');
   const [loading, setLoading] = useState(false);
   
   const [showModal, setShowModal] = useState(false);
@@ -60,6 +61,8 @@ export default function GestaoFuncionarios() {
   const [jornada, setJornada] = useState<any>(jornadaPadrao);
 
   useEffect(() => { carregarLista(); }, []);
+
+  axios.get('/api/admin/empresa').then(res => setLojaAtual(res.data.nome));
 
   const carregarLista = async () => {
     try {
@@ -193,7 +196,10 @@ export default function GestaoFuncionarios() {
         {/* TOPO */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-6">
           <div>
-            <h1 className="text-2xl font-bold text-purple-400">Gestão de Equipe</h1>
+            <h1 className="text-2xl font-bold text-purple-400 flex items-center gap-2"><Users size={24} className="text-purple-400"/> Gestão de Equipe</h1>
+            <h2 className="text-lg text-slate-300 flex items-center gap-2">
+            Equipe - <span className="text-purple-300">{lojaAtual}</span>
+          </h2>
             <p className="text-slate-400 text-sm">Gerencie seus funcionários</p>
           </div>
           <div className="flex gap-3">
@@ -204,7 +210,11 @@ export default function GestaoFuncionarios() {
                 <ArrowLeft size={20} /> Voltar
             </Link>
           </div>
+          
         </div>
+
+
+        
 
         {/* LISTAGEM */}
         <div className="grid gap-3">

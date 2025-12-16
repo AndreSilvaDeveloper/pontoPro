@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format, differenceInMinutes, isSameDay, getDay, eachDayOfInterval } from 'date-fns';
-import { LogOut, Bell, AlertCircle, ShieldAlert, CalendarDays, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, ExternalLink, Edit2, Save, X, Plane, PlusCircle, Settings, ScrollText } from 'lucide-react'; 
+import { LogOut, Bell, AlertCircle, ShieldAlert, CalendarDays, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, ExternalLink, Edit2, Save, X, Plane, PlusCircle, Search, Settings, ScrollText } from 'lucide-react'; 
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 import DashboardGraficos from '@/components/DashboardGraficos';
+import SeletorLoja from '@/components/SeletorLoja'; // <--- IMPORTADO
 
 const SOM_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
@@ -33,7 +34,6 @@ export default function AdminDashboard() {
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  // Estados dos Modais
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [pontoEmEdicao, setPontoEmEdicao] = useState<any>(null);
   const [novaHora, setNovaHora] = useState('');
@@ -106,16 +106,12 @@ export default function AdminDashboard() {
   const abrirModalAusencia = () => { setAusenciaUser(''); setAusenciaTipo('FERIAS'); setAusenciaInicio(''); setAusenciaFim(''); setAusenciaMotivo(''); setModalAusenciaAberto(true); };
   const salvarAusenciaAdmin = async () => { if (!ausenciaUser || !ausenciaInicio) return alert("Preencha funcionário e data de início."); setSalvandoAusencia(true); try { await axios.post('/api/admin/ausencias/criar', { usuarioId: ausenciaUser, tipo: ausenciaTipo, dataInicio: ausenciaInicio, dataFim: ausenciaFim || ausenciaInicio, motivo: ausenciaMotivo }); alert('Lançamento realizado!'); setModalAusenciaAberto(false); carregarDados(); } catch (error) { alert('Erro ao lançar.'); } finally { setSalvandoAusencia(false); } };
 
-  // === 1. FILTRO INTELIGENTE (CORRIGIDO PARA INTERSEÇÃO DE DATAS) ===
   const registrosFiltrados = registros.filter(r => {
     if (filtroUsuario && r.usuario.id !== filtroUsuario) return false;
-    
-    // Ponto Normal
     if (r.tipo === 'PONTO') {
         const diaPonto = format(new Date(r.dataHora), 'yyyy-MM-dd');
         return diaPonto >= dataInicio && diaPonto <= dataFim;
     }
-    // Ausência (Verifica se o período toca o filtro)
     if (r.tipo === 'AUSENCIA') {
         const iniAus = format(new Date(r.dataHora), 'yyyy-MM-dd');
         const fimAus = r.extra?.dataFim ? format(new Date(r.extra.dataFim), 'yyyy-MM-dd') : iniAus;
@@ -134,7 +130,6 @@ export default function AdminDashboard() {
       return dataReal;
   };
 
-  // === 2. CÁLCULO ATUALIZADO (META ZERO EM FÉRIAS) ===
   const calcularEstatisticas = () => {
     if (!filtroUsuario) return null;
 
@@ -146,7 +141,6 @@ export default function AdminDashboard() {
     const usuarioInfo = usuarios.find(u => u.id === filtroUsuario);
     const jornadaConfig = usuarioInfo?.jornada || {};
 
-    // Helper: Correção de Fuso
     const fixData = (d: any) => {
         if(!d) return new Date();
         const str = typeof d === 'string' ? d : d.toISOString();
@@ -154,7 +148,6 @@ export default function AdminDashboard() {
         return new Date(ano, mes - 1, dia, 12, 0, 0);
     };
 
-    // Mapear Dias Isentos (Meta 0)
     const diasIsentos = new Set<string>();
     const ausencias = registros.filter(r => r.usuario.id === filtroUsuario && r.tipo === 'AUSENCIA');
     ausencias.forEach(aus => {
@@ -169,7 +162,6 @@ export default function AdminDashboard() {
 
     const getMetaDoDia = (data: Date) => {
         const dataString = format(data, 'yyyy-MM-dd');
-        // Feriado ou Ausência = Meta 0
         if (feriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
 
         const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
@@ -197,7 +189,6 @@ export default function AdminDashboard() {
 
     for (let i = 0; i < pontosOrdenados.length; i++) {
         const pEntrada = pontosOrdenados[i];
-        
         if (['ENTRADA', 'VOLTA_ALMOCO'].includes(pEntrada.subTipo || pEntrada.tipo)) {
             const dataEntradaReal = new Date(pEntrada.dataHora);
             const diaStr = format(dataEntradaReal, 'yyyy-MM-dd');
@@ -206,8 +197,7 @@ export default function AdminDashboard() {
             const parIndex = contagemDia[diaStr]; 
             contagemDia[diaStr]++;
 
-            const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
-            const diaSemana = diasMap[getDay(dataEntradaReal)]; 
+            const diaSemana = ['dom','seg','ter','qua','qui','sex','sab'][getDay(dataEntradaReal)]; 
             const configDia = jornadaConfig[diaSemana] || {};
             
             const metaEntradaStr = parIndex === 0 ? configDia.e1 : configDia.e2;
@@ -217,22 +207,23 @@ export default function AdminDashboard() {
             const pSaida = pontosOrdenados[i+1];
 
             if (pSaida && ['SAIDA', 'SAIDA_ALMOCO'].includes(pSaida.subTipo || pSaida.tipo)) {
-                // Par Fechado
                 const dataSaidaReal = new Date(pSaida.dataHora);
                 const dataSaidaCalc = aplicarTolerancia(dataSaidaReal, metaSaidaStr);
                 const diff = differenceInMinutes(dataSaidaCalc, dataEntradaCalc);
-
-                if (diaStr >= dataInicio && diaStr <= dataFim) minutosTotalPeriodo += diff;
-                if (isSameDay(dataEntradaReal, agora)) minutosHoje += diff;
+                if (diff > 0 && diff < 1440) {
+                    if (diaStr >= dataInicio && diaStr <= dataFim) minutosTotalPeriodo += diff;
+                    if (isSameDay(dataEntradaReal, agora)) minutosHoje += diff;
+                }
                 i++; 
             } else {
-                // Par Aberto (Trabalhando)
                 if (isSameDay(dataEntradaReal, agora)) {
                     const diff = differenceInMinutes(agora, dataEntradaCalc);
-                    minutosHoje += diff;
-                    statusAtual = "Trabalhando";
-                    tempoDecorridoAgora = diff;
-                    if (diaStr >= dataInicio && diaStr <= dataFim) minutosTotalPeriodo += diff;
+                    if (diff > 0 && diff < 1440) {
+                        minutosHoje += diff;
+                        statusAtual = "Trabalhando";
+                        tempoDecorridoAgora = diff;
+                        if (diaStr >= dataInicio && diaStr <= dataFim) minutosTotalPeriodo += diff;
+                    }
                 }
             }
         }
@@ -241,7 +232,6 @@ export default function AdminDashboard() {
     let minutosEsperadosPeriodo = 0;
     let loopData = criarDataLocal(dataInicio);
     const fimData = criarDataLocal(dataFim);
-    
     while (loopData <= fimData) {
         if (loopData <= agora) minutosEsperadosPeriodo += getMetaDoDia(loopData);
         loopData.setDate(loopData.getDate() + 1);
@@ -260,7 +250,7 @@ export default function AdminDashboard() {
       tempoAgora: statusAtual === "Trabalhando" ? formatarHoras(tempoDecorridoAgora) : "--",
       hoje: formatarHoras(minutosHoje),
       metaHoje: formatarHoras(getMetaDoDia(agora)),
-      total: formatarHoras(minutosTotalPeriodo), // Total Real
+      total: formatarHoras(minutosTotalPeriodo), 
       saldo: formatarHoras(saldoMinutos),
       saldoPositivo: saldoMinutos >= 0
     };
@@ -299,6 +289,10 @@ export default function AdminDashboard() {
                 <Link href="/admin/pendencias" className="px-4 py-2 bg-yellow-900/50 text-yellow-300 border border-yellow-800 rounded-lg hover:bg-yellow-900 transition text-sm flex items-center gap-2 relative"><ShieldAlert size={16} /> Atestados {pendenciasAusencia > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full animate-pulse border-2 border-slate-950">{pendenciasAusencia}</span>}</Link>
             )}
             
+            {/* === AQUI ESTÁ O BOTÃO DE SELECIONAR LOJA (NA BARRA DIREITA) === */}
+            <SeletorLoja empresaAtualId={empresa.id} empresaAtualNome={empresa.nome} />
+            {/* =============================================================== */}
+
             <Link href="/admin/configuracoes" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2"><Settings size={16} /> Configurações</Link>
             <Link href="/admin/logs" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2"><ScrollText size={16} /> Logs</Link>
             <Link href="/admin/feriados" className="px-4 py-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition text-sm border border-slate-700 flex items-center gap-2"><CalendarDays size={16} /> Feriados</Link>
@@ -319,7 +313,6 @@ export default function AdminDashboard() {
             <div className={`p-4 rounded-xl border ${stats.status === 'Trabalhando' ? 'bg-green-900/20 border-green-800' : 'bg-slate-900 border-slate-800'}`}><h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Status Agora</h3><p className={`text-lg font-bold ${stats.status === 'Trabalhando' ? 'text-green-400' : 'text-slate-500'}`}>{stats.status}</p>{stats.status === 'Trabalhando' && <p className="text-xs text-green-300 mt-1">⏱ {stats.tempoAgora}</p>}</div>
             <div className="bg-slate-900 p-4 rounded-xl border border-slate-800"><h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Hoje</h3><div className="flex items-baseline gap-2"><p className="text-lg font-bold text-white">{stats.hoje}</p><p className="text-[10px] text-slate-500">/ Meta: {stats.metaHoje}</p></div></div>
             <div className="bg-slate-900 p-4 rounded-xl border border-slate-800"><h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Trabalhado (Período)</h3><p className="text-lg font-bold text-white">{stats.total}</p></div>
-            
             {!configs.ocultarSaldoHoras ? (<div className={`p-4 rounded-xl border ${stats.saldoPositivo ? 'bg-green-900/10 border-green-900' : 'bg-red-900/10 border-red-900'}`}><h3 className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">{stats.saldoPositivo ? <TrendingUp size={14} className="text-green-500"/> : <TrendingDown size={14} className="text-red-500"/>}<span className={stats.saldoPositivo ? 'text-green-500' : 'text-red-500'}>Banco de Horas</span></h3><p className={`text-2xl font-bold ${stats.saldoPositivo ? 'text-green-400' : 'text-red-400'}`}>{stats.saldo}</p><p className="text-[10px] text-slate-500 mt-1">Saldo do período</p></div>) : (<div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-center opacity-50"><p className="text-xs text-slate-500">Saldo Oculto (Config)</p></div>)}
           </div>
         )}
