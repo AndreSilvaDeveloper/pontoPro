@@ -1,18 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Caminho absoluto recomendado
 import { put } from '@vercel/blob';
 import { hash } from 'bcryptjs';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  
+  if (!session || session.user.cargo !== 'ADMIN') {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  }
 
   try {
     const funcionarios = await prisma.usuario.findMany({
-      where: { empresaId: session.user.empresaId, cargo: { not: 'ADMIN' } },
+      where: { 
+          empresaId: session.user.empresaId, 
+          cargo: { not: 'ADMIN' } // Lista apenas funcionários, não outros admins
+      },
       orderBy: { nome: 'asc' }
     });
     
@@ -24,14 +30,18 @@ export async function GET(request: Request) {
 
     return NextResponse.json(seguros);
   } catch (error) {
-    return NextResponse.json({ erro: 'Erro ao buscar' }, { status: 500 });
+    console.error("Erro no GET:", error);
+    return NextResponse.json({ erro: 'Erro ao buscar funcionários' }, { status: 500 });
   }
 }
 
 // === POST: CRIAR FUNCIONÁRIO ===
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  
+  if (!session || session.user.cargo !== 'ADMIN') {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  }
 
   try {
     const formData = await request.formData();
@@ -49,9 +59,21 @@ export async function POST(request: Request) {
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
-    if (!nome || !email) return NextResponse.json({ erro: 'Campos obrigatórios faltando.' }, { status: 400 });
+    // 1. Validação Básica
+    if (!nome || !email) {
+        return NextResponse.json({ erro: 'Nome e Email são obrigatórios.' }, { status: 400 });
+    }
 
-    // Upload Foto
+    // 2. VERIFICAÇÃO DE DUPLICIDADE (A Correção Principal)
+    const usuarioExistente = await prisma.usuario.findUnique({
+        where: { email }
+    });
+
+    if (usuarioExistente) {
+        return NextResponse.json({ erro: 'Este email já está cadastrado no sistema.' }, { status: 409 });
+    }
+
+    // 3. Upload Foto (Só faz se o email estiver livre)
     let fotoPerfilUrl = null;
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
@@ -59,10 +81,10 @@ export async function POST(request: Request) {
       fotoPerfilUrl = blob.url;
     }
 
-    // Hash da Senha Padrão
+    // 4. Criptografia da Senha
     const hashedPassword = await hash('1234', 10);
 
-    // Tratamento de JSON (Evita erro 500 se vier undefined ou inválido)
+    // 5. Tratamento de JSON
     let jornadaDados = undefined;
     if (jornadaTexto && jornadaTexto !== 'undefined') {
         try { jornadaDados = JSON.parse(jornadaTexto); } catch (e) { console.error("Erro parse jornada", e); }
@@ -73,12 +95,12 @@ export async function POST(request: Request) {
         try { locaisAdicionaisDados = JSON.parse(locaisTexto); } catch (e) { console.error("Erro parse locais", e); }
     }
 
-    // Criação no Banco
+    // 6. Criação no Banco
     const novoUsuario = await prisma.usuario.create({
       data: {
         nome,
         email,
-        senha: hashedPassword, // <--- CORREÇÃO AQUI: Mudamos de 'senha' para 'password'
+        senha: hashedPassword, // Mantido 'senha' para compatibilidade com seu Login
         cargo: 'FUNCIONARIO',
         tituloCargo: tituloCargo || 'Colaborador',
         empresaId: session.user.empresaId,
@@ -104,7 +126,10 @@ export async function POST(request: Request) {
 // === PUT: ATUALIZAR FUNCIONÁRIO ===
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  
+  if (!session || session.user.cargo !== 'ADMIN') {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  }
 
   try {
     const formData = await request.formData();
@@ -133,7 +158,6 @@ export async function PUT(request: Request) {
       pontoLivre
     };
 
-    // Tratamento JSON no Update
     if (jornadaTexto && jornadaTexto !== 'undefined') {
         try { dados.jornada = JSON.parse(jornadaTexto); } catch (e) {}
     }
@@ -162,22 +186,27 @@ export async function PUT(request: Request) {
 // === DELETE: EXCLUIR FUNCIONÁRIO ===
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  
+  if (!session || session.user.cargo !== 'ADMIN') {
+      return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    
     if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
 
-    // Limpeza em cascata manual (caso o banco não tenha cascade configurado)
-    await prisma.ponto.deleteMany({ where: { usuarioId: id } });
-    await prisma.solicitacaoAjuste.deleteMany({ where: { usuarioId: id } });
-    await prisma.ausencia.deleteMany({ where: { usuarioId: id } });
+    // Limpeza manual de dependências (Ponto, Solicitações, etc.)
+    await prisma.ponto.deleteMany({ where: { usuarioId: id } }).catch(() => null);
+    await prisma.solicitacaoAjuste.deleteMany({ where: { usuarioId: id } }).catch(() => null);
+    await prisma.ausencia.deleteMany({ where: { usuarioId: id } }).catch(() => null);
     
     await prisma.usuario.delete({ where: { id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error("Erro no DELETE:", error);
     return NextResponse.json({ erro: 'Erro ao excluir' }, { status: 500 });
   }
 }
