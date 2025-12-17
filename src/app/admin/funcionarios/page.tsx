@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Search, Users } from 'lucide-react';
+import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Importa o Mapa dinamicamente para não quebrar no servidor
@@ -62,7 +62,12 @@ export default function GestaoFuncionarios() {
 
   useEffect(() => { carregarLista(); }, []);
 
-  axios.get('/api/admin/empresa').then(res => setLojaAtual(res.data.nome));
+  // Busca o nome da empresa
+  useEffect(() => {
+    axios.get('/api/admin/empresa')
+      .then(res => setLojaAtual(res.data.nome))
+      .catch(() => setLojaAtual('Minha Empresa'));
+  }, []);
 
   const carregarLista = async () => {
     try {
@@ -98,6 +103,7 @@ export default function GestaoFuncionarios() {
 
   const fecharModal = () => { setShowModal(false); setIdEdicao(null); };
 
+  // === AQUI ESTÁ A CORREÇÃO PRINCIPAL ===
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pontoLivre && (!lat || !lng)) return alert('Defina a localização principal (use o mapa ou botão GPS)!');
@@ -130,8 +136,14 @@ export default function GestaoFuncionarios() {
       
       fecharModal();
       carregarLista();
-    } catch (error) {
-      alert('Erro ao salvar.');
+    } catch (error: any) {
+      // CORREÇÃO: Pegamos a mensagem específica que vem do backend (error.response.data.erro)
+      if (error.response && error.response.data && error.response.data.erro) {
+        alert(error.response.data.erro);
+      } else {
+        alert('Ocorreu um erro ao salvar. Tente novamente.');
+      }
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -154,7 +166,6 @@ export default function GestaoFuncionarios() {
     }));
   };
 
-  // Botão antigo que você queria manter
   const pegarLocalizacaoAtual = (destino: 'PRINCIPAL' | 'EXTRA') => {
     navigator.geolocation.getCurrentPosition((pos) => {
       if (destino === 'PRINCIPAL') {
@@ -183,7 +194,6 @@ export default function GestaoFuncionarios() {
     try { await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id }); alert('Senha resetada!'); } catch (error) { alert('Erro ao resetar.'); }
   };
 
-  // Função chamada quando o usuário clica no MAPA
   const aoClicarNoMapa = (novaLat: number, novaLng: number) => {
       setLat(String(novaLat));
       setLng(String(novaLng));
@@ -212,9 +222,6 @@ export default function GestaoFuncionarios() {
           </div>
           
         </div>
-
-
-        
 
         {/* LISTAGEM */}
         <div className="grid gap-3">
@@ -280,7 +287,7 @@ export default function GestaoFuncionarios() {
                         <input placeholder="Ex: Vendedor, Motorista, Gerente..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-purple-500" value={tituloCargo} onChange={e => setTituloCargo(e.target.value)} />
                     </div>
 
-                    {/* JORNADA DE TRABALHO (RESTAURADA!) */}
+                    {/* JORNADA DE TRABALHO */}
                     <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
                         <p className="text-sm text-slate-300 mb-4 font-bold flex items-center gap-2"><Clock size={16} className="text-purple-400"/> Jornada de Trabalho</p>
                         <div className="space-y-3">
@@ -328,7 +335,7 @@ export default function GestaoFuncionarios() {
 
                         {!pontoLivre && (
                             <div className="space-y-6">
-                                {/* MAPA DE CAPTURA (NOVIDADE) */}
+                                {/* MAPA DE CAPTURA */}
                                 <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} />
 
                                 {/* SEDE / PRINCIPAL (COM BOTÃO DE GPS) */}

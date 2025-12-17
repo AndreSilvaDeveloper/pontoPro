@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { format, differenceInMinutes, isSameDay, getDay, eachDayOfInterval } from 'date-fns';
-import { LogOut, Bell, AlertCircle, ShieldAlert, CalendarDays, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, ExternalLink, Edit2, Save, X, Plane, PlusCircle, Search, Settings, ScrollText } from 'lucide-react'; 
+import { LogOut, Bell, AlertCircle, ShieldAlert, CalendarDays, TrendingUp, TrendingDown, Clock, Calendar, User, FileText, ExternalLink, Edit2, Save, X, Plane, PlusCircle, Search, Settings, ScrollText, LayoutDashboard } from 'lucide-react'; 
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
@@ -282,6 +282,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             
+            <Link href="/admin/dashboard" className="flex items-center gap-3 p-3 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"><LayoutDashboard size={20} /><span>Visão Geral</span></Link>
             <button onClick={abrirModalAusencia} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition text-sm flex items-center gap-2 border border-blue-500 shadow-lg shadow-blue-900/20"><Plane size={16} /> Lançar Férias/Folga</button>
             <Link href="/admin/solicitacoes" className="px-4 py-2 bg-purple-900/50 text-purple-300 border border-purple-800 rounded-lg hover:bg-purple-900 transition text-sm flex items-center gap-2 relative"><AlertCircle size={16} /> Ajustes {pendenciasAjuste > 0 && <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full animate-pulse border-2 border-slate-950">{pendenciasAjuste}</span>}</Link>
             
