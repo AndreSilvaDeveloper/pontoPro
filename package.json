@@ -16,6 +16,7 @@
     "@vercel/blob": "^2.0.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
+    "connect-mongo": "^6.0.0",
     "date-fns": "^4.1.0",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
