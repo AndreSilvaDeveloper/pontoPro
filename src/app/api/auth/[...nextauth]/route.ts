@@ -1,81 +1,95 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/db";
-import { compare } from "bcryptjs";
+import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Dados de login inválidos");
+        }
 
-        const usuario = await prisma.usuario.findUnique({
+        const user = await prisma.usuario.findUnique({
           where: { email: credentials.email }
         });
 
-        if (!usuario) return null;
+        if (!user || !user.senha) {
+          throw new Error("Usuário não encontrado");
+        }
 
-        const senhaCorreta = await compare(credentials.password, usuario.senha);
+        const isPasswordCorrect = await bcrypt.compare(
+          credentials.password,
+          user.senha
+        );
 
-        if (!senhaCorreta) return null;
+        if (!isPasswordCorrect) {
+          throw new Error("Senha incorreta");
+        }
 
+        // Retorna o usuário com os campos que precisamos
         return {
-          id: usuario.id,
-          name: usuario.nome,
-          email: usuario.email,
-          cargo: usuario.cargo,
-          // Aqui garantimos que não quebra se for nulo, mas o dado real vem do callback abaixo
-          empresaId: usuario.empresaId || "", 
-          deveTrocarSenha: usuario.deveTrocarSenha
-        };
+          id: user.id,
+          name: user.nome,
+          email: user.email,
+          // @ts-ignore
+          cargo: user.cargo,
+          // @ts-ignore
+          empresaId: user.empresaId,
+          // @ts-ignore
+          deveTrocarSenha: user.deveTrocarSenha // <--- ISSO É O QUE FALTAVA
+        } as any;
       }
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
+      // Passa os dados do login inicial para o token
       if (user) {
         token.id = user.id;
+        // @ts-ignore
+        token.cargo = user.cargo;
+        // @ts-ignore
+        token.empresaId = user.empresaId;
+        // @ts-ignore
+        token.deveTrocarSenha = user.deveTrocarSenha;
       }
+
+      // Permite atualizar a sessão sem deslogar (útil para troca de loja)
+      if (trigger === "update" && session) {
+        return { ...token, ...session };
+      }
+
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-
-        // === CORREÇÃO FUNDAMENTAL ===
-        // Busca o usuário no banco AGORA para pegar a loja que está ativa neste momento.
-        // Sem isso, ele ficaria preso na loja do momento do login.
-        try {
-            const usuarioAtualizado = await prisma.usuario.findUnique({
-                where: { id: token.sub },
-                select: { empresaId: true, cargo: true, nome: true }
-            });
-
-            if (usuarioAtualizado) {
-                session.user.empresaId = usuarioAtualizado.empresaId || "";
-                session.user.cargo = usuarioAtualizado.cargo;
-                session.user.name = usuarioAtualizado.nome;
-            }
-        } catch (error) {
-            console.error("Erro ao atualizar sessão:", error);
-        }
-        // ============================
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        // @ts-ignore
+        session.user.cargo = token.cargo;
+        // @ts-ignore
+        session.user.empresaId = token.empresaId;
+        // @ts-ignore
+        session.user.deveTrocarSenha = token.deveTrocarSenha; // <--- Passa para o Front
       }
       return session;
-    }
-  },
-  pages: {
-    signIn: '/login',
+    },
   },
   session: {
     strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/login",
+  },
 };
 
 const handler = NextAuth(authOptions);
