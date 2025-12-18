@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { format, differenceInMinutes, isSameDay, eachDayOfInterval, getDay } from 'date-fns';
-import { ArrowLeft, History, Calendar, Search, Clock, Edit3, PlusCircle, LogIn, LogOut, AlertTriangle, X, Save, FileText, CheckCircle2, XCircle, list, ListFilter } from 'lucide-react';
+// CORREÇÃO AQUI: Removido 'list' e mantido apenas 'ListFilter'
+import { ArrowLeft, History, Calendar, Search, Clock, Edit3, PlusCircle, LogIn, LogOut, AlertTriangle, X, Save, FileText, CheckCircle2, XCircle, ListFilter } from 'lucide-react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 
