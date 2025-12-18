@@ -1,19 +1,27 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Ajustei para caminho absoluto para evitar erro
+import { prisma } from '@/lib/db';
+import { registrarLog } from '@/lib/logger'; // <--- O NOVO IMPORT
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  
+  // @ts-ignore
+  if (!session?.user?.id) {
+    return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  }
 
   try {
     const { pontoId, novoHorario, motivo, tipo } = await request.json();
 
-    // === TRAVA DE DUPLICIDADE ===
+    if (!novoHorario || !motivo) {
+        return NextResponse.json({ erro: 'Horário e Motivo são obrigatórios' }, { status: 400 });
+    }
+
+    // === TRAVA DE DUPLICIDADE (MANTIDA DO SEU CÓDIGO) ===
     
     // CASO 1: Ajuste de um ponto existente (tem pontoId)
-    // Verifica se já existe solicitação PENDENTE para este mesmo ponto
     if (pontoId) {
         const jaExiste = await prisma.solicitacaoAjuste.findFirst({
             where: {
@@ -27,13 +35,12 @@ export async function POST(request: Request) {
         }
     } 
     // CASO 2: Inclusão de ponto esquecido (não tem pontoId)
-    // Verifica se o usuário já pediu um ajuste para esse mesmo horário exato e tipo
     else {
         const jaExiste = await prisma.solicitacaoAjuste.findFirst({
             where: {
                 usuarioId: session.user.id,
                 novoHorario: new Date(novoHorario),
-                tipo: tipo, // Verifica se é o mesmo tipo (ENTRADA, SAIDA, etc)
+                tipo: tipo,
                 status: 'PENDENTE'
             }
         });
@@ -42,22 +49,36 @@ export async function POST(request: Request) {
             return NextResponse.json({ erro: 'Você já enviou uma solicitação para este horário.' }, { status: 400 });
         }
     }
-    // ============================
+    // ====================================================
 
-    // Se passou pela trava, cria a solicitação
-    await prisma.solicitacaoAjuste.create({
+    // CRIAR A SOLICITAÇÃO (Adicionei empresaId e status explícito)
+    const solicitacao = await prisma.solicitacaoAjuste.create({
       data: {
         usuarioId: session.user.id,
+        // @ts-ignore
+        empresaId: session.user.empresaId, // <--- IMPORTANTE PARA O ADMIN VER
         pontoId: pontoId || null, 
         tipo: tipo || null,       
         novoHorario: new Date(novoHorario),
-        motivo
+        motivo,
+        status: 'PENDENTE'
       }
     });
 
-    return NextResponse.json({ success: true });
+    // === GERA O LOG DE AUDITORIA (NOVIDADE) ===
+    await registrarLog({
+      // @ts-ignore
+      empresaId: session.user.empresaId,
+      usuarioId: session.user.id,
+      autor: session.user.name || 'Funcionário',
+      acao: pontoId ? 'SOLICITACAO_EDICAO' : 'SOLICITACAO_INCLUSAO',
+      detalhes: `Solicitou ${pontoId ? 'ajuste' : 'inclusão'} para: ${new Date(novoHorario).toLocaleString('pt-BR')} - Motivo: ${motivo}`
+    });
+
+    return NextResponse.json({ success: true, solicitacao });
+
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ erro: 'Erro ao solicitar ajuste' }, { status: 500 });
+    console.error("Erro ao solicitar ajuste:", error);
+    return NextResponse.json({ erro: 'Erro interno ao processar solicitação' }, { status: 500 });
   }
 }
