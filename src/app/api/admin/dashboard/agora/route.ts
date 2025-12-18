@@ -3,6 +3,10 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
+// Força o Next.js a não fazer cache dessa rota (Tempo Real precisa ser fresco)
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   
@@ -48,11 +52,18 @@ export async function GET() {
       let ultimaAcao = null;
 
       if (ultimoPonto) {
-        if (ultimoPonto.tipo === 'ENTRADA') {
+        // CORREÇÃO AQUI: Verifica o subTipo ou Tipo para cobrir todas as variações
+        const tipo = ultimoPonto.subTipo || ultimoPonto.tipo;
+
+        // Lista de status que contam como "TRABALHANDO"
+        if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(tipo)) {
           status = 'TRABALHANDO';
-        } else if (ultimoPonto.tipo === 'SAIDA') {
+        } 
+        // Lista de status que contam como "PAUSA OU SAIU"
+        else if (['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(tipo)) {
           status = 'PAUSA_OU_SAIU';
         }
+
         ultimaAcao = ultimoPonto.dataHora;
       }
 

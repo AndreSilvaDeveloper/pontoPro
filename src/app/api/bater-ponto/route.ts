@@ -17,7 +17,9 @@ const getDistanceFromLatLonInMeters = (lat1: number, lon1: number, lat2: number,
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { usuarioId, latitude, longitude, fotoBase64, tipo } = body;
+    const { usuarioId, latitude, longitude, fotoBase64, tipo } = body; 
+    // O campo 'tipo' deve vir do botão que o funcionário clicou: 
+    // 'ENTRADA', 'SAIDA_INTERVALO', 'VOLTA_INTERVALO', ou 'SAIDA'
 
     if (!usuarioId || !latitude || !longitude) {
       return NextResponse.json({ erro: 'Dados de GPS inválidos.' }, { status: 400 });
@@ -31,6 +33,53 @@ export async function POST(request: Request) {
 
     if (!usuario) return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 });
 
+    // === NOVA LÓGICA: VALIDAÇÃO DE SEQUÊNCIA (MÁQUINA DE ESTADOS) ===
+    // Isso evita duplicidade e garante a ordem correta dos pontos
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const ultimoPonto = await prisma.ponto.findFirst({
+        where: {
+            usuarioId: usuarioId,
+            dataHora: { gte: hoje }
+        },
+        orderBy: { dataHora: 'desc' }
+    });
+
+    // Determina o tipo do último registro (Compatibilidade com Dashboard)
+    const ultimoTipo = ultimoPonto ? (ultimoPonto.subTipo || ultimoPonto.tipo) : null;
+    const acaoSolicitada = tipo || 'ENTRADA'; // Padrão é entrada se não vier nada
+
+    // Regras de Bloqueio
+    if (!ultimoPonto) {
+        // Se é o primeiro do dia, TEM que ser ENTRADA
+        if (acaoSolicitada !== 'ENTRADA') {
+            return NextResponse.json({ erro: 'Seu primeiro registro do dia deve ser uma ENTRADA.' }, { status: 400 });
+        }
+    } else {
+        if (ultimoTipo === 'ENTRADA') {
+            if (!['SAIDA_INTERVALO', 'SAIDA'].includes(acaoSolicitada)) {
+                return NextResponse.json({ erro: 'Você já registrou a Entrada. Agora inicie o intervalo ou encerre o dia.' }, { status: 409 });
+            }
+        }
+        else if (ultimoTipo === 'SAIDA_INTERVALO') {
+            if (acaoSolicitada !== 'VOLTA_INTERVALO') {
+                return NextResponse.json({ erro: 'Você está em intervalo. Registre a VOLTA DO INTERVALO.' }, { status: 409 });
+            }
+        }
+        else if (ultimoTipo === 'VOLTA_INTERVALO') {
+            if (acaoSolicitada !== 'SAIDA') {
+                return NextResponse.json({ erro: 'Você retornou do intervalo. O próximo registro deve ser a SAÍDA.' }, { status: 409 });
+            }
+        }
+        else if (ultimoTipo === 'SAIDA') {
+            if (acaoSolicitada !== 'ENTRADA') {
+                return NextResponse.json({ erro: 'Jornada anterior encerrada. Inicie uma nova ENTRADA.' }, { status: 409 });
+            }
+        }
+    }
+    // ================================================================
+
     const configs = usuario.empresa?.configuracoes as any || {};
     // Configurações padrão de segurança
     const empresaExigeFoto = configs.exigirFoto !== false; 
@@ -39,7 +88,6 @@ export async function POST(request: Request) {
     // 2. Tenta obter endereço legível (Geocoding)
     let enderecoLegivel = "Localização desconhecida";
     try {
-        // Se a função obterEndereco não existir ou der erro, não quebra o fluxo
         if (typeof obterEndereco === 'function') {
             enderecoLegivel = await obterEndereco(latitude, longitude);
         }
@@ -48,16 +96,14 @@ export async function POST(request: Request) {
     // === 3. VALIDAÇÃO BIOMÉTRICA E FOTO ===
     let fotoUrl = null;
 
-    // Se exige foto e não mandou
     if (empresaExigeFoto && !fotoBase64) {
         return NextResponse.json({ erro: 'A foto é obrigatória nesta empresa.' }, { status: 400 });
     }
 
     if (fotoBase64) {
-        // A. Validação Biométrica (Se tiver foto perfil cadastrada)
+        // A. Validação Biométrica
         if (usuario.fotoPerfilUrl) {
              try {
-                 // Chama sua função de IA
                  const resultado = await compararRostos(usuario.fotoPerfilUrl, fotoBase64);
                  if (!resultado.igual) {
                      return NextResponse.json({ 
@@ -66,12 +112,10 @@ export async function POST(request: Request) {
                  }
              } catch (e) {
                  console.error("Erro na IA:", e);
-                 // Opcional: Bloquear ou deixar passar com aviso se a IA cair
-                 // return NextResponse.json({ erro: 'Erro ao validar rosto.' }, { status: 500 });
              }
         }
 
-        // B. Upload da Foto do Ponto
+        // B. Upload da Foto
         try {
             const buffer = Buffer.from(fotoBase64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
             const filename = `ponto-${usuario.id}-${Date.now()}.jpg`;
@@ -87,13 +131,11 @@ export async function POST(request: Request) {
     let localValidado = false;
     let nomeLocal = 'Desconhecido';
 
-    // Ponto Livre ou Empresa Permissiva
     if (usuario.pontoLivre || !empresaBloqueiaRaio) {
         localValidado = true;
         nomeLocal = usuario.pontoLivre ? 'Externo (Livre)' : 'Fora do Perímetro (Permitido)';
     }
 
-    // Verifica Sede
     if (!localValidado) {
         const distSede = getDistanceFromLatLonInMeters(latitude, longitude, usuario.latitudeBase, usuario.longitudeBase);
         if (distSede <= (usuario.raioPermitido || 100)) {
@@ -102,7 +144,6 @@ export async function POST(request: Request) {
         }
     }
 
-    // Verifica Locais Adicionais
     if (!localValidado && usuario.locaisAdicionais) {
         const extras = Array.isArray(usuario.locaisAdicionais) ? usuario.locaisAdicionais : [];
         for (const loc of extras as any[]) {
@@ -129,12 +170,15 @@ export async function POST(request: Request) {
         latitude,
         longitude,
         fotoUrl, 
-        tipo: tipo || 'ENTRADA',
+        // IMPORTANTE: Salvamos como 'PONTO' genérico e usamos o subTipo para especificar
+        // Isso garante que o Dashboard funcione corretamente com a lógica de cálculo.
+        tipo: 'PONTO', 
+        subTipo: acaoSolicitada, // ENTRADA, SAIDA_INTERVALO, VOLTA_INTERVALO, SAIDA
         endereco: enderecoLegivel !== "Localização desconhecida" ? enderecoLegivel : nomeLocal
       }
     });
 
-    return NextResponse.json({ success: true, mensagem: `Ponto registrado: ${nomeLocal}` });
+    return NextResponse.json({ success: true, mensagem: `${acaoSolicitada} registrada em ${nomeLocal}` });
 
   } catch (error) {
     console.error(error);

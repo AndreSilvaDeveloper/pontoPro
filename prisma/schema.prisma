@@ -16,6 +16,9 @@ model Empresa {
   // Configurações do SaaS e do App
   configuracoes Json?     // Ex: { "bloquearForaDoRaio": true, "exigirFoto": true }
   status        String    @default("ATIVO") // "ATIVO", "BLOQUEADO"
+
+  intervaloPago   Boolean  @default(false)
+  fluxoEstrito    Boolean  @default(true)
   
   usuarios      Usuario[]
   feriados      Feriado[]
@@ -83,6 +86,7 @@ model Ponto {
   endereco  String?
   fotoUrl   String?
   tipo      String   @default("NORMAL")
+  subTipo     String?
   
   // Campo para motivo de edição do Admin
   descricao String?

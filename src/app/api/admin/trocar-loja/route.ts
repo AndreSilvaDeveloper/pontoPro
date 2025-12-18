@@ -1,86 +1,87 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-export async function POST(request: Request) {
+// LISTAR LOJAS (GET)
+export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
-
-  const { novaEmpresaId } = await request.json();
+  
+  if (!session?.user?.id) {
+    return NextResponse.json([], { status: 401 });
+  }
 
   try {
-    // 1. Verifica se o usuário realmente tem permissão nessa loja
-    const permissao = await prisma.adminLoja.findUnique({
-        where: {
-            usuarioId_empresaId: {
-                usuarioId: session.user.id,
-                empresaId: novaEmpresaId
+    // 1. Busca o usuário e inclui a relação 'lojasPermitidas' -> 'empresa'
+    const usuario = await prisma.usuario.findUnique({
+        where: { id: session.user.id },
+        select: {
+            id: true,
+            empresaId: true,
+            empresa: { select: { id: true, nome: true } }, // A loja atual (contexto)
+            lojasPermitidas: {
+                select: {
+                    empresa: { select: { id: true, nome: true } }
+                }
             }
         }
     });
 
-    // Se não for super admin e não tiver permissão explícita
-    // (A lógica abaixo permite que o dono da conta troque)
-    if (!permissao) {
-         return NextResponse.json({ erro: 'Você não tem acesso a esta loja.' }, { status: 403 });
+    if (!usuario) return NextResponse.json([]);
+
+    // 2. Monta a lista de lojas
+    // Começa com as lojas da tabela de permissão (AdminLoja)
+    let listaLojas = usuario.lojasPermitidas.map(reg => reg.empresa);
+
+    // Se a lista estiver vazia (caso o usuário não tenha sido adicionado no AdminLoja ainda),
+    // adicionamos a empresa atual dele como fallback para não ficar sem nada.
+    if (listaLojas.length === 0 && usuario.empresa) {
+        listaLojas.push(usuario.empresa);
     }
 
-    // 2. Atualiza a "Loja Ativa" do usuário
+    // Remove duplicados (caso a loja atual já esteja na lista de permitidas)
+    const lojasUnicas = Array.from(new Map(listaLojas.map(item => [item.id, item])).values());
+
+    return NextResponse.json(lojasUnicas);
+
+  } catch (error) {
+    console.error("ERRO GET LOJAS:", error);
+    return NextResponse.json([], { status: 500 });
+  }
+}
+
+// TROCAR LOJA (POST)
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+        return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    // Aceita variações de nome para garantir
+    const empresaId = body.empresaId || body.novaEmpresaId || body.id;
+
+    if (!empresaId) {
+        return NextResponse.json({ erro: 'ID da loja não informado' }, { status: 400 });
+    }
+
+    console.log(`Trocando usuário ${session.user.id} para loja ${empresaId}...`);
+
+    // Atualiza o contexto (empresaId) no usuário
     await prisma.usuario.update({
-        where: { id: session.user.id },
-        data: { empresaId: novaEmpresaId }
+      where: { id: session.user.id },
+      data: { empresaId: empresaId }
     });
 
     return NextResponse.json({ success: true });
 
-  } catch (error) {
-    return NextResponse.json({ erro: 'Erro ao trocar loja' }, { status: 500 });
+  } catch (error: any) {
+    console.error("ERRO AO TROCAR LOJA:", error);
+    return NextResponse.json(
+        { erro: 'Erro interno', detalhe: error.message }, 
+        { status: 500 }
+    );
   }
-}
-
-export async function GET() {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ erro: '401' }, { status: 401 });
-
-    // 1. Busca os vínculos oficiais na tabela AdminLoja
-    const vinculos = await prisma.adminLoja.findMany({
-        where: { usuarioId: session.user.id },
-        include: { empresa: { select: { id: true, nome: true } } }
-    });
-
-    let listaLojas = vinculos.map(l => l.empresa);
-
-    // 2. PROTEÇÃO: Verifica qual é a loja que está ATIVA no usuário agora
-    const usuarioAtual = await prisma.usuario.findUnique({
-        where: { id: session.user.id },
-        select: { empresaId: true }
-    });
-
-    // Se o usuário tem uma empresa ativa, mas ela não veio na lista acima (falta de vínculo), vamos buscar ela e adicionar
-    if (usuarioAtual?.empresaId) {
-        const jaEstaNaLista = listaLojas.some(l => l.id === usuarioAtual.empresaId);
-        
-        if (!jaEstaNaLista) {
-            const empresaAtiva = await prisma.empresa.findUnique({
-                where: { id: usuarioAtual.empresaId },
-                select: { id: true, nome: true }
-            });
-            
-            if (empresaAtiva) {
-                // Adiciona a loja atual na lista para ele não ficar "preso"
-                listaLojas.push(empresaAtiva);
-                
-                // Opcional: Criar o vínculo automaticamente agora para corrigir o banco
-                await prisma.adminLoja.create({
-                    data: {
-                        usuarioId: session.user.id,
-                        empresaId: empresaAtiva.id
-                    }
-                }).catch(() => null); // Ignora erro se já existir (race condition)
-            }
-        }
-    }
-
-    return NextResponse.json(listaLojas);
 }

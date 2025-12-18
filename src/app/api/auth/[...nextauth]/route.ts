@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Senha incorreta");
         }
 
-        // Retorna o usuário com os campos que precisamos
+        // Retorna o usuário com os campos iniciais
         return {
           id: user.id,
           name: user.nome,
@@ -45,7 +45,7 @@ export const authOptions: NextAuthOptions = {
           // @ts-ignore
           empresaId: user.empresaId,
           // @ts-ignore
-          deveTrocarSenha: user.deveTrocarSenha // <--- ISSO É O QUE FALTAVA
+          deveTrocarSenha: user.deveTrocarSenha 
         } as any;
       }
     })
@@ -63,22 +63,50 @@ export const authOptions: NextAuthOptions = {
         token.deveTrocarSenha = user.deveTrocarSenha;
       }
 
-      // Permite atualizar a sessão sem deslogar (útil para troca de loja)
+      // Mantemos isso caso você use update() no front, mas a lógica principal será no session()
       if (trigger === "update" && session) {
         return { ...token, ...session };
       }
 
       return token;
     },
+    
+    // === AQUI ESTÁ A CORREÇÃO MÁGICA ===
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
         // @ts-ignore
         session.user.cargo = token.cargo;
         // @ts-ignore
-        session.user.empresaId = token.empresaId;
-        // @ts-ignore
-        session.user.deveTrocarSenha = token.deveTrocarSenha; // <--- Passa para o Front
+        session.user.deveTrocarSenha = token.deveTrocarSenha;
+
+        // BUSCA FRESCA NO BANCO DE DADOS
+        // Isso garante que se trocou de loja via API, a sessão pega o ID novo imediatamente
+        try {
+            // Usamos o ID do usuário (token.id) para ver qual empresa está salva no banco AGORA
+            const usuarioFresco = await prisma.usuario.findUnique({
+                where: { id: token.id as string },
+                select: { 
+                  empresaId: true, 
+                  empresa: { select: { nome: true } } 
+                }
+            });
+
+            if (usuarioFresco) {
+                // @ts-ignore
+                session.user.empresaId = usuarioFresco.empresaId;
+                // @ts-ignore
+                session.user.nomeEmpresa = usuarioFresco.empresa?.nome; // Útil para mostrar o nome no seletor
+            } else {
+                // Fallback (se der erro no banco, usa o do token)
+                // @ts-ignore
+                session.user.empresaId = token.empresaId;
+            }
+        } catch (e) {
+            console.error("Erro ao atualizar sessão via banco", e);
+            // @ts-ignore
+            session.user.empresaId = token.empresaId;
+        }
       }
       return session;
     },

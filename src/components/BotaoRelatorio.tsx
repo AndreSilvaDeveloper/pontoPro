@@ -1,47 +1,49 @@
 'use client';
 
+import { useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { FileDown, Eye, FileSpreadsheet, FileCode } from 'lucide-react';
 import { format, eachDayOfInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale'; 
+import { Download, FileText, FileJson, ChevronDown, FileCode, Printer, Eye } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { gerarAFD, gerarAFDT } from '@/utils/geradorMTE'; 
 
-// === HELPERS ===
-
-// Baixa e converte imagem para o PDF
-const getDataUri = (url: string): Promise<string> => {
-    return new Promise((resolve) => {
-        const image = new Image();
-        image.crossOrigin = "anonymous";
-        image.src = url;
-        image.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = image.width;
-            canvas.height = image.height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) { ctx.drawImage(image, 0, 0); resolve(canvas.toDataURL('image/png')); }
-        };
-        image.onerror = () => resolve('');
-    });
+// === HELPER: Converter Imagem URL para Base64 (Corrige o problema da assinatura) ===
+const getBase64ImageFromURL = async (url: string): Promise<string | null> => {
+    try {
+        const response = await fetch(url, { mode: 'cors' });
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error("Erro ao carregar assinatura:", error);
+        return null;
+    }
 };
 
-// Formata strings para o AFD (Zeros a esquerda)
-const pad = (str: string | number, length: number) => {
-    return String(str || '').replace(/\D/g, '').padStart(length, '0');
-};
+interface Props {
+  pontos: any[];
+  filtro: { inicio: Date; fim: Date; usuario: string };
+  resumoHoras: any;
+  assinaturaUrl?: string | null;
+  nomeEmpresa: string;
+  dadosEmpresaCompleto?: any;
+}
 
-// Formata texto para o AFD (Espaços a direita)
-const padText = (str: string, length: number) => {
-    return String(str || '').padEnd(length, ' ').substring(0, length);
-};
+export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinaturaUrl, nomeEmpresa, dadosEmpresaCompleto }: Props) {
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinaturaUrl, nomeEmpresa, modoFuncionario }: any) {
-  
-  // === 1. PROCESSAMENTO DE DADOS (O CÉREBRO DO RELATÓRIO) ===
+  // === 1. LÓGICA ANTIGA DE PROCESSAMENTO (Que você prefere) ===
   const processarDados = () => {
     const diasMap: Record<string, any> = {};
     
-    // Normaliza os dados para garantir propriedades uniformes
+    // Normaliza
     const pontosNormalizados = pontos.map((p: any) => ({
         ...p,
         realTipo: p.tipo === 'PONTO' ? p.subTipo : p.tipo,
@@ -50,14 +52,14 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         unome: p.usuario?.nome || 'Desconhecido'
     }));
 
-    // ORDENAÇÃO: 1º Por Nome do Funcionário, 2º Por Data/Hora
+    // Ordena
     const pontosOrdenados = [...pontosNormalizados].sort((a:any, b:any) => {
         if (a.unome < b.unome) return -1;
         if (a.unome > b.unome) return 1;
         return a.dataObj.getTime() - b.dataObj.getTime();
     });
 
-    // A. Processa Ausências
+    // A. Processa Ausências (Preenche dias inteiros)
     pontosOrdenados.forEach((p: any) => {
         if (p.realTipo === 'AUSENCIA' || p.tipo === 'AUSENCIA') {
             const dtInicio = new Date(p.dataHora);
@@ -65,18 +67,16 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
             try {
                 const intervalo = eachDayOfInterval({ start: dtInicio, end: dtFim });
                 intervalo.forEach((diaDoIntervalo) => {
-                    // CHAVE ÚNICA: ID_USUARIO + DATA (Vital para relatório de Todos)
                     const dateKey = format(diaDoIntervalo, 'yyyy-MM-dd');
                     const uniqueKey = `${p.uid}_${dateKey}`;
                     
                     if(!diasMap[uniqueKey]) {
                         diasMap[uniqueKey] = { 
                             data: diaDoIntervalo, 
-                            nomeFunc: p.unome, // Guarda o nome para a coluna extra
+                            nomeFunc: p.unome,
                             e1:'-', s1:'-', e2:'-', s2:'-', obs: '' 
                         };
                     }
-                    
                     const motivo = p.descricao || p.motivo || 'Sem motivo';
                     diasMap[uniqueKey].obs = `AUSÊNCIA: ${motivo}`;
                     diasMap[uniqueKey].isAusencia = true;
@@ -85,15 +85,14 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         }
     });
 
-    // B. Processa Pontos (Lógica Linear de Pares)
+    // B. Processa Pontos (Pares Ent/Sai)
     for (let i = 0; i < pontosOrdenados.length; i++) {
         const p = pontosOrdenados[i];
         if (p.tipo === 'AUSENCIA' || p.realTipo === 'AUSENCIA') continue;
 
-        // Se achou um início de jornada
-        if (['ENTRADA', 'VOLTA_ALMOCO'].includes(p.realTipo)) {
+        if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(p.realTipo)) {
             const dateKey = format(p.dataObj, 'yyyy-MM-dd');
-            const uniqueKey = `${p.uid}_${dateKey}`; // Chave composta
+            const uniqueKey = `${p.uid}_${dateKey}`;
 
             if (!diasMap[uniqueKey]) {
                 diasMap[uniqueKey] = { 
@@ -104,86 +103,88 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
             }
 
             const horaFormatada = format(p.dataObj, 'HH:mm');
-            if (p.realTipo === 'ENTRADA') diasMap[uniqueKey].e1 = horaFormatada;
+            // Se for a primeira batida do dia ou volta de almoço
+            if (!diasMap[uniqueKey].e1) diasMap[uniqueKey].e1 = horaFormatada;
             else diasMap[uniqueKey].e2 = horaFormatada;
 
-            // Olha para o futuro (Próximo registro)
+            // Tenta achar a saída correspondente
             const proximo = pontosOrdenados[i+1];
-            
-            // Verifica se: Existe + É Saída + É do MESMO funcionário
-            if (proximo && ['SAIDA', 'SAIDA_ALMOCO'].includes(proximo.realTipo) && proximo.uid === p.uid) {
+            if (proximo && ['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(proximo.realTipo) && proximo.uid === p.uid) {
                 const horaSaida = format(new Date(proximo.dataHora), 'HH:mm');
                 
-                // Grava a saída na mesma linha da entrada (Escala Noturna)
-                if (p.realTipo === 'ENTRADA') diasMap[uniqueKey].s1 = horaSaida;
+                if (!diasMap[uniqueKey].s1) diasMap[uniqueKey].s1 = horaSaida;
                 else diasMap[uniqueKey].s2 = horaSaida;
 
-                if (p.descricao?.includes('Inclusão') || proximo.descricao?.includes('Inclusão')) {
+                if (p.descricao?.includes('Manual') || proximo.descricao?.includes('Manual')) {
                     diasMap[uniqueKey].obs = 'Ajuste Manual';
                 }
-
-                i++; // Pula o próximo pois já foi usado
+                i++; 
             }
         }
     }
 
-    // Retorna array ordenado (Nome -> Data)
     const resultado = Object.values(diasMap).map((item: any) => ({
         ...item,
         dataFormatada: format(new Date(item.data), 'dd/MM/yyyy'),
         diaSemana: format(new Date(item.data), 'EEE', { locale: ptBR }).toUpperCase()
     }));
 
-    return resultado.sort((a:any, b:any) => {
-        if (a.nomeFunc < b.nomeFunc) return -1;
-        if (a.nomeFunc > b.nomeFunc) return 1;
-        // Ordena por data
-        return new Date(a.data).getTime() - new Date(b.data).getTime();
-    });
+    return resultado.sort((a:any, b:any) => new Date(a.data).getTime() - new Date(b.data).getTime());
   };
 
-  // === 2. GERADOR DE PDF ===
+  // === 2. GERADOR PDF (LAYOUT ROXO RESTAURADO) ===
   const criarDocPDF = async () => {
     const doc = new jsPDF();
     const dadosProcessados = processarDados();
     const ehRelatorioGeral = filtro.usuario === 'Todos';
 
     // Cabeçalho Roxo
-    doc.setFillColor(124, 58, 237); doc.rect(0, 0, 210, 40, 'F');
+    doc.setFillColor(124, 58, 237); 
+    doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22); doc.setFont('helvetica', 'bold'); 
-    doc.text(nomeEmpresa || 'WorkID', 14, 20); // Nome da Empresa
+    doc.text(nomeEmpresa || 'WorkID', 14, 20);
     
-    doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.text('Relatório Detalhado de Frequência', 14, 28);
-    doc.setFontSize(9); doc.text('Sistema de Ponto Eletrônico', 195, 15, { align: 'right' });
+    doc.setFontSize(12); doc.setFont('helvetica', 'normal'); 
+    doc.text('Relatório Detalhado de Frequência', 14, 28);
+    
+    // Info Direita
+    doc.setFontSize(9); 
+    doc.text('Sistema de Ponto Eletrônico', 195, 15, { align: 'right' });
     doc.text('Conformidade Portaria 671', 195, 20, { align: 'right' });
-    const dataGeracao = format(new Date(), "dd/MM/yyyy HH:mm");
-    doc.text(`Gerado em: ${dataGeracao}`, 195, 25, { align: 'right' });
+    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 195, 25, { align: 'right' });
 
-    // Filtros (Caixa Cinza)
-    doc.setFillColor(245, 245, 245); doc.rect(14, 45, 182, 25, 'F');
+    // Caixa Cinza de Filtros
+    doc.setFillColor(245, 245, 245); 
+    doc.rect(14, 45, 182, 25, 'F');
     doc.setTextColor(0, 0, 0); doc.setFontSize(10);
-    const formatarDataLocal = (dataIso: any) => { if (!dataIso) return '--/--/----'; const str = dataIso instanceof Date ? dataIso.toISOString().split('T')[0] : dataIso; const [ano, mes, dia] = str.split('-'); return `${dia}/${mes}/${ano}`; };
     
     doc.setFont('helvetica', 'bold'); doc.text('FUNCIONÁRIO:', 18, 52); 
     doc.setFont('helvetica', 'normal'); doc.text(filtro.usuario || 'Todos', 18, 58);
     
     doc.setFont('helvetica', 'bold'); doc.text('PERÍODO:', 80, 52); 
-    doc.setFont('helvetica', 'normal'); doc.text(`${formatarDataLocal(filtro.inicio)} até ${formatarDataLocal(filtro.fim)}`, 80, 58);
+    doc.setFont('helvetica', 'normal'); doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, 80, 58);
 
-    // Cards de Saldo (Somente se for Individual)
+    // Cards de Saldo (Layout Roxo e Verde)
     if (resumoHoras && !ehRelatorioGeral) {
-      doc.setFillColor(124, 58, 237); doc.roundedRect(125, 45, 35, 25, 2, 2, 'F');
-      doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.text('TRABALHADO', 142.5, 52, { align: 'center' });
-      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.text(resumoHoras.total || "0h 0m", 142.5, 62, { align: 'center' });
+      // Trabalhado
+      doc.setFillColor(124, 58, 237); 
+      doc.roundedRect(125, 45, 35, 25, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255); doc.setFontSize(7); 
+      doc.text('TRABALHADO', 142.5, 52, { align: 'center' });
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); 
+      doc.text(resumoHoras.total || "0h 0m", 142.5, 62, { align: 'center' });
 
+      // Saldo
       if (resumoHoras.saldoPositivo) { doc.setFillColor(22, 163, 74); } else { doc.setFillColor(220, 38, 38); }
       doc.roundedRect(162, 45, 35, 25, 2, 2, 'F');
-      doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.text('BANCO DE HORAS', 179.5, 52, { align: 'center' });
-      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.text(resumoHoras.saldo || "0h 0m", 179.5, 62, { align: 'center' });
+      doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont('helvetica', 'normal'); 
+      doc.text('BANCO DE HORAS', 179.5, 52, { align: 'center' });
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); 
+      doc.text(resumoHoras.saldo || "0h 0m", 179.5, 62, { align: 'center' });
     }
 
-    // Definição Dinâmica de Colunas (Se for Geral, adiciona Nome)
+    // Tabela (Layout Antigo restaurado)
     const colunas = [
         { header: 'Data', dataKey: 'dataFormatada' },
         { header: 'Dia', dataKey: 'diaSemana' },
@@ -192,13 +193,6 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         { header: 'Observações', dataKey: 'obs' },
     ];
     const colStyles: any = { 0: { cellWidth: 22 }, 1: { cellWidth: 15 }, 2: { cellWidth: 12 }, 3: { cellWidth: 12 }, 4: { cellWidth: 12 }, 5: { cellWidth: 12 }, 6: { cellWidth: 'auto' } };
-
-    if (ehRelatorioGeral) {
-        colunas.unshift({ header: 'Funcionário', dataKey: 'nomeFunc' });
-        colStyles[0] = { cellWidth: 35 }; // Largura do nome
-        colStyles[1] = { cellWidth: 20 }; // Data
-        colStyles[2] = { cellWidth: 15 }; // Dia
-    }
 
     autoTable(doc, {
       body: dadosProcessados,
@@ -209,107 +203,114 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
       columns: colunas,
       columnStyles: colStyles,
       didParseCell: function(data) {
+        // Pinta de vermelho se for falta
         if (data.row.raw && (data.row.raw as any).isAusencia) {
-            if (data.section === 'body') { data.cell.styles.fillColor = [255, 240, 240]; data.cell.styles.textColor = [180, 0, 0]; }
-        }
-        const dia = (data.row.raw as any).diaSemana;
-        if ((dia === 'SÁB' || dia === 'DOM') && !(data.row.raw as any).isAusencia) {
-             if (data.section === 'body') data.cell.styles.fillColor = [245, 245, 245];
+            if (data.section === 'body') { 
+                data.cell.styles.fillColor = [255, 240, 240]; 
+                data.cell.styles.textColor = [180, 0, 0]; 
+            }
         }
       }
     });
 
-    // Assinatura (Somente se for Individual)
-    const finalY = (doc as any).lastAutoTable.finalY + 40;
-    const marginLeft = 14; 
+    // Assinatura (Correção Definitiva)
+    // @ts-ignore
+    let finalY = doc.lastAutoTable.finalY + 40;
+    if (finalY > 250) { doc.addPage(); finalY = 40; }
 
-    if (!ehRelatorioGeral) {
-        doc.setDrawColor(150, 150, 150);
-        doc.line(marginLeft, finalY, marginLeft + 60, finalY);
-        doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-        doc.text('Assinatura do Colaborador', marginLeft, finalY + 5);
+    doc.setDrawColor(150, 150, 150);
+    doc.line(14, finalY, 100, finalY);
+    doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+    doc.text('Assinatura do Colaborador', 14, finalY + 5);
 
-        if (assinaturaUrl) {
-            try {
-                const imgData = await getDataUri(assinaturaUrl);
-                if (imgData) { doc.addImage(imgData, 'PNG', marginLeft + 5, finalY - 25, 40, 20); }
-            } catch (e) {}
+    // INSERÇÃO DA IMAGEM DA ASSINATURA
+    if (assinaturaUrl) {
+        try {
+            // Usa a função helper para pegar o base64
+            const imgData = await getBase64ImageFromURL(assinaturaUrl);
+            if (imgData) {
+                // Ajusta a posição para ficar EM CIMA da linha
+                doc.addImage(imgData, 'PNG', 20, finalY - 25, 40, 20);
+            }
+        } catch (e) {
+            console.error("Erro ao inserir assinatura", e);
         }
-    } else {
-        doc.setDrawColor(150, 150, 150);
-        doc.line(marginLeft, finalY, marginLeft + 60, finalY);
-        doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-        doc.text('Visto do Gestor (Conferência Geral)', marginLeft, finalY + 5);
     }
 
-    const pageCount = (doc as any).internal.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) { doc.setPage(i); doc.setFontSize(8); doc.setTextColor(150, 150, 150); doc.text(`Página ${i} de ${pageCount}`, 195, 290, { align: 'right' }); }
     return doc;
   };
 
-  const baixarPDF = async () => { const doc = await criarDocPDF(); doc.save(`${nomeEmpresa || 'WorkID'}_Relatorio.pdf`); };
-  const visualizarPDF = async () => { const doc = await criarDocPDF(); window.open(doc.output('bloburl'), '_blank'); };
-  
-  // === 3. GERADOR EXCEL (CSV) ===
-  const baixarCSV = () => {
-    const dados = processarDados();
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-    csvContent += `EMPRESA;${nomeEmpresa || 'WorkID'}\n`;
-    if (resumoHoras && filtro.usuario !== 'Todos') { csvContent += `RESUMO\nTotal;${resumoHoras.total}\nBanco;${resumoHoras.saldo}\n\n`; }
-    
-    if (filtro.usuario === 'Todos') csvContent += "Funcionario;";
-    csvContent += "Data;Dia;Entrada;Saida;Entrada;Saida;Obs\n";
-
-    dados.forEach(row => { 
-        if (filtro.usuario === 'Todos') csvContent += `${row.nomeFunc};`;
-        csvContent += `${row.dataFormatada};${row.diaSemana};${row.e1};${row.s1};${row.e2};${row.s2};${row.obs}\n`; 
-    });
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", `${nomeEmpresa || 'WorkID'}_dados.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  const visualizarPDF = async () => {
+    setLoading(true);
+    try {
+        const doc = await criarDocPDF();
+        window.open(doc.output('bloburl'), '_blank');
+    } catch (e) { alert('Erro ao gerar.'); }
+    finally { setLoading(false); }
   };
 
-  // === 4. GERADOR AFD (FISCAL) ===
+  const baixarPDF = async () => {
+    setLoading(true);
+    try {
+        const doc = await criarDocPDF();
+        doc.save(`${nomeEmpresa}_Relatorio.pdf`);
+    } catch (e) { alert('Erro ao baixar.'); }
+    finally { setLoading(false); setMenuAberto(false); }
+  };
+
+  // Funções MTE e Excel (Mantidas)
   const baixarAFD = () => {
-    let afd = "";
-    let nsr = 1; 
-    const cnpj = "00000000000000"; 
-    const razaoSocial = padText(nomeEmpresa || "MINHA EMPRESA", 150);
-    
-    // Header
-    afd += `${pad(nsr++, 9)}11${pad(cnpj, 14)}${pad('', 12)}${razaoSocial}${pad('00000000000000001', 17)}\n`;
+    const txtContent = gerarAFD(pontos, dadosEmpresaCompleto || { nome: nomeEmpresa, cnpj: '00000000000000' });
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `AFD.txt`; a.click(); setMenuAberto(false);
+  };
 
-    const pontosOrdenados = [...pontos].sort((a:any, b:any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+  const baixarAFDT = () => {
+    const txtContent = gerarAFDT(pontos, dadosEmpresaCompleto || { nome: nomeEmpresa, cnpj: '00000000000000' }, filtro.inicio, filtro.fim);
+    const blob = new Blob([txtContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `AFDT.txt`; a.click(); setMenuAberto(false);
+  };
 
-    pontosOrdenados.forEach((p: any) => {
-        if (p.tipo === 'PONTO' || (p.tipo !== 'AUSENCIA' && p.subTipo)) { 
-            const dataStr = format(new Date(p.dataHora), 'ddMMyyyy');
-            const horaStr = format(new Date(p.dataHora), 'HHmm');
-            const pis = pad(p.usuario?.cpf || '00000000000', 12); 
-            afd += `${pad(nsr++, 9)}3${dataStr}${horaStr}${pis}\n`;
-        }
-    });
-
-    // Trailer
-    const qtdTipo3 = nsr - 2; 
-    afd += `${pad(nsr, 9)}9${pad(0, 9)}${pad(qtdTipo3, 9)}${pad(0, 9)}${pad(0, 9)}\n`;
-
-    const blob = new Blob([afd], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a'); link.href = url; link.setAttribute('download', 'AFD.txt'); document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  const gerarExcel = () => {
+    const dados = processarDados();
+    const ws = XLSX.utils.json_to_sheet(dados.map((row: any) => ({
+        Data: row.dataFormatada,
+        Dia: row.diaSemana,
+        Ent1: row.e1, Sai1: row.s1, Ent2: row.e2, Sai2: row.s2,
+        Obs: row.obs
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Espelho");
+    XLSX.writeFile(wb, `Espelho_${filtro.usuario}.xlsx`);
+    setMenuAberto(false);
   };
 
   return (
-    <div className="flex gap-2">
-      <button onClick={visualizarPDF} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm h-[42px] justify-center w-full md:w-auto shadow-sm transition-all"><Eye size={18} /> Ver</button>
-      <button onClick={baixarPDF} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm h-[42px] justify-center w-full md:w-auto shadow-sm transition-all"><FileDown size={18} /> PDF</button>
-      {!modoFuncionario &&(
-        <>
-        <button onClick={baixarAFD} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm h-[42px] justify-center w-full md:w-auto shadow-sm transition-all border border-slate-700" title="Arquivo Fonte de Dados (Fiscal)"><FileCode size={18} /> AFD</button>
-          <button onClick={baixarCSV} className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold text-sm h-[42px] justify-center w-full md:w-auto shadow-sm transition-all border border-slate-600"><FileSpreadsheet size={18} /> Excel</button>
-        </>
-     
-      )}
-         </div>
+    <div className="relative flex gap-2">
+        <button onClick={visualizarPDF} disabled={loading} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg shadow-purple-900/20">
+            <Eye size={18} /> {loading ? 'Gerando...' : 'Ver'}
+        </button>
+
+        <div className="relative">
+            <button onClick={() => setMenuAberto(!menuAberto)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg shadow-green-900/20">
+                <Printer size={18} /> Exportar <ChevronDown size={14} className={`transition-transform ${menuAberto ? 'rotate-180' : ''}`}/>
+            </button>
+
+            {menuAberto && (
+                <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                    <div className="p-2 space-y-1">
+                        <button onClick={baixarPDF} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileText size={16} className="text-red-400"/> PDF (Baixar)</button>
+                        <button onClick={gerarExcel} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileJson size={16} className="text-green-400"/> Excel (.xlsx)</button>
+                        <div className="h-px bg-slate-700 my-1"></div>
+                        <button onClick={baixarAFD} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-blue-400"/> Arquivo AFD (.txt)</button>
+                        <button onClick={baixarAFDT} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-yellow-400"/> Arquivo AFDT (.txt)</button>
+                    </div>
+                </div>
+            )}
+        </div>
+        {menuAberto && <div className="fixed inset-0 z-40" onClick={() => setMenuAberto(false)} />}
+    </div>
   );
 }

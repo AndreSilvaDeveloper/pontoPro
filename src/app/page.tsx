@@ -5,7 +5,7 @@ import Webcam from 'react-webcam';
 import axios from 'axios';
 import { 
   MapPin, Camera, LogOut, History, RefreshCcw, 
-  FileText, PenTool, AlertCircle, User 
+  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, Clock, CheckCircle2 
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -17,17 +17,60 @@ export default function Home() {
 
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
-  
-  // Localização
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  
-  const [tipoPonto, setTipoPonto] = useState('ENTRADA'); 
   const [cameraErro, setCameraErro] = useState(false);
+  const [horaAtual, setHoraAtual] = useState('');
   
-  // Configs
-  const [configs, setConfigs] = useState<any>({ exigirFoto: true, bloquearForaDoRaio: true, ocultarSaldoHoras: false });
+  const [configs, setConfigs] = useState<any>({ 
+      exigirFoto: true, 
+      bloquearForaDoRaio: true, 
+      ocultarSaldoHoras: false,
+      fluxoEstrito: true 
+  });
   
+  const [statusPonto, setStatusPonto] = useState<string | null>(null);
+  const [jaAlmocou, setJaAlmocou] = useState(false);
+  
+  const [carregandoStatus, setCarregandoStatus] = useState(true);
+  const [tipoManual, setTipoManual] = useState('ENTRADA');
   const webcamRef = useRef<Webcam>(null);
+
+  // Relógio em Tempo Real
+  useEffect(() => {
+    const timer = setInterval(() => {
+        const agora = new Date();
+        setHoraAtual(agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const carregarConfigEStatus = async () => {
+      // @ts-ignore
+      if (!session?.user?.id) return;
+
+      try {
+          const [resConfig, resStatus] = await Promise.all([
+              axios.get('/api/funcionario/config'),
+              axios.get('/api/funcionario/ponto/status', {
+                  // @ts-ignore
+                  params: { usuarioId: session?.user?.id } 
+              })
+          ]);
+          
+          setConfigs({
+              ...resConfig.data,
+              fluxoEstrito: resConfig.data.fluxoEstrito !== false
+          });
+
+          setStatusPonto(resStatus.data.ultimoTipo || null);
+          setJaAlmocou(resStatus.data.jaAlmocou || false);
+
+      } catch (e) { 
+          console.error(e); 
+      } finally { 
+          setCarregandoStatus(false); 
+      }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); } 
@@ -36,12 +79,8 @@ export default function Home() {
       if (session?.user?.deveTrocarSenha) { router.push('/trocar-senha'); return; }
       // @ts-ignore
       if (session?.user?.cargo === 'ADMIN') { router.push('/admin'); return; }
-      // @ts-ignore
-      if (session?.user?.cargo === 'SUPER_ADMIN') { router.push('/saas'); return; }
 
-      axios.get('/api/funcionario/config')
-        .then(res => { if (res.data) setConfigs(res.data); })
-        .catch(err => console.error("Erro config", err));
+      carregarConfigEStatus();
     }
   }, [status, router, session]);
 
@@ -59,7 +98,7 @@ export default function Home() {
   };
 
   const capturarLocalizacao = () => {
-    setStatusMsg({ tipo: 'info', texto: 'Buscando GPS...' });
+    setStatusMsg({ tipo: 'info', texto: 'Buscando satélites...' });
     if (!navigator.geolocation) {
       setStatusMsg({ tipo: 'erro', texto: 'Navegador sem GPS.' });
       return;
@@ -67,114 +106,266 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setStatusMsg({ tipo: 'sucesso', texto: 'GPS Localizado! Câmera ativada.' });
+        setStatusMsg({ tipo: 'sucesso', texto: 'Localização Confirmada!' });
+        setTimeout(() => setStatusMsg(null), 3000);
       },
       (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message })
     );
   };
 
-  const baterPonto = async () => {
-    if (!location) { setStatusMsg({ tipo: 'erro', texto: 'GPS obrigatório!' }); return; }
+  const baterPonto = async (tipoAcao?: string) => {
+    const tipoFinal = tipoAcao || tipoManual;
+
+    if (!location) { setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' }); return; }
 
     let imageSrc = null;
     if (configs.exigirFoto) {
         imageSrc = webcamRef.current?.getScreenshot();
         if (!imageSrc) {
             setCameraErro(true);
-            setStatusMsg({ tipo: 'erro', texto: 'Câmera inacessível.' });
+            setStatusMsg({ tipo: 'erro', texto: 'Não conseguimos capturar a foto.' });
             return;
         }
     }
 
     setLoading(true);
     try {
-      const response = await axios.post('/api/bater-ponto', {
+      const response = await axios.post('/api/funcionario/ponto', {
         // @ts-ignore
         usuarioId: session?.user?.id, 
         latitude: location.lat, longitude: location.lng, 
-        fotoBase64: imageSrc, tipo: tipoPonto 
+        fotoBase64: imageSrc, 
+        tipo: tipoFinal 
       });
-      setStatusMsg({ tipo: 'sucesso', texto: `✅ ${response.data.mensagem}` });
+      
+      setStatusMsg({ tipo: 'sucesso', texto: `✅ Ponto Registrado!` });
+      
+      setTimeout(() => {
+          setStatusMsg(null);
+          carregarConfigEStatus();
+      }, 1500);
+
     } catch (error: any) {
       setStatusMsg({ tipo: 'erro', texto: `❌ ${error.response?.data?.erro || 'Erro ao registrar'}` });
     } finally { setLoading(false); }
   };
 
-  if (status === 'loading') return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Carregando...</div>;
+  if (status === 'loading') return (
+    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-slate-400 gap-3">
+        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+        Carregando...
+    </div>
+  );
+
+  // === RENDERIZAÇÃO INTELIGENTE (Botões Bonitos) ===
+  const renderizarBotoesInteligentes = () => {
+      const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-white relative overflow-hidden group";
+      
+      // 1. Iniciar Dia
+      if (!statusPonto || statusPonto === 'SAIDA') {
+          return (
+            <button onClick={() => baterPonto('ENTRADA')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-emerald-600 to-emerald-500`}>
+                <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full" />
+                {loading ? 'Processando...' : <><LogIn size={28} /> INICIAR TRABALHO</>}
+            </button>
+          );
+      }
+
+      // 2. Trabalhando
+      if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(statusPonto)) {
+          return (
+            <div className="space-y-4 animate-in slide-in-from-bottom-4 fade-in">
+                {jaAlmocou ? (
+                     <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-amber-500 to-yellow-500`}>
+                        <Coffee size={28} /> PAUSA PARA CAFÉ
+                    </button>
+                ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                        <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-amber-400 shadow-lg active:scale-95 transition-all">
+                            <Coffee size={32} /> 
+                            <span className="text-xs uppercase tracking-wider">Pausa Café</span>
+                        </button>
+                        <button onClick={() => baterPonto('SAIDA_ALMOCO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-lg active:scale-95 transition-all">
+                            <CupSoda size={32} /> 
+                            <span className="text-xs uppercase tracking-wider">Almoço</span>
+                        </button>
+                    </div>
+                )}
+                
+                <button onClick={() => baterPonto('SAIDA')} disabled={loading} className="w-full py-4 rounded-xl font-medium border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center justify-center gap-2 text-sm transition-colors mt-2">
+                    <LogOut size={18} /> Encerrar Expediente
+                </button>
+            </div>
+          );
+      }
+
+      // 3. Em Almoço
+      if (statusPonto === 'SAIDA_ALMOCO') {
+        return (
+          <button onClick={() => baterPonto('VOLTA_ALMOCO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-blue-600 to-blue-500`}>
+              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full" />
+              {loading ? 'Processando...' : <><ArrowRightCircle size={28} /> VOLTAR DO ALMOÇO</>}
+          </button>
+        );
+      }
+
+      // 4. Em Intervalo
+      if (statusPonto === 'SAIDA_INTERVALO') {
+        return (
+          <button onClick={() => baterPonto('VOLTA_INTERVALO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-indigo-600 to-indigo-500`}>
+              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full" />
+              {loading ? 'Processando...' : <><ArrowRightCircle size={28} /> VOLTAR DO CAFÉ</>}
+          </button>
+        );
+      }
+  };
+
+  // Botões do modo flexível (caso fluxo estrito esteja desligado)
+  const renderizarBotoesFlexiveis = () => {
+      const btnFlex = "p-3 rounded-xl text-[10px] font-bold border transition-all flex flex-col items-center justify-center gap-1 active:scale-95";
+      return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+                <button onClick={()=>setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual==='ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                    <LogIn size={16}/> Entrada
+                </button>
+                <button onClick={()=>setTipoManual('SAIDA_ALMOCO')} className={`${btnFlex} ${tipoManual==='SAIDA_ALMOCO' ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                    <CupSoda size={16}/> Almoço
+                </button>
+                <button onClick={()=>setTipoManual('VOLTA_ALMOCO')} className={`${btnFlex} ${tipoManual==='VOLTA_ALMOCO' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                    <ArrowRightCircle size={16}/> Volta
+                </button>
+                
+                <button onClick={()=>setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual==='SAIDA_INTERVALO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                    <Coffee size={16}/> Café
+                </button>
+                <button onClick={()=>setTipoManual('VOLTA_INTERVALO')} className={`${btnFlex} ${tipoManual==='VOLTA_INTERVALO' ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                    <ArrowRightCircle size={16}/> Volta
+                </button>
+                
+                <button onClick={()=>setTipoManual('SAIDA')} className={`${btnFlex} ${tipoManual==='SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
+                    <LogOut size={16}/> Saída
+                </button>
+            </div>
+            <button onClick={() => baterPonto()} disabled={loading || (configs.exigirFoto && cameraErro)} className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-lg shadow-xl transition-all active:scale-95 ${loading ? 'bg-slate-600' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white'}`}>
+                {loading ? 'Processando...' : <><Camera size={24} /> CONFIRMAR PONTO</>}
+            </button>
+        </div>
+      );
+  }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center p-4">
-      <div className="w-full max-w-md space-y-4">
+    <main className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+      
+      {/* Efeitos de Fundo */}
+      <div className="fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="w-full max-w-md space-y-6 relative z-10">
         
-        {/* CABEÇALHO */}
-        <div className="flex justify-between items-center bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-md">
-            <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center text-xl font-bold border-2 border-purple-400">
-                    {session?.user?.name?.charAt(0) || <User />}
+        {/* CABEÇALHO COM CARD DE VIDRO */}
+        <div className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
+            <div className="flex items-center gap-4">
+                <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                        {session?.user?.name?.charAt(0) || <User />}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-slate-900 rounded-full"></div>
                 </div>
                 <div>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Olá,</p>
-                    <h1 className="font-bold text-lg leading-tight truncate w-40">{session?.user?.name?.split(' ')[0]}</h1>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-0.5">Olá, {session?.user?.name?.split(' ')[0]}</p>
+                    <h1 className="font-mono text-xl font-bold text-white tracking-tight">{horaAtual || '--:--'}</h1>
                 </div>
             </div>
-            <button onClick={() => signOut()} className="p-3 bg-red-500/10 rounded-xl text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all"><LogOut size={20} /></button>
+            <button onClick={() => signOut()} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
+                <LogOut size={20} />
+            </button>
         </div>
 
-        {/* MENU */}
-        <div className="grid grid-cols-3 gap-2">
-            <Link href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 transition-all active:scale-95 group"><div className="bg-purple-900/30 text-purple-400 p-2 rounded-full group-hover:bg-purple-600 group-hover:text-white transition-colors"><PenTool size={20} /></div><span className="text-[10px] font-bold uppercase text-slate-300">Assinar</span></Link>
-            <Link href="/funcionario/ausencias" className="flex flex-col items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 transition-all active:scale-95 group"><div className="bg-yellow-900/30 text-yellow-500 p-2 rounded-full group-hover:bg-yellow-600 group-hover:text-white transition-colors"><FileText size={20} /></div><span className="text-[10px] font-bold uppercase text-slate-300">Justificar</span></Link>
-            <Link href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 p-3 rounded-xl border border-slate-700 transition-all active:scale-95 group"><div className="bg-blue-900/30 text-blue-400 p-2 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-colors"><History size={20} /></div><span className="text-[10px] font-bold uppercase text-slate-300">Histórico</span></Link>
-        </div>
-
-        {/* ÁREA DE PONTO */}
-        <div className="bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-700 p-4 space-y-4">
+        {/* ÁREA PRINCIPAL (CÂMERA E AÇÃO) */}
+        <div className="bg-slate-900/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-white/5 p-5 space-y-5">
             
-            {/* === MUDANÇA: SÓ MOSTRA CÂMERA SE TIVER LOCATION === */}
-            {configs.exigirFoto && location && (
-                <div className={`relative rounded-xl overflow-hidden bg-black aspect-video border-2 ${cameraErro ? 'border-red-500' : 'border-slate-600'}`}>
-                    {!cameraErro ? (
-                        <Webcam audio={false} ref={webcamRef} screenshotFormat="image/jpeg" className="w-full h-full object-cover" onUserMediaError={() => setCameraErro(true)} />
-                    ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-4">
-                            <AlertCircle size={32} className="text-red-500 mb-2" />
-                            <p className="text-red-400 font-bold text-sm">Câmera Bloqueada</p>
-                            <button onClick={tentarRecuperarCamera} className="mt-3 bg-slate-700 text-white px-3 py-2 rounded text-xs font-bold flex gap-2"><RefreshCcw size={14}/> Tentar Novamente</button>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Mensagem Status */}
+            {/* Mensagens de Status (Estilo Toast Embutido) */}
             {statusMsg && (
-                <div className={`p-3 rounded-lg text-sm text-center font-bold animate-pulse ${statusMsg.tipo === 'erro' ? 'bg-red-900/50 text-red-200' : 'bg-green-900/50 text-green-200'}`}>
+                <div className={`p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top-2 ${statusMsg.tipo === 'erro' ? 'bg-red-500/20 text-red-200 border border-red-500/30' : statusMsg.tipo === 'sucesso' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
+                    {statusMsg.tipo === 'erro' ? <AlertCircle size={18}/> : statusMsg.tipo === 'sucesso' ? <CheckCircle2 size={18}/> : <RefreshCcw size={18} className="animate-spin"/>}
                     {statusMsg.texto}
                 </div>
             )}
 
-            {/* SE NÃO TIVER LOCATION, MOSTRA BOTÃO DE GPS. SE TIVER, MOSTRA BOTÕES DE PONTO */}
+            {/* Câmera / Mapa */}
+            {configs.exigirFoto && location && (
+                <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'}`}>
+                    {!cameraErro ? (
+                        <Webcam 
+                            audio={false} 
+                            ref={webcamRef} 
+                            screenshotFormat="image/jpeg" 
+                            videoConstraints={{ facingMode: "user" }}
+                            className="w-full h-full object-cover" 
+                            onUserMediaError={() => setCameraErro(true)} 
+                        />
+                    ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
+                            <div className="bg-red-500/10 p-4 rounded-full mb-3"><AlertCircle size={32} className="text-red-500" /></div>
+                            <p className="text-red-400 font-bold mb-1">Câmera Indisponível</p>
+                            <p className="text-slate-500 text-xs mb-4">Verifique as permissões do navegador</p>
+                            <button onClick={tentarRecuperarCamera} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors">Tentar Novamente</button>
+                        </div>
+                    )}
+                    {/* Overlay de "Ao Vivo" */}
+                    {!cameraErro && <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</div>}
+                </div>
+            )}
+
+            {/* Botão de Localização ou Ações */}
             {!location ? (
-                <button onClick={capturarLocalizacao} className="w-full py-4 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/30 animate-bounce">
-                    <MapPin size={20} /> ATIVAR LOCALIZAÇÃO
-                </button>
-            ) : (
-                <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                        <button onClick={()=>setTipoPonto('ENTRADA')} className={`p-3 rounded-lg text-[10px] font-bold border transition-all ${tipoPonto==='ENTRADA' ? 'bg-green-600 border-green-400 text-white shadow-lg scale-105' : 'bg-slate-700 border-slate-600 text-slate-400'}`}>ENTRADA</button>
-                        <button onClick={()=>setTipoPonto('SAIDA_ALMOCO')} className={`p-3 rounded-lg text-[10px] font-bold border transition-all ${tipoPonto==='SAIDA_ALMOCO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg scale-105' : 'bg-slate-700 border-slate-600 text-slate-400'}`}>IDA ALMOÇO</button>
-                        <button onClick={()=>setTipoPonto('VOLTA_ALMOCO')} className={`p-3 rounded-lg text-[10px] font-bold border transition-all ${tipoPonto==='VOLTA_ALMOCO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg scale-105' : 'bg-slate-700 border-slate-600 text-slate-400'}`}>VOLTA ALMOÇO</button>
-                        <button onClick={()=>setTipoPonto('SAIDA')} className={`p-3 rounded-lg text-[10px] font-bold border transition-all ${tipoPonto==='SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg scale-105' : 'bg-slate-700 border-slate-600 text-slate-400'}`}>SAÍDA</button>
+                <div className="py-8 flex flex-col items-center text-center">
+                    <div className="bg-purple-500/10 p-6 rounded-full mb-4 animate-bounce">
+                        <MapPin size={40} className="text-purple-500" />
                     </div>
-                    <button onClick={baterPonto} disabled={loading || (configs.exigirFoto && cameraErro)} className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 text-lg shadow-xl transition-all active:scale-95 ${loading ? 'bg-slate-600' : 'bg-purple-600 hover:bg-purple-700'}`}>
-                        {loading ? 'Registrando...' : <><Camera size={24} /> REGISTRAR PONTO</>}
+                    <h3 className="text-white font-bold text-lg mb-2">Ativar Localização</h3>
+                    <p className="text-slate-400 text-sm mb-6 max-w-[200px]">Precisamos do seu GPS para validar o ponto.</p>
+                    <button onClick={capturarLocalizacao} className="w-full py-4 bg-white text-slate-900 hover:bg-slate-200 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95">
+                        PERMITIR ACESSO
                     </button>
+                </div>
+            ) : (
+                <div className="mt-2">
+                    {carregandoStatus ? (
+                         <div className="py-10 text-center">
+                             <div className="inline-block w-8 h-8 border-4 border-slate-600 border-t-purple-500 rounded-full animate-spin mb-3"></div>
+                             <p className="text-slate-500 text-sm font-medium">Sincronizando...</p>
+                         </div>
+                    ) : (
+                        configs.fluxoEstrito ? renderizarBotoesInteligentes() : renderizarBotoesFlexiveis()
+                    )}
                 </div>
             )}
         </div>
 
-        {/* Rodapé Informativo */}
+        {/* MENU RÁPIDO INFERIOR */}
+        <div className="grid grid-cols-3 gap-3">
+            <Link href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
+                <div className="bg-purple-500/10 text-purple-400 p-2.5 rounded-xl group-hover:bg-purple-500 group-hover:text-white transition-colors"><PenTool size={20} /></div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Assinar</span>
+            </Link>
+            <Link href="/funcionario/ausencias" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
+                <div className="bg-yellow-500/10 text-yellow-500 p-2.5 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors"><FileText size={20} /></div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Justificar</span>
+            </Link>
+            <Link href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
+                <div className="bg-blue-500/10 text-blue-400 p-2.5 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-colors"><History size={20} /></div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Histórico</span>
+            </Link>
+        </div>
+
         {!configs.ocultarSaldoHoras && (
-            <p className="text-center text-[10px] text-slate-600 mt-4">WorkID v2.0 • Geolocalização Ativa</p>
+            <div className="text-center">
+                <p className="text-[10px] text-slate-600 font-medium bg-slate-900/30 inline-block px-3 py-1 rounded-full border border-white/5">
+                    Geolocalização Ativa &bull; WorkID Secure
+                </p>
+            </div>
         )}
 
       </div>
