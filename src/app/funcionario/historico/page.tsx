@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { format, differenceInMinutes, isSameDay, eachDayOfInterval, getDay } from 'date-fns';
-// CORREÇÃO AQUI: Removido 'list' e mantido apenas 'ListFilter'
+// CORREÇÃO: Removi o 'list' que estava causando erro. Mantive o 'ListFilter'.
 import { ArrowLeft, History, Calendar, Search, Clock, Edit3, PlusCircle, LogIn, LogOut, AlertTriangle, X, Save, FileText, CheckCircle2, XCircle, ListFilter } from 'lucide-react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
@@ -192,7 +192,7 @@ export default function MeuHistorico() {
   }
 
   // === RENDERIZAÇÃO DA LISTA DE SOLICITAÇÕES ===
-  const renderizarSolicitacoes = () => {
+  const renderSolicitacoes = () => {
       if (solicitacoes.length === 0) return <div className="text-center py-10 opacity-50"><p className="text-slate-500 text-sm">Nenhuma solicitação encontrada.</p></div>;
 
       return (
@@ -364,7 +364,7 @@ export default function MeuHistorico() {
                     <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-1"><ListFilter size={16} className="text-purple-400"/> Acompanhamento</h3>
                     <p className="text-xs text-slate-400">Aqui você vê o status de todas as suas justificativas e ajustes manuais.</p>
                 </div>
-                {renderizarSolicitacoes()}
+                {renderSolicitacoes()}
             </div>
         )}
 
