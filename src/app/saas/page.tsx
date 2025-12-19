@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Building2, User, Lock, CheckCircle, ShieldAlert, Ban, PlayCircle, RefreshCw, Wand2, LogOut, Settings } from 'lucide-react';
+// ADICIONEI O Trash2 AQUI NOS IMPORTS
+import { Building2, User, Lock, CheckCircle, ShieldAlert, Ban, PlayCircle, RefreshCw, Wand2, LogOut, Settings, Trash2 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 
@@ -31,7 +32,6 @@ export default function SuperAdminPage() {
     setLoadingCriar(true);
     setResultado(null);
     try {
-      // Não envia mais masterKey
       const res = await axios.post('/api/saas/criar-empresa', {
         nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial
       });
@@ -45,7 +45,7 @@ export default function SuperAdminPage() {
   const listarEmpresas = async () => {
       setLoadingListar(true);
       try {
-          const res = await axios.post('/api/saas/gestao'); // Sem body
+          const res = await axios.post('/api/saas/gestao'); 
           setEmpresas(res.data);
       } catch (error) { console.error('Erro listar'); }
       finally { setLoadingListar(false); }
@@ -59,6 +59,27 @@ export default function SuperAdminPage() {
           await axios.put('/api/saas/gestao', { empresaId: id, acao: 'ALTERAR_STATUS' });
           listarEmpresas();
       } catch (error) { alert('Erro ao alterar status'); }
+  };
+
+  // === NOVA FUNÇÃO DE EXCLUSÃO ===
+  const excluirEmpresa = async (id: string, nome: string) => {
+      const confirmacao = window.prompt(`PERIGO: Isso apagará TODOS os dados, funcionários e pontos da empresa "${nome}".\n\nEssa ação é irreversível.\n\nPara confirmar, digite "DELETAR":`);
+      
+      if (confirmacao !== "DELETAR") {
+          return;
+      }
+
+      try {
+          // DELETE request envia dados dentro da propriedade 'data'
+          await axios.delete('/api/saas/excluir-empresa', { 
+              data: { id } 
+          });
+          
+          alert("Empresa excluída com sucesso!");
+          listarEmpresas(); // Atualiza a lista
+      } catch (error: any) {
+          alert(error.response?.data?.erro || "Erro ao excluir empresa.");
+      }
   };
 
   return (
@@ -135,12 +156,22 @@ export default function SuperAdminPage() {
                                     <Link href={`/saas/${emp.id}`} className="p-2 bg-purple-900/30 text-purple-400 hover:bg-purple-600 hover:text-white rounded transition-colors" title="Configurações">
                                         <Settings size={16}/>
                                     </Link>
+                                    
                                     <button 
                                         onClick={() => alternarStatus(emp.id, emp.nome, emp.status)}
-                                        className={`p-2 rounded transition-colors ${emp.status === 'ATIVO' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`}
-                                        title={emp.status === 'ATIVO' ? "Bloquear" : "Liberar"}
+                                        className={`p-2 rounded transition-colors ${emp.status === 'ATIVO' ? 'bg-orange-600/20 text-orange-500 hover:bg-orange-600 hover:text-white' : 'bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white'}`}
+                                        title={emp.status === 'ATIVO' ? "Bloquear Acesso" : "Liberar Acesso"}
                                     >
                                         {emp.status === 'ATIVO' ? <Ban size={16} /> : <PlayCircle size={16} />}
+                                    </button>
+
+                                    {/* BOTÃO DE EXCLUIR */}
+                                    <button 
+                                        onClick={() => excluirEmpresa(emp.id, emp.nome)}
+                                        className="p-2 bg-red-900/30 text-red-500 hover:bg-red-600 hover:text-white rounded transition-colors"
+                                        title="Excluir Empresa"
+                                    >
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
