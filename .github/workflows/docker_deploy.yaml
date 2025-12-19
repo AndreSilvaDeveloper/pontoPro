@@ -39,9 +39,10 @@ jobs:
             context: .
             file: ./dockerfile
             push: true
-            - name: Set image repo (lowercase)
-              run: |
-                echo "IMAGE_REPO=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+           - name: Set image repo (lowercase)
+            run: |
+              echo "IMAGE_REPO=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
+
             cache-from: type=gha
             cache-to: type=gha,mode=max
 
@@ -61,8 +62,7 @@ jobs:
             set -e
 
             APP_DIR="/opt/ponto-pro"
-            IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest"
-
+            IMAGE="ghcr.io/${{ env.IMAGE_REPO }}/${{ env.IMAGE_NAME }}:latest"
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
