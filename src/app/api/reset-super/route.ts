@@ -5,7 +5,7 @@ import { hash } from 'bcryptjs';
 export async function GET() {
   try {
     // Senha de login (NÃO É A MASTER KEY, é a senha pro /login)
-    const passwordHash = await hash('123456', 10); 
+    const passwordHash = await hash('Andresamara93', 10); 
 
     const user = await prisma.usuario.upsert({
       where: { email: 'super@workid.com' },
@@ -29,7 +29,7 @@ export async function GET() {
       sucesso: true, 
       mensagem: "Super Admin restaurado com sucesso!", 
       login: "super@workid.com",
-      senha_login: "123456" 
+      senha_login: "Andresamara93" 
     });
 
   } catch (error) {

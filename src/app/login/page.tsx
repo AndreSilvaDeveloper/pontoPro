@@ -3,22 +3,27 @@
 import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { User, Loader2, ShieldCheck, Smartphone, Share, PlusSquare, MoreVertical } from 'lucide-react';
+// Adicionado Eye e EyeOff aqui
+import { User, Loader2, ShieldCheck, Smartphone, Share, PlusSquare, MoreVertical, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // === NOVO ESTADO PARA O OLHINHO ===
+  const [showPassword, setShowPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // === ESTADOS PWA (Lógica Mantida) ===
+  // === ESTADOS PWA (Mantidos) ===
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showTutorial, setShowTutorial] = useState<'IOS' | 'ANDROID_GENERIC' | null>(null);
 
-  // === LÓGICA DE DETECÇÃO (Lógica Mantida) ===
+  // === LÓGICA DE DETECÇÃO (Mantida) ===
   useEffect(() => {
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
     if (isInStandaloneMode) {
@@ -115,7 +120,7 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* === CARD DE LOGIN (Glassmorphism) === */}
+      {/* === CARD DE LOGIN === */}
       <div className="w-full max-w-md p-8 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
         
         <div className="text-center mb-10">
@@ -145,15 +150,28 @@ export default function LoginPage() {
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-400 ml-1 uppercase tracking-wider">Senha</label>
             <div className="relative group">
+                {/* Ícone da esquerda (Escudo) */}
                 <div className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-purple-400 transition-colors"><ShieldCheck size={20}/></div>
+                
                 <input 
-                  type="password" 
+                  // ALTERADO: Muda o tipo com base no estado
+                  type={showPassword ? "text" : "password"} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600 hover:border-slate-600"
+                  // ALTERADO: Adicionado pr-12 para dar espaço ao botão da direita
+                  className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600 hover:border-slate-600"
                   placeholder="••••••••"
                   required
                 />
+
+                {/* BOTÃO OLHINHO (NOVO) */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-3.5 text-slate-500 hover:text-white transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
             </div>
           </div>
 
