@@ -3,19 +3,17 @@
 import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-// Adicionado Eye e EyeOff aqui
 import { User, Loader2, ShieldCheck, Smartphone, Share, PlusSquare, MoreVertical, Eye, EyeOff } from 'lucide-react';
+// 1. Importar o toast
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  // === NOVO ESTADO PARA O OLHINHO ===
   const [showPassword, setShowPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   
   // === ESTADOS PWA (Mantidos) ===
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -60,15 +58,25 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+
+    // 2. Feedback inicial de carregamento
+    const toastId = toast.loading('Autenticando credenciais...');
 
     try {
       const result = await signIn('credentials', { redirect: false, email, password });
 
       if (result?.error) {
-        setError('Credenciais inválidas.');
+        // Erro: Atualiza o toast para vermelho
+        toast.error('Acesso negado. Verifique e-mail e senha.', {
+            id: toastId, // Substitui o toast de loading
+        });
         setLoading(false);
       } else {
+        // Sucesso: Atualiza o toast para verde
+        toast.success('Login autorizado! Entrando...', {
+            id: toastId,
+        });
+
         const sessionRes = await fetch('/api/auth/session');
         const sessionData = await sessionRes.json();
         
@@ -76,11 +84,13 @@ export default function LoginPage() {
         else if (sessionData?.user?.cargo === 'ADMIN') router.push('/admin');
         else router.push('/');
       }
-    } catch (err) { setError('Erro no login.'); setLoading(false); }
+    } catch (err) { 
+        toast.error('Erro de conexão. Tente novamente.', { id: toastId });
+        setLoading(false); 
+    }
   };
 
   return (
-    // Fundo com Gradiente e Efeitos de Luz
     <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-slate-950 selection:bg-purple-500/30">
       
       {/* Efeitos de Fundo (Orbs) */}
@@ -154,17 +164,15 @@ export default function LoginPage() {
                 <div className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-purple-400 transition-colors"><ShieldCheck size={20}/></div>
                 
                 <input 
-                  // ALTERADO: Muda o tipo com base no estado
                   type={showPassword ? "text" : "password"} 
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  // ALTERADO: Adicionado pr-12 para dar espaço ao botão da direita
                   className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600 hover:border-slate-600"
                   placeholder="••••••••"
                   required
                 />
 
-                {/* BOTÃO OLHINHO (NOVO) */}
+                {/* BOTÃO OLHINHO */}
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -175,11 +183,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-200 text-xs p-3 rounded-lg text-center animate-pulse">
-              {error}
-            </div>
-          )}
+          {/* 3. REMOVIDO: O bloco antigo de {error} foi apagado daqui */}
 
           <button 
             type="submit" 
@@ -191,7 +195,6 @@ export default function LoginPage() {
             )}
           </button>
 
-          {/* === BOTÃO DE INSTALAR (Estilizado) === */}
           {!isStandalone && (
             <div className="pt-6 mt-2">
                 <div className="relative flex py-2 items-center">
