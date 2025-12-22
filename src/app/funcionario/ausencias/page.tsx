@@ -205,7 +205,7 @@ export default function MinhasAusencias() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-slate-500 block mb-1">Motivo / Detalhes</label>
+                    <label className="text-xs text-slate-500 block mb-1">Motivo / CID</label>
                     <textarea value={motivo} onChange={e=>setMotivo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white text-sm h-24 resize-none focus:border-purple-500 outline-none" required />
                   </div>
                   <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 border-dashed">
