@@ -30,7 +30,7 @@ export async function DELETE(request: Request) {
         const idsUsuarios = usuarios.map(u => u.id);
 
         if (idsUsuarios.length > 0) {
-            // B. Limpeza de dados ligados aos Usuários
+            // B. Limpeza de dados ligados aos Usuários (Filhos)
             await tx.ponto.deleteMany({
                 where: { usuarioId: { in: idsUsuarios } }
             });
@@ -39,14 +39,22 @@ export async function DELETE(request: Request) {
                 where: { usuarioId: { in: idsUsuarios } }
             });
 
-            await tx.ausencia.deleteMany({ // Faltava apagar as ausências/atestados
+            await tx.ausencia.deleteMany({
+                where: { usuarioId: { in: idsUsuarios } }
+            });
+
+            // === C. A CORREÇÃO DO ERRO ===
+            // Antes de apagar o usuário, precisamos apagar TODOS os vínculos de admin que ele tem.
+            // Isso inclui vínculos com a loja atual E com filiais que ele tenha criado.
+            // Se não fizermos isso, o banco bloqueia dizendo que o usuário ainda é dono de uma loja.
+            await tx.adminLoja.deleteMany({
                 where: { usuarioId: { in: idsUsuarios } }
             });
         }
 
-        // C. Limpeza de dados ligados à Empresa
+        // D. Limpeza de dados ligados à Empresa
         
-        // ---> AQUI ESTAVA O ERRO: Precisamos apagar os vínculos de AdminLoja
+        // Limpa AdminLoja reverso (caso tenha sobrado algum vínculo órfão apontando para esta empresa)
         await tx.adminLoja.deleteMany({
             where: { empresaId: id }
         });
@@ -61,12 +69,12 @@ export async function DELETE(request: Request) {
             where: { empresaId: id }
         });
 
-        // D. Agora sim, apaga os Usuários
+        // E. Agora sim, apaga os Usuários (O banco libera pois AdminLoja já foi limpo no passo C)
         await tx.usuario.deleteMany({
             where: { empresaId: id }
         });
 
-        // E. Finalmente, apaga a Empresa
+        // F. Finalmente, apaga a Empresa
         await tx.empresa.delete({
             where: { id: id }
         });

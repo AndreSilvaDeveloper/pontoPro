@@ -11,13 +11,23 @@ async function isSuperAdmin() {
 }
 
 // LISTAR TODAS AS EMPRESAS
-export async function POST(request: Request) { // Pode mudar para GET se quiser, mas POST funciona
+export async function POST(request: Request) { 
   if (!(await isSuperAdmin())) return NextResponse.json({ erro: '403' }, { status: 403 });
 
   try {
     const empresas = await prisma.empresa.findMany({
         orderBy: { criadoEm: 'desc' },
-        include: { _count: { select: { usuarios: true } } }
+        include: { 
+            // 1. Mantém a contagem total
+            _count: { select: { usuarios: true } },
+
+            // 2. ADICIONA ISTO AQUI: Traz a lista dos donos/admins
+            usuarios: {
+                where: { cargo: { in: ['ADMIN', 'SUPER_ADMIN'] } }, // Só traz chefes
+                select: { id: true, nome: true, email: true, cargo: true }, // Dados essenciais
+                orderBy: { nome: 'asc' }
+            }
+        }
     });
     return NextResponse.json(empresas);
   } catch (error) {

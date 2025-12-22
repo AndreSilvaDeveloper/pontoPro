@@ -18,38 +18,49 @@ export async function POST(request: Request) {
 
     if (!nome) return NextResponse.json({ erro: 'Nome é obrigatório' }, { status: 400 });
 
-    // Busca dados atuais do usuário para saber onde ele está AGORA
+    // Busca onde o usuário está logado agora
     const usuarioAtual = await prisma.usuario.findUnique({
         where: { id: session.user.id },
         select: { empresaId: true }
     });
 
-    // Transação Atômica: Ou faz tudo, ou não faz nada (Evita dados órfãos)
+    // Se ele não estiver em loja nenhuma, retorna erro
+    if (!usuarioAtual?.empresaId) {
+        return NextResponse.json({ erro: 'Você precisa estar logado em uma empresa principal para criar filiais.' }, { status: 400 });
+    }
+
+    // === CORREÇÃO DO ERRO DE TYPESCRIPT ===
+    // Criamos uma constante local garantindo que é string.
+    // O TypeScript agora sabe que "idEmpresaAtual" nunca será null.
+    const idEmpresaAtual = usuarioAtual.empresaId;
+
     const novaEmpresa = await prisma.$transaction(async (tx) => {
         
-        // === AUTO-CORREÇÃO: Garante a loja ANTERIOR ===
-        // Antes de mudar o usuário de loja, verificamos se ele tem a permissão da loja atual gravada.
-        // Se não tiver, gravamos agora. Isso impede que a loja suma da lista.
-        if (usuarioAtual?.empresaId) {
-            const permissaoExistente = await tx.adminLoja.findUnique({
-                where: {
-                    usuarioId_empresaId: {
-                        usuarioId: session.user.id,
-                        empresaId: usuarioAtual.empresaId
-                    }
+        // === AUTO-CORREÇÃO (Mantida) ===
+        // Usamos idEmpresaAtual em vez de usuarioAtual.empresaId
+        const permissaoExistente = await tx.adminLoja.findUnique({
+            where: {
+                usuarioId_empresaId: {
+                    usuarioId: session.user.id,
+                    empresaId: idEmpresaAtual // <--- Aqui (Variável segura)
+                }
+            }
+        });
+
+        if (!permissaoExistente) {
+            await tx.adminLoja.create({
+                data: { 
+                    usuarioId: session.user.id, 
+                    empresaId: idEmpresaAtual // <--- Aqui
                 }
             });
-
-            if (!permissaoExistente) {
-                console.log(`Corrigindo permissão faltante para a empresa ${usuarioAtual.empresaId}...`);
-                await tx.adminLoja.create({
-                    data: {
-                        usuarioId: session.user.id,
-                        empresaId: usuarioAtual.empresaId
-                    }
-                });
-            }
         }
+
+        // === O PULO DO GATO: BUSCAR OS SÓCIOS ===
+        const sociosAtuais = await tx.adminLoja.findMany({
+            where: { empresaId: idEmpresaAtual }, // <--- Aqui
+            select: { usuarioId: true }
+        });
 
         // 1. Cria a NOVA Empresa
         const emp = await tx.empresa.create({
@@ -65,15 +76,23 @@ export async function POST(request: Request) {
             }
         });
 
-        // 2. Cria o Vínculo Permanente (AdminLoja) para a NOVA empresa
-        await tx.adminLoja.create({
-            data: {
-                usuarioId: session.user.id,
-                empresaId: emp.id
-            }
+        // 2. CRIA O VÍNCULO PARA TODO MUNDO (Você + Sócios)
+        const novosVinculos = sociosAtuais.map(socio => ({
+            usuarioId: socio.usuarioId,
+            empresaId: emp.id
+        }));
+
+        // Fallback de segurança
+        if (novosVinculos.length === 0) {
+            novosVinculos.push({ usuarioId: session.user.id, empresaId: emp.id });
+        }
+
+        await tx.adminLoja.createMany({
+            data: novosVinculos,
+            skipDuplicates: true 
         });
 
-        // 3. Move o usuário para a NOVA empresa (Contexto Atual)
+        // 3. Move APENAS VOCÊ para a nova empresa
         await tx.usuario.update({
             where: { id: session.user.id },
             data: { empresaId: emp.id }
