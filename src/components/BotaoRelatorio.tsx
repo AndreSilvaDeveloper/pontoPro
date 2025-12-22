@@ -9,7 +9,7 @@ import { Download, FileText, FileJson, ChevronDown, FileCode, Printer, Eye } fro
 import * as XLSX from 'xlsx';
 import { gerarAFD, gerarAFDT } from '@/utils/geradorMTE'; 
 
-// === HELPER: Converter Imagem URL para Base64 (Corrige o problema da assinatura) ===
+// === HELPER: Converter Imagem URL para Base64 ===
 const getBase64ImageFromURL = async (url: string): Promise<string | null> => {
     try {
         const response = await fetch(url, { mode: 'cors' });
@@ -39,11 +39,11 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
   const [menuAberto, setMenuAberto] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // === 1. LÓGICA ANTIGA DE PROCESSAMENTO (Que você prefere) ===
+  // === 1. NOVA LÓGICA (SEQUENCIAL PARA 6 BATIDAS) ===
   const processarDados = () => {
     const diasMap: Record<string, any> = {};
     
-    // Normaliza
+    // 1. Normaliza os dados
     const pontosNormalizados = pontos.map((p: any) => ({
         ...p,
         realTipo: p.tipo === 'PONTO' ? p.subTipo : p.tipo,
@@ -52,87 +52,92 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         unome: p.usuario?.nome || 'Desconhecido'
     }));
 
-    // Ordena
-    const pontosOrdenados = [...pontosNormalizados].sort((a:any, b:any) => {
-        if (a.unome < b.unome) return -1;
-        if (a.unome > b.unome) return 1;
-        return a.dataObj.getTime() - b.dataObj.getTime();
-    });
+    // 2. Agrupa tudo por Dia + Usuário
+    pontosNormalizados.forEach((p: any) => {
+        const dateKey = format(p.dataObj, 'yyyy-MM-dd');
+        const uniqueKey = `${p.uid}_${dateKey}`;
 
-    // A. Processa Ausências (Preenche dias inteiros)
-    pontosOrdenados.forEach((p: any) => {
+        // Cria a entrada do dia se não existir
+        if (!diasMap[uniqueKey]) {
+            diasMap[uniqueKey] = {
+                data: p.dataObj,
+                nomeFunc: p.unome,
+                batidas: [], // Lista temporária para ordenar horários
+                obsArray: [], // Lista de observações
+                isAusencia: false
+            };
+        }
+
+        // Se for Ausência
         if (p.realTipo === 'AUSENCIA' || p.tipo === 'AUSENCIA') {
             const dtInicio = new Date(p.dataHora);
             const dtFim = p.extra?.dataFim ? new Date(p.extra.dataFim) : dtInicio;
+            
+            // Marca o dia atual e possíveis dias seguintes (se for período)
             try {
                 const intervalo = eachDayOfInterval({ start: dtInicio, end: dtFim });
                 intervalo.forEach((diaDoIntervalo) => {
-                    const dateKey = format(diaDoIntervalo, 'yyyy-MM-dd');
-                    const uniqueKey = `${p.uid}_${dateKey}`;
+                    const dKey = format(diaDoIntervalo, 'yyyy-MM-dd');
+                    const uKey = `${p.uid}_${dKey}`;
                     
-                    if(!diasMap[uniqueKey]) {
-                        diasMap[uniqueKey] = { 
+                    if(!diasMap[uKey]) {
+                        diasMap[uKey] = { 
                             data: diaDoIntervalo, 
                             nomeFunc: p.unome,
-                            e1:'-', s1:'-', e2:'-', s2:'-', obs: '' 
+                            batidas: [], 
+                            obsArray: [],
+                            isAusencia: true 
                         };
                     }
                     const motivo = p.descricao || p.motivo || 'Sem motivo';
-                    diasMap[uniqueKey].obs = `AUSÊNCIA: ${motivo}`;
-                    diasMap[uniqueKey].isAusencia = true;
+                    diasMap[uKey].obsArray.push(`AUSÊNCIA: ${motivo}`);
+                    diasMap[uKey].isAusencia = true;
                 });
             } catch(e) {}
+        } 
+        // Se for Ponto Normal (Entrada, Saída, Intervalos...)
+        else if (['ENTRADA', 'SAIDA', 'SAIDA_ALMOCO', 'VOLTA_ALMOCO', 'SAIDA_INTERVALO', 'VOLTA_INTERVALO', 'PONTO'].includes(p.realTipo)) {
+            const horaFormatada = format(p.dataObj, 'HH:mm');
+            diasMap[uniqueKey].batidas.push(horaFormatada);
+            
+            if (p.descricao && p.descricao !== 'Manual' && !p.descricao.includes('GPS')) {
+                diasMap[uniqueKey].obsArray.push(p.descricao);
+            }
         }
     });
 
-    // B. Processa Pontos (Pares Ent/Sai)
-    for (let i = 0; i < pontosOrdenados.length; i++) {
-        const p = pontosOrdenados[i];
-        if (p.tipo === 'AUSENCIA' || p.realTipo === 'AUSENCIA') continue;
+    // 3. Transforma o Map em Array formatado para a Tabela
+    const resultado = Object.values(diasMap).map((item: any) => {
+        // Ordena as batidas cronologicamente
+        const batidasOrdenadas = item.batidas.sort();
+        
+        // Remove duplicatas de observação
+        const obsUnicas = [...new Set(item.obsArray)].join('; ');
 
-        if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(p.realTipo)) {
-            const dateKey = format(p.dataObj, 'yyyy-MM-dd');
-            const uniqueKey = `${p.uid}_${dateKey}`;
+        return {
+            data: item.data,
+            nomeFunc: item.nomeFunc,
+            dataFormatada: format(new Date(item.data), 'dd/MM/yyyy'),
+            diaSemana: format(new Date(item.data), 'EEE', { locale: ptBR }).toUpperCase(),
+            
+            // Mapeia sequencialmente para as 6 colunas
+            e1: batidasOrdenadas[0] || '-',
+            s1: batidasOrdenadas[1] || '-',
+            e2: batidasOrdenadas[2] || '-',
+            s2: batidasOrdenadas[3] || '-',
+            e3: batidasOrdenadas[4] || '-', // Extra 1 (Volta Intervalo)
+            s3: batidasOrdenadas[5] || '-', // Extra 2 (Saída Final)
+            
+            obs: item.isAusencia ? (obsUnicas || 'Ausência Registrada') : obsUnicas,
+            isAusencia: item.isAusencia
+        };
+    });
 
-            if (!diasMap[uniqueKey]) {
-                diasMap[uniqueKey] = { 
-                    data: p.dataObj, 
-                    nomeFunc: p.unome,
-                    e1:'', s1:'', e2:'', s2:'', obs: '' 
-                };
-            }
-
-            const horaFormatada = format(p.dataObj, 'HH:mm');
-            // Se for a primeira batida do dia ou volta de almoço
-            if (!diasMap[uniqueKey].e1) diasMap[uniqueKey].e1 = horaFormatada;
-            else diasMap[uniqueKey].e2 = horaFormatada;
-
-            // Tenta achar a saída correspondente
-            const proximo = pontosOrdenados[i+1];
-            if (proximo && ['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(proximo.realTipo) && proximo.uid === p.uid) {
-                const horaSaida = format(new Date(proximo.dataHora), 'HH:mm');
-                
-                if (!diasMap[uniqueKey].s1) diasMap[uniqueKey].s1 = horaSaida;
-                else diasMap[uniqueKey].s2 = horaSaida;
-
-                if (p.descricao?.includes('Manual') || proximo.descricao?.includes('Manual')) {
-                    diasMap[uniqueKey].obs = 'Ajuste Manual';
-                }
-                i++; 
-            }
-        }
-    }
-
-    const resultado = Object.values(diasMap).map((item: any) => ({
-        ...item,
-        dataFormatada: format(new Date(item.data), 'dd/MM/yyyy'),
-        diaSemana: format(new Date(item.data), 'EEE', { locale: ptBR }).toUpperCase()
-    }));
-
+    // Ordena o array final por data
     return resultado.sort((a:any, b:any) => new Date(a.data).getTime() - new Date(b.data).getTime());
   };
 
-  // === 2. GERADOR PDF (LAYOUT ROXO RESTAURADO) ===
+  // === 2. GERADOR PDF ATUALIZADO (6 COLUNAS) ===
   const criarDocPDF = async () => {
     const doc = new jsPDF();
     const dadosProcessados = processarDados();
@@ -154,7 +159,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     doc.text('Conformidade Portaria 671', 195, 20, { align: 'right' });
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 195, 25, { align: 'right' });
 
-    // Caixa Cinza de Filtros
+    // Filtros
     doc.setFillColor(245, 245, 245); 
     doc.rect(14, 45, 182, 25, 'F');
     doc.setTextColor(0, 0, 0); doc.setFontSize(10);
@@ -165,7 +170,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     doc.setFont('helvetica', 'bold'); doc.text('PERÍODO:', 80, 52); 
     doc.setFont('helvetica', 'normal'); doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, 80, 58);
 
-    // Cards de Saldo (Layout Roxo e Verde)
+    // Cards Saldo
     if (resumoHoras && !ehRelatorioGeral) {
       // Trabalhado
       doc.setFillColor(124, 58, 237); 
@@ -184,26 +189,38 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
       doc.text(resumoHoras.saldo || "0h 0m", 179.5, 62, { align: 'center' });
     }
 
-    // Tabela (Layout Antigo restaurado)
+    // === DEFINIÇÃO DAS 6 COLUNAS ===
     const colunas = [
         { header: 'Data', dataKey: 'dataFormatada' },
         { header: 'Dia', dataKey: 'diaSemana' },
         { header: 'Ent.', dataKey: 'e1' }, { header: 'Sai.', dataKey: 's1' },
         { header: 'Ent.', dataKey: 'e2' }, { header: 'Sai.', dataKey: 's2' },
+        { header: 'Ent.', dataKey: 'e3' }, { header: 'Sai.', dataKey: 's3' }, // Novas Colunas
         { header: 'Observações', dataKey: 'obs' },
     ];
-    const colStyles: any = { 0: { cellWidth: 22 }, 1: { cellWidth: 15 }, 2: { cellWidth: 12 }, 3: { cellWidth: 12 }, 4: { cellWidth: 12 }, 5: { cellWidth: 12 }, 6: { cellWidth: 'auto' } };
+
+    // Ajuste de largura para caber tudo na folha A4
+    const colStyles: any = { 
+        0: { cellWidth: 20 }, // Data
+        1: { cellWidth: 12 }, // Dia
+        2: { cellWidth: 11 }, // E1
+        3: { cellWidth: 11 }, // S1
+        4: { cellWidth: 11 }, // E2
+        5: { cellWidth: 11 }, // S2
+        6: { cellWidth: 11 }, // E3 (Novo)
+        7: { cellWidth: 11 }, // S3 (Novo)
+        8: { cellWidth: 'auto' } // Obs (Restante)
+    };
 
     autoTable(doc, {
       body: dadosProcessados,
       startY: 80,
       theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, valign: 'middle', halign: 'center' },
+      styles: { fontSize: 7, cellPadding: 1.5, valign: 'middle', halign: 'center' }, // Fonte um pouco menor para caber
       headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
       columns: colunas,
       columnStyles: colStyles,
       didParseCell: function(data) {
-        // Pinta de vermelho se for falta
         if (data.row.raw && (data.row.raw as any).isAusencia) {
             if (data.section === 'body') { 
                 data.cell.styles.fillColor = [255, 240, 240]; 
@@ -213,7 +230,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
       }
     });
 
-    // Assinatura (Correção Definitiva)
+    // Assinatura
     // @ts-ignore
     let finalY = doc.lastAutoTable.finalY + 40;
     if (finalY > 250) { doc.addPage(); finalY = 40; }
@@ -223,18 +240,13 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     doc.setFontSize(8); doc.setTextColor(100, 100, 100);
     doc.text('Assinatura do Colaborador', 14, finalY + 5);
 
-    // INSERÇÃO DA IMAGEM DA ASSINATURA
     if (assinaturaUrl) {
         try {
-            // Usa a função helper para pegar o base64
             const imgData = await getBase64ImageFromURL(assinaturaUrl);
             if (imgData) {
-                // Ajusta a posição para ficar EM CIMA da linha
                 doc.addImage(imgData, 'PNG', 20, finalY - 25, 40, 20);
             }
-        } catch (e) {
-            console.error("Erro ao inserir assinatura", e);
-        }
+        } catch (e) { console.error(e); }
     }
 
     return doc;
@@ -258,7 +270,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     finally { setLoading(false); setMenuAberto(false); }
   };
 
-  // Funções MTE e Excel (Mantidas)
+  // Funções MTE mantidas (elas já aceitam lista crua de pontos)
   const baixarAFD = () => {
     const txtContent = gerarAFD(pontos, dadosEmpresaCompleto || { nome: nomeEmpresa, cnpj: '00000000000000' });
     const blob = new Blob([txtContent], { type: 'text/plain' });
@@ -273,12 +285,15 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     const a = document.createElement('a'); a.href = url; a.download = `AFDT.txt`; a.click(); setMenuAberto(false);
   };
 
+  // === 3. EXCEL ATUALIZADO (6 COLUNAS) ===
   const gerarExcel = () => {
     const dados = processarDados();
     const ws = XLSX.utils.json_to_sheet(dados.map((row: any) => ({
         Data: row.dataFormatada,
         Dia: row.diaSemana,
-        Ent1: row.e1, Sai1: row.s1, Ent2: row.e2, Sai2: row.s2,
+        Ent1: row.e1, Sai1: row.s1, 
+        Ent2: row.e2, Sai2: row.s2,
+        Ent3: row.e3, Sai3: row.s3, // Novas Colunas
         Obs: row.obs
     })));
     const wb = XLSX.utils.book_new();

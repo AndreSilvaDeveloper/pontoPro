@@ -401,9 +401,12 @@ export default function AdminDashboard() {
                     <span className="text-xs font-bold">Auditoria</span>
                 </Link>
 
-                <Link href="/admin/configuracoes" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group">
-                    <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors"><Settings size={20} className="text-slate-400 group-hover:text-white"/></div>
-                    <span className="text-xs font-bold">Configurações</span>
+                <Link href="/admin/dashboard" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group">
+                    <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
+                        {/* Ícone alterado para LayoutDashboard */}
+                        <LayoutDashboard size={20} className="text-slate-400 group-hover:text-white"/>
+                    </div>
+                    <span className="text-xs font-bold">Visão Geral</span>
                 </Link>
             </div>
         </div>

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-// LISTAR LOJAS (GET)
+// === GET: LISTAR LOJAS (COM AUTO-CURA) ===
 export async function GET() {
   const session = await getServerSession(authOptions);
   
@@ -12,34 +12,54 @@ export async function GET() {
   }
 
   try {
-    // 1. Busca o usuário e inclui a relação 'lojasPermitidas' -> 'empresa'
     const usuario = await prisma.usuario.findUnique({
         where: { id: session.user.id },
-        select: {
-            id: true,
-            empresaId: true,
-            empresa: { select: { id: true, nome: true } }, // A loja atual (contexto)
-            lojasPermitidas: {
-                select: {
-                    empresa: { select: { id: true, nome: true } }
-                }
-            }
+        select: { 
+            cargo: true, 
+            empresaId: true, 
+            empresa: { select: { id: true, nome: true } } 
         }
     });
 
     if (!usuario) return NextResponse.json([]);
 
-    // 2. Monta a lista de lojas
-    // Começa com as lojas da tabela de permissão (AdminLoja)
-    let listaLojas = usuario.lojasPermitidas.map(reg => reg.empresa);
+    // 1. Busca permissões explícitas
+    let permissoes = await prisma.adminLoja.findMany({
+        where: { usuarioId: session.user.id },
+        include: { empresa: { select: { id: true, nome: true } } }
+    });
 
-    // Se a lista estiver vazia (caso o usuário não tenha sido adicionado no AdminLoja ainda),
-    // adicionamos a empresa atual dele como fallback para não ficar sem nada.
-    if (listaLojas.length === 0 && usuario.empresa) {
-        listaLojas.push(usuario.empresa);
+    // === AUTO-CURA (SELF-HEALING) ===
+    // Se o usuário está numa empresa mas não tem permissão explícita nela, cria agora.
+    if (usuario.empresaId && !permissoes.find(p => p.empresaId === usuario.empresaId)) {
+        console.log("Detectada inconsistência. Criando vínculo automático...");
+        
+        await prisma.adminLoja.create({
+            data: {
+                usuarioId: session.user.id,
+                empresaId: usuario.empresaId
+            }
+        });
+
+        if (usuario.empresa) {
+            // @ts-ignore
+            permissoes.push({ empresa: usuario.empresa }); 
+        }
     }
 
-    // Remove duplicados (caso a loja atual já esteja na lista de permitidas)
+    // Se for SUPER_ADMIN, vê todas (opcional, mas mantive a lógica de permissão acima como prioritária)
+    // @ts-ignore
+    if (usuario.cargo === 'SUPER_ADMIN') {
+        const todasEmpresas = await prisma.empresa.findMany({
+            select: { id: true, nome: true },
+            orderBy: { nome: 'asc' }
+        });
+        // Retorna todas, mas garante que a atual esteja selecionada na interface
+        return NextResponse.json(todasEmpresas);
+    }
+
+    const listaLojas = permissoes.map(p => p.empresa);
+    // Remove duplicatas
     const lojasUnicas = Array.from(new Map(listaLojas.map(item => [item.id, item])).values());
 
     return NextResponse.json(lojasUnicas);
@@ -50,7 +70,7 @@ export async function GET() {
   }
 }
 
-// TROCAR LOJA (POST)
+// === POST: REALIZAR A TROCA ===
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -60,7 +80,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    // Aceita variações de nome para garantir
+    // Aceita variações de nome para garantir compatibilidade
     const empresaId = body.empresaId || body.novaEmpresaId || body.id;
 
     if (!empresaId) {
