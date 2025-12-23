@@ -65,6 +65,9 @@ model Usuario {
   solicitacoes  SolicitacaoAjuste[] 
 
   criadoEm      DateTime @default(now())
+  
+  resetToken       String?   @unique
+  resetTokenExpiry DateTime?
 }
 
 

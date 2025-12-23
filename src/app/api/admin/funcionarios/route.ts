@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Caminho absoluto recomendado
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
 import { put } from '@vercel/blob';
 import { hash } from 'bcryptjs';
+// === NOVO IMPORT ===
+import { enviarEmailSeguro } from '@/lib/email';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
@@ -17,12 +19,11 @@ export async function GET(request: Request) {
     const funcionarios = await prisma.usuario.findMany({
       where: { 
           empresaId: session.user.empresaId, 
-          cargo: { not: 'ADMIN' } // Lista apenas funcionários, não outros admins
+          cargo: { not: 'ADMIN' } 
       },
       orderBy: { nome: 'asc' }
     });
     
-    // Remove a senha antes de enviar para o front (segurança)
     const seguros = funcionarios.map(f => {
         const { senha, ...resto } = f;
         return resto;
@@ -54,7 +55,6 @@ export async function POST(request: Request) {
     const raio = formData.get('raio') as string;
     const fotoArquivo = formData.get('foto') as File | null;
     
-    // Campos Especiais (JSON / Boolean)
     const pontoLivre = formData.get('pontoLivre') === 'true';
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ erro: 'Nome e Email são obrigatórios.' }, { status: 400 });
     }
 
-    // 2. VERIFICAÇÃO DE DUPLICIDADE (A Correção Principal)
+    // 2. VERIFICAÇÃO DE DUPLICIDADE
     const usuarioExistente = await prisma.usuario.findUnique({
         where: { email }
     });
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ erro: 'Este email já está cadastrado no sistema.' }, { status: 409 });
     }
 
-    // 3. Upload Foto (Só faz se o email estiver livre)
+    // 3. Upload Foto
     let fotoPerfilUrl = null;
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
@@ -82,7 +82,8 @@ export async function POST(request: Request) {
     }
 
     // 4. Criptografia da Senha
-    const hashedPassword = await hash('1234', 10);
+    const senhaInicial = '1234'; // Definindo em variável para usar no e-mail
+    const hashedPassword = await hash(senhaInicial, 10);
 
     // 5. Tratamento de JSON
     let jornadaDados = undefined;
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       data: {
         nome,
         email,
-        senha: hashedPassword, // Mantido 'senha' para compatibilidade com seu Login
+        senha: hashedPassword,
         cargo: 'FUNCIONARIO',
         tituloCargo: tituloCargo || 'Colaborador',
         empresaId: session.user.empresaId,
@@ -111,9 +112,28 @@ export async function POST(request: Request) {
         jornada: jornadaDados,
         pontoLivre,
         locaisAdicionais: locaisAdicionaisDados,
-        deveTrocarSenha: true
+        deveTrocarSenha: true // Força troca no primeiro login
       }
     });
+
+    // === 7. ENVIO DE E-MAIL DE BOAS-VINDAS (NOVO) ===
+    const mensagemBoasVindas = `
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h1 style="color: #6d28d9;">Bem-vindo ao WorkID!</h1>
+        <p>Olá <strong>${nome}</strong>,</p>
+        <p>Sua conta de funcionário foi criada com sucesso pela empresa.</p>
+        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <p style="margin: 5px 0;"><strong>Seu Login:</strong> ${email}</p>
+          <p style="margin: 5px 0;"><strong>Senha Provisória:</strong> ${senhaInicial}</p>
+        </div>
+        <p>Acesse o sistema para bater seu ponto e alterar sua senha:</p>
+        <p><a href="https://ontimeia.com/login" style="background-color: #6d28d9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Sistema</a></p>
+        <p style="font-size: 12px; color: #666; margin-top: 30px;">Se você não reconhece este cadastro, ignore este e-mail.</p>
+      </div>
+    `;
+
+    // A função é segura: se o e-mail não existir, ela loga o erro no console mas NÃO trava o cadastro
+    await enviarEmailSeguro(email, 'Bem-vindo ao Time! 🚀', mensagemBoasVindas);
 
     return NextResponse.json(novoUsuario);
 
@@ -197,7 +217,7 @@ export async function DELETE(request: Request) {
     
     if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
 
-    // Limpeza manual de dependências (Ponto, Solicitações, etc.)
+    // Limpeza manual de dependências
     await prisma.ponto.deleteMany({ where: { usuarioId: id } }).catch(() => null);
     await prisma.solicitacaoAjuste.deleteMany({ where: { usuarioId: id } }).catch(() => null);
     await prisma.ausencia.deleteMany({ where: { usuarioId: id } }).catch(() => null);
