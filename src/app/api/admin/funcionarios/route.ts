@@ -37,16 +37,29 @@ export async function GET(request: Request) {
 }
 
 // === POST: CRIAR FUNCIONÁRIO ===
+// ... mantenha os imports lá em cima (NextResponse, prisma, getServerSession, etc)
+// ... mantenha o GET igual
+
+// === POST: CRIAR FUNCIONÁRIO ===
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   
+  // @ts-ignore
   if (!session || session.user.cargo !== 'ADMIN') {
       return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
   }
 
   try {
+    // 0. BUSCA O NOME DA EMPRESA (NOVO)
+    // Precisamos disso para o e-mail ficar personalizado
+    const empresaAtual = await prisma.empresa.findUnique({
+        where: { id: session.user.empresaId },
+        select: { nome: true }
+    });
+    const nomeEmpresa = empresaAtual?.nome || 'Sua Empresa';
+
     const formData = await request.formData();
-    
+    // ... (Coleta dos dados do form continua igual) ...
     const nome = formData.get('nome') as string;
     const email = formData.get('email') as string;
     const tituloCargo = formData.get('tituloCargo') as string;
@@ -54,24 +67,16 @@ export async function POST(request: Request) {
     const longitude = formData.get('longitude') as string;
     const raio = formData.get('raio') as string;
     const fotoArquivo = formData.get('foto') as File | null;
-    
     const pontoLivre = formData.get('pontoLivre') === 'true';
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
-    // 1. Validação Básica
-    if (!nome || !email) {
-        return NextResponse.json({ erro: 'Nome e Email são obrigatórios.' }, { status: 400 });
-    }
+    // 1. Validação
+    if (!nome || !email) return NextResponse.json({ erro: 'Obrigatórios.' }, { status: 400 });
 
-    // 2. VERIFICAÇÃO DE DUPLICIDADE
-    const usuarioExistente = await prisma.usuario.findUnique({
-        where: { email }
-    });
-
-    if (usuarioExistente) {
-        return NextResponse.json({ erro: 'Este email já está cadastrado no sistema.' }, { status: 409 });
-    }
+    // 2. Duplicidade
+    const usuarioExistente = await prisma.usuario.findUnique({ where: { email } });
+    if (usuarioExistente) return NextResponse.json({ erro: 'Email já cadastrado.' }, { status: 409 });
 
     // 3. Upload Foto
     let fotoPerfilUrl = null;
@@ -81,59 +86,86 @@ export async function POST(request: Request) {
       fotoPerfilUrl = blob.url;
     }
 
-    // 4. Criptografia da Senha
-    const senhaInicial = '1234'; // Definindo em variável para usar no e-mail
+    // 4. Senha e Hash
+    const senhaInicial = '1234'; 
     const hashedPassword = await hash(senhaInicial, 10);
 
-    // 5. Tratamento de JSON
+    // 5. JSON Parse (Jornada/Locais)
     let jornadaDados = undefined;
     if (jornadaTexto && jornadaTexto !== 'undefined') {
-        try { jornadaDados = JSON.parse(jornadaTexto); } catch (e) { console.error("Erro parse jornada", e); }
+        try { jornadaDados = JSON.parse(jornadaTexto); } catch (e) {}
     }
-
     let locaisAdicionaisDados = undefined;
     if (locaisTexto && locaisTexto !== 'undefined') {
-        try { locaisAdicionaisDados = JSON.parse(locaisTexto); } catch (e) { console.error("Erro parse locais", e); }
+        try { locaisAdicionaisDados = JSON.parse(locaisTexto); } catch (e) {}
     }
 
     // 6. Criação no Banco
     const novoUsuario = await prisma.usuario.create({
       data: {
-        nome,
-        email,
-        senha: hashedPassword,
-        cargo: 'FUNCIONARIO',
+        nome, email, senha: hashedPassword, cargo: 'FUNCIONARIO',
         tituloCargo: tituloCargo || 'Colaborador',
         empresaId: session.user.empresaId,
         latitudeBase: latitude ? parseFloat(latitude) : 0,
         longitudeBase: longitude ? parseFloat(longitude) : 0,
         raioPermitido: raio ? parseInt(raio) : 100,
-        fotoPerfilUrl,
-        jornada: jornadaDados,
-        pontoLivre,
-        locaisAdicionais: locaisAdicionaisDados,
-        deveTrocarSenha: true // Força troca no primeiro login
+        fotoPerfilUrl, jornada: jornadaDados, pontoLivre, locaisAdicionais: locaisAdicionaisDados,
+        deveTrocarSenha: true
       }
     });
 
-    // === 7. ENVIO DE E-MAIL DE BOAS-VINDAS (NOVO) ===
-    const mensagemBoasVindas = `
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h1 style="color: #6d28d9;">Bem-vindo ao WorkID!</h1>
-        <p>Olá <strong>${nome}</strong>,</p>
-        <p>Sua conta de funcionário foi criada com sucesso pela empresa.</p>
-        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 5px 0;"><strong>Seu Login:</strong> ${email}</p>
-          <p style="margin: 5px 0;"><strong>Senha Provisória:</strong> ${senhaInicial}</p>
+    // === 7. E-MAIL PROFISSIONAL (DESIGN NOVO) ===
+    const htmlEmail = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+        
+        <div style="background-color: #5b21b6; padding: 30px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: -0.5px;">WorkID</h1>
+            <p style="color: #ddd6fe; margin: 5px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Convite Oficial</p>
         </div>
-        <p>Acesse o sistema para bater seu ponto e alterar sua senha:</p>
-        <p><a href="https://ontimeia.com/login" style="background-color: #6d28d9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Sistema</a></p>
-        <p style="font-size: 12px; color: #666; margin-top: 30px;">Se você não reconhece este cadastro, ignore este e-mail.</p>
+
+        <div style="padding: 40px 30px;">
+            <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nome}</strong>! 👋</p>
+
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px; font-size: 15px;">
+                Seja bem-vindo(a) à equipe <strong>${nomeEmpresa}</strong>. <br>
+                Seu cadastro no sistema de ponto digital foi realizado com sucesso.
+            </p>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
+                <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Suas Credenciais de Acesso</p>
+                
+                <div style="margin-bottom: 15px;">
+                    <span style="color: #94a3b8; font-size: 13px;">Login (E-mail):</span><br>
+                    <strong style="color: #1e293b; font-size: 16px;">${email}</strong>
+                </div>
+                
+                <div>
+                    <span style="color: #94a3b8; font-size: 13px;">Senha Provisória:</span><br>
+                    <strong style="color: #5b21b6; font-size: 18px; letter-spacing: 1px; background: #ede9fe; padding: 2px 8px; rounded: 4px;">${senhaInicial}</strong>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-bottom: 30px;">
+                <a href="https://ontimeia.com/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(91, 33, 182, 0.3);">
+                    Acessar Sistema Agora
+                </a>
+            </div>
+
+            <p style="color: #6b7280; font-size: 13px; text-align: center;">
+                Por segurança, recomendamos que você altere sua senha logo no primeiro acesso.
+            </p>
+        </div>
+
+        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="color: #94a3b8; font-size: 12px; margin: 0; line-height: 1.5;">
+                © 2025 WorkID • Tecnologia em Gestão<br>
+                Este convite foi enviado por solicitação de <strong>${nomeEmpresa}</strong>.
+            </p>
+        </div>
       </div>
     `;
 
-    // A função é segura: se o e-mail não existir, ela loga o erro no console mas NÃO trava o cadastro
-    await enviarEmailSeguro(email, 'Bem-vindo ao Time! 🚀', mensagemBoasVindas);
+    await enviarEmailSeguro(email, `Bem-vindo à ${nomeEmpresa}! 🚀`, htmlEmail);
 
     return NextResponse.json(novoUsuario);
 
