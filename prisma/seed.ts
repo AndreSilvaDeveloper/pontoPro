@@ -21,7 +21,7 @@ async function main() {
     data: {
       nome: 'João Dono',
       email: 'admin@padaria.com',
-      senha: '123', // Senha inicial
+      senha: '1234', // Senha inicial
       cargo: 'ADMIN',
       empresaId: empresa.id,
       latitudeBase: -21.766,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { hash } from 'bcryptjs';
-import { enviarEmailSeguro } from '@/lib/email'; // <--- IMPORTANTE
+import { enviarEmailSeguro } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
