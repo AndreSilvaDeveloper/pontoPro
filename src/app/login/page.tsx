@@ -68,7 +68,9 @@ export default function LoginPage() {
       const result = await signIn('credentials', { redirect: false, email, password });
 
       if (result?.error) {
-        toast.error('Acesso negado. Verifique e-mail e senha.', { id: toastId });
+        // === A CORREÇÃO ESTÁ AQUI ===
+        // Em vez de texto fixo, usamos o erro que veio do servidor
+        toast.error(result.error, { id: toastId }); 
         setLoading(false);
       } else {
         toast.success('Login autorizado! Entrando...', { id: toastId });
@@ -275,7 +277,7 @@ export default function LoginPage() {
         )}
         
         <p className="text-center text-slate-600 text-[10px] mt-8">
-          © 2025 WorkID • Tecnologia em Gestão
+          © 2026 WorkID • Tecnologia em Gestão
         </p>
       </div>
     </div>
