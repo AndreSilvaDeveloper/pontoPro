@@ -21,6 +21,10 @@ model Empresa {
 
   intervaloPago   Boolean  @default(false)
   fluxoEstrito    Boolean  @default(true)
+
+  matrizId      String?  // Se tiver ID, é filial. Se for null, é Matriz.
+  matriz        Empresa? @relation("MatrizFilial", fields: [matrizId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  filiais       Empresa[] @relation("MatrizFilial")
   
   usuarios      Usuario[]
   feriados      Feriado[]

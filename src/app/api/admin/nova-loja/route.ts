@@ -18,56 +18,48 @@ export async function POST(request: Request) {
 
     if (!nome) return NextResponse.json({ erro: 'Nome é obrigatório' }, { status: 400 });
 
-    // Busca onde o usuário está logado agora
     const usuarioAtual = await prisma.usuario.findUnique({
         where: { id: session.user.id },
         select: { empresaId: true }
     });
 
-    // Se ele não estiver em loja nenhuma, retorna erro
     if (!usuarioAtual?.empresaId) {
         return NextResponse.json({ erro: 'Você precisa estar logado em uma empresa principal para criar filiais.' }, { status: 400 });
     }
 
-    // === CORREÇÃO DO ERRO DE TYPESCRIPT ===
-    // Criamos uma constante local garantindo que é string.
-    // O TypeScript agora sabe que "idEmpresaAtual" nunca será null.
     const idEmpresaAtual = usuarioAtual.empresaId;
 
     const novaEmpresa = await prisma.$transaction(async (tx) => {
         
-        // === AUTO-CORREÇÃO (Mantida) ===
-        // Usamos idEmpresaAtual em vez de usuarioAtual.empresaId
-        const permissaoExistente = await tx.adminLoja.findUnique({
-            where: {
-                usuarioId_empresaId: {
-                    usuarioId: session.user.id,
-                    empresaId: idEmpresaAtual // <--- Aqui (Variável segura)
-                }
-            }
+        // 1. Busca IDs dos Admins para replicar acesso (Lógica que já fizemos antes)
+        const adminsNativos = await tx.usuario.findMany({
+            where: { empresaId: idEmpresaAtual, cargo: 'ADMIN' },
+            select: { id: true }
         });
 
-        if (!permissaoExistente) {
-            await tx.adminLoja.create({
-                data: { 
-                    usuarioId: session.user.id, 
-                    empresaId: idEmpresaAtual // <--- Aqui
-                }
-            });
-        }
-
-        // === O PULO DO GATO: BUSCAR OS SÓCIOS ===
-        const sociosAtuais = await tx.adminLoja.findMany({
-            where: { empresaId: idEmpresaAtual }, // <--- Aqui
+        const adminsVinculados = await tx.adminLoja.findMany({
+            where: { empresaId: idEmpresaAtual },
             select: { usuarioId: true }
         });
 
-        // 1. Cria a NOVA Empresa
+        const listaDeIds = new Set<string>();
+        adminsNativos.forEach(user => listaDeIds.add(user.id));
+        adminsVinculados.forEach(registro => listaDeIds.add(registro.usuarioId));
+        // @ts-ignore
+        listaDeIds.add(session.user.id);
+
+        // 2. Cria a NOVA Empresa JÁ VINCULADA À ATUAL
         const emp = await tx.empresa.create({
             data: {
                 nome,
                 cnpj: cnpj || null,
                 status: 'ATIVO',
+                
+                // === AQUI ESTÁ A MUDANÇA ===
+                // Define que a mãe desta nova loja é a loja atual
+                matrizId: idEmpresaAtual, 
+                // ===========================
+
                 configuracoes: {
                     exigirFoto: true,
                     bloquearForaDoRaio: true,
@@ -76,23 +68,20 @@ export async function POST(request: Request) {
             }
         });
 
-        // 2. CRIA O VÍNCULO PARA TODO MUNDO (Você + Sócios)
-        const novosVinculos = sociosAtuais.map(socio => ({
-            usuarioId: socio.usuarioId,
+        // 3. Cria permissões de AdminLoja
+        const novosVinculos = Array.from(listaDeIds).map(usuarioId => ({
+            usuarioId: usuarioId,
             empresaId: emp.id
         }));
 
-        // Fallback de segurança
-        if (novosVinculos.length === 0) {
-            novosVinculos.push({ usuarioId: session.user.id, empresaId: emp.id });
+        if (novosVinculos.length > 0) {
+            await tx.adminLoja.createMany({
+                data: novosVinculos,
+                skipDuplicates: true 
+            });
         }
 
-        await tx.adminLoja.createMany({
-            data: novosVinculos,
-            skipDuplicates: true 
-        });
-
-        // 3. Move APENAS VOCÊ para a nova empresa
+        // 4. Move VOCÊ para a nova empresa
         await tx.usuario.update({
             where: { id: session.user.id },
             data: { empresaId: emp.id }

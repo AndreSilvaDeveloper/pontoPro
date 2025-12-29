@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { hash } from 'bcryptjs';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { enviarEmailSeguro } from '@/lib/email'; // <--- IMPORTANTE
+import { enviarEmailSeguro } from '@/lib/email'; 
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
