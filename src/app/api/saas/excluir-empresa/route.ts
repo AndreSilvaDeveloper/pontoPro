@@ -13,68 +13,84 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const { id } = await request.json();
+    const { id } = await request.json(); // ID da empresa para excluir
 
     if (!id) {
         return NextResponse.json({ erro: 'ID da empresa é obrigatório.' }, { status: 400 });
     }
 
-    // 2. EXCLUSÃO EM CASCATA TOTAL (Transaction)
+    // 2. EXCLUSÃO CIRÚRGICA (Transaction)
     await prisma.$transaction(async (tx) => {
         
-        // A. Encontra todos os usuários dessa empresa para limpar os dados deles
-        const usuarios = await tx.usuario.findMany({
-            where: { empresaId: id },
+        // === PASSO A: O RESGATE DOS ADMINS 🚑 ===
+        // Admins não podem ser excluídos, apenas desvinculados desta loja.
+        const adminsDaLoja = await tx.usuario.findMany({
+            where: { 
+                empresaId: id, 
+                cargo: { in: ['ADMIN', 'SUPER_ADMIN'] } 
+            }
+        });
+
+        for (const admin of adminsDaLoja) {
+            // Verifica se esse admin tem acesso a alguma OUTRA loja
+            const outraLoja = await tx.adminLoja.findFirst({
+                where: { 
+                    usuarioId: admin.id,
+                    empresaId: { not: id } // Qualquer loja que NÃO seja a que vamos apagar
+                }
+            });
+
+            if (outraLoja) {
+                // Se tem outra loja, movemos ele para lá automaticamente
+                await tx.usuario.update({
+                    where: { id: admin.id },
+                    data: { empresaId: outraLoja.empresaId }
+                });
+            } else {
+                // Se era a única loja dele, deixamos ele "sem teto" (null) mas com a conta VIVA
+                await tx.usuario.update({
+                    where: { id: admin.id },
+                    data: { empresaId: null }
+                });
+            }
+        }
+
+        // === PASSO B: LISTAR OS FUNCIONÁRIOS (Esses serão apagados) ===
+        // Funcionários pertencem à empresa, então se a empresa morre, os dados deles morrem junto.
+        const funcionarios = await tx.usuario.findMany({
+            where: { empresaId: id, cargo: 'FUNCIONARIO' },
             select: { id: true }
         });
-        const idsUsuarios = usuarios.map(u => u.id);
+        const idsFuncionarios = funcionarios.map(u => u.id);
 
-        if (idsUsuarios.length > 0) {
-            // B. Limpeza de dados ligados aos Usuários (Filhos)
-            await tx.ponto.deleteMany({
-                where: { usuarioId: { in: idsUsuarios } }
-            });
+        if (idsFuncionarios.length > 0) {
+            // Apaga dados vinculados aos funcionários
+            await tx.ponto.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
+            await tx.solicitacaoAjuste.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
+            await tx.ausencia.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
+            
+            // Limpa AdminLoja se por acaso algum funcionário tiver (segurança)
+            await tx.adminLoja.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
 
-            await tx.solicitacaoAjuste.deleteMany({
-                where: { usuarioId: { in: idsUsuarios } }
-            });
-
-            await tx.ausencia.deleteMany({
-                where: { usuarioId: { in: idsUsuarios } }
-            });
-
-            // === C. A CORREÇÃO DO ERRO ===
-            // Antes de apagar o usuário, precisamos apagar TODOS os vínculos de admin que ele tem.
-            // Isso inclui vínculos com a loja atual E com filiais que ele tenha criado.
-            // Se não fizermos isso, o banco bloqueia dizendo que o usuário ainda é dono de uma loja.
-            await tx.adminLoja.deleteMany({
-                where: { usuarioId: { in: idsUsuarios } }
+            // Apaga os usuários Funcionários
+            await tx.usuario.deleteMany({
+                where: { id: { in: idsFuncionarios } }
             });
         }
 
-        // D. Limpeza de dados ligados à Empresa
+        // === PASSO C: LIMPEZA DA EMPRESA ===
         
-        // Limpa AdminLoja reverso (caso tenha sobrado algum vínculo órfão apontando para esta empresa)
+        // Remove todos os vínculos de AdminLoja que apontam para ESTA empresa
+        // (Isso tira o acesso dos admins a essa loja, já que ela vai sumir)
         await tx.adminLoja.deleteMany({
             where: { empresaId: id }
         });
 
-        // Apagar Feriados da empresa
-        await tx.feriado.deleteMany({
-            where: { empresaId: id }
-        });
+        // Apagar dados gerais da empresa
+        await tx.feriado.deleteMany({ where: { empresaId: id } });
+        await tx.logAuditoria.deleteMany({ where: { empresaId: id } });
 
-        // Apagar Logs
-        await tx.logAuditoria.deleteMany({
-            where: { empresaId: id }
-        });
-
-        // E. Agora sim, apaga os Usuários (O banco libera pois AdminLoja já foi limpo no passo C)
-        await tx.usuario.deleteMany({
-            where: { empresaId: id }
-        });
-
-        // F. Finalmente, apaga a Empresa
+        // === PASSO D: FIM DA EMPRESA ===
         await tx.empresa.delete({
             where: { id: id }
         });
