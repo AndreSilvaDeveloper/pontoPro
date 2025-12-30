@@ -19,7 +19,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.usuario.findUnique({
-          where: { email: credentials.email }
+          where: { email: credentials.email },
+          include: { 
+            empresa: true 
+          }
         });
 
         if (!user || !user.senha) {
@@ -35,7 +38,12 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Senha incorreta");
         }
 
-        // Retorna o usuário com os campos iniciais
+        // === MUDANÇA PRINCIPAL AQUI ===
+        // A mensagem exata que vai aparecer no Toast vermelho
+        if (user.cargo !== 'SUPER_ADMIN' && user.empresa && user.empresa.status === 'BLOQUEADO') {
+            throw new Error("🚫 ACESSO SUSPENSO: Sua empresa foi bloqueada pelo Administrador.");
+        }
+
         return {
           id: user.id,
           name: user.nome,
@@ -52,7 +60,6 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // Passa os dados do login inicial para o token
       if (user) {
         token.id = user.id;
         // @ts-ignore
@@ -63,7 +70,6 @@ export const authOptions: NextAuthOptions = {
         token.deveTrocarSenha = user.deveTrocarSenha;
       }
 
-      // Mantemos isso caso você use update() no front, mas a lógica principal será no session()
       if (trigger === "update" && session) {
         return { ...token, ...session };
       }
@@ -71,7 +77,6 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     
-    // === AQUI ESTÁ A CORREÇÃO MÁGICA ===
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id as string;
@@ -80,30 +85,33 @@ export const authOptions: NextAuthOptions = {
         // @ts-ignore
         session.user.deveTrocarSenha = token.deveTrocarSenha;
 
-        // BUSCA FRESCA NO BANCO DE DADOS
-        // Isso garante que se trocou de loja via API, a sessão pega o ID novo imediatamente
         try {
-            // Usamos o ID do usuário (token.id) para ver qual empresa está salva no banco AGORA
             const usuarioFresco = await prisma.usuario.findUnique({
                 where: { id: token.id as string },
                 select: { 
                   empresaId: true, 
-                  empresa: { select: { nome: true } } 
+                  empresa: { select: { nome: true, status: true } } 
                 }
             });
 
             if (usuarioFresco) {
+                // Checagem de expulsão (se foi bloqueado enquanto navegava)
+                // @ts-ignore
+                if (session.user.cargo !== 'SUPER_ADMIN' && usuarioFresco.empresa?.status === 'BLOQUEADO') {
+                     // @ts-ignore
+                     session.error = "BLOQUEADO"; 
+                }
+
                 // @ts-ignore
                 session.user.empresaId = usuarioFresco.empresaId;
                 // @ts-ignore
-                session.user.nomeEmpresa = usuarioFresco.empresa?.nome; // Útil para mostrar o nome no seletor
+                session.user.nomeEmpresa = usuarioFresco.empresa?.nome; 
             } else {
-                // Fallback (se der erro no banco, usa o do token)
                 // @ts-ignore
                 session.user.empresaId = token.empresaId;
             }
         } catch (e) {
-            console.error("Erro ao atualizar sessão via banco", e);
+            console.error("Erro sessão", e);
             // @ts-ignore
             session.user.empresaId = token.empresaId;
         }
@@ -111,15 +119,10 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };

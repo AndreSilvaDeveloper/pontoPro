@@ -5,7 +5,7 @@ import Webcam from 'react-webcam';
 import axios from 'axios';
 import { 
   MapPin, Camera, LogOut, History, RefreshCcw, 
-  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, Clock, CheckCircle2 
+  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, Clock, CheckCircle2, Loader2 
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +16,9 @@ export default function Home() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
+  // Guarda qual botão específico foi clicado para mostrar loading só nele
+  const [acaoEmProcesso, setAcaoEmProcesso] = useState<string | null>(null);
+
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [cameraErro, setCameraErro] = useState(false);
@@ -49,11 +52,15 @@ export default function Home() {
       if (!session?.user?.id) return;
 
       try {
+          // === CORREÇÃO 1: CACHE BUSTING ===
+          // Adicionamos _t=Date.now() para obrigar a Vercel a buscar dados novos
+          const timestamp = new Date().getTime();
+          
           const [resConfig, resStatus] = await Promise.all([
-              axios.get('/api/funcionario/config'),
+              axios.get('/api/funcionario/config', { params: { _t: timestamp } }),
               axios.get('/api/funcionario/ponto/status', {
                   // @ts-ignore
-                  params: { usuarioId: session?.user?.id } 
+                  params: { usuarioId: session?.user?.id, _t: timestamp } 
               })
           ]);
           
@@ -115,8 +122,15 @@ export default function Home() {
 
   const baterPonto = async (tipoAcao?: string) => {
     const tipoFinal = tipoAcao || tipoManual;
+    
+    // Feedback visual imediato
+    setAcaoEmProcesso(tipoFinal); 
 
-    if (!location) { setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' }); return; }
+    if (!location) { 
+        setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' }); 
+        setAcaoEmProcesso(null);
+        return; 
+    }
 
     let imageSrc = null;
     if (configs.exigirFoto) {
@@ -124,6 +138,7 @@ export default function Home() {
         if (!imageSrc) {
             setCameraErro(true);
             setStatusMsg({ tipo: 'erro', texto: 'Não conseguimos capturar a foto.' });
+            setAcaoEmProcesso(null);
             return;
         }
     }
@@ -138,16 +153,28 @@ export default function Home() {
         tipo: tipoFinal 
       });
       
+      // === CORREÇÃO 2: ATUALIZAÇÃO OTIMISTA ===
+      // Atualizamos o estado da tela IMEDIATAMENTE, sem esperar o servidor
+      setStatusPonto(tipoFinal);
+      if (tipoFinal === 'VOLTA_ALMOCO') setJaAlmocou(true);
+      // ========================================
+
       setStatusMsg({ tipo: 'sucesso', texto: `✅ Ponto Registrado!` });
       
       setTimeout(() => {
           setStatusMsg(null);
+          // Recarrega do servidor só pra garantir (double check)
           carregarConfigEStatus();
+          // Só libera o botão após todo o processo
+          setAcaoEmProcesso(null); 
       }, 1500);
 
     } catch (error: any) {
       setStatusMsg({ tipo: 'erro', texto: `❌ ${error.response?.data?.erro || 'Erro ao registrar'}` });
-    } finally { setLoading(false); }
+      setAcaoEmProcesso(null); // Libera o botão se der erro
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   if (status === 'loading') return (
@@ -159,14 +186,13 @@ export default function Home() {
 
   // === RENDERIZAÇÃO INTELIGENTE (Botões Bonitos) ===
   const renderizarBotoesInteligentes = () => {
-      const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-white relative overflow-hidden group";
+      const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-white relative overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed";
       
       // 1. Iniciar Dia
       if (!statusPonto || statusPonto === 'SAIDA') {
           return (
             <button onClick={() => baterPonto('ENTRADA')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-emerald-600 to-emerald-500`}>
-                <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full" />
-                {loading ? 'Processando...' : <><LogIn size={28} /> INICIAR TRABALHO</>}
+                {acaoEmProcesso === 'ENTRADA' ? <Loader2 className="animate-spin" /> : <><LogIn size={28} /> INICIAR TRABALHO</>}
             </button>
           );
       }
@@ -177,23 +203,23 @@ export default function Home() {
             <div className="space-y-4 animate-in slide-in-from-bottom-4 fade-in">
                 {jaAlmocou ? (
                      <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-amber-500 to-yellow-500`}>
-                        <Coffee size={28} /> PAUSA PARA CAFÉ
+                        {acaoEmProcesso === 'SAIDA_INTERVALO' ? <Loader2 className="animate-spin" /> : <><Coffee size={28} /> PAUSA PARA CAFÉ</>}
                     </button>
                 ) : (
                     <div className="grid grid-cols-2 gap-4">
-                        <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-amber-400 shadow-lg active:scale-95 transition-all">
-                            <Coffee size={32} /> 
-                            <span className="text-xs uppercase tracking-wider">Pausa Café</span>
+                        <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-amber-400 shadow-lg active:scale-95 transition-all disabled:opacity-50">
+                            {acaoEmProcesso === 'SAIDA_INTERVALO' ? <Loader2 className="animate-spin" size={32}/> : <Coffee size={32} />}
+                            <span className="text-xs uppercase tracking-wider">{acaoEmProcesso === 'SAIDA_INTERVALO' ? 'Registrando...' : 'Pausa Café'}</span>
                         </button>
-                        <button onClick={() => baterPonto('SAIDA_ALMOCO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-lg active:scale-95 transition-all">
-                            <CupSoda size={32} /> 
-                            <span className="text-xs uppercase tracking-wider">Almoço</span>
+                        <button onClick={() => baterPonto('SAIDA_ALMOCO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-600 to-red-500 text-white shadow-lg active:scale-95 transition-all disabled:opacity-50">
+                            {acaoEmProcesso === 'SAIDA_ALMOCO' ? <Loader2 className="animate-spin" size={32}/> : <CupSoda size={32} />}
+                            <span className="text-xs uppercase tracking-wider">{acaoEmProcesso === 'SAIDA_ALMOCO' ? 'Registrando...' : 'Almoço'}</span>
                         </button>
                     </div>
                 )}
                 
-                <button onClick={() => baterPonto('SAIDA')} disabled={loading} className="w-full py-4 rounded-xl font-medium border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center justify-center gap-2 text-sm transition-colors mt-2">
-                    <LogOut size={18} /> Encerrar Expediente
+                <button onClick={() => baterPonto('SAIDA')} disabled={loading} className="w-full py-4 rounded-xl font-medium border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center justify-center gap-2 text-sm transition-colors mt-2 disabled:opacity-50">
+                    {acaoEmProcesso === 'SAIDA' ? <Loader2 className="animate-spin" size={18}/> : <><LogOut size={18} /> Encerrar Expediente</>}
                 </button>
             </div>
           );
@@ -203,8 +229,7 @@ export default function Home() {
       if (statusPonto === 'SAIDA_ALMOCO') {
         return (
           <button onClick={() => baterPonto('VOLTA_ALMOCO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-blue-600 to-blue-500`}>
-              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full" />
-              {loading ? 'Processando...' : <><ArrowRightCircle size={28} /> VOLTAR DO ALMOÇO</>}
+              {acaoEmProcesso === 'VOLTA_ALMOCO' ? <Loader2 className="animate-spin" /> : <><ArrowRightCircle size={28} /> VOLTAR DO ALMOÇO</>}
           </button>
         );
       }
@@ -213,8 +238,7 @@ export default function Home() {
       if (statusPonto === 'SAIDA_INTERVALO') {
         return (
           <button onClick={() => baterPonto('VOLTA_INTERVALO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-indigo-600 to-indigo-500`}>
-              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full" />
-              {loading ? 'Processando...' : <><ArrowRightCircle size={28} /> VOLTAR DO CAFÉ</>}
+              {acaoEmProcesso === 'VOLTA_INTERVALO' ? <Loader2 className="animate-spin" /> : <><ArrowRightCircle size={28} /> VOLTAR DO CAFÉ</>}
           </button>
         );
       }
@@ -222,10 +246,11 @@ export default function Home() {
 
   // Botões do modo flexível (caso fluxo estrito esteja desligado)
   const renderizarBotoesFlexiveis = () => {
-      const btnFlex = "p-3 rounded-xl text-[10px] font-bold border transition-all flex flex-col items-center justify-center gap-1 active:scale-95";
+      const btnFlex = "p-3 rounded-xl text-[10px] font-bold border transition-all flex flex-col items-center justify-center gap-1 active:scale-95 disabled:opacity-50";
       return (
         <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2">
+                {/* Botões de seleção de tipo não precisam de loading individual, só o botão de confirmar abaixo */}
                 <button onClick={()=>setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual==='ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
                     <LogIn size={16}/> Entrada
                 </button>
@@ -247,8 +272,9 @@ export default function Home() {
                     <LogOut size={16}/> Saída
                 </button>
             </div>
-            <button onClick={() => baterPonto()} disabled={loading || (configs.exigirFoto && cameraErro)} className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-lg shadow-xl transition-all active:scale-95 ${loading ? 'bg-slate-600' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white'}`}>
-                {loading ? 'Processando...' : <><Camera size={24} /> CONFIRMAR PONTO</>}
+            
+            <button onClick={() => baterPonto()} disabled={loading || (configs.exigirFoto && cameraErro)} className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-lg shadow-xl transition-all active:scale-95 disabled:opacity-70 ${loading ? 'bg-slate-600' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white'}`}>
+                {loading ? <><Loader2 className="animate-spin" /> Registrando...</> : <><Camera size={24} /> CONFIRMAR PONTO</>}
             </button>
         </div>
       );

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Users } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// Importa o Mapa dinamicamente para não quebrar no servidor
+// Importa o Mapa dinamicamente
 const MapaCaptura = dynamic(() => import('@/components/MapaCaptura'), { 
     ssr: false,
     loading: () => <div className="h-64 w-full bg-slate-800 animate-pulse rounded-xl flex items-center justify-center text-slate-500">Carregando Mapa...</div>
@@ -41,9 +41,11 @@ export default function GestaoFuncionarios() {
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('100');
+  
+  // === AQUI ESTÁ A CORREÇÃO: ESTADO DA FOTO ===
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
   
-  // Novos Campos (Cerca Virtual Avançada)
+  // Novos Campos
   const [pontoLivre, setPontoLivre] = useState(false);
   const [locaisExtras, setLocaisExtras] = useState<any[]>([]);
   const [novoLocal, setNovoLocal] = useState({ nome: '', lat: '', lng: '', raio: '100' });
@@ -62,7 +64,6 @@ export default function GestaoFuncionarios() {
 
   useEffect(() => { carregarLista(); }, []);
 
-  // Busca o nome da empresa
   useEffect(() => {
     axios.get('/api/admin/empresa')
       .then(res => setLojaAtual(res.data.nome))
@@ -81,8 +82,8 @@ export default function GestaoFuncionarios() {
     setNome(''); setEmail(''); setTituloCargo(''); 
     setLat(''); setLng(''); setRaio('100');
     setJornada(jornadaPadrao);
-    setPontoLivre(false); setLocaisExtras([]); // Reset novos campos
-    setFotoArquivo(null);
+    setPontoLivre(false); setLocaisExtras([]); 
+    setFotoArquivo(null); // Limpa foto
     setShowModal(true);
   };
 
@@ -97,16 +98,15 @@ export default function GestaoFuncionarios() {
     setJornada(f.jornada || jornadaPadrao);
     setPontoLivre(f.pontoLivre || false);
     setLocaisExtras(f.locaisAdicionais || []);
-    setFotoArquivo(null);
+    setFotoArquivo(null); // Limpa foto (só preenche se for trocar)
     setShowModal(true);
   };
 
   const fecharModal = () => { setShowModal(false); setIdEdicao(null); };
 
-  // === AQUI ESTÁ A CORREÇÃO PRINCIPAL ===
   const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pontoLivre && (!lat || !lng)) return alert('Defina a localização principal (use o mapa ou botão GPS)!');
+    if (!pontoLivre && (!lat || !lng)) return alert('Defina a localização principal!');
     
     setLoading(true);
     try {
@@ -118,11 +118,10 @@ export default function GestaoFuncionarios() {
       formData.append('longitude', lng);
       formData.append('raio', raio);
       formData.append('jornada', JSON.stringify(jornada)); 
-      
-      // Envia campos novos
       formData.append('pontoLivre', String(pontoLivre));
       formData.append('locaisAdicionais', JSON.stringify(locaisExtras));
 
+      // === ENVIA A FOTO SE TIVER ===
       if (fotoArquivo) formData.append('foto', fotoArquivo);
 
       if (idEdicao) {
@@ -137,23 +136,20 @@ export default function GestaoFuncionarios() {
       fecharModal();
       carregarLista();
     } catch (error: any) {
-      // CORREÇÃO: Pegamos a mensagem específica que vem do backend (error.response.data.erro)
       if (error.response && error.response.data && error.response.data.erro) {
         alert(error.response.data.erro);
       } else {
-        alert('Ocorreu um erro ao salvar. Tente novamente.');
+        alert('Ocorreu um erro ao salvar.');
       }
-      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
   const excluirFuncionario = async (id: string, nome: string) => {
-    if (confirm(`ATENÇÃO: Tem certeza que deseja excluir ${nome}?\nIsso apagará TODO o histórico.`)) {
+    if (confirm(`Excluir ${nome}?`)) {
       try {
         await axios.delete(`/api/admin/funcionarios?id=${id}`);
-        alert('Excluído.');
         carregarLista();
       } catch (error) { alert('Erro ao excluir.'); }
     }
@@ -174,11 +170,11 @@ export default function GestaoFuncionarios() {
       } else {
           setNovoLocal({ ...novoLocal, lat: String(pos.coords.latitude), lng: String(pos.coords.longitude) });
       }
-    }, (erro) => alert("Erro ao pegar GPS: " + erro.message));
+    }, (erro) => alert("Erro ao pegar GPS."));
   };
 
   const addLocalExtra = () => {
-      if(!novoLocal.nome || !novoLocal.lat) return alert("Defina um nome e uma localização.");
+      if(!novoLocal.nome || !novoLocal.lat) return alert("Defina nome e local.");
       setLocaisExtras([...locaisExtras, { ...novoLocal }]);
       setNovoLocal({ nome: '', lat: '', lng: '', raio: '100' });
   };
@@ -200,212 +196,235 @@ export default function GestaoFuncionarios() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6 pb-24">
+      <div className="max-w-6xl mx-auto space-y-6">
         
         {/* TOPO */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
           <div>
-            <h1 className="text-2xl font-bold text-purple-400 flex items-center gap-2"><Users size={24} className="text-purple-400"/> Gestão de Equipe</h1>
-            <h2 className="text-lg text-slate-300 flex items-center gap-2">
-            Equipe - <span className="text-purple-300">{lojaAtual}</span>
-          </h2>
-            <p className="text-slate-400 text-sm">Gerencie seus funcionários</p>
+            <h1 className="text-xl md:text-2xl font-bold text-purple-400 flex items-center gap-2"><Users size={24}/> Gestão de Equipe</h1>
+            <p className="text-slate-400 text-sm">{lojaAtual}</p>
           </div>
-          <div className="flex gap-3">
-            <button onClick={abrirNovoCadastro} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-green-900/20">
-                <UserPlus size={20} /> Novo Cadastro
-            </button>
-            <Link href="/admin" className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg transition-colors">
-                <ArrowLeft size={20} /> Voltar
+          <div className="flex gap-2 w-full md:w-auto">
+            <Link href="/admin" className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-xl transition-colors font-bold text-sm">
+                <ArrowLeft size={18} /> Voltar
             </Link>
+            <button onClick={abrirNovoCadastro} className="flex-1 md:flex-none justify-center flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold transition-colors shadow-lg shadow-green-900/20 text-sm">
+                <UserPlus size={18} /> Novo
+            </button>
           </div>
-          
         </div>
 
         {/* LISTAGEM */}
         <div className="grid gap-3">
           {funcionarios.length === 0 && <p className="text-slate-500 text-center py-10">Nenhum funcionário cadastrado.</p>}
           {funcionarios.map(func => (
-            <div key={func.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-600 transition-colors shadow-md">
+            <div key={func.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col gap-4 shadow-md">
               <div className="flex items-center gap-4">
                 {func.fotoPerfilUrl ? (
-                  <img src={func.fotoPerfilUrl} alt={func.nome} className="w-12 h-12 rounded-full object-cover border-2 border-slate-700" />
+                  <img src={func.fotoPerfilUrl} alt={func.nome} className="w-12 h-12 rounded-full object-cover border-2 border-slate-700 flex-shrink-0" />
                 ) : (
-                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0">
                     <User size={20} className="text-slate-500" />
                   </div>
                 )}
-                <div>
-                  <h3 className="font-bold text-white text-lg">{func.nome}</h3>
-                  <div className="flex flex-col">
-                    <p className="text-sm text-slate-400">{func.email}</p>
-                    <div className="flex gap-2 mt-1">
-                        {func.tituloCargo && <span className="text-[10px] bg-slate-800 px-1.5 rounded text-purple-400 font-bold uppercase">{func.tituloCargo}</span>}
-                        {func.pontoLivre && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 rounded">Livre</span>}
-                    </div>
+                <div className="overflow-hidden">
+                  <h3 className="font-bold text-white text-base truncate">{func.nome}</h3>
+                  <p className="text-xs text-slate-400 truncate">{func.email}</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                      {func.tituloCargo && <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-purple-400 font-bold uppercase">{func.tituloCargo}</span>}
+                      {func.pontoLivre && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">Livre</span>}
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
-                <button onClick={() => iniciarEdicao(func)} className="p-2.5 bg-blue-900/30 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg border border-blue-900/50" title="Editar"><Pencil size={18} /></button>
-                <button onClick={() => resetarSenha(func.id, func.nome)} className="p-2.5 bg-yellow-900/30 text-yellow-500 hover:bg-yellow-600 hover:text-white rounded-lg border border-yellow-900/50" title="Resetar Senha"><RefreshCw size={18} /></button>
-                <button onClick={() => excluirFuncionario(func.id, func.nome)} className="p-2.5 bg-red-900/30 text-red-500 hover:bg-red-600 hover:text-white rounded-lg border border-red-900/50" title="Excluir"><Trash2 size={18} /></button>
+              
+              <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-3">
+                <button onClick={() => iniciarEdicao(func)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-blue-400 rounded-lg text-xs font-bold active:scale-95 transition-transform"><Pencil size={14} /> Editar</button>
+                <button onClick={() => resetarSenha(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-yellow-500 rounded-lg text-xs font-bold active:scale-95 transition-transform"><RefreshCw size={14} /> Resetar Senha</button>
+                <button onClick={() => excluirFuncionario(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-red-500 rounded-lg text-xs font-bold active:scale-95 transition-transform"><Trash2 size={14} /> Excluir</button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* MODAL DE CADASTRO */}
+        {/* === MODAL DE CADASTRO === */}
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
-            <div className="bg-slate-900 w-full max-w-4xl rounded-2xl border border-slate-700 shadow-2xl my-8 relative flex flex-col max-h-[90vh]">
+          <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center bg-slate-950 md:bg-black/80 md:backdrop-blur-sm">
+            <div className="bg-slate-950 md:bg-slate-900 w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl md:rounded-2xl md:border md:border-slate-700 shadow-2xl flex flex-col">
               
-              <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900 rounded-t-2xl sticky top-0 z-10">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  {idEdicao ? <><Pencil size={20} className="text-blue-400"/> Editar Funcionário</> : <><UserPlus size={20} className="text-green-400"/> Novo Funcionário</>}
+              <div className="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900 md:rounded-t-2xl flex-shrink-0">
+                <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                  {idEdicao ? <><Pencil size={20} className="text-blue-400"/> Editar Funcionario</> : <><UserPlus size={20} className="text-green-400"/> Novo Cadastro</>}
                 </h2>
-                <button onClick={fecharModal} className="text-slate-400 hover:text-white transition-colors"><X size={24} /></button>
+                <button onClick={fecharModal} className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
               </div>
 
-              <div className="p-6 overflow-y-auto custom-scrollbar">
-                <form onSubmit={salvar} className="space-y-6">
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6">
+                <form id="formFuncionario" onSubmit={salvar} className="space-y-6">
                     
-                    {/* DADOS BÁSICOS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Nome Completo</label>
-                            <input className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-purple-500" value={nome} onChange={e => setNome(e.target.value)} required />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-400 mb-1 block">Email Profissional</label>
-                            <input type="email" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-purple-500" value={email} onChange={e => setEmail(e.target.value)} required />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs text-slate-400 mb-1 block flex items-center gap-2"><Briefcase size={12}/> Cargo / Função (Opcional)</label>
-                        <input placeholder="Ex: Vendedor, Motorista, Gerente..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-purple-500" value={tituloCargo} onChange={e => setTituloCargo(e.target.value)} />
-                    </div>
-
-                    {/* JORNADA DE TRABALHO */}
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <p className="text-sm text-slate-300 mb-4 font-bold flex items-center gap-2"><Clock size={16} className="text-purple-400"/> Jornada de Trabalho</p>
-                        <div className="space-y-3">
-                            {['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].map((dia) => (
-                            <div key={dia} className="flex flex-col lg:flex-row lg:items-center gap-3 bg-slate-900/50 p-3 rounded-lg border border-slate-800/50">
-                                <div className="flex items-center justify-between lg:w-32">
-                                    <span className="font-bold uppercase text-xs text-slate-500 w-8">{dia}</span>
-                                    <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                                        <input type="checkbox" checked={jornada[dia]?.ativo} onChange={(e) => updateJornada(dia, 'ativo', e.target.checked)} className="rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-0"/>
-                                        Trabalha
-                                    </label>
-                                </div>
-                                {jornada[dia]?.ativo && (
-                                    <div className="flex flex-wrap gap-3 flex-1">
-                                        <div className="flex items-center gap-2 bg-slate-800/50 px-2 py-1 rounded border border-slate-700">
-                                            <span className="text-[10px] text-slate-500">MANHÃ</span>
-                                            <input type="time" value={jornada[dia].e1} onChange={e=>updateJornada(dia, 'e1', e.target.value)} className="bg-transparent text-white text-xs outline-none" />
-                                            <span className="text-slate-600">-</span>
-                                            <input type="time" value={jornada[dia].s1} onChange={e=>updateJornada(dia, 's1', e.target.value)} className="bg-transparent text-white text-xs outline-none" />
-                                        </div>
-                                        <div className="flex items-center gap-2 bg-slate-800/50 px-2 py-1 rounded border border-slate-700">
-                                            <span className="text-[10px] text-slate-500">TARDE</span>
-                                            <input type="time" value={jornada[dia].e2} onChange={e=>updateJornada(dia, 'e2', e.target.value)} className="bg-transparent text-white text-xs outline-none" />
-                                            <span className="text-slate-600">-</span>
-                                            <input type="time" value={jornada[dia].s2} onChange={e=>updateJornada(dia, 's2', e.target.value)} className="bg-transparent text-white text-xs outline-none" />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* CONFIGURAÇÃO DE LOCALIZAÇÃO (MAPA + GPS + CAMPOS) */}
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
-                        <h4 className="text-purple-400 font-bold mb-3 flex items-center gap-2"><MapPin size={18}/> Regras de Localização</h4>
-                        
-                        <label className="flex items-center gap-3 mb-4 cursor-pointer bg-slate-800 p-3 rounded-lg border border-slate-700">
-                            <input type="checkbox" checked={pontoLivre} onChange={e=>setPontoLivre(e.target.checked)} className="w-5 h-5 accent-purple-600" />
+                    {/* 1. DADOS BÁSICOS */}
+                    <section className="space-y-4">
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2">Dados Pessoais</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <span className="font-bold block text-sm">Modo Livre (Vendedor Externo)</span>
-                                <span className="text-xs text-slate-400">Pode bater ponto em qualquer lugar (Ignora GPS).</span>
+                                <label className="text-xs font-bold text-slate-400 mb-1.5 block">Nome Completo</label>
+                                <input className="w-full bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all" value={nome} onChange={e => setNome(e.target.value)} required placeholder="Ex: Maria Silva" />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 mb-1.5 block">Email (Login)</label>
+                                <input type="email" className="w-full bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 transition-all" value={email} onChange={e => setEmail(e.target.value)} required placeholder="email@exemplo.com" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 mb-1.5 block flex items-center gap-2"><Briefcase size={12}/> Cargo (Opcional)</label>
+                            <input placeholder="Ex: Vendedor" className="w-full bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-white outline-none focus:border-purple-500 transition-all" value={tituloCargo} onChange={e => setTituloCargo(e.target.value)} />
+                        </div>
+                    </section>
+
+                    {/* 2. JORNADA DE TRABALHO */}
+                    <section className="space-y-3">
+                         <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2"><Clock size={16}/> Horários</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].map((dia) => (
+                                <div key={dia} className={`p-3 rounded-xl border transition-all ${jornada[dia]?.ativo ? 'bg-slate-900 border-purple-900/50' : 'bg-slate-900/30 border-slate-800 opacity-60'}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-bold uppercase text-sm text-slate-300">{dia}</span>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" checked={jornada[dia]?.ativo} onChange={(e) => updateJornada(dia, 'ativo', e.target.checked)} className="sr-only peer"/>
+                                            <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                        </label>
+                                    </div>
+                                    
+                                    {jornada[dia]?.ativo && (
+                                        <div className="grid grid-cols-2 gap-2 text-center">
+                                            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                                                <p className="text-[10px] text-slate-500 mb-1">MANHÃ</p>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <input type="time" value={jornada[dia].e1} onChange={e=>updateJornada(dia, 'e1', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                                    <span className="text-slate-600">-</span>
+                                                    <input type="time" value={jornada[dia].s1} onChange={e=>updateJornada(dia, 's1', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                                                <p className="text-[10px] text-slate-500 mb-1">TARDE</p>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <input type="time" value={jornada[dia].e2} onChange={e=>updateJornada(dia, 'e2', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                                    <span className="text-slate-600">-</span>
+                                                    <input type="time" value={jornada[dia].s2} onChange={e=>updateJornada(dia, 's2', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                         </div>
+                    </section>
+
+                    {/* 3. LOCALIZAÇÃO */}
+                    <section className="space-y-4">
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2"><MapPin size={16}/> Localização</h3>
+                        
+                        <label className="flex items-center gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800 cursor-pointer hover:border-slate-600 transition-colors">
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${pontoLivre ? 'bg-purple-600 border-purple-600' : 'border-slate-500'}`}>
+                                {pontoLivre && <User size={12} className="text-white"/>}
+                            </div>
+                            <input type="checkbox" checked={pontoLivre} onChange={e=>setPontoLivre(e.target.checked)} className="hidden" />
+                            <div>
+                                <span className="font-bold block text-sm text-white">Trabalho Externo (Livre)</span>
+                                <span className="text-xs text-slate-400">Funcionário pode bater ponto em qualquer lugar.</span>
                             </div>
                         </label>
 
                         {!pontoLivre && (
-                            <div className="space-y-6">
-                                {/* MAPA DE CAPTURA */}
+                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                                 <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} />
 
-                                {/* SEDE / PRINCIPAL (COM BOTÃO DE GPS) */}
-                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-700">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <p className="text-xs font-bold text-slate-300 uppercase">Sede / Principal</p>
-                                        <button type="button" onClick={()=>pegarLocalizacaoAtual('PRINCIPAL')} className="flex items-center gap-1 text-blue-400 text-xs hover:underline font-bold">
-                                            <MapPin size={12}/> Usar meu GPS atual
+                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-purple-400 uppercase">Sede Principal</span>
+                                        <button type="button" onClick={()=>pegarLocalizacaoAtual('PRINCIPAL')} className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded flex items-center gap-1 hover:bg-blue-900/50">
+                                            <MapPin size={12}/> Pegar GPS
                                         </button>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block">Latitude</label>
-                                            <input value={lat} onChange={e=>setLat(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-slate-400 text-xs"/>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block">Longitude</label>
-                                            <input value={lng} onChange={e=>setLng(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-slate-400 text-xs"/>
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] text-slate-500 block">Raio (m)</label>
-                                            <input type="number" value={raio} onChange={e=>setRaio(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs"/>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <input placeholder="Latitude" value={lat} onChange={e=>setLat(e.target.value)} className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white"/>
+                                        <input placeholder="Longitude" value={lng} onChange={e=>setLng(e.target.value)} className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white"/>
+                                        <div className="relative">
+                                            <input type="number" placeholder="Raio" value={raio} onChange={e=>setRaio(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white pl-12"/>
+                                            <span className="absolute left-3 top-3 text-xs text-slate-500">Raio:</span>
+                                            <span className="absolute right-3 top-3 text-xs text-slate-500">m</span>
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* LOCAIS EXTRAS */}
-                                <div className="pt-2 border-t border-slate-800">
-                                    <p className="text-xs font-bold text-slate-400 uppercase mb-2">Locais Adicionais (Obras / Filiais)</p>
-                                    
-                                    {/* Lista de Extras */}
+                                
+                                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                                    <p className="text-xs font-bold text-slate-400 uppercase mb-3">Locais Extras (Obras/Filiais)</p>
                                     {locaisExtras.map((loc, idx) => (
-                                        <div key={idx} className="flex justify-between items-center bg-slate-900 p-2 rounded border border-slate-700 mb-2">
-                                            <span className="text-xs text-white">{loc.nome} <span className="text-slate-500 text-[10px]">({loc.lat?.substring(0,7)}...)</span></span>
-                                            <button type="button" onClick={()=>removeLocalExtra(idx)} className="text-red-400 hover:text-red-300"><Trash2 size={14}/></button>
+                                        <div key={idx} className="flex justify-between items-center bg-slate-950 p-3 rounded-lg border border-slate-700 mb-2">
+                                            <span className="text-xs font-bold">{loc.nome}</span>
+                                            <button type="button" onClick={()=>removeLocalExtra(idx)} className="text-red-400 p-1"><Trash2 size={14}/></button>
                                         </div>
                                     ))}
-
-                                    {/* Formulário Novo Local */}
-                                    <div className="bg-slate-900 p-3 rounded-lg border border-slate-700">
-                                        <div className="flex gap-2 mb-2">
-                                            <input placeholder="Nome do Local (Ex: Obra A)" value={novoLocal.nome} onChange={e=>setNovoLocal({...novoLocal, nome: e.target.value})} className="flex-1 bg-slate-950 border border-slate-700 p-2 rounded text-white text-xs"/>
-                                            <button type="button" onClick={() => setNovoLocal({...novoLocal, lat: lat, lng: lng})} className="bg-blue-600 hover:bg-blue-700 text-white px-3 rounded text-xs">Copiar do Mapa</button>
-                                            <button type="button" onClick={()=>pegarLocalizacaoAtual('EXTRA')} className="bg-purple-600 hover:bg-purple-700 text-white px-3 rounded text-xs"><MapPin size={12}/></button>
+                                    <div className="flex flex-col gap-2 mt-2">
+                                        <div className="flex gap-2">
+                                            <input placeholder="Nome (Ex: Obra B)" value={novoLocal.nome} onChange={e=>setNovoLocal({...novoLocal, nome: e.target.value})} className="flex-1 bg-slate-950 border border-slate-700 p-2.5 rounded-lg text-xs text-white"/>
+                                            <button type="button" onClick={()=>pegarLocalizacaoAtual('EXTRA')} className="bg-slate-800 text-blue-400 p-2.5 rounded-lg border border-slate-700"><MapPin size={16}/></button>
                                         </div>
-                                        <div className="grid grid-cols-12 gap-2">
-                                            <input placeholder="Lat" value={novoLocal.lat} onChange={e=>setNovoLocal({...novoLocal, lat: e.target.value})} className="col-span-5 bg-slate-950 border border-slate-700 p-2 rounded text-slate-400 text-xs"/>
-                                            <input placeholder="Lng" value={novoLocal.lng} onChange={e=>setNovoLocal({...novoLocal, lng: e.target.value})} className="col-span-5 bg-slate-950 border border-slate-700 p-2 rounded text-slate-400 text-xs"/>
-                                            <button type="button" onClick={addLocalExtra} className="col-span-2 bg-green-600 hover:bg-green-700 text-white rounded flex items-center justify-center"><Plus size={16}/></button>
-                                        </div>
+                                        <button type="button" onClick={addLocalExtra} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-lg text-xs font-bold border border-slate-700 border-dashed">+ Adicionar Local Extra</button>
                                     </div>
                                 </div>
                             </div>
                         )}
-                    </div>
+                    </section>
 
-                    <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 border-dashed hover:border-slate-600 transition-colors">
-                        <label className="block text-sm text-slate-300 mb-2 font-bold cursor-pointer">
-                            <div className="flex items-center gap-2"><Upload size={18} className="text-purple-400"/> {idEdicao ? 'Trocar Foto' : 'Foto de Rosto (Reconhecimento Facial)'}</div>
-                        </label>
-                        <input type="file" accept="image/*" onChange={(e) => setFotoArquivo(e.target.files?.[0] || null)} className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-900 file:text-purple-300 hover:file:bg-purple-800 cursor-pointer"/>
-                    </div>
-
-                    <div className="pt-2">
-                        <button disabled={loading} className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${idEdicao ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/20' : 'bg-green-600 hover:bg-green-700 shadow-green-900/20'}`}>
-                            {loading ? 'Salvando...' : <><Save size={20}/> {idEdicao ? 'Atualizar Dados' : 'Cadastrar Funcionário'}</>}
-                        </button>
-                    </div>
+                    {/* === 4. FOTO DE PERFIL (RECUPERADA) === */}
+                    <section className="space-y-4">
+                        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
+                            <Upload size={16}/> Biometria / Foto
+                        </h3>
+                        
+                        <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 border-dashed flex flex-col items-center justify-center text-center gap-4 hover:bg-slate-800/50 transition-colors">
+                            {fotoArquivo ? (
+                                <div className="relative">
+                                    <img src={URL.createObjectURL(fotoArquivo)} className="w-24 h-24 rounded-full object-cover border-4 border-purple-500" />
+                                    <button type="button" onClick={() => setFotoArquivo(null)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><X size={12}/></button>
+                                </div>
+                            ) : (
+                                <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center">
+                                    <User size={32} className="text-slate-500"/>
+                                </div>
+                            )}
+                            
+                            <div className="space-y-1">
+                                <label htmlFor="foto-upload" className="block text-purple-400 font-bold text-sm cursor-pointer hover:underline">
+                                    {idEdicao ? 'Alterar Foto Atual' : 'Enviar Foto de Rosto'}
+                                </label>
+                                <p className="text-xs text-slate-500">Necessário para reconhecimento facial</p>
+                            </div>
+                            
+                            <input 
+                                id="foto-upload"
+                                type="file" 
+                                accept="image/*" 
+                                onChange={(e) => setFotoArquivo(e.target.files?.[0] || null)} 
+                                className="hidden" 
+                            />
+                        </div>
+                    </section>
                 </form>
               </div>
+
+              {/* Footer Fixo do Modal (Salvar) */}
+              <div className="p-4 md:p-6 border-t border-slate-800 bg-slate-900 md:rounded-b-2xl flex-shrink-0">
+                <button 
+                    onClick={salvar} // Dispara o form externamente
+                    disabled={loading} 
+                    className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base ${idEdicao ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/20' : 'bg-green-600 hover:bg-green-700 shadow-green-900/20'}`}
+                >
+                    {loading ? <RefreshCw className="animate-spin" size={20}/> : <><Save size={20}/> {idEdicao ? 'Atualizar Dados' : 'Finalizar Cadastro'}</>}
+                </button>
+              </div>
+
             </div>
           </div>
         )}
