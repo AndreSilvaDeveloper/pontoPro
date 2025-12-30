@@ -3,105 +3,110 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-// === GET: LISTAR LOJAS (COM AUTO-CURA) ===
-export async function GET() {
+// === GET: LISTAR AS LOJAS DISPONÍVEIS ===
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  
+
+  // @ts-ignore
   if (!session?.user?.id) {
-    return NextResponse.json([], { status: 401 });
+      return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
   }
 
   try {
-    const usuario = await prisma.usuario.findUnique({
-        where: { id: session.user.id },
-        select: { 
-            cargo: true, 
-            empresaId: true, 
-            empresa: { select: { id: true, nome: true } } 
-        }
-    });
-
-    if (!usuario) return NextResponse.json([]);
-
-    // 1. Busca permissões explícitas
-    let permissoes = await prisma.adminLoja.findMany({
+    // 1. Busca os IDs das lojas que o usuário tem permissão DIRETA (tabela AdminLoja)
+    const vinculos = await prisma.adminLoja.findMany({
+        // @ts-ignore
         where: { usuarioId: session.user.id },
-        include: { empresa: { select: { id: true, nome: true } } }
+        select: { empresaId: true }
     });
 
-    // === AUTO-CURA (SELF-HEALING) ===
-    // Se o usuário está numa empresa mas não tem permissão explícita nela, cria agora.
-    if (usuario.empresaId && !permissoes.find(p => p.empresaId === usuario.empresaId)) {
-        console.log("Detectada inconsistência. Criando vínculo automático...");
-        
-        await prisma.adminLoja.create({
-            data: {
-                usuarioId: session.user.id,
-                empresaId: usuario.empresaId
-            }
-        });
+    const idsDiretos = vinculos.map(v => v.empresaId);
 
-        if (usuario.empresa) {
-            // @ts-ignore
-            permissoes.push({ empresa: usuario.empresa }); 
+    // 2. BUSCA INTELIGENTE (MATRIZ + FILIAIS)
+    const lojas = await prisma.empresa.findMany({
+        where: {
+            OR: [
+                { id: { in: idsDiretos } },          // Acesso direto (Sou dono)
+                { matrizId: { in: idsDiretos } }     // Acesso herdado (Sou dono da Matriz)
+            ],
+            status: { not: 'BLOQUEADO' } 
+        },
+        select: {
+            id: true,
+            nome: true,
+            cnpj: true,
+            matrizId: true
+        },
+        // === AQUI ESTÁ A CORREÇÃO DA ORDEM ===
+        orderBy: {
+            criadoEm: 'asc' // A mais antiga (Matriz) aparece primeiro
         }
-    }
+        // =====================================
+    });
 
-    // Se for SUPER_ADMIN, vê todas (opcional, mas mantive a lógica de permissão acima como prioritária)
-    // @ts-ignore
-    if (usuario.cargo === 'SUPER_ADMIN') {
-        const todasEmpresas = await prisma.empresa.findMany({
-            select: { id: true, nome: true },
-            orderBy: { nome: 'asc' }
-        });
-        // Retorna todas, mas garante que a atual esteja selecionada na interface
-        return NextResponse.json(todasEmpresas);
-    }
-
-    const listaLojas = permissoes.map(p => p.empresa);
-    // Remove duplicatas
-    const lojasUnicas = Array.from(new Map(listaLojas.map(item => [item.id, item])).values());
-
-    return NextResponse.json(lojasUnicas);
+    return NextResponse.json(lojas);
 
   } catch (error) {
-    console.error("ERRO GET LOJAS:", error);
-    return NextResponse.json([], { status: 500 });
+    console.error("Erro ao listar lojas:", error);
+    return NextResponse.json({ erro: 'Erro ao buscar lojas' }, { status: 500 });
   }
 }
 
-// === POST: REALIZAR A TROCA ===
+// === POST: TROCAR A SESSÃO ===
 export async function POST(request: Request) {
-  try {
     const session = await getServerSession(authOptions);
-
+    
+    // @ts-ignore
     if (!session?.user?.id) {
         return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
     }
 
-    const body = await request.json();
-    // Aceita variações de nome para garantir compatibilidade
-    const empresaId = body.empresaId || body.novaEmpresaId || body.id;
+    try {
+        const body = await request.json();
+        // Aceita variações para garantir compatibilidade com o frontend
+        const empresaId = body.empresaId || body.novaEmpresaId || body.id;
 
-    if (!empresaId) {
-        return NextResponse.json({ erro: 'ID da loja não informado' }, { status: 400 });
+        if (!empresaId) {
+            return NextResponse.json({ erro: 'ID da loja não informado' }, { status: 400 });
+        }
+
+        // === SEGURANÇA EXTRA ===
+        // Verifica se o usuário tem acesso antes de trocar
+        const vinculos = await prisma.adminLoja.findMany({
+            // @ts-ignore
+            where: { usuarioId: session.user.id },
+            select: { empresaId: true }
+        });
+        const idsDiretos = vinculos.map(v => v.empresaId);
+
+        const temAcesso = await prisma.empresa.findFirst({
+            where: {
+                id: empresaId,
+                OR: [
+                    { id: { in: idsDiretos } },
+                    { matrizId: { in: idsDiretos } }
+                ]
+            }
+        });
+
+        if (!temAcesso) {
+            return NextResponse.json({ erro: 'Acesso negado a esta unidade.' }, { status: 403 });
+        }
+
+        // Atualiza a empresa atual do usuário no banco
+        await prisma.usuario.update({
+            // @ts-ignore
+            where: { id: session.user.id },
+            data: { empresaId: empresaId }
+        });
+
+        return NextResponse.json({ success: true });
+
+    } catch (error: any) {
+        console.error("ERRO AO TROCAR LOJA:", error);
+        return NextResponse.json(
+            { erro: 'Erro interno', detalhe: error.message }, 
+            { status: 500 }
+        );
     }
-
-    console.log(`Trocando usuário ${session.user.id} para loja ${empresaId}...`);
-
-    // Atualiza o contexto (empresaId) no usuário
-    await prisma.usuario.update({
-      where: { id: session.user.id },
-      data: { empresaId: empresaId }
-    });
-
-    return NextResponse.json({ success: true });
-
-  } catch (error: any) {
-    console.error("ERRO AO TROCAR LOJA:", error);
-    return NextResponse.json(
-        { erro: 'Erro interno', detalhe: error.message }, 
-        { status: 500 }
-    );
-  }
 }

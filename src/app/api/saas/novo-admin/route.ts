@@ -7,20 +7,28 @@ export async function POST(req: Request) {
   try {
     const { empresaId, nome, email, senha } = await req.json();
 
-    // 1. Busca o nome da empresa para usar no e-mail
-    const empresa = await prisma.empresa.findUnique({
+    // 1. Busca dados da empresa atual para identificar a Matriz Principal
+    const empresaAtual = await prisma.empresa.findUnique({
         where: { id: empresaId },
-        select: { nome: true }
+        select: { id: true, nome: true, matrizId: true }
     });
-    const nomeEmpresa = empresa?.nome || 'Sua Empresa';
 
-    // 2. Verifica existência
+    if (!empresaAtual) {
+        return NextResponse.json({ erro: 'Empresa não encontrada.' }, { status: 400 });
+    }
+
+    const nomeEmpresa = empresaAtual.nome;
+    
+    // Define o ID da Matriz Principal (Se a empresa atual for filial, usa a matriz dela. Se for matriz, usa o próprio ID)
+    const idMatrizPrincipal = empresaAtual.matrizId || empresaAtual.id;
+
+    // 2. Verifica existência do usuário
     const existe = await prisma.usuario.findUnique({ where: { email } });
     if (existe) {
       return NextResponse.json({ erro: 'Email já cadastrado no sistema.' }, { status: 400 });
     }
 
-    // 3. Cria Usuário
+    // 3. Cria o Usuário Admin
     const hashedPassword = await hash(senha, 10);
     const novoAdmin = await prisma.usuario.create({
       data: {
@@ -28,11 +36,36 @@ export async function POST(req: Request) {
         email,
         senha: hashedPassword,
         cargo: 'ADMIN',
-        empresaId: empresaId
+        empresaId: empresaId // Define a empresa "home" dele
       }
     });
 
-    // === 4. E-MAIL DE CONVITE ADMINISTRATIVO ===
+    // === 4. CRIAÇÃO DE VÍNCULOS GLOBAIS (O PULO DO GATO 🐱) ===
+    // Vamos buscar TODAS as empresas da rede (A Matriz Principal + Todas as suas Filiais)
+    const empresasDaRede = await prisma.empresa.findMany({
+        where: {
+            OR: [
+                { id: idMatrizPrincipal },       // A própria Matriz
+                { matrizId: idMatrizPrincipal }  // Todas as filiais dessa Matriz
+            ]
+        },
+        select: { id: true }
+    });
+
+    // Cria os vínculos na tabela AdminLoja para cada empresa encontrada
+    if (empresasDaRede.length > 0) {
+        const vinculos = empresasDaRede.map(emp => ({
+            usuarioId: novoAdmin.id,
+            empresaId: emp.id
+        }));
+
+        await prisma.adminLoja.createMany({
+            data: vinculos,
+            skipDuplicates: true
+        });
+    }
+
+    // === 5. E-MAIL DE CONVITE (MANTIDO) ===
     const htmlEmail = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
         <div style="background-color: #4338ca; padding: 30px; text-align: center;"> <h1 style="color: #ffffff; margin: 0; font-size: 26px;">WorkID</h1>
@@ -42,7 +75,7 @@ export async function POST(req: Request) {
             <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nome}</strong>!</p>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
                 Você foi adicionado como <strong>Administrador</strong> na conta da empresa <strong>${nomeEmpresa}</strong>. <br>
-                Isso lhe dá permissão para gerenciar funcionários e visualizar relatórios.
+                Isso lhe dá permissão para gerenciar funcionários e visualizar relatórios de toda a rede.
             </p>
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
                 <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold;">Seus Dados de Acesso</p>
