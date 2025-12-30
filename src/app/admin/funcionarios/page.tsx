@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Users } from 'lucide-react';
+import { ArrowLeft, UserPlus, MapPin, RefreshCw, User, Upload, Clock, Pencil, X, Save, Trash2, Briefcase, Plus, Users, Copy, CheckCircle2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 // Importa o Mapa dinamicamente
@@ -41,8 +41,6 @@ export default function GestaoFuncionarios() {
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('100');
-  
-  // === AQUI ESTÁ A CORREÇÃO: ESTADO DA FOTO ===
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
   
   // Novos Campos
@@ -83,7 +81,7 @@ export default function GestaoFuncionarios() {
     setLat(''); setLng(''); setRaio('100');
     setJornada(jornadaPadrao);
     setPontoLivre(false); setLocaisExtras([]); 
-    setFotoArquivo(null); // Limpa foto
+    setFotoArquivo(null);
     setShowModal(true);
   };
 
@@ -98,7 +96,7 @@ export default function GestaoFuncionarios() {
     setJornada(f.jornada || jornadaPadrao);
     setPontoLivre(f.pontoLivre || false);
     setLocaisExtras(f.locaisAdicionais || []);
-    setFotoArquivo(null); // Limpa foto (só preenche se for trocar)
+    setFotoArquivo(null);
     setShowModal(true);
   };
 
@@ -121,7 +119,6 @@ export default function GestaoFuncionarios() {
       formData.append('pontoLivre', String(pontoLivre));
       formData.append('locaisAdicionais', JSON.stringify(locaisExtras));
 
-      // === ENVIA A FOTO SE TIVER ===
       if (fotoArquivo) formData.append('foto', fotoArquivo);
 
       if (idEdicao) {
@@ -160,6 +157,19 @@ export default function GestaoFuncionarios() {
         ...prev,
         [dia]: { ...prev[dia], [campo]: valor }
     }));
+  };
+
+  // === FUNÇÃO MÁGICA: REPLICAR SEGUNDA PARA A SEMANA ===
+  const replicarHorarioSegunda = () => {
+      const base = jornada['seg'];
+      if (!base) return;
+      
+      const novaJornada = { ...jornada };
+      ['ter', 'qua', 'qui', 'sex'].forEach(dia => {
+          novaJornada[dia] = { ...base }; // Copia tudo (horários e ativo)
+      });
+      setJornada(novaJornada);
+      alert("Horário de Segunda replicado até Sexta!");
   };
 
   const pegarLocalizacaoAtual = (destino: 'PRINCIPAL' | 'EXTRA') => {
@@ -240,7 +250,7 @@ export default function GestaoFuncionarios() {
               
               <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-3">
                 <button onClick={() => iniciarEdicao(func)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-blue-400 rounded-lg text-xs font-bold active:scale-95 transition-transform"><Pencil size={14} /> Editar</button>
-                <button onClick={() => resetarSenha(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-yellow-500 rounded-lg text-xs font-bold active:scale-95 transition-transform"><RefreshCw size={14} /> Resetar Senha</button>
+                <button onClick={() => resetarSenha(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-yellow-500 rounded-lg text-xs font-bold active:scale-95 transition-transform"><RefreshCw size={14} /> Senha</button>
                 <button onClick={() => excluirFuncionario(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-red-500 rounded-lg text-xs font-bold active:scale-95 transition-transform"><Trash2 size={14} /> Excluir</button>
               </div>
             </div>
@@ -281,36 +291,48 @@ export default function GestaoFuncionarios() {
                         </div>
                     </section>
 
-                    {/* 2. JORNADA DE TRABALHO */}
-                    <section className="space-y-3">
-                         <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2"><Clock size={16}/> Horários</h3>
+                    {/* === 2. JORNADA DE TRABALHO (REDESENHADA) === */}
+                    <section className="space-y-4">
+                         <div className="flex justify-between items-end border-b border-slate-800 pb-2">
+                             <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2"><Clock size={16}/> Horários</h3>
+                             <button type="button" onClick={replicarHorarioSegunda} className="text-[10px] bg-purple-900/30 text-purple-400 border border-purple-900/50 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-purple-600 hover:text-white transition-colors">
+                                 <Copy size={12} /> Copiar Seg para Semana
+                             </button>
+                         </div>
+                         
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].map((dia) => (
-                                <div key={dia} className={`p-3 rounded-xl border transition-all ${jornada[dia]?.ativo ? 'bg-slate-900 border-purple-900/50' : 'bg-slate-900/30 border-slate-800 opacity-60'}`}>
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="font-bold uppercase text-sm text-slate-300">{dia}</span>
+                                <div key={dia} className={`relative rounded-xl border transition-all overflow-hidden ${jornada[dia]?.ativo ? 'bg-slate-900 border-slate-700' : 'bg-slate-950/50 border-slate-800 opacity-60'}`}>
+                                    
+                                    {/* Header do Card (Dia + Toggle) */}
+                                    <div className={`flex items-center justify-between p-3 ${jornada[dia]?.ativo ? 'bg-slate-800/50' : 'bg-transparent'}`}>
+                                        <span className="font-bold uppercase text-sm text-slate-300 flex items-center gap-2">
+                                            {dia}
+                                            {jornada[dia]?.ativo && <CheckCircle2 size={12} className="text-green-500"/>}
+                                        </span>
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" checked={jornada[dia]?.ativo} onChange={(e) => updateJornada(dia, 'ativo', e.target.checked)} className="sr-only peer"/>
                                             <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
                                         </label>
                                     </div>
                                     
+                                    {/* Corpo do Card (Inputs) */}
                                     {jornada[dia]?.ativo && (
-                                        <div className="grid grid-cols-2 gap-2 text-center">
-                                            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                                                <p className="text-[10px] text-slate-500 mb-1">MANHÃ</p>
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <input type="time" value={jornada[dia].e1} onChange={e=>updateJornada(dia, 'e1', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                        <div className="p-3 grid grid-cols-2 gap-3 animate-in slide-in-from-top-2">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase text-center">Manhã</p>
+                                                <div className="flex items-center gap-1 bg-slate-950 rounded-lg p-1 border border-slate-800">
+                                                    <input type="time" value={jornada[dia].e1} onChange={e=>updateJornada(dia, 'e1', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1" />
                                                     <span className="text-slate-600">-</span>
-                                                    <input type="time" value={jornada[dia].s1} onChange={e=>updateJornada(dia, 's1', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                                    <input type="time" value={jornada[dia].s1} onChange={e=>updateJornada(dia, 's1', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1" />
                                                 </div>
                                             </div>
-                                            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800">
-                                                <p className="text-[10px] text-slate-500 mb-1">TARDE</p>
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <input type="time" value={jornada[dia].e2} onChange={e=>updateJornada(dia, 'e2', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase text-center">Tarde</p>
+                                                <div className="flex items-center gap-1 bg-slate-950 rounded-lg p-1 border border-slate-800">
+                                                    <input type="time" value={jornada[dia].e2} onChange={e=>updateJornada(dia, 'e2', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1" />
                                                     <span className="text-slate-600">-</span>
-                                                    <input type="time" value={jornada[dia].s2} onChange={e=>updateJornada(dia, 's2', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-0" />
+                                                    <input type="time" value={jornada[dia].s2} onChange={e=>updateJornada(dia, 's2', e.target.value)} className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1" />
                                                 </div>
                                             </div>
                                         </div>
