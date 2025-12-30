@@ -16,7 +16,7 @@ export default function Home() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-  // NOVO: Guarda qual botão específico foi clicado para mostrar loading só nele
+  // Guarda qual botão específico foi clicado para mostrar loading só nele
   const [acaoEmProcesso, setAcaoEmProcesso] = useState<string | null>(null);
 
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
@@ -52,11 +52,15 @@ export default function Home() {
       if (!session?.user?.id) return;
 
       try {
+          // === CORREÇÃO 1: CACHE BUSTING ===
+          // Adicionamos _t=Date.now() para obrigar a Vercel a buscar dados novos
+          const timestamp = new Date().getTime();
+          
           const [resConfig, resStatus] = await Promise.all([
-              axios.get('/api/funcionario/config'),
+              axios.get('/api/funcionario/config', { params: { _t: timestamp } }),
               axios.get('/api/funcionario/ponto/status', {
                   // @ts-ignore
-                  params: { usuarioId: session?.user?.id } 
+                  params: { usuarioId: session?.user?.id, _t: timestamp } 
               })
           ]);
           
@@ -149,12 +153,19 @@ export default function Home() {
         tipo: tipoFinal 
       });
       
+      // === CORREÇÃO 2: ATUALIZAÇÃO OTIMISTA ===
+      // Atualizamos o estado da tela IMEDIATAMENTE, sem esperar o servidor
+      setStatusPonto(tipoFinal);
+      if (tipoFinal === 'VOLTA_ALMOCO') setJaAlmocou(true);
+      // ========================================
+
       setStatusMsg({ tipo: 'sucesso', texto: `✅ Ponto Registrado!` });
       
       setTimeout(() => {
           setStatusMsg(null);
+          // Recarrega do servidor só pra garantir (double check)
           carregarConfigEStatus();
-          // Só libera o botão após recarregar o status novo
+          // Só libera o botão após todo o processo
           setAcaoEmProcesso(null); 
       }, 1500);
 
