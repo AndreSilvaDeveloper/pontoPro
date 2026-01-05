@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, eachDayOfInterval } from 'date-fns';
+import { format, eachDayOfInterval, isSameDay, getDay } from 'date-fns'; // Adicionei getDay
 import { ptBR } from 'date-fns/locale'; 
 import { Download, FileText, FileJson, ChevronDown, FileCode, Printer, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -39,11 +39,11 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
   const [menuAberto, setMenuAberto] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // === 1. NOVA LÓGICA (SEQUENCIAL PARA 6 BATIDAS) ===
+  // === 1. LÓGICA DE PROCESSAMENTO ===
   const processarDados = () => {
     const diasMap: Record<string, any> = {};
+    const diasSemanaAbrev = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']; // Abreviação Manual Blindada
     
-    // 1. Normaliza os dados
     const pontosNormalizados = pontos.map((p: any) => ({
         ...p,
         realTipo: p.tipo === 'PONTO' ? p.subTipo : p.tipo,
@@ -52,96 +52,90 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         unome: p.usuario?.nome || 'Desconhecido'
     }));
 
-    // 2. Agrupa tudo por Dia + Usuário
     pontosNormalizados.forEach((p: any) => {
         const dateKey = format(p.dataObj, 'yyyy-MM-dd');
-        const uniqueKey = `${p.uid}_${dateKey}`;
+        const uniqueKey = `${p.uid}_${dateKey}`; 
 
-        // Cria a entrada do dia se não existir
         if (!diasMap[uniqueKey]) {
             diasMap[uniqueKey] = {
                 data: p.dataObj,
-                nomeFunc: p.unome,
-                batidas: [], // Lista temporária para ordenar horários
-                obsArray: [], // Lista de observações
+                nomeFunc: p.unome, 
+                batidas: [], 
+                obsArray: [], 
                 isAusencia: false
             };
         }
 
-        // Se for Ausência
+        const hora = format(p.dataObj, 'HH:mm');
+
         if (p.realTipo === 'AUSENCIA' || p.tipo === 'AUSENCIA') {
             const dtInicio = new Date(p.dataHora);
             const dtFim = p.extra?.dataFim ? new Date(p.extra.dataFim) : dtInicio;
-            
-            // Marca o dia atual e possíveis dias seguintes (se for período)
             try {
-                const intervalo = eachDayOfInterval({ start: dtInicio, end: dtFim });
-                intervalo.forEach((diaDoIntervalo) => {
-                    const dKey = format(diaDoIntervalo, 'yyyy-MM-dd');
-                    const uKey = `${p.uid}_${dKey}`;
-                    
+                eachDayOfInterval({ start: dtInicio, end: dtFim }).forEach((dia) => {
+                    const uKey = `${p.uid}_${format(dia, 'yyyy-MM-dd')}`;
                     if(!diasMap[uKey]) {
                         diasMap[uKey] = { 
-                            data: diaDoIntervalo, 
-                            nomeFunc: p.unome,
-                            batidas: [], 
-                            obsArray: [],
-                            isAusencia: true 
+                            data: dia, nomeFunc: p.unome, batidas: [], obsArray: [], isAusencia: true 
                         };
                     }
-                    const motivo = p.descricao || p.motivo || 'Sem motivo';
-                    diasMap[uKey].obsArray.push(`AUSÊNCIA: ${motivo}`);
+                    diasMap[uKey].obsArray.push(`AUSÊNCIA: ${p.descricao || 'Sem motivo'}`);
                     diasMap[uKey].isAusencia = true;
                 });
             } catch(e) {}
         } 
-        // Se for Ponto Normal (Entrada, Saída, Intervalos...)
-        else if (['ENTRADA', 'SAIDA', 'SAIDA_ALMOCO', 'VOLTA_ALMOCO', 'SAIDA_INTERVALO', 'VOLTA_INTERVALO', 'PONTO'].includes(p.realTipo)) {
-            const horaFormatada = format(p.dataObj, 'HH:mm');
-            diasMap[uniqueKey].batidas.push(horaFormatada);
-            
+        else if (p.realTipo === 'SAIDA_INTERVALO' || p.realTipo === 'VOLTA_INTERVALO') {
+            const label = p.realTipo === 'SAIDA_INTERVALO' ? 'Café Ida' : 'Café Volta';
+            diasMap[uniqueKey].obsArray.push(`${label}: ${hora}`);
+        }
+        else if (['ENTRADA', 'SAIDA', 'SAIDA_ALMOCO', 'VOLTA_ALMOCO', 'PONTO'].includes(p.realTipo)) {
+            diasMap[uniqueKey].batidas.push(hora);
             if (p.descricao && p.descricao !== 'Manual' && !p.descricao.includes('GPS')) {
                 diasMap[uniqueKey].obsArray.push(p.descricao);
             }
         }
     });
 
-    // 3. Transforma o Map em Array formatado para a Tabela
     const resultado = Object.values(diasMap).map((item: any) => {
-        // Ordena as batidas cronologicamente
-        const batidasOrdenadas = item.batidas.sort();
-        
-        // Remove duplicatas de observação
+        const b = item.batidas.sort(); 
         const obsUnicas = [...new Set(item.obsArray)].join('; ');
+        
+        // CORREÇÃO: Usa o array manual para garantir 3 letras e evitar quebras
+        const diaIndex = getDay(new Date(item.data));
+        const diaSemanaFixo = diasSemanaAbrev[diaIndex];
 
         return {
+            nomeFunc: item.nomeFunc, 
             data: item.data,
-            nomeFunc: item.nomeFunc,
             dataFormatada: format(new Date(item.data), 'dd/MM/yyyy'),
-            diaSemana: format(new Date(item.data), 'EEE', { locale: ptBR }).toUpperCase(),
+            diaSemana: diaSemanaFixo, // "SEG", "TER"...
             
-            // Mapeia sequencialmente para as 6 colunas
-            e1: batidasOrdenadas[0] || '-',
-            s1: batidasOrdenadas[1] || '-',
-            e2: batidasOrdenadas[2] || '-',
-            s2: batidasOrdenadas[3] || '-',
-            e3: batidasOrdenadas[4] || '-', // Extra 1 (Volta Intervalo)
-            s3: batidasOrdenadas[5] || '-', // Extra 2 (Saída Final)
+            e1: b[0] || '-',
+            s1: b[1] || '-',
+            e2: b[2] || '-',
+            s2: b[3] || '-',
+            extra: b.length > 4 ? `+${b.length - 4} batidas` : '',
             
-            obs: item.isAusencia ? (obsUnicas || 'Ausência Registrada') : obsUnicas,
-            isAusencia: item.isAusencia
+            obs: item.isAusencia ? (obsUnicas || 'Ausência') : obsUnicas,
+            isAusencia: item.isAusencia,
+            trabalhou: b.length > 0 && !item.isAusencia
         };
     });
 
-    // Ordena o array final por data
-    return resultado.sort((a:any, b:any) => new Date(a.data).getTime() - new Date(b.data).getTime());
+    return resultado.sort((a:any, b:any) => {
+        if (a.nomeFunc < b.nomeFunc) return -1;
+        if (a.nomeFunc > b.nomeFunc) return 1;
+        return new Date(a.data).getTime() - new Date(b.data).getTime();
+    });
   };
 
-  // === 2. GERADOR PDF ATUALIZADO (6 COLUNAS) ===
+  // === 2. GERADOR PDF ATUALIZADO ===
   const criarDocPDF = async () => {
     const doc = new jsPDF();
     const dadosProcessados = processarDados();
-    const ehRelatorioGeral = filtro.usuario === 'Todos';
+    const ehRelatorioGeral = filtro.usuario === 'Todos' || !filtro.usuario || filtro.usuario === 'Todos os Funcionários';
+    const diasTrabalhados = dadosProcessados.filter((d: any) => d.trabalhou).length;
+    const ehPeriodo = !isSameDay(filtro.inicio, filtro.fim);
 
     // Cabeçalho Roxo
     doc.setFillColor(124, 58, 237); 
@@ -153,70 +147,126 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     doc.setFontSize(12); doc.setFont('helvetica', 'normal'); 
     doc.text('Relatório Detalhado de Frequência', 14, 28);
     
-    // Info Direita
     doc.setFontSize(9); 
     doc.text('Sistema de Ponto Eletrônico', 195, 15, { align: 'right' });
     doc.text('Conformidade Portaria 671', 195, 20, { align: 'right' });
     doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 195, 25, { align: 'right' });
 
-    // Filtros
+    // === BARRA CINZA (AJUSTE DE LAYOUT MILIMÉTRICO) ===
     doc.setFillColor(245, 245, 245); 
     doc.rect(14, 45, 182, 25, 'F');
     doc.setTextColor(0, 0, 0); doc.setFontSize(10);
     
+    // 1. FUNCIONÁRIO (Esquerda)
     doc.setFont('helvetica', 'bold'); doc.text('FUNCIONÁRIO:', 18, 52); 
-    doc.setFont('helvetica', 'normal'); doc.text(filtro.usuario || 'Todos', 18, 58);
+    doc.setFont('helvetica', 'normal'); 
+    let nomeFuncionario = ehRelatorioGeral ? 'TODOS OS COLABORADORES' : filtro.usuario;
+    // Trunca para 22 caracteres para não bater no Período
+    if (nomeFuncionario.length > 22) nomeFuncionario = nomeFuncionario.substring(0, 22) + '...';
+    doc.text(nomeFuncionario, 18, 58);
     
-    doc.setFont('helvetica', 'bold'); doc.text('PERÍODO:', 80, 52); 
-    doc.setFont('helvetica', 'normal'); doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, 80, 58);
+    // 2. PERÍODO (Centro-Esquerda, X=85)
+    // Movido um pouco para esquerda para fugir dos cards
+    const xPeriodo = 80; 
+    doc.setFont('helvetica', 'bold'); doc.text('PERÍODO:', xPeriodo, 52); 
+    doc.setFont('helvetica', 'normal'); 
+    doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, xPeriodo, 58);
 
-    // Cards Saldo
+    // 3. CARDS (Direita - Comprimidos)
     if (resumoHoras && !ehRelatorioGeral) {
-      // Trabalhado
-      doc.setFillColor(124, 58, 237); 
-      doc.roundedRect(125, 45, 35, 25, 2, 2, 'F');
-      doc.setTextColor(255, 255, 255); doc.setFontSize(7); 
-      doc.text('TRABALHADO', 142.5, 52, { align: 'center' });
-      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); 
-      doc.text(resumoHoras.total || "0h 0m", 142.5, 62, { align: 'center' });
+      const cardY = 45;
+      const cardHeight = 25;
+      const cardWidth = 22; // REDUZIDO DE 26 PARA 22 PARA CABER TUDO
+      
+      const endX = 196; // Fim da barra cinza
+      
+      const xCard3 = endX - cardWidth; // Banco (Último)
+      const xCard2 = xCard3 - cardWidth - 2; // Horas (Meio)
+      const xCard1 = xCard2 - cardWidth - 2; // Dias (Primeiro)
 
-      // Saldo
+      // CARD 1: DIAS TRABALHADOS (Se houver período)
+      // Se não for período (1 dia), não mostra este card e empurra os outros para a direita
+      // Mas para manter design fixo, vamos manter as posições relativas à direita.
+      
+      if (ehPeriodo) {
+          doc.setFillColor(59, 130, 246); // Azul
+          doc.roundedRect(xCard1, cardY, cardWidth, cardHeight, 2, 2, 'F');
+          
+          doc.setTextColor(255, 255, 255); 
+          doc.setFontSize(6); doc.text('DIAS', xCard1 + (cardWidth/2), cardY + 7, { align: 'center' });
+          
+          doc.setFontSize(10); doc.setFont('helvetica', 'bold'); 
+          doc.text(String(diasTrabalhados), xCard1 + (cardWidth/2), cardY + 17, { align: 'center' });
+      }
+
+      // CARD 2: HORAS TOTAIS
+      doc.setFillColor(124, 58, 237); // Roxo
+      // Se não for período, o card de horas assume a posição do card 1? Não, vamos alinhar à direita sempre.
+      // Se não tiver card de dias, os cards ficam onde estão (vão sobrar espaço na esquerda, o que é bom para o Período).
+      const posHorasFinal = ehPeriodo ? xCard2 : xCard3 - cardWidth - 2;
+
+      doc.roundedRect(posHorasFinal, cardY, cardWidth, cardHeight, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255); 
+      doc.setFontSize(6); doc.setFont('helvetica', 'normal');
+      doc.text('HORAS', posHorasFinal + (cardWidth/2), cardY + 7, { align: 'center' });
+      
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); // Fonte levemente menor
+      doc.text(resumoHoras.total || "0h", posHorasFinal + (cardWidth/2), cardY + 17, { align: 'center' });
+
+      // CARD 3: BANCO DE HORAS
       if (resumoHoras.saldoPositivo) { doc.setFillColor(22, 163, 74); } else { doc.setFillColor(220, 38, 38); }
-      doc.roundedRect(162, 45, 35, 25, 2, 2, 'F');
-      doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont('helvetica', 'normal'); 
-      doc.text('BANCO DE HORAS', 179.5, 52, { align: 'center' });
-      doc.setFontSize(11); doc.setFont('helvetica', 'bold'); 
-      doc.text(resumoHoras.saldo || "0h 0m", 179.5, 62, { align: 'center' });
+      const posBancoFinal = xCard3;
+      
+      doc.roundedRect(posBancoFinal, cardY, cardWidth, cardHeight, 2, 2, 'F');
+      doc.setTextColor(255, 255, 255); 
+      doc.setFontSize(6); doc.setFont('helvetica', 'normal');
+      doc.text('BANCO', posBancoFinal + (cardWidth/2), cardY + 7, { align: 'center' });
+      
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); 
+      doc.text(resumoHoras.saldo || "0h", posBancoFinal + (cardWidth/2), cardY + 17, { align: 'center' });
     }
 
-    // === DEFINIÇÃO DAS 6 COLUNAS ===
-    const colunas = [
-        { header: 'Data', dataKey: 'dataFormatada' },
-        { header: 'Dia', dataKey: 'diaSemana' },
-        { header: 'Ent.', dataKey: 'e1' }, { header: 'Sai.', dataKey: 's1' },
-        { header: 'Ent.', dataKey: 'e2' }, { header: 'Sai.', dataKey: 's2' },
-        { header: 'Ent.', dataKey: 'e3' }, { header: 'Sai.', dataKey: 's3' }, // Novas Colunas
-        { header: 'Observações', dataKey: 'obs' },
-    ];
+    let colunas = [];
+    let colStyles = {};
 
-    // Ajuste de largura para caber tudo na folha A4
-    const colStyles: any = { 
-        0: { cellWidth: 20 }, // Data
-        1: { cellWidth: 12 }, // Dia
-        2: { cellWidth: 11 }, // E1
-        3: { cellWidth: 11 }, // S1
-        4: { cellWidth: 11 }, // E2
-        5: { cellWidth: 11 }, // S2
-        6: { cellWidth: 11 }, // E3 (Novo)
-        7: { cellWidth: 11 }, // S3 (Novo)
-        8: { cellWidth: 'auto' } // Obs (Restante)
-    };
+    if (ehRelatorioGeral) {
+        colunas = [
+            { header: 'Nome', dataKey: 'nomeFunc' },
+            { header: 'Data', dataKey: 'dataFormatada' },
+            { header: 'Dia', dataKey: 'diaSemana' },
+            { header: 'E1', dataKey: 'e1' }, { header: 'S1', dataKey: 's1' },
+            { header: 'E2', dataKey: 'e2' }, { header: 'S2', dataKey: 's2' },
+            { header: 'Obs', dataKey: 'obs' },
+        ];
+        colStyles = { 
+            0: { cellWidth: 35, fontStyle: 'bold' }, 
+            1: { cellWidth: 18 }, 
+            2: { cellWidth: 12 }, // Dia com 3 letras cabe aqui
+            3: { cellWidth: 10 }, 4: { cellWidth: 10 }, 5: { cellWidth: 10 }, 6: { cellWidth: 10 }, 
+            7: { cellWidth: 'auto' } 
+        };
+    } else {
+        colunas = [
+            { header: 'Data', dataKey: 'dataFormatada' },
+            { header: 'Dia', dataKey: 'diaSemana' },
+            { header: 'Ent.', dataKey: 'e1' }, { header: 'Sai.', dataKey: 's1' },
+            { header: 'Ent.', dataKey: 'e2' }, { header: 'Sai.', dataKey: 's2' },
+            { header: 'Observações', dataKey: 'obs' },
+        ];
+        colStyles = { 
+            0: { cellWidth: 20 },
+            1: { cellWidth: 15 }, // Dia com 3 letras cabe folgado aqui
+            2: { cellWidth: 12 }, 3: { cellWidth: 12 },
+            4: { cellWidth: 12 }, 5: { cellWidth: 12 },
+            6: { cellWidth: 'auto' }
+        };
+    }
 
     autoTable(doc, {
       body: dadosProcessados,
       startY: 80,
       theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1.5, valign: 'middle', halign: 'center' }, // Fonte um pouco menor para caber
+      styles: { fontSize: 8, cellPadding: 1.5, valign: 'middle', halign: 'center' },
       headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
       columns: colunas,
       columnStyles: colStyles,
@@ -230,23 +280,22 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
       }
     });
 
-    // Assinatura
-    // @ts-ignore
-    let finalY = doc.lastAutoTable.finalY + 40;
-    if (finalY > 250) { doc.addPage(); finalY = 40; }
+    if (!ehRelatorioGeral) {
+        // @ts-ignore
+        let finalY = doc.lastAutoTable.finalY + 40;
+        if (finalY > 250) { doc.addPage(); finalY = 40; }
 
-    doc.setDrawColor(150, 150, 150);
-    doc.line(14, finalY, 100, finalY);
-    doc.setFontSize(8); doc.setTextColor(100, 100, 100);
-    doc.text('Assinatura do Colaborador', 14, finalY + 5);
+        doc.setDrawColor(150, 150, 150);
+        doc.line(14, finalY, 100, finalY);
+        doc.setFontSize(8); doc.setTextColor(100, 100, 100);
+        doc.text('Assinatura do Colaborador', 14, finalY + 5);
 
-    if (assinaturaUrl) {
-        try {
-            const imgData = await getBase64ImageFromURL(assinaturaUrl);
-            if (imgData) {
-                doc.addImage(imgData, 'PNG', 20, finalY - 25, 40, 20);
-            }
-        } catch (e) { console.error(e); }
+        if (assinaturaUrl) {
+            try {
+                const imgData = await getBase64ImageFromURL(assinaturaUrl);
+                if (imgData) doc.addImage(imgData, 'PNG', 20, finalY - 25, 40, 20);
+            } catch (e) { console.error(e); }
+        }
     }
 
     return doc;
@@ -270,7 +319,6 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     finally { setLoading(false); setMenuAberto(false); }
   };
 
-  // Funções MTE mantidas (elas já aceitam lista crua de pontos)
   const baixarAFD = () => {
     const txtContent = gerarAFD(pontos, dadosEmpresaCompleto || { nome: nomeEmpresa, cnpj: '00000000000000' });
     const blob = new Blob([txtContent], { type: 'text/plain' });
@@ -285,15 +333,14 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     const a = document.createElement('a'); a.href = url; a.download = `AFDT.txt`; a.click(); setMenuAberto(false);
   };
 
-  // === 3. EXCEL ATUALIZADO (6 COLUNAS) ===
   const gerarExcel = () => {
     const dados = processarDados();
     const ws = XLSX.utils.json_to_sheet(dados.map((row: any) => ({
+        Funcionario: row.nomeFunc, 
         Data: row.dataFormatada,
         Dia: row.diaSemana,
         Ent1: row.e1, Sai1: row.s1, 
         Ent2: row.e2, Sai2: row.s2,
-        Ent3: row.e3, Sai3: row.s3, // Novas Colunas
         Obs: row.obs
     })));
     const wb = XLSX.utils.book_new();
