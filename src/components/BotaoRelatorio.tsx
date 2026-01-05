@@ -39,10 +39,9 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
   const [menuAberto, setMenuAberto] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // === 1. LÓGICA DE PROCESSAMENTO (COM 6 COLUNAS) ===
+  // === 1. LÓGICA DE PROCESSAMENTO ===
   const processarDados = () => {
     const diasMap: Record<string, any> = {};
-    // Abreviação manual para garantir 3 letras e evitar quebra de linha
     const diasSemanaAbrev = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB']; 
     
     const pontosNormalizados = pontos.map((p: any) => ({
@@ -55,45 +54,58 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
 
     pontosNormalizados.forEach((p: any) => {
         const dateKey = format(p.dataObj, 'yyyy-MM-dd');
-        const uniqueKey = `${p.uid}_${dateKey}`; 
-
-        if (!diasMap[uniqueKey]) {
-            diasMap[uniqueKey] = {
-                data: p.dataObj,
-                nomeFunc: p.unome, 
-                batidas: [], 
-                obsArray: [], 
-                isAusencia: false
-            };
-        }
+        // Usa timestamp na chave para garantir unicidade em casos de múltiplas ausências distintas
+        const uniqueKey = `${p.uid}_${dateKey}_${p.id}`; 
 
         const hora = format(p.dataObj, 'HH:mm');
 
-        // Lógica de Ausência
+        // === ALTERAÇÃO AQUI: LÓGICA DE AUSÊNCIA AGRUPADA ===
         if (p.realTipo === 'AUSENCIA' || p.tipo === 'AUSENCIA') {
             const dtInicio = new Date(p.dataHora);
             const dtFim = p.extra?.dataFim ? new Date(p.extra.dataFim) : dtInicio;
-            try {
-                eachDayOfInterval({ start: dtInicio, end: dtFim }).forEach((dia) => {
-                    const uKey = `${p.uid}_${format(dia, 'yyyy-MM-dd')}`;
-                    if(!diasMap[uKey]) {
-                        diasMap[uKey] = { 
-                            data: dia, nomeFunc: p.unome, batidas: [], obsArray: [], isAusencia: true 
-                        };
-                    }
-                    diasMap[uKey].obsArray.push(`AUSÊNCIA: ${p.descricao || 'Sem motivo'}`);
-                    diasMap[uKey].isAusencia = true;
-                });
-            } catch(e) {}
+            
+            // Verifica se é um intervalo ou dia único
+            const ehIntervalo = !isSameDay(dtInicio, dtFim);
+            
+            // Cria a string de data (Única ou Range)
+            let dataFormatadaDisplay = format(dtInicio, 'dd/MM/yyyy');
+            if (ehIntervalo) {
+                dataFormatadaDisplay += ` a ${format(dtFim, 'dd/MM/yyyy')}`;
+            }
+
+            // Não fazemos mais o loop 'eachDayOfInterval'. Criamos apenas UM registro.
+            if(!diasMap[uniqueKey]) {
+                diasMap[uniqueKey] = { 
+                    data: dtInicio, // Usa data de início para ordenação
+                    nomeFunc: p.unome, 
+                    batidas: [], 
+                    obsArray: [], 
+                    isAusencia: true,
+                    customDataDisplay: dataFormatadaDisplay // Campo novo para exibir o range
+                };
+            }
+            diasMap[uniqueKey].obsArray.push(`AUSÊNCIA: ${p.descricao || 'Sem motivo'}`);
         } 
-        // CORREÇÃO: Todos os tipos de batida vão para as colunas de horário
+        // LÓGICA DE PONTOS NORMAIS (MANTIDA)
         else {
+            // Para pontos normais, usamos a chave padrão dia_usuario para agrupar batidas do mesmo dia
+            const keyDiaNormal = `${p.uid}_${dateKey}`;
+            
+            if (!diasMap[keyDiaNormal]) {
+                diasMap[keyDiaNormal] = {
+                    data: p.dataObj,
+                    nomeFunc: p.unome, 
+                    batidas: [], 
+                    obsArray: [], 
+                    isAusencia: false
+                };
+            }
+
             const tiposValidos = ['ENTRADA', 'SAIDA', 'SAIDA_ALMOCO', 'VOLTA_ALMOCO', 'SAIDA_INTERVALO', 'VOLTA_INTERVALO', 'PONTO'];
             if (tiposValidos.includes(p.realTipo)) {
-                diasMap[uniqueKey].batidas.push(hora);
-                
+                diasMap[keyDiaNormal].batidas.push(hora);
                 if (p.descricao && p.descricao !== 'Manual' && !p.descricao.includes('GPS')) {
-                    diasMap[uniqueKey].obsArray.push(p.descricao);
+                    diasMap[keyDiaNormal].obsArray.push(p.descricao);
                 }
             }
         }
@@ -103,23 +115,19 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         const b = item.batidas.sort(); 
         const obsUnicas = [...new Set(item.obsArray)].join('; ');
         
-        // Garante dia da semana com 3 letras
         const diaIndex = getDay(new Date(item.data));
         const diaSemanaFixo = diasSemanaAbrev[diaIndex];
 
         return {
             nomeFunc: item.nomeFunc, 
             data: item.data,
-            dataFormatada: format(new Date(item.data), 'dd/MM/yyyy'),
+            // Se tiver o customDataDisplay (Range de férias), usa ele. Se não, usa a data normal.
+            dataFormatada: item.customDataDisplay || format(new Date(item.data), 'dd/MM/yyyy'),
             diaSemana: diaSemanaFixo,
             
-            // 6 Colunas Mapeadas
-            e1: b[0] || '-',
-            s1: b[1] || '-',
-            e2: b[2] || '-',
-            s2: b[3] || '-',
-            e3: b[4] || '-',
-            s3: b[5] || '-',
+            e1: b[0] || '-', s1: b[1] || '-',
+            e2: b[2] || '-', s2: b[3] || '-',
+            e3: b[4] || '-', s3: b[5] || '-',
             
             obs: (b.length > 6 ? `+${b.length - 6} batidas. ` : '') + (item.isAusencia ? (obsUnicas || 'Ausência') : obsUnicas),
             isAusencia: item.isAusencia,
@@ -134,7 +142,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     });
   };
 
-  // === 2. GERADOR PDF (LAYOUT CORRIGIDO) ===
+  // === 2. GERADOR PDF ATUALIZADO ===
   const criarDocPDF = async () => {
     const doc = new jsPDF();
     const dadosProcessados = processarDados();
@@ -148,7 +156,6 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22); doc.setFont('helvetica', 'bold'); 
     doc.text(nomeEmpresa || 'WorkID', 14, 20);
-    
     doc.setFontSize(12); doc.setFont('helvetica', 'normal'); 
     doc.text('Relatório Detalhado de Frequência', 14, 28);
     
@@ -170,25 +177,23 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     if (nomeFuncionario.length > 22) nomeFuncionario = nomeFuncionario.substring(0, 22) + '...';
     doc.text(nomeFuncionario, 18, 58);
     
-    // PERÍODO (POSIÇÃO AJUSTADA PARA X=72 PARA NÃO CORTAR)
+    // PERÍODO
     const xPeriodo = 72; 
     doc.setFont('helvetica', 'bold'); doc.text('PERÍODO:', xPeriodo, 52); 
     doc.setFont('helvetica', 'normal'); 
     doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, xPeriodo, 58);
 
-    // === CARDS (3 UNIDADES, ALINHADOS À DIREITA) ===
+    // === CARDS ===
     if (resumoHoras && !ehRelatorioGeral) {
       const cardY = 45;
       const cardHeight = 25;
-      const cardWidth = 24; // Reduzido para 24 para dar espaço
-      
+      const cardWidth = 24; 
       const endX = 196; 
       
       const xCard3 = endX - cardWidth; // Banco
       const xCard2 = xCard3 - cardWidth - 2; // Horas
       const xCard1 = xCard2 - cardWidth - 2; // Dias
 
-      // Card Dias
       if (ehPeriodo) {
           doc.setFillColor(59, 130, 246); 
           doc.roundedRect(xCard1, cardY, cardWidth, cardHeight, 2, 2, 'F');
@@ -198,7 +203,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
           doc.text(String(diasTrabalhados), xCard1 + (cardWidth/2), cardY + 17, { align: 'center' });
       }
 
-      // Card Horas
+      // HORAS
       doc.setFillColor(124, 58, 237); 
       const posHorasFinal = ehPeriodo ? xCard2 : xCard3 - cardWidth - 2;
       doc.roundedRect(posHorasFinal, cardY, cardWidth, cardHeight, 2, 2, 'F');
@@ -208,7 +213,7 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
       doc.setFontSize(9); doc.setFont('helvetica', 'bold'); 
       doc.text(resumoHoras.total || "0h", posHorasFinal + (cardWidth/2), cardY + 17, { align: 'center' });
 
-      // Card Banco
+      // BANCO
       if (resumoHoras.saldoPositivo) { doc.setFillColor(22, 163, 74); } else { doc.setFillColor(220, 38, 38); }
       const posBancoFinal = xCard3;
       doc.roundedRect(posBancoFinal, cardY, cardWidth, cardHeight, 2, 2, 'F');
@@ -222,7 +227,8 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     let colunas = [];
     let colStyles = {};
 
-    // === DEFINIÇÃO DAS 6 COLUNAS DE HORÁRIO ===
+    // === DEFINIÇÃO DAS COLUNAS (AJUSTE LARGURA DATA) ===
+    // Aumentei a largura da coluna Data para caber "01/01/2026 a 30/01/2026"
     if (ehRelatorioGeral) {
         colunas = [
             { header: 'Nome', dataKey: 'nomeFunc' },
@@ -230,12 +236,12 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
             { header: 'Dia', dataKey: 'diaSemana' },
             { header: 'E1', dataKey: 'e1' }, { header: 'S1', dataKey: 's1' },
             { header: 'E2', dataKey: 'e2' }, { header: 'S2', dataKey: 's2' },
-            { header: 'E3', dataKey: 'e3' }, { header: 'S3', dataKey: 's3' }, // Extras
+            { header: 'E3', dataKey: 'e3' }, { header: 'S3', dataKey: 's3' }, 
             { header: 'Obs', dataKey: 'obs' },
         ];
         colStyles = { 
-            0: { cellWidth: 30, fontStyle: 'bold' }, 
-            1: { cellWidth: 17 }, 
+            0: { cellWidth: 25, fontStyle: 'bold' }, // Reduzi um pouco o nome
+            1: { cellWidth: 35 }, // AUMENTADO PARA CABER RANGE
             2: { cellWidth: 10 }, 
             3: { cellWidth: 9 }, 4: { cellWidth: 9 }, 
             5: { cellWidth: 9 }, 6: { cellWidth: 9 }, 
@@ -248,11 +254,11 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
             { header: 'Dia', dataKey: 'diaSemana' },
             { header: 'Ent.', dataKey: 'e1' }, { header: 'Sai.', dataKey: 's1' },
             { header: 'Ent.', dataKey: 'e2' }, { header: 'Sai.', dataKey: 's2' },
-            { header: 'Ent.', dataKey: 'e3' }, { header: 'Sai.', dataKey: 's3' }, // Extras
+            { header: 'Ent.', dataKey: 'e3' }, { header: 'Sai.', dataKey: 's3' }, 
             { header: 'Observações', dataKey: 'obs' },
         ];
         colStyles = { 
-            0: { cellWidth: 20 },
+            0: { cellWidth: 35 }, // AUMENTADO PARA CABER RANGE
             1: { cellWidth: 15 }, 
             2: { cellWidth: 10 }, 3: { cellWidth: 10 },
             4: { cellWidth: 10 }, 5: { cellWidth: 10 },
@@ -300,14 +306,10 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     return doc;
   };
 
-  // === 3. VISUALIZAÇÃO COM SUA CORREÇÃO DE SCRIPT ===
   const visualizarPDF = async () => {
-    // Detecta se é dispositivo móvel
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
     let janela: Window | null = null;
 
-    // Se for PC, abrimos a janela IMEDIATAMENTE para não ser bloqueada
     if (!isMobile) {
         janela = window.open('', '_blank');
         if (janela) {
@@ -330,11 +332,9 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         const doc = await criarDocPDF();
 
         if (isMobile) {
-            // NO CELULAR: Baixa direto para evitar bloqueio de popup e tela branca
             doc.save(`${nomeEmpresa}_Relatorio.pdf`);
             setTimeout(() => alert("Relatório baixado com sucesso! Verifique suas notificações ou pasta de downloads."), 500);
         } else {
-            // NO PC: Carrega na janela aberta
             const blobUrl = doc.output('bloburl');
             const blobUrlStr = String(blobUrl);
             if (janela) {
