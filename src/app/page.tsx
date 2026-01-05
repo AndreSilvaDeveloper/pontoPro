@@ -389,7 +389,7 @@ export default function Home() {
         {!configs.ocultarSaldoHoras && (
             <div className="text-center">
                 <p className="text-[10px] text-slate-600 font-medium bg-slate-900/30 inline-block px-3 py-1 rounded-full border border-white/5">
-                    Geolocalização Ativa &bull; WorkID Secure
+                    Geolocalização Ativa &bull; WorkID
                 </p>
             </div>
         )}
