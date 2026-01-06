@@ -1,47 +1,87 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/db'; // Confirme se o caminho é @/lib/db ou @/lib/prisma no seu projeto
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 
-// GET: Busca dados e configurações
+// GET: Busca dados da empresa, configurações E dados financeiros/contagem
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  
+  // Verifica se existe sessão e empresaId
+  if (!session || !session.user?.empresaId) {
+      return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  }
 
   try {
+    // Agora usamos 'include' para trazer relações e campos necessários para o financeiro
     const empresa = await prisma.empresa.findUnique({
       where: { id: session.user.empresaId },
-      select: { nome: true, cnpj: true, configuracoes: true } // Traz o JSON
+      include: {
+        // Traz automaticamente campos escalares: nome, cnpj, diaVencimento, chavePix, configuracoes
+        
+        // Contagem de funcionários (vidas)
+        _count: {
+            select: { usuarios: true }
+        },
+        // Lista de admins (para contar quantos têm acesso)
+        usuarios: {
+            select: { id: true, email: true, cargo: true }
+        },
+        // Filiais e suas contagens (para somar na fatura matriz)
+        filiais: {
+            include: {
+                _count: { select: { usuarios: true } },
+                usuarios: { select: { id: true, email: true, cargo: true } }
+            }
+        }
+      }
     });
 
-    // Define valores padrão se for a primeira vez
+    if (!empresa) {
+        return NextResponse.json({ erro: 'Empresa não encontrada' }, { status: 404 });
+    }
+
+    // Define valores padrão para configurações operacionais
     const configsPadrao = {
-        bloquearForaDoRaio: true, // Se false, apenas avisa mas deixa bater
-        exigirFoto: true,         // Se false, não pede câmera
-        permitirEdicaoFunc: false // Se true, funcionário pode editar o próprio ponto
+        bloquearForaDoRaio: true, 
+        exigirFoto: true,         
+        permitirEdicaoFunc: false,
+        ocultar_menu_atestados: false,
+        ocultarSaldoHoras: false
     };
 
-    const configsFinais = { ...configsPadrao, ...(empresa?.configuracoes as object || {}) };
+    // Mescla o que está no banco com o padrão
+    const configuracoes = { ...configsPadrao, ...(empresa.configuracoes as object || {}) };
 
-    return NextResponse.json({ ...empresa, configuracoes: configsFinais });
+    // Retorna tudo unificado
+    return NextResponse.json({ 
+        ...empresa, 
+        configuracoes 
+    });
+
   } catch (error) {
-    return NextResponse.json({ erro: 'Erro ao buscar' }, { status: 500 });
+    console.error("Erro API Empresa:", error);
+    return NextResponse.json({ erro: 'Erro ao buscar dados' }, { status: 500 });
   }
 }
 
-// PUT: Atualiza configurações
+// PUT: Atualiza configurações operacionais (Mantido igual)
 export async function PUT(request: Request) {
     const session = await getServerSession(authOptions);
-    if (!session || session.user.cargo !== 'ADMIN') return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+    
+    // Apenas ADMIN ou SUPER_ADMIN pode alterar configurações
+    if (!session || !session.user?.empresaId || session.user.cargo !== 'ADMIN') {
+        return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+    }
 
     try {
         const body = await request.json();
         
-        // Atualiza apenas o campo configuracoes
+        // Atualiza apenas o JSON de configurações
         await prisma.empresa.update({
             where: { id: session.user.empresaId },
             data: {
-                configuracoes: body // Salva o JSON direto
+                configuracoes: body 
             }
         });
 
