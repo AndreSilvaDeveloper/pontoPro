@@ -5,7 +5,7 @@ import Webcam from 'react-webcam';
 import axios from 'axios';
 import { 
   MapPin, Camera, LogOut, History, RefreshCcw, 
-  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, Clock, CheckCircle2, Loader2 
+  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -16,7 +16,6 @@ export default function Home() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-  // Guarda qual botão específico foi clicado para mostrar loading só nele
   const [acaoEmProcesso, setAcaoEmProcesso] = useState<string | null>(null);
 
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
@@ -32,28 +31,43 @@ export default function Home() {
   });
   
   const [statusPonto, setStatusPonto] = useState<string | null>(null);
+  const [ultimoPontoData, setUltimoPontoData] = useState<Date | null>(null);
+  const [tempoIntervalo, setTempoIntervalo] = useState('00:00:00');
   const [jaAlmocou, setJaAlmocou] = useState(false);
   
   const [carregandoStatus, setCarregandoStatus] = useState(true);
   const [tipoManual, setTipoManual] = useState('ENTRADA');
   const webcamRef = useRef<Webcam>(null);
 
-  // Relógio em Tempo Real
+  // Relógio e Cronômetro
   useEffect(() => {
     const timer = setInterval(() => {
         const agora = new Date();
         setHoraAtual(agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+
+        if (ultimoPontoData && (statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO')) {
+            const diffMs = agora.getTime() - new Date(ultimoPontoData).getTime();
+            
+            const totalSeconds = Math.floor(diffMs / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const timeString = [hours, minutes, seconds]
+                .map(v => v < 10 ? "0" + v : v)
+                .join(":");
+            
+            setTempoIntervalo(timeString);
+        }
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [ultimoPontoData, statusPonto]);
 
   const carregarConfigEStatus = async () => {
       // @ts-ignore
       if (!session?.user?.id) return;
 
       try {
-          // === CORREÇÃO 1: CACHE BUSTING ===
-          // Adicionamos _t=Date.now() para obrigar a Vercel a buscar dados novos
           const timestamp = new Date().getTime();
           
           const [resConfig, resStatus] = await Promise.all([
@@ -70,6 +84,10 @@ export default function Home() {
           });
 
           setStatusPonto(resStatus.data.ultimoTipo || null);
+          
+          const dataRegistro = resStatus.data.data || resStatus.data.ultimoRegistro;
+          setUltimoPontoData(dataRegistro ? new Date(dataRegistro) : null);
+
           setJaAlmocou(resStatus.data.jaAlmocou || false);
 
       } catch (e) { 
@@ -122,8 +140,6 @@ export default function Home() {
 
   const baterPonto = async (tipoAcao?: string) => {
     const tipoFinal = tipoAcao || tipoManual;
-    
-    // Feedback visual imediato
     setAcaoEmProcesso(tipoFinal); 
 
     if (!location) { 
@@ -145,7 +161,8 @@ export default function Home() {
 
     setLoading(true);
     try {
-      const response = await axios.post('/api/funcionario/ponto', {
+      // @ts-ignore
+      await axios.post('/api/funcionario/ponto', {
         // @ts-ignore
         usuarioId: session?.user?.id, 
         latitude: location.lat, longitude: location.lng, 
@@ -153,25 +170,22 @@ export default function Home() {
         tipo: tipoFinal 
       });
       
-      // === CORREÇÃO 2: ATUALIZAÇÃO OTIMISTA ===
-      // Atualizamos o estado da tela IMEDIATAMENTE, sem esperar o servidor
       setStatusPonto(tipoFinal);
+      setUltimoPontoData(new Date());
+
       if (tipoFinal === 'VOLTA_ALMOCO') setJaAlmocou(true);
-      // ========================================
 
       setStatusMsg({ tipo: 'sucesso', texto: `✅ Ponto Registrado!` });
       
       setTimeout(() => {
           setStatusMsg(null);
-          // Recarrega do servidor só pra garantir (double check)
           carregarConfigEStatus();
-          // Só libera o botão após todo o processo
           setAcaoEmProcesso(null); 
       }, 1500);
 
     } catch (error: any) {
       setStatusMsg({ tipo: 'erro', texto: `❌ ${error.response?.data?.erro || 'Erro ao registrar'}` });
-      setAcaoEmProcesso(null); // Libera o botão se der erro
+      setAcaoEmProcesso(null);
     } finally { 
         setLoading(false); 
     }
@@ -184,11 +198,25 @@ export default function Home() {
     </div>
   );
 
-  // === RENDERIZAÇÃO INTELIGENTE (Botões Bonitos) ===
+  // Componente Visual do Timer
+  const IntervalDisplay = ({ label, tempo }: { label: string, tempo: string }) => (
+      <div className="w-full bg-amber-900/20 border border-amber-500/50 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-[0_0_15px_rgba(245,158,11,0.15)] animate-in fade-in slide-in-from-top-4">
+          <div className="flex items-center gap-3 text-amber-400">
+              <div className="p-2 bg-amber-500/20 rounded-lg animate-pulse">
+                  <Clock size={24} />
+              </div>
+              <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Status Atual</p>
+                  <p className="text-sm font-bold uppercase tracking-wide text-white">{label}</p>
+              </div>
+          </div>
+          <span className="text-2xl font-mono font-bold text-white tracking-widest tabular-nums">{tempo}</span>
+      </div>
+  );
+
   const renderizarBotoesInteligentes = () => {
       const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-white relative overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed";
       
-      // 1. Iniciar Dia
       if (!statusPonto || statusPonto === 'SAIDA') {
           return (
             <button onClick={() => baterPonto('ENTRADA')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-emerald-600 to-emerald-500`}>
@@ -197,7 +225,6 @@ export default function Home() {
           );
       }
 
-      // 2. Trabalhando
       if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(statusPonto)) {
           return (
             <div className="space-y-4 animate-in slide-in-from-bottom-4 fade-in">
@@ -225,52 +252,40 @@ export default function Home() {
           );
       }
 
-      // 3. Em Almoço
+      // REMOVIDO IntervalDisplay daqui de dentro para não duplicar.
+      // O timer agora aparece lá em cima, independente da localização.
       if (statusPonto === 'SAIDA_ALMOCO') {
         return (
-          <button onClick={() => baterPonto('VOLTA_ALMOCO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-blue-600 to-blue-500`}>
-              {acaoEmProcesso === 'VOLTA_ALMOCO' ? <Loader2 className="animate-spin" /> : <><ArrowRightCircle size={28} /> VOLTAR DO ALMOÇO</>}
-          </button>
+          <div className="animate-in slide-in-from-bottom-4 fade-in">
+              <button onClick={() => baterPonto('VOLTA_ALMOCO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-blue-600 to-blue-500`}>
+                  {acaoEmProcesso === 'VOLTA_ALMOCO' ? <Loader2 className="animate-spin" /> : <><ArrowRightCircle size={28} /> VOLTAR DO ALMOÇO</>}
+              </button>
+          </div>
         );
       }
 
-      // 4. Em Intervalo
       if (statusPonto === 'SAIDA_INTERVALO') {
         return (
-          <button onClick={() => baterPonto('VOLTA_INTERVALO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-indigo-600 to-indigo-500`}>
-              {acaoEmProcesso === 'VOLTA_INTERVALO' ? <Loader2 className="animate-spin" /> : <><ArrowRightCircle size={28} /> VOLTAR DO CAFÉ</>}
-          </button>
+          <div className="animate-in slide-in-from-bottom-4 fade-in">
+              <button onClick={() => baterPonto('VOLTA_INTERVALO')} disabled={loading} className={`${btnBase} bg-gradient-to-r from-indigo-600 to-indigo-500`}>
+                  {acaoEmProcesso === 'VOLTA_INTERVALO' ? <Loader2 className="animate-spin" /> : <><ArrowRightCircle size={28} /> VOLTAR DO CAFÉ</>}
+              </button>
+          </div>
         );
       }
   };
 
-  // Botões do modo flexível (caso fluxo estrito esteja desligado)
   const renderizarBotoesFlexiveis = () => {
       const btnFlex = "p-3 rounded-xl text-[10px] font-bold border transition-all flex flex-col items-center justify-center gap-1 active:scale-95 disabled:opacity-50";
       return (
         <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2">
-                {/* Botões de seleção de tipo não precisam de loading individual, só o botão de confirmar abaixo */}
-                <button onClick={()=>setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual==='ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                    <LogIn size={16}/> Entrada
-                </button>
-                <button onClick={()=>setTipoManual('SAIDA_ALMOCO')} className={`${btnFlex} ${tipoManual==='SAIDA_ALMOCO' ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                    <CupSoda size={16}/> Almoço
-                </button>
-                <button onClick={()=>setTipoManual('VOLTA_ALMOCO')} className={`${btnFlex} ${tipoManual==='VOLTA_ALMOCO' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                    <ArrowRightCircle size={16}/> Volta
-                </button>
-                
-                <button onClick={()=>setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual==='SAIDA_INTERVALO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                    <Coffee size={16}/> Café
-                </button>
-                <button onClick={()=>setTipoManual('VOLTA_INTERVALO')} className={`${btnFlex} ${tipoManual==='VOLTA_INTERVALO' ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                    <ArrowRightCircle size={16}/> Volta
-                </button>
-                
-                <button onClick={()=>setTipoManual('SAIDA')} className={`${btnFlex} ${tipoManual==='SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                    <LogOut size={16}/> Saída
-                </button>
+                <button onClick={()=>setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual==='ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><LogIn size={16}/> Entrada</button>
+                <button onClick={()=>setTipoManual('SAIDA_ALMOCO')} className={`${btnFlex} ${tipoManual==='SAIDA_ALMOCO' ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><CupSoda size={16}/> Almoço</button>
+                <button onClick={()=>setTipoManual('VOLTA_ALMOCO')} className={`${btnFlex} ${tipoManual==='VOLTA_ALMOCO' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><ArrowRightCircle size={16}/> Volta</button>
+                <button onClick={()=>setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual==='SAIDA_INTERVALO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><Coffee size={16}/> Café</button>
+                <button onClick={()=>setTipoManual('VOLTA_INTERVALO')} className={`${btnFlex} ${tipoManual==='VOLTA_INTERVALO' ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><ArrowRightCircle size={16}/> Volta</button>
+                <button onClick={()=>setTipoManual('SAIDA')} className={`${btnFlex} ${tipoManual==='SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><LogOut size={16}/> Saída</button>
             </div>
             
             <button onClick={() => baterPonto()} disabled={loading || (configs.exigirFoto && cameraErro)} className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-lg shadow-xl transition-all active:scale-95 disabled:opacity-70 ${loading ? 'bg-slate-600' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white'}`}>
@@ -283,13 +298,12 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
       
-      {/* Efeitos de Fundo */}
       <div className="fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-md space-y-6 relative z-10">
         
-        {/* CABEÇALHO COM CARD DE VIDRO */}
+        {/* CABEÇALHO */}
         <div className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
             <div className="flex items-center gap-4">
                 <div className="relative">
@@ -308,10 +322,17 @@ export default function Home() {
             </button>
         </div>
 
+        {/* NOVO: CRONÔMETRO DE INTERVALO (VISÍVEL SEMPRE QUE ESTIVER EM PAUSA) */}
+        {(statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO') && (
+             <IntervalDisplay 
+                label={statusPonto === 'SAIDA_ALMOCO' ? "Em Almoço" : "Em Pausa"} 
+                tempo={tempoIntervalo} 
+             />
+        )}
+
         {/* ÁREA PRINCIPAL (CÂMERA E AÇÃO) */}
         <div className="bg-slate-900/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-white/5 p-5 space-y-5">
             
-            {/* Mensagens de Status (Estilo Toast Embutido) */}
             {statusMsg && (
                 <div className={`p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top-2 ${statusMsg.tipo === 'erro' ? 'bg-red-500/20 text-red-200 border border-red-500/30' : statusMsg.tipo === 'sucesso' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
                     {statusMsg.tipo === 'erro' ? <AlertCircle size={18}/> : statusMsg.tipo === 'sucesso' ? <CheckCircle2 size={18}/> : <RefreshCcw size={18} className="animate-spin"/>}
@@ -319,7 +340,7 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Câmera / Mapa */}
+            {/* Câmera visível apenas se exigir foto e tiver localização */}
             {configs.exigirFoto && location && (
                 <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'}`}>
                     {!cameraErro ? (
@@ -339,7 +360,6 @@ export default function Home() {
                             <button onClick={tentarRecuperarCamera} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors">Tentar Novamente</button>
                         </div>
                     )}
-                    {/* Overlay de "Ao Vivo" */}
                     {!cameraErro && <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</div>}
                 </div>
             )}
@@ -370,7 +390,7 @@ export default function Home() {
             )}
         </div>
 
-        {/* MENU RÁPIDO INFERIOR */}
+        {/* MENU RÁPIDO */}
         <div className="grid grid-cols-3 gap-3">
             <Link href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-purple-500/10 text-purple-400 p-2.5 rounded-xl group-hover:bg-purple-500 group-hover:text-white transition-colors"><PenTool size={20} /></div>
