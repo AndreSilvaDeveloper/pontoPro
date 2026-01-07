@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma } from '@/lib/db'; // Confirme se é @/lib/db ou @/lib/prisma
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    // 1. Busca o Último Ponto (para saber o status atual)
+    // 1. Busca o Último Ponto (para saber o status atual e a HORA exata para o cronômetro)
     const ultimoPonto = await prisma.ponto.findFirst({
       where: { 
         usuarioId: usuarioId, 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       orderBy: { dataHora: 'desc' },
     });
 
-    // 2. NOVO: Verifica se JÁ HOUVE um Almoço hoje (independente de ser o último)
+    // 2. Verifica se JÁ HOUVE um Almoço hoje
     const almocoRealizado = await prisma.ponto.findFirst({
       where: {
         usuarioId: usuarioId,
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     });
 
     if (!ultimoPonto) {
-      return NextResponse.json({ status: 'Nenhum', ultimoTipo: null, jaAlmocou: false });
+      return NextResponse.json({ status: 'Nenhum', ultimoTipo: null, jaAlmocou: false, ultimoRegistro: null });
     }
 
     let tipo = ultimoPonto.subTipo || ultimoPonto.tipo;
@@ -60,8 +60,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       status: statusFrontend,
       ultimoTipo: tipo,
-      hora: ultimoPonto.dataHora,
-      jaAlmocou: !!almocoRealizado // Envia True ou False para o frontend
+      // AQUI ESTÁ A CHAVE: Enviamos a data exata para o frontend calcular o tempo decorrido
+      ultimoRegistro: ultimoPonto.dataHora, 
+      jaAlmocou: !!almocoRealizado 
     });
 
   } catch (error) {

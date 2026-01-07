@@ -1,29 +1,15 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  Building2,
-  Lock,
-  Ban,
-  PlayCircle,
-  RefreshCw,
-  LogOut,
-  Settings,
-  Trash2,
-  UserPlus,
-  X,
-  Loader2,
-  Users,
-  Link as LinkIcon,
-  FileText,
-  DollarSign,
-} from "lucide-react";
+  Building2,Lock, Ban, PlayCircle, RefreshCw, LogOut, Settings, Trash2, UserPlus, X, Loader2,
+  Users, Link as LinkIcon, FileText, DollarSign, CheckCircle,} from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
+import { format, isSameMonth, isSameYear } from "date-fns";
 
 // === FUNÇÕES AUXILIARES PARA GERAR PIX (EMV) ===
 
@@ -53,7 +39,6 @@ const formatarChaveParaPayload = (chave: string) => {
   const limpa = chave.trim();
 
   // 1. Chave Aleatória (EVP) - Mantém os hífens
-  // Ex: 123e4567-e89b-12d3-a456-426614174000 (36 chars)
   if (
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
       limpa
@@ -73,7 +58,6 @@ const formatarChaveParaPayload = (chave: string) => {
   }
 
   // 4. CPF/CNPJ ou Telefone sem formato - Remove tudo que não é número
-  // (Remove pontos, traços, barras e parênteses)
   return limpa.replace(/[^0-9]/g, "");
 };
 
@@ -91,10 +75,7 @@ const gerarPayloadPix = (
 
   let payload =
     emv("00", "01") +
-    emv(
-      "26",
-      emv("00", "BR.GOV.BCB.PIX") + emv("01", chaveFormatada) // Usa a chave tratada corretamente
-    ) +
+    emv("26", emv("00", "BR.GOV.BCB.PIX") + emv("01", chaveFormatada)) +
     emv("52", "0000") +
     emv("53", "986");
 
@@ -124,7 +105,7 @@ export default function SuperAdminPage() {
   const [cnpj, setCnpj] = useState("");
   const [nomeDono, setNomeDono] = useState("");
   const [emailDono, setEmailDono] = useState("");
-  const [senhaInicial, setSenhaInicial] = useState("1234");
+  const [senhaInicial, setSenhaInicial] = useState("1234"); // mantido
   const [loadingCriar, setLoadingCriar] = useState(false);
   const [resultado, setResultado] = useState<any>(null);
 
@@ -133,6 +114,13 @@ export default function SuperAdminPage() {
   const [modalEquipeOpen, setModalEquipeOpen] = useState(false);
   const [modalVincularOpen, setModalVincularOpen] = useState(false);
   const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
+
+  // === NOVO MODAL CONFIG FINANCEIRO ===
+  const [modalConfigFin, setModalConfigFin] = useState(false);
+  const [configData, setConfigData] = useState<{
+    diaVencimento: number;
+    chavePix: string;
+  }>({ diaVencimento: 15, chavePix: "" });
 
   const [empresaSelecionada, setEmpresaSelecionada] = useState<any>(null);
   const [matrizAlvoId, setMatrizAlvoId] = useState("");
@@ -148,6 +136,7 @@ export default function SuperAdminPage() {
   // === DADOS PARA FATURA ===
   const [chavePixManual, setChavePixManual] = useState("118.544.546-33");
   const [loadingFatura, setLoadingFatura] = useState(false);
+  const [loadingPagamento, setLoadingPagamento] = useState<string | null>(null);
 
   useEffect(() => {
     listarEmpresas();
@@ -272,17 +261,44 @@ export default function SuperAdminPage() {
     }
   };
 
+  const confirmarPagamentoManual = async (empresaId: string) => {
+    if (!confirm("Deseja marcar a fatura deste mês como PAGA para este cliente?")) return;
+
+    setLoadingPagamento(empresaId);
+    try {
+      await axios.post("/api/saas/confirmar-pagamento", { empresaId });
+      alert("Pagamento confirmado com sucesso!");
+      listarEmpresas();
+    } catch (e) {
+      alert("Erro ao confirmar pagamento.");
+    } finally {
+      setLoadingPagamento(null);
+    }
+  };
+
   const calcularFinanceiro = (matriz: any) => {
     let totalVidas = matriz._count?.usuarios || 0;
-    let totalAdmins = matriz.usuarios?.length || 0;
+    const adminsUnicos = new Set<string>();
+    const ehAdmin = (u: any) => ["ADMIN", "SUPER_ADMIN", "DONO"].includes(u.cargo);
+
+    if (matriz.usuarios) {
+      matriz.usuarios.forEach((u: any) => {
+        if (ehAdmin(u)) adminsUnicos.add(u.id);
+      });
+    }
 
     if (matriz.filiais && matriz.filiais.length > 0) {
       matriz.filiais.forEach((f: any) => {
         totalVidas += f._count?.usuarios || 0;
-        totalAdmins += f.usuarios?.length || 0;
+        if (f.usuarios) {
+          f.usuarios.forEach((u: any) => {
+            if (ehAdmin(u)) adminsUnicos.add(u.id);
+          });
+        }
       });
     }
 
+    const totalAdmins = adminsUnicos.size;
     const VALOR_BASE = 99.9;
     const FRANQUIA_VIDAS = 20;
     const FRANQUIA_ADMINS = 1;
@@ -309,14 +325,31 @@ export default function SuperAdminPage() {
 
   const abrirModalFatura = (empresa: any) => {
     setEmpresaSelecionada(empresa);
+    setChavePixManual(empresa?.chavePix || "118.544.546-33");
     setModalFaturaOpen(true);
   };
 
-  // === GERAR FATURA INDIVIDUAL (PDF VISUALIZÁVEL) ===
+  const salvarConfigFinanceira = async () => {
+    try {
+      if (!empresaSelecionada?.id) return;
+
+      await axios.put("/api/saas/atualizar-financeiro", {
+        empresaId: empresaSelecionada.id,
+        diaVencimento: configData.diaVencimento,
+        chavePix: configData.chavePix,
+      });
+
+      alert("Configurações salvas!");
+      setModalConfigFin(false);
+      listarEmpresas();
+    } catch (e) {
+      alert("Erro ao salvar.");
+    }
+  };
+
   const gerarFaturaIndividual = async () => {
     setLoadingFatura(true);
 
-    // Abre a janela imediatamente
     const janela = window.open("", "_blank");
     if (janela) {
       janela.document.write(
@@ -328,12 +361,15 @@ export default function SuperAdminPage() {
       const empresa = empresaSelecionada;
       const fin = calcularFinanceiro(empresa);
       const doc = new jsPDF();
+
       const hoje = new Date();
       const vencimento = new Date();
-      vencimento.setDate(15);
-      if (hoje.getDate() > 15) vencimento.setMonth(vencimento.getMonth() + 1);
 
-      // Gera Payload com a chave já tratada
+      const diaVenc = Number(empresa?.diaVencimento || 15);
+
+      vencimento.setDate(diaVenc);
+      if (hoje.getDate() > diaVenc) vencimento.setMonth(vencimento.getMonth() + 1);
+
       const payloadPix = gerarPayloadPix(
         chavePixManual,
         "Ontime Sistemas",
@@ -342,7 +378,6 @@ export default function SuperAdminPage() {
         `FAT${format(new Date(), "MMyy")}`
       );
 
-      // Cabeçalho
       doc.setFillColor(88, 28, 135);
       doc.rect(0, 0, 210, 40, "F");
       doc.setTextColor(255, 255, 255);
@@ -369,7 +404,6 @@ export default function SuperAdminPage() {
         { align: "right" }
       );
 
-      // Dados
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(11);
       doc.setFont("helvetica", "bold");
@@ -378,35 +412,22 @@ export default function SuperAdminPage() {
       doc.setFont("helvetica", "normal");
       doc.text(`${empresa.nome.toUpperCase()}`, 14, 62);
       doc.text(`CNPJ: ${empresa.cnpj || "Não Informado"}`, 14, 68);
-      doc.text(
-        `Responsável: ${empresa.usuarios?.[0]?.nome || "Admin"}`,
-        14,
-        74
-      );
+      doc.text(`Responsável: ${empresa.usuarios?.[0]?.nome || "Admin"}`, 14, 74);
 
-      // Tabela
-      const dadosTabela = [
-        ["Assinatura Mensal (Pacote Base)", "1", "R$ 99,90", "R$ 99,90"],
-      ];
+      const dadosTabela: any[] = [["Assinatura Mensal (Pacote Base)", "1", "R$ 99,90", "R$ 99,90"]];
       if (fin.vidasExcedentes > 0)
         dadosTabela.push([
           `Funcionários Excedentes (${fin.vidasExcedentes} x R$ 7,90)`,
           `${fin.vidasExcedentes}`,
           "R$ 7,90",
-          fin.custoVidas.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
+          fin.custoVidas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
         ]);
       if (fin.adminsExcedentes > 0)
         dadosTabela.push([
           `Administradores Adicionais (${fin.adminsExcedentes} x R$ 49,90)`,
           `${fin.adminsExcedentes}`,
           "R$ 49,90",
-          fin.custoAdmins.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
+          fin.custoAdmins.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
         ]);
 
       autoTable(doc, {
@@ -421,10 +442,7 @@ export default function SuperAdminPage() {
             "",
             "",
             "TOTAL A PAGAR",
-            fin.valorFinal.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }),
+            fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
           ],
         ],
         footStyles: {
@@ -435,9 +453,7 @@ export default function SuperAdminPage() {
         },
       });
 
-      // Área Pagamento
-      // @ts-ignore
-      const finalY = doc.lastAutoTable.finalY + 20;
+      const finalY = (doc as any).lastAutoTable.finalY + 20;
 
       doc.setDrawColor(200, 200, 200);
       doc.setFillColor(250, 250, 250);
@@ -453,7 +469,6 @@ export default function SuperAdminPage() {
       doc.setFontSize(12);
       doc.text(chavePixManual, 20, finalY + 32);
 
-      // QR Code Imagem
       try {
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
           payloadPix
@@ -474,12 +489,9 @@ export default function SuperAdminPage() {
       doc.text(splitPayload, 20, finalY + 52);
 
       doc.setFontSize(8);
-      doc.text(
-        "Este documento não possui valor fiscal de Nota Fiscal.",
-        105,
-        285,
-        { align: "center" }
-      );
+      doc.text("Este documento não possui valor fiscal de Nota Fiscal.", 105, 285, {
+        align: "center",
+      });
 
       const blobUrl = doc.output("bloburl");
       if (janela) janela.location.href = String(blobUrl);
@@ -510,10 +522,7 @@ export default function SuperAdminPage() {
         emp.cnpj || "N/A",
         fin.totalVidas,
         fin.totalAdmins,
-        fin.valorFinal.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        }),
+        fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
       ];
     });
 
@@ -527,59 +536,60 @@ export default function SuperAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 relative">
-      <div className="absolute top-6 right-6 flex gap-2">
-        <button
-          onClick={gerarRelatorioGeral}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-bold shadow-lg shadow-emerald-900/20"
-        >
-          <FileText size={16} /> Relatório Geral
-        </button>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 px-4 py-2 rounded-lg border border-red-900 transition-colors text-sm font-bold"
-        >
-          <LogOut size={16} /> Sair
-        </button>
-      </div>
-
-      <div className="max-w-6xl mx-auto space-y-8 pt-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-purple-500 flex justify-center items-center gap-2">
+    <div className="min-h-screen bg-black text-white px-3 sm:px-6 py-4">
+      {/* HEADER RESPONSIVO (corrige mobile) */}
+      <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl sm:text-3xl font-bold text-purple-500 flex justify-center sm:justify-start items-center gap-2">
             🛡️ Super Admin
           </h1>
-          <p className="text-gray-400">Painel de Controle Geral</p>
+          <p className="text-gray-400 text-sm sm:text-base">Painel de Controle Geral</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 shadow-xl h-fit sticky top-8">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            onClick={gerarRelatorioGeral}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-bold shadow-lg shadow-emerald-900/20"
+          >
+            <FileText size={16} /> Relatório Geral
+          </button>
+
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 px-4 py-2 rounded-lg border border-red-900 transition-colors text-sm font-bold"
+          >
+            <LogOut size={16} /> Sair
+          </button>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto space-y-6 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* NOVA VENDA */}
+          <div className="bg-gray-900 p-4 sm:p-6 rounded-2xl border border-gray-800 shadow-xl h-fit lg:sticky lg:top-8">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-green-400">
               <Building2 /> Nova Venda
             </h2>
+
             {resultado && (
               <div className="bg-green-900/30 border border-green-500 p-4 rounded-xl mb-4 animate-pulse">
-                <p className="font-bold text-green-400 mb-2">
-                  ✅ Cliente Criado!
-                </p>
+                <p className="font-bold text-green-400 mb-2">✅ Cliente Criado!</p>
                 <div className="text-xs font-mono space-y-1 text-gray-300">
                   <p>Empresa: {resultado.dados.empresa}</p>
                   <p>
                     Login:{" "}
-                    <span className="text-white select-all">
-                      {resultado.dados.login}
-                    </span>
+                    <span className="text-white select-all">{resultado.dados.login}</span>
                   </p>
                   <p>
                     Senha:{" "}
-                    <span className="text-white select-all">
-                      {resultado.dados.senha}
-                    </span>
+                    <span className="text-white select-all">{resultado.dados.senha}</span>
                   </p>
                 </div>
               </div>
             )}
+
             <form onSubmit={criarCliente} className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   className="bg-gray-800 p-3 rounded w-full outline-none focus:border-purple-500 border border-gray-700 text-sm"
                   placeholder="Empresa"
@@ -594,7 +604,8 @@ export default function SuperAdminPage() {
                   onChange={(e) => setCnpj(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   className="bg-gray-800 p-3 rounded w-full outline-none focus:border-purple-500 border border-gray-700 text-sm"
                   placeholder="Nome Dono"
@@ -610,6 +621,7 @@ export default function SuperAdminPage() {
                   required
                 />
               </div>
+
               <button
                 disabled={loadingCriar}
                 className="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold transition-all disabled:opacity-50"
@@ -619,7 +631,8 @@ export default function SuperAdminPage() {
             </form>
           </div>
 
-          <div className="bg-gray-900 p-6 rounded-2xl border border-gray-800 h-[650px] flex flex-col shadow-xl">
+          {/* CARTEIRA */}
+          <div className="bg-gray-900 p-4 sm:p-6 rounded-2xl border border-gray-800 flex flex-col shadow-xl lg:h-[650px]">
             <div className="flex justify-between mb-4 items-center">
               <h2 className="text-xl font-bold text-blue-400 flex items-center gap-2">
                 <Lock /> Carteira de Clientes
@@ -627,69 +640,121 @@ export default function SuperAdminPage() {
               <button
                 onClick={listarEmpresas}
                 className="text-blue-400 hover:bg-blue-900/30 p-2 rounded transition-colors"
+                title="Atualizar"
               >
                 <RefreshCw size={18} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+            <div className="space-y-3 sm:space-y-4 pr-1 sm:pr-2 custom-scrollbar overflow-y-auto max-h-[70vh] lg:max-h-none lg:flex-1">
               {loadingListar ? (
                 <p className="text-center text-gray-500 py-10">Carregando...</p>
               ) : (
                 empresas.map((matriz) => {
                   const dadosFin = calcularFinanceiro(matriz);
+                  const hoje = new Date();
+                  const ultimoPag = matriz.dataUltimoPagamento
+                    ? new Date(matriz.dataUltimoPagamento)
+                    : null;
+                  const estaPago =
+                    !!ultimoPag && isSameMonth(ultimoPag, hoje) && isSameYear(ultimoPag, hoje);
+
                   return (
                     <div
                       key={matriz.id}
                       className="rounded-xl overflow-hidden border border-gray-700 bg-gray-800/50"
                     >
                       <div
-                        className={`p-4 flex justify-between items-center ${
+                        className={`p-3 sm:p-4 flex justify-between items-start sm:items-center gap-3 ${
                           matriz.status === "BLOQUEADO"
                             ? "bg-red-900/20"
                             : "bg-gray-800"
                         }`}
                       >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <Building2 size={16} className="text-purple-500" />
-                            <p
-                              className={`font-bold text-base ${
-                                matriz.status === "BLOQUEADO"
-                                  ? "text-red-400"
-                                  : "text-white"
-                              }`}
-                            >
-                              {matriz.nome}
-                            </p>
-                            <div className="flex gap-1 ml-2">
-                              <span
-                                className="text-[9px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold flex items-center gap-1"
-                                title="Funcionários"
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                              <Building2 size={16} className="text-purple-500 shrink-0" />
+
+                              {/* NOME: no mobile ocupa a linha toda */}
+                              <p
+                                className={`font-bold text-base text-white w-full sm:w-auto break-words sm:truncate-0 sm:max-w-none ${
+                                  matriz.status === "BLOQUEADO" ? "text-red-400" : "text-white"
+                                }`}
+                                title={matriz.nome}
                               >
-                                <Users size={10} /> {dadosFin.totalVidas}
-                              </span>
-                              <span
-                                className="text-[9px] bg-indigo-900/30 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold flex items-center gap-1"
-                                title="Admins"
-                              >
-                                <Lock size={10} /> {dadosFin.totalAdmins}
-                              </span>
+                                {matriz.nome}
+                              </p>
+
+                              {/* BADGES: no mobile ficam abaixo do nome */}
+                              <div className="flex flex-wrap gap-1 sm:ml-2">
+                                <span
+                                  className="text-[9px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold flex items-center gap-1"
+                                  title="Funcionários"
+                                >
+                                  <Users size={10} /> {dadosFin.totalVidas}
+                                </span>
+
+                                <span
+                                  className="text-[9px] bg-indigo-900/30 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold flex items-center gap-1"
+                                  title="Admins"
+                                >
+                                  <Lock size={10} /> {dadosFin.totalAdmins}
+                                </span>
+
+                                {estaPago && (
+                                  <span className="text-[9px] bg-green-500 text-black px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                                    <CheckCircle size={8} /> PAGO
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
+
+
                           <p className="text-[10px] text-gray-400 mt-1">
                             MATRIZ • {matriz.cnpj || "Sem CNPJ"}
                           </p>
                         </div>
 
-                        <div className="flex gap-1">
+                        {/* AÇÕES (responsivo) */}
+                        <div className="shrink-0 grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:justify-end sm:gap-1">
                           <button
                             onClick={() => abrirModalFatura(matriz)}
-                            className="p-2 bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white rounded"
+                            className="h-9 w-9 sm:h-auto sm:w-auto sm:p-2 flex items-center justify-center bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white rounded"
                             title="Gerar Fatura"
                           >
                             <DollarSign size={14} />
                           </button>
+
+                          {!estaPago && (
+                            <button
+                              onClick={() => confirmarPagamentoManual(matriz.id)}
+                              disabled={loadingPagamento === matriz.id}
+                              className="p-2 bg-gray-700 text-gray-400 hover:bg-green-600 hover:text-white rounded border border-gray-600"
+                              title="Confirmar Pagamento (Baixa Manual)"
+                            >
+                              {loadingPagamento === matriz.id ? (
+                                <Loader2 className="animate-spin" size={14} />
+                              ) : (
+                                <CheckCircle size={14} />
+                              )}
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setEmpresaSelecionada(matriz);
+                              setConfigData({
+                                diaVencimento: Number(matriz.diaVencimento || 15),
+                                chavePix: matriz.chavePix || "118.544.546-33",
+                              });
+                              setModalConfigFin(true);
+                            }}
+                            className="p-2 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded"
+                            title="Configurar Cobrança"
+                          >
+                            <Settings size={14} />
+                          </button>
+
                           <button
                             onClick={() => {
                               setEmpresaSelecionada(matriz);
@@ -701,6 +766,7 @@ export default function SuperAdminPage() {
                           >
                             <LinkIcon size={14} />
                           </button>
+
                           <button
                             onClick={() => {
                               setEmpresaSelecionada(matriz);
@@ -711,25 +777,24 @@ export default function SuperAdminPage() {
                           >
                             <Users size={14} />
                           </button>
+
                           <Link
                             href={`/saas/${matriz.id}`}
-                            className="p-2 bg-purple-900/30 text-purple-400 hover:bg-purple-600 hover:text-white rounded"
+                            title="Config. Empresa"
+                            className="h-9 w-9 sm:h-auto sm:w-auto sm:p-2 flex items-center justify-center bg-purple-900/30 text-purple-400 hover:bg-purple-600 hover:text-white rounded"
                           >
                             <Settings size={14} />
                           </Link>
+
+
                           <button
-                            onClick={() =>
-                              alternarStatus(
-                                matriz.id,
-                                matriz.nome,
-                                matriz.status
-                              )
-                            }
+                            onClick={() => alternarStatus(matriz.id, matriz.nome, matriz.status)}
                             className={`p-2 rounded ${
                               matriz.status === "ATIVO"
                                 ? "text-orange-400 hover:bg-orange-600 hover:text-white"
-                                : "text-green-400 hover:bg-green-600"
+                                : "text-green-400 hover:bg-green-600 hover:text-white"
                             }`}
+                            title={matriz.status === "ATIVO" ? "Bloquear" : "Ativar"}
                           >
                             {matriz.status === "ATIVO" ? (
                               <Ban size={14} />
@@ -737,11 +802,11 @@ export default function SuperAdminPage() {
                               <PlayCircle size={14} />
                             )}
                           </button>
+
                           <button
-                            onClick={() =>
-                              excluirEmpresa(matriz.id, matriz.nome)
-                            }
+                            onClick={() => excluirEmpresa(matriz.id, matriz.nome)}
                             className="p-2 bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white rounded"
+                            title="Excluir Empresa"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -753,6 +818,7 @@ export default function SuperAdminPage() {
                           <p className="text-[10px] uppercase font-bold text-gray-500 pl-2 mb-2 mt-1">
                             Filiais Vinculadas ({matriz.filiais.length})
                           </p>
+
                           {matriz.filiais.map((filial: any) => (
                             <div
                               key={filial.id}
@@ -764,16 +830,13 @@ export default function SuperAdminPage() {
                                     {filial.nome}
                                   </p>
                                   <div className="flex gap-2 text-[10px] text-gray-600">
-                                    <span>
-                                      {filial._count?.usuarios || 0} funcs
-                                    </span>
+                                    <span>{filial._count?.usuarios || 0} funcs</span>
                                     <span>•</span>
-                                    <span>
-                                      {filial.usuarios?.length || 0} admins
-                                    </span>
+                                    <span>{filial.usuarios?.length || 0} admins</span>
                                   </div>
                                 </div>
                               </div>
+
                               <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <button
                                   onClick={() => {
@@ -786,9 +849,7 @@ export default function SuperAdminPage() {
                                   <Users size={12} />
                                 </button>
                                 <button
-                                  onClick={() =>
-                                    excluirEmpresa(filial.id, filial.nome)
-                                  }
+                                  onClick={() => excluirEmpresa(filial.id, filial.nome)}
                                   className="p-1.5 hover:bg-red-600 hover:text-white text-gray-500 rounded"
                                   title="Excluir Filial"
                                 >
@@ -799,19 +860,27 @@ export default function SuperAdminPage() {
                           ))}
                         </div>
                       )}
-                      <div className="px-4 py-2 bg-gray-900 border-t border-gray-800 flex justify-between items-center">
+
+                      <div className="px-3 sm:px-4 py-2 bg-gray-900 border-t border-gray-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
                         <span className="text-[10px] text-gray-500">
-                          Excedentes: {dadosFin.vidasExcedentes} vidas /{" "}
-                          {dadosFin.adminsExcedentes} admins
+                          Excedentes: {dadosFin.vidasExcedentes} vidas / {dadosFin.adminsExcedentes} admins
                         </span>
                         <span className="text-xs text-gray-500">
-                          Fatura Estimada:{" "}
-                          <strong className="text-emerald-400">
-                            {dadosFin.valorFinal.toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            })}
-                          </strong>
+                          {estaPago ? (
+                            <span className="text-green-500 font-bold uppercase">
+                              Fatura Mês Atual: PAGO
+                            </span>
+                          ) : (
+                            <>
+                              Estimado:{" "}
+                              <strong className="text-emerald-400">
+                                {dadosFin.valorFinal.toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
+                              </strong>
+                            </>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -823,6 +892,7 @@ export default function SuperAdminPage() {
         </div>
       </div>
 
+      {/* MODAL FATURA */}
       {modalFaturaOpen && empresaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
@@ -832,14 +902,14 @@ export default function SuperAdminPage() {
             >
               <X size={20} />
             </button>
+
             <h3 className="text-lg font-bold mb-1 text-white flex items-center gap-2">
               <DollarSign size={20} className="text-emerald-500" /> Gerar Fatura
             </h3>
+
             <p className="text-sm text-gray-400 mb-6">
               Fatura para{" "}
-              <span className="text-white font-bold">
-                {empresaSelecionada.nome}
-              </span>
+              <span className="text-white font-bold">{empresaSelecionada.nome}</span>
             </p>
 
             <div className="space-y-4">
@@ -874,6 +944,7 @@ export default function SuperAdminPage() {
         </div>
       )}
 
+      {/* MODAL VINCULAR */}
       {modalVincularOpen && empresaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
@@ -883,9 +954,11 @@ export default function SuperAdminPage() {
             >
               <X size={20} />
             </button>
+
             <h3 className="text-lg font-bold mb-1 text-white flex items-center gap-2">
               <LinkIcon size={20} className="text-yellow-500" /> Vincular Matriz
             </h3>
+
             <div className="space-y-4 mt-4">
               <select
                 className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none focus:border-yellow-500"
@@ -901,22 +974,20 @@ export default function SuperAdminPage() {
                     </option>
                   ))}
               </select>
+
               <button
                 onClick={salvarVinculo}
                 disabled={loadingVinculo || !matrizAlvoId}
                 className="w-full bg-yellow-600 hover:bg-yellow-700 py-3 rounded-lg font-bold text-black"
               >
-                {loadingVinculo ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "CONFIRMAR"
-                )}
+                {loadingVinculo ? <Loader2 className="animate-spin" /> : "CONFIRMAR"}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* MODAL ADMIN */}
       {modalAdminOpen && empresaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative">
@@ -926,32 +997,28 @@ export default function SuperAdminPage() {
             >
               <X size={20} />
             </button>
+
             <h3 className="text-lg font-bold mb-4 text-white">Novo Acesso</h3>
+
             <form onSubmit={salvarNovoAdmin} className="space-y-3">
               <input
                 className="w-full bg-gray-800 p-2.5 rounded text-white border border-gray-700"
                 placeholder="Nome"
-                onChange={(e) =>
-                  setAdminData({ ...adminData, nome: e.target.value })
-                }
+                onChange={(e) => setAdminData({ ...adminData, nome: e.target.value })}
                 required
               />
               <input
                 className="w-full bg-gray-800 p-2.5 rounded text-white border border-gray-700"
                 placeholder="Email"
                 type="email"
-                onChange={(e) =>
-                  setAdminData({ ...adminData, email: e.target.value })
-                }
+                onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
                 required
               />
               <input
                 className="w-full bg-gray-800 p-2.5 rounded text-white border border-gray-700"
                 placeholder="Senha"
                 value={adminData.senha}
-                onChange={(e) =>
-                  setAdminData({ ...adminData, senha: e.target.value })
-                }
+                onChange={(e) => setAdminData({ ...adminData, senha: e.target.value })}
                 required
               />
               <button
@@ -965,6 +1032,7 @@ export default function SuperAdminPage() {
         </div>
       )}
 
+      {/* MODAL EQUIPE */}
       {modalEquipeOpen && empresaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-md relative">
@@ -974,12 +1042,13 @@ export default function SuperAdminPage() {
             >
               <X size={20} />
             </button>
+
             <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
               <Users className="text-purple-500" /> Gestão de Acessos
             </h3>
+
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {!empresaSelecionada.usuarios ||
-              empresaSelecionada.usuarios.length === 0 ? (
+              {!empresaSelecionada.usuarios || empresaSelecionada.usuarios.length === 0 ? (
                 <p className="text-center text-gray-500">Nenhum usuário.</p>
               ) : (
                 empresaSelecionada.usuarios.map((user: any) => (
@@ -988,9 +1057,7 @@ export default function SuperAdminPage() {
                     className="bg-gray-800 p-3 rounded flex justify-between items-center border border-gray-700"
                   >
                     <div>
-                      <p className="font-bold text-sm text-white">
-                        {user.nome}
-                      </p>
+                      <p className="font-bold text-sm text-white">{user.nome}</p>
                       <p className="text-xs text-gray-400">{user.email}</p>
                     </div>
                     <button
@@ -1003,6 +1070,7 @@ export default function SuperAdminPage() {
                 ))
               )}
             </div>
+
             <div className="mt-6 pt-4 border-t border-gray-800">
               <button
                 onClick={() => {
@@ -1012,6 +1080,70 @@ export default function SuperAdminPage() {
                 className="w-full py-2 border border-dashed border-gray-600 text-gray-400 hover:text-white rounded text-sm flex justify-center gap-2"
               >
                 <UserPlus size={16} /> Adicionar Novo Acesso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOVO MODAL: CONFIGURAÇÃO FINANCEIRA */}
+      {modalConfigFin && empresaSelecionada && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
+            <button
+              onClick={() => setModalConfigFin(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+
+            <h3 className="text-lg font-bold mb-4 text-white flex gap-2 items-center">
+              <DollarSign className="text-emerald-500" /> Configuração Financeira
+            </h3>
+
+            <p className="text-xs text-gray-400 mb-4">
+              Cliente: <strong className="text-white">{empresaSelecionada.nome}</strong>
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs uppercase font-bold text-gray-500 mb-1 block">
+                  Dia do Vencimento
+                </label>
+                <select
+                  className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none"
+                  value={configData.diaVencimento}
+                  onChange={(e) =>
+                    setConfigData({
+                      ...configData,
+                      diaVencimento: Number(e.target.value),
+                    })
+                  }
+                >
+                  {[1, 5, 10, 15, 20, 25, 28].map((d) => (
+                    <option key={d} value={d}>
+                      Dia {d}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase font-bold text-gray-500 mb-1 block">
+                  Chave Pix Recebedora
+                </label>
+                <input
+                  className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none"
+                  value={configData.chavePix}
+                  onChange={(e) => setConfigData({ ...configData, chavePix: e.target.value })}
+                />
+              </div>
+
+              <button
+                onClick={salvarConfigFinanceira}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg"
+              >
+                SALVAR CONFIGURAÇÃO
               </button>
             </div>
           </div>

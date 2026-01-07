@@ -29,6 +29,10 @@ model Empresa {
   usuarios      Usuario[]
   feriados      Feriado[]
   adminsPermitidos AdminLoja[]
+
+  diaVencimento Int      @default(15)      // Dia padrão: 15
+  chavePix      String?  @default("118.544.546-33")
+  dataUltimoPagamento DateTime?
 }
 
 model Usuario {
