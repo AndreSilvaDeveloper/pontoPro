@@ -1,105 +1,82 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 export async function DELETE(request: Request) {
-  // 1. SEGURANÇA: Apenas SUPER_ADMIN pode excluir
   const session = await getServerSession(authOptions);
-  
+
   // @ts-ignore
-  if (!session || session.user.cargo !== 'SUPER_ADMIN') {
-      return NextResponse.json({ erro: 'Acesso negado.' }, { status: 403 });
+  if (!session || session.user.cargo !== "SUPER_ADMIN") {
+    return NextResponse.json({ erro: "Acesso negado." }, { status: 403 });
   }
 
   try {
-    const { id } = await request.json(); // ID da empresa para excluir
+    const { id } = await request.json();
 
     if (!id) {
-        return NextResponse.json({ erro: 'ID da empresa é obrigatório.' }, { status: 400 });
+      return NextResponse.json({ erro: "ID da empresa é obrigatório." }, { status: 400 });
     }
 
-    // 2. EXCLUSÃO CIRÚRGICA (Transaction)
     await prisma.$transaction(async (tx) => {
-        
-        // === PASSO A: O RESGATE DOS ADMINS 🚑 ===
-        // Admins não podem ser excluídos, apenas desvinculados desta loja.
-        const adminsDaLoja = await tx.usuario.findMany({
-            where: { 
-                empresaId: id, 
-                cargo: { in: ['ADMIN', 'SUPER_ADMIN'] } 
-            }
-        });
+      // 1) Pega todos usuários da empresa
+      const usuariosDaEmpresa = await tx.usuario.findMany({
+        where: { empresaId: id },
+        select: { id: true, cargo: true },
+      });
 
-        for (const admin of adminsDaLoja) {
-            // Verifica se esse admin tem acesso a alguma OUTRA loja
-            const outraLoja = await tx.adminLoja.findFirst({
-                where: { 
-                    usuarioId: admin.id,
-                    empresaId: { not: id } // Qualquer loja que NÃO seja a que vamos apagar
-                }
-            });
+      const idsSuperAdmins = usuariosDaEmpresa
+        .filter((u) => u.cargo === "SUPER_ADMIN")
+        .map((u) => u.id);
 
-            if (outraLoja) {
-                // Se tem outra loja, movemos ele para lá automaticamente
-                await tx.usuario.update({
-                    where: { id: admin.id },
-                    data: { empresaId: outraLoja.empresaId }
-                });
-            } else {
-                // Se era a única loja dele, deixamos ele "sem teto" (null) mas com a conta VIVA
-                await tx.usuario.update({
-                    where: { id: admin.id },
-                    data: { empresaId: null }
-                });
-            }
-        }
+      const idsParaExcluir = usuariosDaEmpresa
+        .filter((u) => u.cargo !== "SUPER_ADMIN")
+        .map((u) => u.id);
 
-        // === PASSO B: LISTAR OS FUNCIONÁRIOS (Esses serão apagados) ===
-        // Funcionários pertencem à empresa, então se a empresa morre, os dados deles morrem junto.
-        const funcionarios = await tx.usuario.findMany({
-            where: { empresaId: id, cargo: 'FUNCIONARIO' },
-            select: { id: true }
-        });
-        const idsFuncionarios = funcionarios.map(u => u.id);
-
-        if (idsFuncionarios.length > 0) {
-            // Apaga dados vinculados aos funcionários
-            await tx.ponto.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
-            await tx.solicitacaoAjuste.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
-            await tx.ausencia.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
-            
-            // Limpa AdminLoja se por acaso algum funcionário tiver (segurança)
-            await tx.adminLoja.deleteMany({ where: { usuarioId: { in: idsFuncionarios } } });
-
-            // Apaga os usuários Funcionários
-            await tx.usuario.deleteMany({
-                where: { id: { in: idsFuncionarios } }
-            });
-        }
-
-        // === PASSO C: LIMPEZA DA EMPRESA ===
-        
-        // Remove todos os vínculos de AdminLoja que apontam para ESTA empresa
-        // (Isso tira o acesso dos admins a essa loja, já que ela vai sumir)
+      // 2) SUPER_ADMINs: mantém vivos, remove vínculo e acessos dessa empresa
+      if (idsSuperAdmins.length > 0) {
+        // remove acessos ao "adminLoja" dessa empresa
         await tx.adminLoja.deleteMany({
-            where: { empresaId: id }
+          where: { empresaId: id, usuarioId: { in: idsSuperAdmins } },
         });
 
-        // Apagar dados gerais da empresa
-        await tx.feriado.deleteMany({ where: { empresaId: id } });
-        await tx.logAuditoria.deleteMany({ where: { empresaId: id } });
-
-        // === PASSO D: FIM DA EMPRESA ===
-        await tx.empresa.delete({
-            where: { id: id }
+        // desvincula da empresa (pra não ficar FK apontando pra empresa deletada)
+        await tx.usuario.updateMany({
+          where: { id: { in: idsSuperAdmins } },
+          data: { empresaId: null },
         });
+      }
+
+      // 3) Apaga tudo que pertence aos usuários (exceto SUPER_ADMIN)
+      if (idsParaExcluir.length > 0) {
+        await tx.ponto.deleteMany({ where: { usuarioId: { in: idsParaExcluir } } });
+        await tx.solicitacaoAjuste.deleteMany({ where: { usuarioId: { in: idsParaExcluir } } });
+        await tx.ausencia.deleteMany({ where: { usuarioId: { in: idsParaExcluir } } });
+
+        // remove vínculos em adminLoja desses usuários
+        await tx.adminLoja.deleteMany({ where: { usuarioId: { in: idsParaExcluir } } });
+
+        // por fim, apaga os usuários
+        await tx.usuario.deleteMany({ where: { id: { in: idsParaExcluir } } });
+      }
+
+      // 4) Apaga vínculos restantes apontando pra empresa (segurança extra)
+      await tx.adminLoja.deleteMany({ where: { empresaId: id } });
+
+      // 5) Apaga dados gerais da empresa
+      await tx.feriado.deleteMany({ where: { empresaId: id } });
+      await tx.logAuditoria.deleteMany({ where: { empresaId: id } });
+
+      // 6) Apaga a empresa
+      await tx.empresa.delete({ where: { id } });
     });
 
-    return NextResponse.json({ success: true, message: 'Empresa excluída com sucesso.' });
-
+    return NextResponse.json({ success: true, message: "Empresa excluída (limpeza total) com sucesso." });
   } catch (error) {
     console.error("Erro ao excluir empresa:", error);
-    return NextResponse.json({ erro: 'Erro técnico ao excluir. Verifique se existem dependências.' }, { status: 500 });
+    return NextResponse.json(
+      { erro: "Erro técnico ao excluir. Verifique dependências/tabelas relacionadas." },
+      { status: 500 }
+    );
   }
 }
