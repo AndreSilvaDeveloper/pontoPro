@@ -651,7 +651,7 @@ export default function AdminDashboard() {
 
         {/* === AÇÕES RÁPIDAS === */}
         <div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-1">Acesso Rápido</p>
+          {/* <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-1">Acesso Rápido</p> */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <button
               onClick={abrirModalAusencia}
