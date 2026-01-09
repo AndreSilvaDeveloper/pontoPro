@@ -80,6 +80,11 @@ export default function AdminDashboard() {
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  // ✅ NOVO: busca dinâmica no filtro de funcionário (combobox)
+  const [buscaFuncionario, setBuscaFuncionario] = useState('');
+  const [dropdownAberto, setDropdownAberto] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [modalAusenciaAberto, setModalAusenciaAberto] = useState(false);
   const [modalJornadaAberto, setModalJornadaAberto] = useState(false);
@@ -111,6 +116,18 @@ export default function AdminDashboard() {
       return () => clearTimeout(timer);
     }
   }, [pendenciasAjuste, pendenciasAusencia]);
+
+  // ✅ NOVO: fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!dropdownRef.current) return;
+      if (!dropdownRef.current.contains(e.target as Node)) {
+        setDropdownAberto(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const carregarDados = async () => {
     try {
@@ -295,6 +312,18 @@ export default function AdminDashboard() {
     return false;
   });
 
+  // ✅ NOVO: dados do combobox (filtra conforme digita)
+  const usuariosFiltrados = usuarios.filter((u) => {
+    if (!buscaFuncionario.trim()) return true;
+    const termo = buscaFuncionario.trim().toLowerCase();
+    return (
+      (u.nome || '').toLowerCase().includes(termo) ||
+      (u.email || '').toLowerCase().includes(termo)
+    );
+  });
+
+  const usuarioSelecionado = filtroUsuario ? usuarios.find((u) => u.id === filtroUsuario) : null;
+
   // ===================== CÁLCULO DE ESTATÍSTICAS =====================
   const calcularEstatisticas = () => {
     if (!filtroUsuario) return null;
@@ -370,7 +399,7 @@ export default function AdminDashboard() {
     };
 
     let minutosHoje = 0;
-    let minutosTotalPeriodo = 0; 
+    let minutosTotalPeriodo = 0;
     let statusAtual = 'Ausente';
     let tempoDecorridoAgora = 0;
 
@@ -381,11 +410,11 @@ export default function AdminDashboard() {
     for (let i = 0; i < pontosOrdenados.length; i++) {
       const pEntrada = pontosOrdenados[i];
       const tipoEntrada = pEntrada.subTipo || pEntrada.tipo;
-      
+
       if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(tipoEntrada)) {
         const dataEntradaReal = new Date(pEntrada.dataHora);
         const diaStr = format(dataEntradaReal, 'yyyy-MM-dd');
-        
+
         if (!contagemDia[diaStr]) contagemDia[diaStr] = 0;
         const parIndex = contagemDia[diaStr];
         contagemDia[diaStr]++;
@@ -402,7 +431,7 @@ export default function AdminDashboard() {
 
         if (pSaida && ['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(tipoSaida)) {
           const dataSaidaReal = new Date(pSaida.dataHora);
-          
+
           // Cálculo BRUTO inicial
           let diff = differenceInMinutes(dataSaidaReal, dataEntradaReal);
 
@@ -411,30 +440,33 @@ export default function AdminDashboard() {
           // Ignora esses minutos extras.
           // Obs: Verifica se metaSaidaStr existe e se é igual a s2 (final do dia)
           if (metaSaidaStr && metaSaidaStr === configDia.s2) {
-              const [hMeta, mMeta] = metaSaidaStr.split(':').map(Number);
-              const dataMetaSaida = new Date(dataSaidaReal);
-              dataMetaSaida.setHours(hMeta, mMeta, 0, 0);
+            const [hMeta, mMeta] = metaSaidaStr.split(':').map(Number);
+            const dataMetaSaida = new Date(dataSaidaReal);
+            dataMetaSaida.setHours(hMeta, mMeta, 0, 0);
 
-              const atrasoSaida = differenceInMinutes(dataSaidaReal, dataMetaSaida);
-              
-              // Se o atraso for positivo (saiu depois) E menor ou igual a 10 min
-              if (atrasoSaida > 0 && atrasoSaida <= 10) {
-                  // Subtrai esse "excesso" do tempo trabalhado, "fingindo" que ele saiu na hora
-                  diff -= atrasoSaida;
-              }
+            const atrasoSaida = differenceInMinutes(dataSaidaReal, dataMetaSaida);
+
+            // Se o atraso for positivo (saiu depois) E menor ou igual a 10 min
+            if (atrasoSaida > 0 && atrasoSaida <= 10) {
+              // Subtrai esse "excesso" do tempo trabalhado, "fingindo" que ele saiu na hora
+              diff -= atrasoSaida;
+            }
           }
           // ====================================================
 
           if (diff > 0 && diff < 1440) {
             minutosPorDia[diaStr] = (minutosPorDia[diaStr] || 0) + diff;
-            
+
             if (diaStr >= dataInicio && diaStr <= dataFim) minutosTotalPeriodo += diff;
             if (isSameDay(dataEntradaReal, agora)) minutosHoje += diff;
           }
 
           if (tipoSaida === 'SAIDA_INTERVALO') {
             const pProximaEntrada = pontosOrdenados[i + 2];
-            if (pProximaEntrada && ['VOLTA_INTERVALO', 'PONTO'].includes(pProximaEntrada.subTipo || pProximaEntrada.tipo)) {
+            if (
+              pProximaEntrada &&
+              ['VOLTA_INTERVALO', 'PONTO'].includes(pProximaEntrada.subTipo || pProximaEntrada.tipo)
+            ) {
               const dataVolta = new Date(pProximaEntrada.dataHora);
               const duracaoIntervalo = differenceInMinutes(dataVolta, dataSaidaReal);
               const creditoCafe = Math.min(duracaoIntervalo, 15);
@@ -477,7 +509,7 @@ export default function AdminDashboard() {
         minutosHoje += creditoAtual;
         const diaStr = format(agora, 'yyyy-MM-dd');
         minutosPorDia[diaStr] = (minutosPorDia[diaStr] || 0) + creditoAtual;
-        
+
         const hojeStr = format(agora, 'yyyy-MM-dd');
         if (hojeStr >= dataInicio && hojeStr <= dataFim) minutosTotalPeriodo += creditoAtual;
       }
@@ -492,12 +524,12 @@ export default function AdminDashboard() {
         const dataStr = format(loopData, 'yyyy-MM-dd');
         const meta = getMetaDoDia(loopData);
         const trabalhado = minutosPorDia[dataStr] || 0;
-        
+
         let saldoDia = trabalhado - meta;
 
         // Tolerância CLT Global do Dia (Soma tudo e verifica se excede 10)
         if (Math.abs(saldoDia) <= 10) {
-           saldoDia = 0;
+          saldoDia = 0;
         }
 
         saldoMinutosBanco += saldoDia;
@@ -516,8 +548,8 @@ export default function AdminDashboard() {
       tempoAgora: formatarHoras(tempoDecorridoAgora).replace('-', ''),
       hoje: formatarHoras(minutosHoje),
       metaHoje: formatarHoras(getMetaDoDia(agora)),
-      total: formatarHoras(minutosTotalPeriodo), 
-      saldo: formatarHoras(saldoMinutosBanco),   
+      total: formatarHoras(minutosTotalPeriodo),
+      saldo: formatarHoras(saldoMinutosBanco),
       saldoPositivo: saldoMinutosBanco >= 0,
     };
   };
@@ -600,7 +632,11 @@ export default function AdminDashboard() {
 
       {/* Toast */}
       {notificacaoVisivel && (
-        <div className={`fixed top-16 right-6 z-[100] animate-in slide-in-from-right duration-500 fade-in ${alertaFinanceiro ? 'mt-12' : ''}`}>
+        <div
+          className={`fixed top-16 right-6 z-[100] animate-in slide-in-from-right duration-500 fade-in ${
+            alertaFinanceiro ? 'mt-12' : ''
+          }`}
+        >
           <Link href={pendenciasAjuste > 0 ? '/admin/solicitacoes' : '/admin/pendencias'}>
             <div className="bg-purple-600 text-white p-4 rounded-xl shadow-2xl border border-purple-400 flex items-center gap-4 cursor-pointer hover:bg-purple-700 hover:scale-105 transition-all">
               <div className="bg-white p-2 rounded-full animate-bounce text-purple-600">
@@ -618,7 +654,9 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className={`max-w-7xl mx-auto p-4 md:p-8 relative z-10 space-y-8 ${alertaFinanceiro ? 'mt-8' : ''}`}>
+      <div
+        className={`max-w-7xl mx-auto p-4 md:p-8 relative z-10 space-y-8 ${alertaFinanceiro ? 'mt-8' : ''}`}
+      >
         {/* === CABEÇALHO === */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
           <div className="flex flex-col gap-2">
@@ -628,7 +666,9 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-white tracking-tight">{empresa.nome}</h1>
-                <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
+                <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">
+                  Painel Administrativo
+                </p>
               </div>
             </div>
           </div>
@@ -639,10 +679,18 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-2 bg-slate-900/50 backdrop-blur border border-white/5 p-1.5 rounded-xl">
-              <Link href="/admin/perfil" className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors" title="Minha Conta">
+              <Link
+                href="/admin/perfil"
+                className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                title="Minha Conta"
+              >
                 <User size={18} />
               </Link>
-              <button onClick={() => signOut({ callbackUrl: '/login' })} className="p-2.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors" title="Sair">
+              <button
+                onClick={() => signOut({ callbackUrl: '/login' })}
+                className="p-2.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
+                title="Sair"
+              >
                 <LogOut size={18} />
               </button>
             </div>
@@ -651,7 +699,6 @@ export default function AdminDashboard() {
 
         {/* === AÇÕES RÁPIDAS === */}
         <div>
-          {/* <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 ml-1">Acesso Rápido</p> */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <button
               onClick={abrirModalAusencia}
@@ -661,8 +708,10 @@ export default function AdminDashboard() {
               <span className="text-xs font-bold">Lançar Ausência</span>
             </button>
 
-
-            <Link href="/admin/solicitacoes" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-purple-500/30 hover:-translate-y-1 relative group">
+            <Link
+              href="/admin/solicitacoes"
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-purple-500/30 hover:-translate-y-1 relative group"
+            >
               <div className="bg-purple-500/10 p-2 rounded-full group-hover:bg-purple-500/20 transition-colors">
                 <AlertCircle size={20} className="text-purple-400" />
               </div>
@@ -675,7 +724,10 @@ export default function AdminDashboard() {
             </Link>
 
             {!configs.ocultar_menu_atestados && (
-              <Link href="/admin/pendencias" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-yellow-500/30 hover:-translate-y-1 relative group">
+              <Link
+                href="/admin/pendencias"
+                className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-yellow-500/30 hover:-translate-y-1 relative group"
+              >
                 <div className="bg-yellow-500/10 p-2 rounded-full group-hover:bg-yellow-500/20 transition-colors">
                   <ShieldAlert size={20} className="text-yellow-400" />
                 </div>
@@ -704,22 +756,30 @@ export default function AdminDashboard() {
               <span className="text-xs font-bold">Gestão da Equipe</span>
             </Link>
 
-
-            <Link href="/admin/feriados" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group">
+            <Link
+              href="/admin/feriados"
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
+            >
               <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
                 <CalendarDays size={20} className="text-slate-400 group-hover:text-white" />
               </div>
               <span className="text-xs font-bold">Feriados</span>
             </Link>
 
-            <Link href="/admin/logs" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group">
+            <Link
+              href="/admin/logs"
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
+            >
               <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
                 <ScrollText size={20} className="text-slate-400 group-hover:text-white" />
               </div>
               <span className="text-xs font-bold">Auditoria</span>
             </Link>
 
-            <Link href="/admin/dashboard" className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group">
+            <Link
+              href="/admin/dashboard"
+              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
+            >
               <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
                 <LayoutDashboard size={20} className="text-slate-400 group-hover:text-white" />
               </div>
@@ -732,21 +792,111 @@ export default function AdminDashboard() {
         <div className="relative z-20 bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">
           <div className="w-full lg:flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">Funcionário</label>
+              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">
+                Funcionário
+              </label>
+
               <div className="flex gap-2">
-                <div className="relative flex-1 group">
-                  <Search size={16} className="absolute left-3 top-3.5 text-slate-500 group-hover:text-purple-400 transition-colors pointer-events-none" />
-                  <select value={filtroUsuario} onChange={(e) => setFiltroUsuario(e.target.value)} className="w-full bg-slate-950/50 border border-white/10 hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-4 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-purple-500/20 transition-all appearance-none cursor-pointer">
-                    <option value="">Todos os Funcionários</option>
-                    {usuarios.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nome}
-                      </option>
-                    ))}
-                  </select>
+                {/* ✅ NOVO: Combobox com busca dinâmica */}
+                <div ref={dropdownRef} className="relative flex-1 group">
+                  <Search
+                    size={16}
+                    className="absolute left-3 top-3.5 text-slate-500 group-hover:text-purple-400 transition-colors pointer-events-none"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setDropdownAberto((v) => !v)}
+                    className="w-full bg-slate-950/50 border border-white/10 hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-10 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-left cursor-pointer"
+                    title="Selecionar funcionário"
+                  >
+                    <span className="block truncate">
+                      {usuarioSelecionado ? usuarioSelecionado.nome : 'Todos os Funcionários'}
+                    </span>
+                  </button>
+
+                  {filtroUsuario && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFiltroUsuario('');
+                        setBuscaFuncionario('');
+                        setDropdownAberto(false);
+                      }}
+                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-200 transition-colors"
+                      title="Limpar filtro"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+
+                  {dropdownAberto && (
+                    <div className="absolute z-[60] mt-2 w-full bg-slate-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                      <div className="p-2 border-b border-white/5">
+                        <input
+                          autoFocus
+                          value={buscaFuncionario}
+                          onChange={(e) => setBuscaFuncionario(e.target.value)}
+                          placeholder="Digite o nome ou email..."
+                          className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:border-purple-500/60"
+                        />
+                      </div>
+
+                      <div className="max-h-64 overflow-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFiltroUsuario('');
+                            setBuscaFuncionario('');
+                            setDropdownAberto(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
+                            !filtroUsuario ? 'text-purple-300' : 'text-slate-200'
+                          }`}
+                        >
+                          Todos os Funcionários
+                        </button>
+
+                        {usuariosFiltrados.length > 0 ? (
+                          usuariosFiltrados.map((u) => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setFiltroUsuario(u.id);
+                                setBuscaFuncionario('');
+                                setDropdownAberto(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
+                                filtroUsuario === u.id ? 'text-purple-300' : 'text-slate-200'
+                              }`}
+                              title={u.email || u.nome}
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-semibold truncate">{u.nome}</span>
+                                {u.email && (
+                                  <span className="text-[10px] text-slate-500 truncate">{u.email}</span>
+                                )}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-3 text-xs text-slate-500">
+                            Nenhum funcionário encontrado.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
                 {filtroUsuario && (
-                  <button onClick={() => setModalJornadaAberto(true)} className="px-3 bg-slate-800 hover:bg-purple-600 text-slate-400 hover:text-white rounded-xl border border-white/10 transition-colors" title="Configurar Escala">
+                  <button
+                    onClick={() => setModalJornadaAberto(true)}
+                    className="px-3 bg-slate-800 hover:bg-purple-600 text-slate-400 hover:text-white rounded-xl border border-white/10 transition-colors"
+                    title="Configurar Escala"
+                  >
                     <Clock size={20} />
                   </button>
                 )}
@@ -754,11 +904,23 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">Período</label>
+              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">
+                Período
+              </label>
               <div className="flex gap-2 items-center bg-slate-950/50 border border-white/10 rounded-xl p-1">
-                <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} className="bg-transparent text-sm text-slate-300 outline-none p-2 w-full text-center cursor-pointer hover:text-white transition-colors" />
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="bg-transparent text-sm text-slate-300 outline-none p-2 w-full text-center cursor-pointer hover:text-white transition-colors"
+                />
                 <span className="text-slate-600 text-xs">até</span>
-                <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} className="bg-transparent text-sm text-slate-300 outline-none p-2 w-full text-center cursor-pointer hover:text-white transition-colors" />
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="bg-transparent text-sm text-slate-300 outline-none p-2 w-full text-center cursor-pointer hover:text-white transition-colors"
+                />
               </div>
             </div>
           </div>
@@ -766,9 +928,17 @@ export default function AdminDashboard() {
           <div className="w-full lg:w-auto">
             <BotaoRelatorio
               pontos={registrosFiltrados}
-              filtro={{ inicio: criarDataLocal(dataInicio), fim: criarDataLocal(dataFim), usuario: filtroUsuario ? usuarios.find((u) => u.id === filtroUsuario)?.nome : 'Todos' }}
+              filtro={{
+                inicio: criarDataLocal(dataInicio),
+                fim: criarDataLocal(dataFim),
+                usuario: filtroUsuario
+                  ? usuarios.find((u) => u.id === filtroUsuario)?.nome
+                  : 'Todos',
+              }}
               resumoHoras={stats}
-              assinaturaUrl={filtroUsuario ? (usuarios.find((u) => u.id === filtroUsuario) as any)?.assinaturaUrl : null}
+              assinaturaUrl={
+                filtroUsuario ? (usuarios.find((u) => u.id === filtroUsuario) as any)?.assinaturaUrl : null
+              }
               nomeEmpresa={empresa.nome}
               dadosEmpresaCompleto={empresa}
             />
@@ -778,17 +948,43 @@ export default function AdminDashboard() {
         {/* === CARDS === */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className={`p-5 rounded-2xl border backdrop-blur-md shadow-lg transition-all ${stats.status.includes('Trabalhando') || stats.status.includes('Pausa Café (Pago)') ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-900/50 border-white/5'}`}>
+            <div
+              className={`p-5 rounded-2xl border backdrop-blur-md shadow-lg transition-all ${
+                stats.status.includes('Trabalhando') || stats.status.includes('Pausa Café (Pago)')
+                  ? 'bg-emerald-500/10 border-emerald-500/20'
+                  : 'bg-slate-900/50 border-white/5'
+              }`}
+            >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Status Atual</h3>
-                <span className={`w-2 h-2 rounded-full ${stats.status.includes('Trabalhando') || stats.status.includes('Pausa Café (Pago)') ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`}></span>
+                <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                  Status Atual
+                </h3>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    stats.status.includes('Trabalhando') || stats.status.includes('Pausa Café (Pago)')
+                      ? 'bg-emerald-500 animate-pulse'
+                      : 'bg-slate-600'
+                  }`}
+                ></span>
               </div>
-              <p className={`text-xl font-bold ${stats.status.includes('Trabalhando') || stats.status.includes('Pausa Café (Pago)') ? 'text-emerald-400' : 'text-slate-500'}`}>{stats.status}</p>
-              {stats.status !== 'Ausente' && <p className="text-xs text-emerald-400/60 mt-1 font-mono">Tempo: {stats.tempoAgora}</p>}
+              <p
+                className={`text-xl font-bold ${
+                  stats.status.includes('Trabalhando') || stats.status.includes('Pausa Café (Pago)')
+                    ? 'text-emerald-400'
+                    : 'text-slate-500'
+                }`}
+              >
+                {stats.status}
+              </p>
+              {stats.status !== 'Ausente' && (
+                <p className="text-xs text-emerald-400/60 mt-1 font-mono">Tempo: {stats.tempoAgora}</p>
+              )}
             </div>
 
             <div className="bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl border border-white/5 shadow-lg">
-              <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Hoje</h3>
+              <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">
+                Hoje
+              </h3>
               <div className="flex items-baseline gap-2">
                 <p className="text-2xl font-bold text-white">{stats.hoje}</p>
                 <p className="text-[10px] text-slate-500">/ Meta: {stats.metaHoje}</p>
@@ -796,17 +992,37 @@ export default function AdminDashboard() {
             </div>
 
             <div className="bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl border border-white/5 shadow-lg">
-              <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Total Período</h3>
+              <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">
+                Total Período
+              </h3>
               <p className="text-2xl font-bold text-white">{stats.total}</p>
             </div>
 
             {!configs.ocultarSaldoHoras ? (
-              <div className={`p-5 rounded-2xl border backdrop-blur-md shadow-lg ${stats.saldoPositivo ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-rose-500/10 border-rose-500/20'}`}>
+              <div
+                className={`p-5 rounded-2xl border backdrop-blur-md shadow-lg ${
+                  stats.saldoPositivo
+                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                    : 'bg-rose-500/10 border-rose-500/20'
+                }`}
+              >
                 <h3 className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 mb-2">
-                  {stats.saldoPositivo ? <TrendingUp size={14} className="text-emerald-500" /> : <TrendingDown size={14} className="text-rose-500" />}
-                  <span className={stats.saldoPositivo ? 'text-emerald-500' : 'text-rose-500'}>Banco</span>
+                  {stats.saldoPositivo ? (
+                    <TrendingUp size={14} className="text-emerald-500" />
+                  ) : (
+                    <TrendingDown size={14} className="text-rose-500" />
+                  )}
+                  <span className={stats.saldoPositivo ? 'text-emerald-500' : 'text-rose-500'}>
+                    Banco
+                  </span>
                 </h3>
-                <p className={`text-3xl font-bold ${stats.saldoPositivo ? 'text-emerald-400' : 'text-rose-400'}`}>{stats.saldo}</p>
+                <p
+                  className={`text-3xl font-bold ${
+                    stats.saldoPositivo ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {stats.saldo}
+                </p>
               </div>
             ) : (
               <div className="bg-slate-900/50 p-5 rounded-2xl border border-white/5 flex items-center justify-center opacity-50">
@@ -816,7 +1032,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* === TABELA === */}
+        {/* === TABELA DE REGISTROS === */}
         <div className="bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
           <div className="hidden md:grid grid-cols-5 bg-slate-950/50 p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5">
             <div className="pl-2">Funcionário</div>
@@ -829,9 +1045,21 @@ export default function AdminDashboard() {
           <div className="divide-y divide-white/5">
             {registrosFiltrados.length > 0 ? (
               registrosFiltrados.map((reg) => (
-                <div key={reg.id} className={`p-4 flex flex-col md:grid md:grid-cols-5 md:items-center gap-3 transition-all hover:bg-white/[0.02] group ${reg.tipo === 'AUSENCIA' ? 'bg-yellow-900/5 hover:bg-yellow-900/10' : ''}`}>
+                <div
+                  key={reg.id}
+                  className={`p-4 flex flex-col md:grid md:grid-cols-5 md:items-center gap-3 transition-all hover:bg-white/[0.02] group ${
+                    reg.tipo === 'AUSENCIA' ? 'bg-yellow-900/5 hover:bg-yellow-900/10' : ''
+                  }`}
+                >
+                  {/* User */}
                   <div className="flex items-center gap-3 pl-2">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${reg.tipo === 'AUSENCIA' ? 'bg-yellow-500/20 text-yellow-500' : 'bg-purple-500/20 text-purple-300'}`}>
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
+                        reg.tipo === 'AUSENCIA'
+                          ? 'bg-yellow-500/20 text-yellow-500'
+                          : 'bg-purple-500/20 text-purple-300'
+                      }`}
+                    >
                       {reg.tipo === 'AUSENCIA' ? <FileText size={16} /> : <User size={16} />}
                     </div>
                     <div>
@@ -840,50 +1068,81 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Data */}
                   <div className="flex items-center gap-2 text-slate-300">
                     <Calendar size={14} className="md:hidden text-slate-500" />
-                    <span className="text-sm font-semibold tracking-tight">{format(new Date(reg.dataHora), 'dd/MM/yyyy')}</span>
-                    {reg.tipo === 'AUSENCIA' && reg.extra?.dataFim && reg.extra.dataFim !== reg.dataHora && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 rounded text-slate-400">até {format(new Date(reg.extra.dataFim), 'dd/MM')}</span>
-                    )}
+                    <span className="text-sm font-semibold tracking-tight">
+                      {format(new Date(reg.dataHora), 'dd/MM/yyyy')}
+                    </span>
+                    {reg.tipo === 'AUSENCIA' &&
+                      reg.extra?.dataFim &&
+                      reg.extra.dataFim !== reg.dataHora && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 rounded text-slate-400">
+                          até {format(new Date(reg.extra.dataFim), 'dd/MM')}
+                        </span>
+                      )}
                   </div>
 
+                  {/* Hora / Tipo */}
                   <div className="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
                     {reg.tipo === 'PONTO' ? (
                       <>
                         <span className="text-sm font-bold text-emerald-400 font-mono bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/20">
                           {format(new Date(reg.dataHora), 'HH:mm')}
                         </span>
+
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{reg.subTipo?.replace('_', ' ')}</span>
-                          <div className="flex gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => abrirModalEdicao(reg)} className="p-1 hover:text-purple-400 transition-colors" title="Editar">
-                              <Edit2 size={12} />
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">
+                            {reg.subTipo?.replace('_', ' ')}
+                          </span>
+
+                          {/* === CORREÇÃO AQUI: Botões sempre visíveis no mobile, hover no desktop === */}
+                          <div className="flex gap-3 mt-1 md:gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => abrirModalEdicao(reg)}
+                              className="flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-xs font-bold md:p-1"
+                              title="Editar"
+                            >
+                              <Edit2 size={14} /> <span className="md:hidden">Editar</span>
                             </button>
-                            <button onClick={() => excluirPonto(reg)} className="p-1 hover:text-red-400 transition-colors" title="Excluir">
-                              <Trash2 size={12} />
+                            <button
+                              onClick={() => excluirPonto(reg)}
+                              className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors text-xs font-bold md:p-1"
+                              title="Excluir"
+                            >
+                              <Trash2 size={14} /> <span className="md:hidden">Excluir</span>
                             </button>
                           </div>
                         </div>
                       </>
                     ) : (
-                      <span className="text-xs font-bold bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 px-2 py-1 rounded uppercase tracking-wider">{reg.subTipo?.replace('_', ' ')}</span>
+                      <span className="text-xs font-bold bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 px-2 py-1 rounded uppercase tracking-wider">
+                        {reg.subTipo?.replace('_', ' ')}
+                      </span>
                     )}
                   </div>
 
+                  {/* Local */}
                   <div className="flex items-center gap-2 text-slate-400 text-xs truncate pr-4">
                     {reg.descricao ? (
                       <span className="truncate" title={reg.descricao}>
                         {reg.descricao}
                       </span>
                     ) : (
-                      <span className="italic opacity-50">{reg.tipo === 'PONTO' ? (reg.extra?.fotoUrl ? 'GPS + Foto' : 'GPS') : '-'}</span>
+                      <span className="italic opacity-50">
+                        {reg.tipo === 'PONTO' ? (reg.extra?.fotoUrl ? 'GPS + Foto' : 'GPS') : '-'}
+                      </span>
                     )}
                   </div>
 
+                  {/* Comprovante */}
                   <div className="md:text-right pr-2">
                     {reg.tipo === 'AUSENCIA' && reg.extra?.comprovanteUrl && (
-                      <a href={reg.extra.comprovanteUrl} target="_blank" className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all border border-white/5">
+                      <a
+                        href={reg.extra.comprovanteUrl}
+                        target="_blank"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all border border-white/5"
+                      >
                         <FileText size={12} /> Ver Anexo
                       </a>
                     )}
@@ -922,15 +1181,36 @@ export default function AdminDashboard() {
                 <p className="font-bold text-white text-lg">{pontoEmEdicao?.usuario?.nome}</p>
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Novo Horário</label>
-                <input type="time" value={novaHora} onChange={(e) => setNovaHora(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-4 rounded-xl text-white text-2xl font-bold text-center focus:border-purple-500 outline-none" />
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                  Novo Horário
+                </label>
+                <input
+                  type="time"
+                  value={novaHora}
+                  onChange={(e) => setNovaHora(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-4 rounded-xl text-white text-2xl font-bold text-center focus:border-purple-500 outline-none"
+                />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Motivo</label>
-                <input type="text" value={motivoEdicao} onChange={(e) => setMotivoEdicao(e.target.value)} placeholder="Justificativa..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none focus:border-purple-500" />
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                  Motivo
+                </label>
+                <input
+                  type="text"
+                  value={motivoEdicao}
+                  onChange={(e) => setMotivoEdicao(e.target.value)}
+                  placeholder="Justificativa..."
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none focus:border-purple-500"
+                />
               </div>
-              <button onClick={salvarEdicaoPonto} disabled={salvandoEdicao || !motivoEdicao} className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all">
-                {salvandoEdicao ? 'Salvando...' : (
+              <button
+                onClick={salvarEdicaoPonto}
+                disabled={salvandoEdicao || !motivoEdicao}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all"
+              >
+                {salvandoEdicao ? (
+                  'Salvando...'
+                ) : (
                   <>
                     <Save size={18} /> Salvar Alteração
                   </>
@@ -952,8 +1232,14 @@ export default function AdminDashboard() {
                 </button>
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Funcionário</label>
-                <select value={ausenciaUser} onChange={(e) => setAusenciaUser(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm">
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                  Funcionário
+                </label>
+                <select
+                  value={ausenciaUser}
+                  onChange={(e) => setAusenciaUser(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm"
+                >
                   <option value="">Selecione...</option>
                   {usuarios.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -964,8 +1250,14 @@ export default function AdminDashboard() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Tipo</label>
-                  <select value={ausenciaTipo} onChange={(e) => setAusenciaTipo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-xs">
+                  <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                    Tipo
+                  </label>
+                  <select
+                    value={ausenciaTipo}
+                    onChange={(e) => setAusenciaTipo(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-xs"
+                  >
                     <option value="FERIAS">Férias</option>
                     <option value="FOLGA">Folga / Abono</option>
                     <option value="FALTA_JUSTIFICADA">Atestado Médico</option>
@@ -973,20 +1265,47 @@ export default function AdminDashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Início</label>
-                  <input type="date" value={ausenciaInicio} onChange={(e) => setAusenciaInicio(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-xs text-center" />
+                  <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                    Início
+                  </label>
+                  <input
+                    type="date"
+                    value={ausenciaInicio}
+                    onChange={(e) => setAusenciaInicio(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-xs text-center"
+                  />
                 </div>
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Fim (Opcional)</label>
-                <input type="date" value={ausenciaFim} onChange={(e) => setAusenciaFim(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-sm text-center" />
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                  Fim (Opcional)
+                </label>
+                <input
+                  type="date"
+                  value={ausenciaFim}
+                  onChange={(e) => setAusenciaFim(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-sm text-center"
+                />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Observação</label>
-                <textarea value={ausenciaMotivo} onChange={(e) => setAusenciaMotivo(e.target.value)} placeholder="Ex: Férias coletivas..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-20 resize-none" />
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
+                  Observação
+                </label>
+                <textarea
+                  value={ausenciaMotivo}
+                  onChange={(e) => setAusenciaMotivo(e.target.value)}
+                  placeholder="Ex: Férias coletivas..."
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-20 resize-none"
+                />
               </div>
-              <button onClick={salvarAusenciaAdmin} disabled={salvandoAusencia} className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all">
-                {salvandoAusencia ? 'Lançando...' : (
+              <button
+                onClick={salvarAusenciaAdmin}
+                disabled={salvandoAusencia}
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all"
+              >
+                {salvandoAusencia ? (
+                  'Lançando...'
+                ) : (
                   <>
                     <PlusCircle size={18} /> Confirmar
                   </>

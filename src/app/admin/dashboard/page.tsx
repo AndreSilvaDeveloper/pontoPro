@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link'; // Importado Link
-import { Users, Clock, Coffee, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react'; // Importado ArrowLeft
+import { Users, Clock, Coffee, AlertCircle, RefreshCw, ArrowLeft, Search } from 'lucide-react'; // Importado ArrowLeft
 
 interface FuncionarioStatus {
   id: string;
@@ -26,6 +26,8 @@ export default function DashboardPresenca() {
   const [resumo, setResumo] = useState<Resumo>({ total: 0, trabalhando: 0, pausa: 0, offline: 0 });
   const [loading, setLoading] = useState(true);
   const [ultimaAtualizacao, setUltimaAtualizacao] = useState(new Date());
+  const [buscaNome, setBuscaNome] = useState('');
+
 
   const carregarDados = async () => {
     setLoading(true); // Opcional: mostrar loading no botão ao recarregar manual
@@ -53,6 +55,15 @@ export default function DashboardPresenca() {
     if (!dataIso) return '-';
     return new Date(dataIso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
+
+  const listaFiltrada = lista.filter((func) => {
+  if (!buscaNome.trim()) return true;
+  return (func.nome || '').toLowerCase().includes(buscaNome.trim().toLowerCase());
+});
+
+
+
+
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
@@ -88,17 +99,45 @@ export default function DashboardPresenca() {
         </div>
 
         {/* LISTA DETALHADA */}
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden shadow-xl">
-            <div className="p-4 bg-slate-800/50 border-b border-slate-800">
-                <h3 className="font-bold text-slate-300">Status dos Funcionários</h3>
-            </div>
+        <div className="p-4 bg-slate-800/50 border-b border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+  <h3 className="font-bold text-slate-300">Status dos Funcionários</h3>
+
+  <div className="relative w-full md:w-[320px]">
+    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+    <input
+      value={buscaNome}
+      onChange={(e) => setBuscaNome(e.target.value)}
+      placeholder="Buscar funcionário..."
+      className="w-full bg-slate-950/40 border border-slate-700 hover:border-slate-600 focus:border-purple-500/60 outline-none rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-200 placeholder:text-slate-600 transition-colors"
+    />
+    {buscaNome.trim() && (
+      <button
+        onClick={() => setBuscaNome('')}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors"
+        title="Limpar"
+      >
+        ×
+      </button>
+    )}
+  </div>
+</div>
+
+        <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">  
+        
+
+
             
             <div className="divide-y divide-slate-800">
-                {lista.length === 0 && !loading && (
-                    <div className="p-8 text-center text-slate-500">Nenhum funcionário encontrado.</div>
-                )}
+                {listaFiltrada.length === 0 && !loading && (
+  <div className="p-8 text-center text-slate-500">
+    {buscaNome.trim()
+      ? `Nenhum funcionário encontrado para "${buscaNome}".`
+      : 'Nenhum funcionário encontrado.'}
+  </div>
+)}
 
-                {lista.map((func) => (
+{listaFiltrada.map((func) => (
+
                     <div key={func.id} className="p-4 flex items-center justify-between hover:bg-slate-800/30 transition-colors">
                         <div className="flex items-center gap-4">
                             {/* FOTO E STATUS VISUAL */}
