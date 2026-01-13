@@ -376,13 +376,26 @@ export default function AdminDashboard() {
       const chaveSemanaAtual = `${getYear(data)}-${getISOWeek(data)}`;
       const trabalhouSabado = semanasComSabado.has(chaveSemanaAtual);
 
+      // --- CORREÇÃO SEGUNDA A SEXTA ---
       if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
-        if (trabalhouSabado) return 480;
-      }
-      if (diaSemanaIndex === 6) {
-        if (trabalhouSabado) return 240;
+        // Verifica se tem configuração específica para este dia (ex: sex 8:30h)
+        const configDia = jornadaConfig[diaSemana];
+        const temConfiguracao = configDia && configDia.ativo;
+
+        // Só força 480min (8h) se trabalhou sábado E NÃO tiver configuração manual
+        if (trabalhouSabado && !temConfiguracao) return 480;
       }
 
+      // --- CORREÇÃO SÁBADO ---
+      if (diaSemanaIndex === 6) {
+        const configSab = jornadaConfig['sab'];
+        const temConfiguracao = configSab && configSab.ativo;
+
+        // Só força 240min (4h) se trabalhou sábado E NÃO tiver configuração manual
+        if (trabalhouSabado && !temConfiguracao) return 240;
+      }
+      
+      // --- CÁLCULO REAL BASEADO NA CONFIGURAÇÃO ---
       const config = jornadaConfig[diaSemana];
       if (!config || !config.ativo) return 0;
 
