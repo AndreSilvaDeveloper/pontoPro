@@ -376,29 +376,9 @@ export default function AdminDashboard() {
       const chaveSemanaAtual = `${getYear(data)}-${getISOWeek(data)}`;
       const trabalhouSabado = semanasComSabado.has(chaveSemanaAtual);
 
-      // --- CORREÇÃO SEGUNDA A SEXTA ---
-      if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
-        // Verifica se tem configuração específica para este dia (ex: sex 8:30h)
-        const configDia = jornadaConfig[diaSemana];
-        const temConfiguracao = configDia && configDia.ativo;
-
-        // Só força 480min (8h) se trabalhou sábado E NÃO tiver configuração manual
-        if (trabalhouSabado && !temConfiguracao) return 480;
-      }
-
-      // --- CORREÇÃO SÁBADO ---
-      if (diaSemanaIndex === 6) {
-        const configSab = jornadaConfig['sab'];
-        const temConfiguracao = configSab && configSab.ativo;
-
-        // Só força 240min (4h) se trabalhou sábado E NÃO tiver configuração manual
-        if (trabalhouSabado && !temConfiguracao) return 240;
-      }
-      
-      // --- CÁLCULO REAL BASEADO NA CONFIGURAÇÃO ---
       const config = jornadaConfig[diaSemana];
-      if (!config || !config.ativo) return 0;
-
+      
+      // Função auxiliar (agora definida no topo para ser usada na lógica)
       const calcDiff = (i: string, f: string) => {
         if (!i || !f) return 0;
         const [h1, m1] = i.split(':').map(Number);
@@ -408,7 +388,40 @@ export default function AdminDashboard() {
         return diff;
       };
 
-      return calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2);
+      // Calcula quanto vale a configuração "Oficial" do banco de dados para esse dia
+      const minutosConfigurados = config && config.ativo 
+        ? calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2) 
+        : 0;
+
+      // --- LÓGICA HÍBRIDA INTELIGENTE ---
+      
+      // Segunda a Sexta
+      if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
+        if (trabalhouSabado) {
+            // Se não tem configuração, assume 8h padrão
+            if (!minutosConfigurados) return 480;
+
+            // AQUI ESTÁ O PULO DO GATO:
+            // Se a configuração pede MAIS que 8h40 (520min), é provável que seja uma escala de compensação.
+            // Como ele trabalhou no sábado, essa compensação perde a validade e a meta deve ser 8h (480min).
+            if (minutosConfigurados > 520) return 480;
+
+            // Se for uma jornada de 8h30 (510min) ou 8h (480min), respeitamos a configuração.
+            return minutosConfigurados;
+        }
+      }
+
+      // Sábado
+      if (diaSemanaIndex === 6) {
+        const configSab = jornadaConfig['sab'];
+        const temConfiguracao = configSab && configSab.ativo;
+
+        // Se trabalhou sábado mas NÃO tem horário configurado no painel, assume 4h (padrão)
+        if (trabalhouSabado && !temConfiguracao) return 240;
+      }
+      
+      // Se não caiu nas exceções acima, segue o calculado oficial
+      return minutosConfigurados;
     };
 
     let minutosHoje = 0;
