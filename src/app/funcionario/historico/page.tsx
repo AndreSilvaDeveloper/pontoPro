@@ -45,184 +45,199 @@ export default function MeuHistorico() {
   const [tipoNovo, setTipoNovo] = useState('ENTRADA'); 
   const [motivo, setMotivo] = useState('');
 
-  // === INTELIGÊNCIA DE CÁLCULO (PORTADA DO ADMIN) ===
+ 
+  // === CÁLCULO INTELIGENTE (COM TOLERÂNCIA CLT DE 10 MINUTOS) ===
   const calcularHorasAvancado = (listaRegistros: any[], jornadaConfig: any, listaFeriados: string[]) => {
-    if (!listaRegistros || listaRegistros.length === 0) return { total: '0h 0m', saldo: '0h 0m', saldoPositivo: true };
-    
+    // Se não tiver registros e nem intervalo definido, zera tudo
+    if (!listaRegistros) return { total: '0h 0m', saldo: '0h 0m', saldoPositivo: true };
+
     const agora = new Date();
+
+    // 1. Função Auxiliar: Normalizar data (remove horas)
+    const toDateStr = (d: Date | string) => format(new Date(d), 'yyyy-MM-dd');
+
+    // 2. Organizar os pontos por dia (Map: '2024-01-09' => [pontos...])
+    const pontosPorDia: Record<string, any[]> = {};
+    const diasComPontos = new Set<string>();
     
-    // 1. Preparação dos dados
-    const fixData = (d: any) => {
-        if(!d) return new Date();
-        const str = typeof d === 'string' ? d : d.toISOString();
-        const [ano, mes, dia] = str.split('T')[0].split('-').map(Number);
-        return new Date(ano, mes - 1, dia, 12, 0, 0);
-    };
+    // Filtra apenas pontos válidos e organiza
+    listaRegistros.forEach(p => {
+      if (p.tipo !== 'AUSENCIA') {
+        const dia = toDateStr(p.dataHora);
+        if (!pontosPorDia[dia]) pontosPorDia[dia] = [];
+        pontosPorDia[dia].push(p);
+        diasComPontos.add(dia);
+      }
+    });
 
-    const aplicarTolerancia = (dataReal: Date, horarioMetaString: string) => {
-        if (!horarioMetaString) return dataReal; 
-        const [h, m] = horarioMetaString.split(':').map(Number);
-        const dataMeta = new Date(dataReal);
-        dataMeta.setHours(h, m, 0, 0);
-        const diff = Math.abs(differenceInMinutes(dataReal, dataMeta));
-        if (diff <= 10) return dataMeta; // Tolerância de 10 min
-        return dataReal;
-    };
+    // Ordena os pontos dentro de cada dia
+    Object.keys(pontosPorDia).forEach(dia => {
+      pontosPorDia[dia].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+    });
 
-    // 2. Separa Ausências para isenção de meta
+    // 3. Identificar Ausências/Isenções
     const diasIsentos = new Set<string>();
     const ausencias = listaRegistros.filter(p => p.tipo === 'AUSENCIA');
-    
     ausencias.forEach(aus => {
-        const inicio = fixData(aus.dataHora);
-        const fim = aus.extra?.dataFim ? fixData(aus.extra.dataFim) : inicio;
-        try {
-            eachDayOfInterval({ start: inicio, end: fim }).forEach(dia => {
-                diasIsentos.add(format(dia, 'yyyy-MM-dd'));
-            });
-        } catch(e) {}
+      const inicio = new Date(aus.dataHora);
+      const fim = aus.extra?.dataFim ? new Date(aus.extra.dataFim) : inicio;
+      try {
+        eachDayOfInterval({ start: inicio, end: fim }).forEach(d => diasIsentos.add(toDateStr(d)));
+      } catch (e) {}
     });
 
-    // 3. Filtra apenas pontos para cálculo de horas trabalhadas
-    const pontosUsuario = listaRegistros.filter(p => p.tipo !== 'AUSENCIA');
-    const pontosOrdenados = [...pontosUsuario].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
-
-    // 4. Detecção de Sábados Trabalhados (para ajuste de meta)
+    // 4. Identificar Semanas com Sábado Trabalhado (para a regra híbrida)
     const semanasComSabado = new Set<string>();
-    pontosOrdenados.forEach(p => {
-        const data = new Date(p.dataHora);
-        if (getDay(data) === 6) { 
-            const chaveSemana = `${getYear(data)}-${getISOWeek(data)}`;
-            semanasComSabado.add(chaveSemana);
-        }
+    Object.keys(pontosPorDia).forEach(diaStr => {
+      const data = criarDataLocal(diaStr);
+      if (getDay(data) === 6) {
+        semanasComSabado.add(`${getYear(data)}-${getISOWeek(data)}`);
+      }
     });
 
-    // 5. Função de Meta do Dia
-    const getMetaDoDia = (data: Date) => { 
-        const dataString = format(data, 'yyyy-MM-dd'); 
-        
-        // Se é feriado ou tem atestado, meta é 0
-        if (listaFeriados.includes(dataString) || diasIsentos.has(dataString)) return 0; 
-        
-        const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
-        const diaSemanaIndex = getDay(data);
-        const diaSemana = diasMap[diaSemanaIndex];
-        
-        // Lógica de Sábado compensado
-        const chaveSemanaAtual = `${getYear(data)}-${getISOWeek(data)}`;
-        const trabalhouSabado = semanasComSabado.has(chaveSemanaAtual);
+    // === FUNÇÃO DE META (Mantendo a lógica híbrida que criamos antes) ===
+    const getMetaDoDia = (data: Date) => {
+      const dataString = format(data, 'yyyy-MM-dd');
+      if (feriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
 
-        if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
-            if (trabalhouSabado) return 480; // 8h
-        }
-        if (diaSemanaIndex === 6) {
-            if (trabalhouSabado) return 240; // 4h
-        }
+      const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+      const diaSemanaIndex = getDay(data);
+      const diaSemana = diasMap[diaSemanaIndex];
 
-        const config = jornadaConfig?.[diaSemana]; 
-        if (!config || !config.ativo) return 0; 
-        
-        const calcDiff = (i:string, f:string) => { 
-            if(!i || !f) return 0; 
-            const [h1, m1] = i.split(':').map(Number); 
-            const [h2, m2] = f.split(':').map(Number); 
-            let diff = (h2*60 + m2) - (h1*60 + m1); 
-            if (diff < 0) diff += 1440; 
-            return diff; 
-        }; 
-        return calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2); 
+      const chaveSemanaAtual = `${getYear(data)}-${getISOWeek(data)}`;
+      const trabalhouSabado = semanasComSabado.has(chaveSemanaAtual);
+
+      const config = jornadaConfig[diaSemana];
+      
+      // Função auxiliar (agora definida no topo para ser usada na lógica)
+      const calcDiff = (i: string, f: string) => {
+        if (!i || !f) return 0;
+        const [h1, m1] = i.split(':').map(Number);
+        const [h2, m2] = f.split(':').map(Number);
+        let diff = h2 * 60 + m2 - (h1 * 60 + m1);
+        if (diff < 0) diff += 1440;
+        return diff;
+      };
+
+      // Calcula quanto vale a configuração "Oficial" do banco de dados para esse dia
+      const minutosConfigurados = config && config.ativo 
+        ? calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2) 
+        : 0;
+
+      // --- LÓGICA HÍBRIDA INTELIGENTE ---
+      
+      // Segunda a Sexta
+      if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
+        if (trabalhouSabado) {
+            // Se não tem configuração, assume 8h padrão
+            if (!minutosConfigurados) return 480;
+
+            // AQUI ESTÁ O PULO DO GATO:
+            // Se a configuração pede MAIS que 8h40 (520min), é provável que seja uma escala de compensação.
+            // Como ele trabalhou no sábado, essa compensação perde a validade e a meta deve ser 8h (480min).
+            if (minutosConfigurados > 520) return 480;
+
+            // Se for uma jornada de 8h30 (510min) ou 8h (480min), respeitamos a configuração.
+            return minutosConfigurados;
+        }
+      }
+
+      // Sábado
+      if (diaSemanaIndex === 6) {
+        const configSab = jornadaConfig['sab'];
+        const temConfiguracao = configSab && configSab.ativo;
+
+        // Se trabalhou sábado mas NÃO tem horário configurado no painel, assume 4h (padrão)
+        if (trabalhouSabado && !temConfiguracao) return 240;
+      }
+      
+      // Se não caiu nas exceções acima, segue o calculado oficial
+      return minutosConfigurados;
     };
 
-    // 6. Cálculo dos Pares (Entrada/Saída)
-    let minutosTotalPeriodo = 0;
-    const contagemDia: Record<string, number> = {};
+    // === LOOP PRINCIPAL: CALCULAR DIA A DIA ===
+    let saldoTotalBanco = 0;
+    let minutosTotalTrabalhado = 0;
 
-    for (let i = 0; i < pontosOrdenados.length; i++) {
-        const pEntrada = pontosOrdenados[i];
-        const tipoEntrada = pEntrada.subTipo || pEntrada.tipo;
-        const ehEntradaValida = ['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(tipoEntrada);
-
-        if (ehEntradaValida) {
-            const dataEntradaReal = new Date(pEntrada.dataHora);
-            const diaStr = format(dataEntradaReal, 'yyyy-MM-dd');
-            
-            // Controle de pares do dia para pegar a tolerância correta (Manhã vs Tarde)
-            if (!contagemDia[diaStr]) contagemDia[diaStr] = 0; 
-            const parIndex = contagemDia[diaStr]; 
-            contagemDia[diaStr]++;
-            
-            const diaSemana = ['dom','seg','ter','qua','qui','sex','sab'][getDay(dataEntradaReal)]; 
-            const configDia = jornadaConfig?.[diaSemana] || {};
-            
-            const metaEntradaStr = parIndex === 0 ? configDia.e1 : configDia.e2; 
-            const metaSaidaStr = parIndex === 0 ? configDia.s1 : configDia.s2;
-            
-            const dataEntradaCalc = aplicarTolerancia(dataEntradaReal, metaEntradaStr);
-            const pSaida = pontosOrdenados[i+1];
-            const tipoSaida = pSaida ? (pSaida.subTipo || pSaida.tipo) : null;
-            const ehSaidaValida = pSaida && ['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(tipoSaida);
-
-            if (ehSaidaValida) {
-                const dataSaidaReal = new Date(pSaida.dataHora); 
-                const dataSaidaCalc = aplicarTolerancia(dataSaidaReal, metaSaidaStr);
-                const diff = differenceInMinutes(dataSaidaCalc, dataEntradaCalc);
-                
-                // Soma se estiver dentro do filtro
-                if (diff > 0 && diff < 1440) { 
-                    if (diaStr >= dataInicio && diaStr <= dataFim) minutosTotalPeriodo += diff; 
-                }
-
-                // Lógica de Crédito de Café (15min)
-                if (tipoSaida === 'SAIDA_INTERVALO') {
-                    const pProximaEntrada = pontosOrdenados[i+2];
-                    if (pProximaEntrada && (pProximaEntrada.subTipo === 'VOLTA_INTERVALO' || pProximaEntrada.tipo === 'PONTO')) {
-                        const dataVolta = new Date(pProximaEntrada.dataHora);
-                        const duracaoIntervalo = differenceInMinutes(dataVolta, dataSaidaReal);
-                        const creditoCafe = Math.min(duracaoIntervalo, 15);
-                        
-                        if (creditoCafe > 0 && diaStr >= dataInicio && diaStr <= dataFim) {
-                            minutosTotalPeriodo += creditoCafe;
-                        }
-                    }
-                }
-                i++; // Pula a saída
-            } else {
-                // Ponto em aberto (Trabalhando agora)
-                if (isSameDay(dataEntradaReal, agora)) { 
-                    const diff = differenceInMinutes(agora, dataEntradaCalc); 
-                    if (diff > 0 && diff < 1440 && diaStr >= dataInicio && diaStr <= dataFim) { 
-                        minutosTotalPeriodo += diff; 
-                    } 
-                }
-            }
-        }
-    }
-
-    // 7. Cálculo de Metas e Saldo
-    let minutosEsperadosPeriodo = 0; 
-    let loopData = criarDataLocal(dataInicio); 
+    let loopData = criarDataLocal(dataInicio);
     const fimData = criarDataLocal(dataFim);
-    
-    // Percorre dia a dia somando a meta
-    while (loopData <= fimData) { 
-        if (loopData <= agora) { // Só cobra meta até o momento atual
-            minutosEsperadosPeriodo += getMetaDoDia(loopData); 
+
+    while (loopData <= fimData) {
+      if (loopData <= agora) {
+        const diaStr = toDateStr(loopData);
+        
+        // A. Calcula Meta do Dia
+        const metaDia = getMetaDoDia(loopData);
+
+        // B. Calcula Trabalhado no Dia
+        let trabalhadoDia = 0;
+        const pontosDia = pontosPorDia[diaStr] || [];
+
+        for (let i = 0; i < pontosDia.length; i++) {
+          const pEntrada = pontosDia[i];
+          const tipoEnt = pEntrada.subTipo || pEntrada.tipo;
+          
+          if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO', 'PONTO'].includes(tipoEnt)) {
+            const pSaida = pontosDia[i + 1];
+            const tipoSaida = pSaida ? (pSaida.subTipo || pSaida.tipo) : null;
+            
+            const entrada = new Date(pEntrada.dataHora);
+
+            if (pSaida && ['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(tipoSaida)) {
+              const saida = new Date(pSaida.dataHora);
+              let diff = differenceInMinutes(saida, entrada);
+              
+              if (diff > 0 && diff < 1440) trabalhadoDia += diff;
+
+              // Crédito Café
+              if (tipoSaida === 'SAIDA_INTERVALO') {
+                const pVolta = pontosDia[i + 2];
+                if (pVolta) {
+                   const volta = new Date(pVolta.dataHora);
+                   const intervalo = differenceInMinutes(volta, saida);
+                   if (intervalo > 0) trabalhadoDia += Math.min(intervalo, 15);
+                }
+              }
+              i++;
+            } else if (isSameDay(entrada, agora)) {
+              // Em andamento (hoje)
+              const diff = differenceInMinutes(agora, entrada);
+              if (diff > 0) trabalhadoDia += diff;
+            }
+          }
         }
-        loopData.setDate(loopData.getDate() + 1); 
+
+        // C. Soma ao Total Geral Trabalhado
+        minutosTotalTrabalhado += trabalhadoDia;
+
+        // D. Lógica de Banco e Tolerância (CLT)
+        // Só calcula banco se o dia não for isento (atestado)
+        if (!diasIsentos.has(diaStr)) {
+          let saldoDia = trabalhadoDia - metaDia;
+
+          // === A MÁGICA DA TOLERÂNCIA DE 10 MINUTOS ===
+          // Se a diferença (para mais ou para menos) for <= 10, ignora.
+          if (Math.abs(saldoDia) <= 10) {
+            saldoDia = 0;
+          }
+
+          saldoTotalBanco += saldoDia;
+        }
+      }
+      loopData.setDate(loopData.getDate() + 1);
     }
 
-    const formatarHoras = (min: number) => { 
-        const sinal = min < 0 ? '-' : ''; 
-        const absMin = Math.abs(min); 
-        return `${sinal}${Math.floor(absMin / 60)}h ${absMin % 60}m`; 
+    // Formatação Final
+    const formatarHoras = (min: number) => {
+      const sinal = min < 0 ? '-' : '';
+      const absMin = Math.abs(min);
+      return `${sinal}${Math.floor(absMin / 60)}h ${absMin % 60}m`;
     };
-    
-    const saldoMinutos = minutosTotalPeriodo - minutosEsperadosPeriodo;
 
     return {
-        total: formatarHoras(minutosTotalPeriodo),
-        saldo: formatarHoras(saldoMinutos),
-        saldoPositivo: saldoMinutos >= 0
+      total: formatarHoras(minutosTotalTrabalhado),
+      saldo: formatarHoras(saldoTotalBanco),
+      saldoPositivo: saldoTotalBanco >= 0
     };
   };
 
