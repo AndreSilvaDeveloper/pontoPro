@@ -73,6 +73,9 @@ model Usuario {
   solicitacoes  SolicitacaoAjuste[] 
 
   criadoEm      DateTime @default(now())
+
+  ipsPermitidos       String?  @default("") // Lista de IPs separados por vírgula
+  modoValidacaoPonto  String   @default("GPS") // "GPS" ou "PC_IP"
   
   resetToken       String?   @unique
   resetTokenExpiry DateTime?
