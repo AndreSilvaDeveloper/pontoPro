@@ -4,13 +4,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
 import { put } from '@vercel/blob';
 import { hash } from 'bcryptjs';
-// === NOVO IMPORT ===
 import { enviarEmailSeguro } from '@/lib/email';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   
+  // @ts-ignore
   if (!session || session.user.cargo !== 'ADMIN') {
       return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
   }
@@ -18,12 +18,14 @@ export async function GET(request: Request) {
   try {
     const funcionarios = await prisma.usuario.findMany({
       where: { 
+          // @ts-ignore
           empresaId: session.user.empresaId, 
           cargo: { not: 'ADMIN' } 
       },
       orderBy: { nome: 'asc' }
     });
     
+    // Remove a senha antes de enviar para o front
     const seguros = funcionarios.map(f => {
         const { senha, ...resto } = f;
         return resto;
@@ -37,10 +39,6 @@ export async function GET(request: Request) {
 }
 
 // === POST: CRIAR FUNCIONÁRIO ===
-// ... mantenha os imports lá em cima (NextResponse, prisma, getServerSession, etc)
-// ... mantenha o GET igual
-
-// === POST: CRIAR FUNCIONÁRIO ===
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   
@@ -50,16 +48,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 0. BUSCA O NOME DA EMPRESA (NOVO)
-    // Precisamos disso para o e-mail ficar personalizado
+    // 0. BUSCA O NOME DA EMPRESA
     const empresaAtual = await prisma.empresa.findUnique({
+        // @ts-ignore
         where: { id: session.user.empresaId },
         select: { nome: true }
     });
     const nomeEmpresa = empresaAtual?.nome || 'Sua Empresa';
 
     const formData = await request.formData();
-    // ... (Coleta dos dados do form continua igual) ...
+    
+    // Extração dos dados
     const nome = formData.get('nome') as string;
     const email = formData.get('email') as string;
     const tituloCargo = formData.get('tituloCargo') as string;
@@ -70,6 +69,10 @@ export async function POST(request: Request) {
     const pontoLivre = formData.get('pontoLivre') === 'true';
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
+
+    // === NOVOS CAMPOS (IP e MODO) ===
+    const modoValidacaoPontoStr = formData.get('modoValidacaoPonto') as string || 'GPS';
+    const ipsPermitidos = formData.get('ipsPermitidos') as string || '';
 
     // 1. Validação
     if (!nome || !email) return NextResponse.json({ erro: 'Obrigatórios.' }, { status: 400 });
@@ -103,18 +106,27 @@ export async function POST(request: Request) {
     // 6. Criação no Banco
     const novoUsuario = await prisma.usuario.create({
       data: {
-        nome, email, senha: hashedPassword, cargo: 'FUNCIONARIO',
+        nome, 
+        email, 
+        senha: hashedPassword, 
+        cargo: 'FUNCIONARIO',
         tituloCargo: tituloCargo || 'Colaborador',
+        // @ts-ignore
         empresaId: session.user.empresaId,
         latitudeBase: latitude ? parseFloat(latitude) : 0,
         longitudeBase: longitude ? parseFloat(longitude) : 0,
         raioPermitido: raio ? parseInt(raio) : 100,
-        fotoPerfilUrl, jornada: jornadaDados, pontoLivre, locaisAdicionais: locaisAdicionaisDados,
-        deveTrocarSenha: true
+        fotoPerfilUrl, 
+        jornada: jornadaDados, 
+        pontoLivre, 
+        locaisAdicionais: locaisAdicionaisDados,
+        deveTrocarSenha: true,
+        modoValidacaoPonto: modoValidacaoPontoStr as any,
+        ipsPermitidos
       }
     });
 
-    // === 7. E-MAIL PROFISSIONAL (DESIGN NOVO) ===
+    // === 7. E-MAIL PROFISSIONAL ===
     const htmlEmail = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
         
@@ -179,6 +191,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   
+  // @ts-ignore
   if (!session || session.user.cargo !== 'ADMIN') {
       return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
   }
@@ -200,6 +213,10 @@ export async function PUT(request: Request) {
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
+    // === NOVOS CAMPOS (IP e MODO) ===
+    const modoValidacaoPontoStr = formData.get('modoValidacaoPonto') as string || 'GPS';
+    const ipsPermitidos = formData.get('ipsPermitidos') as string || '';
+
     const dados: any = {
       nome, 
       email,
@@ -207,7 +224,10 @@ export async function PUT(request: Request) {
       latitudeBase: latitude ? parseFloat(latitude) : 0,
       longitudeBase: longitude ? parseFloat(longitude) : 0,
       raioPermitido: raio ? parseInt(raio) : 100,
-      pontoLivre
+      pontoLivre,
+      // === ATUALIZANDO NOVOS CAMPOS ===
+      modoValidacaoPonto: modoValidacaoPontoStr as any,
+      ipsPermitidos
     };
 
     if (jornadaTexto && jornadaTexto !== 'undefined') {
@@ -239,6 +259,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
   
+  // @ts-ignore
   if (!session || session.user.cargo !== 'ADMIN') {
       return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
   }
