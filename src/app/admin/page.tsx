@@ -268,6 +268,30 @@ export default function AdminDashboard() {
     }
   };
 
+  const excluirAusencia = async (aus: any) => {
+  const motivo = window.prompt(
+    '⚠️ ATENÇÃO: Essa ação não pode ser desfeita.\n\nPara excluir, digite o MOTIVO da exclusão:',
+  );
+  if (motivo === null) return;
+
+  if (motivo.trim() === '') {
+    alert('O motivo é obrigatório para registrar nos logs de auditoria.');
+    return;
+  }
+
+  try {
+    await axios.delete('/api/admin/ausencias/excluir', {
+      data: { id: aus.id, motivo },
+    });
+
+    alert('Registro excluído.');
+    carregarDados();
+  } catch (error) {
+    alert('Erro ao excluir registro.');
+  }
+};
+
+
   const abrirModalAusencia = () => {
     setAusenciaUser('');
     setAusenciaTipo('FERIAS');
@@ -1110,43 +1134,57 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Hora / Tipo */}
-                  <div className="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
-                    {reg.tipo === 'PONTO' ? (
-                      <>
-                        <span className="text-sm font-bold text-emerald-400 font-mono bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/20">
-                          {format(new Date(reg.dataHora), 'HH:mm')}
+                <div className="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+                  {reg.tipo === 'PONTO' ? (
+                    <>
+                      <span className="text-sm font-bold text-emerald-400 font-mono bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/20">
+                        {format(new Date(reg.dataHora), 'HH:mm')}
+                      </span>
+
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">
+                          {reg.subTipo?.replace('_', ' ')}
                         </span>
 
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">
-                            {reg.subTipo?.replace('_', ' ')}
-                          </span>
-
-                          {/* === CORREÇÃO AQUI: Botões sempre visíveis no mobile, hover no desktop === */}
-                          <div className="flex gap-3 mt-1 md:gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => abrirModalEdicao(reg)}
-                              className="flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-xs font-bold md:p-1"
-                              title="Editar"
-                            >
-                              <Edit2 size={14} /> <span className="md:hidden">Editar</span>
-                            </button>
-                            <button
-                              onClick={() => excluirPonto(reg)}
-                              className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors text-xs font-bold md:p-1"
-                              title="Excluir"
-                            >
-                              <Trash2 size={14} /> <span className="md:hidden">Excluir</span>
-                            </button>
-                          </div>
+                        <div className="flex gap-3 mt-1 md:gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => abrirModalEdicao(reg)}
+                            className="flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-xs font-bold md:p-1"
+                            title="Editar"
+                          >
+                            <Edit2 size={14} /> <span className="md:hidden">Editar</span>
+                          </button>
+                          <button
+                            onClick={() => excluirPonto(reg)}
+                            className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors text-xs font-bold md:p-1"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} /> <span className="md:hidden">Excluir</span>
+                          </button>
                         </div>
-                      </>
-                    ) : (
-                      <span className="text-xs font-bold bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 px-2 py-1 rounded uppercase tracking-wider">
-                        {reg.subTipo?.replace('_', ' ')}
-                      </span>
+                      </div>
+                    </>
+                      ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 px-2 py-1 rounded uppercase tracking-wider">
+                          {reg.subTipo?.replace('_', ' ')}
+                        </span>
+
+                        {/* Botões: sempre visíveis no mobile, hover no desktop */}
+                        <div className="flex gap-2 md:gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => excluirAusencia(reg)}
+                            className="text-red-400 hover:text-red-300 transition-colors font-bold md:p-1"
+                            title="Excluir"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
                     )}
-                  </div>
+
+                </div>
+
 
                   {/* Local */}
                   <div className="flex items-center gap-2 text-slate-400 text-xs truncate pr-4">
