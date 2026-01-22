@@ -3,30 +3,31 @@ import { prisma } from '@/lib/db';
 
 export async function registrarLog({
   empresaId,
-  usuarioId, // Pode ser Admin ou Funcionário
+  usuarioId, // Admin que executou a ação (mantemos o nome pra compatibilidade)
   acao,      // Ex: 'EDICAO_PONTO', 'APROVACAO_SOLICITACAO'
   detalhes,  // Ex: 'Alterou ponto de 08:00 para 08:30'
-  autor      // Nome de quem fez (para facilitar leitura)
+  autor      // Nome de quem fez
 }: {
   empresaId: string;
   usuarioId: string;
   acao: string;
   detalhes: string;
-  autor: string;
+  autor?: string;
 }) {
+  if (!empresaId || !usuarioId || !acao) return;
+
   try {
     await prisma.logAuditoria.create({
       data: {
         empresaId,
-        adminId: usuarioId, // Assumindo que seu model usa adminId ou usuarioId genérico
-        adminNome: autor,
+        adminId: usuarioId,
+        adminNome: autor || 'Sistema',
         acao,
-        detalhes,
+        detalhes: detalhes || '',
         dataHora: new Date(),
       },
     });
   } catch (error) {
     console.error("Erro ao salvar log:", error);
-    // Não travamos a aplicação se o log falhar, apenas avisamos no console
   }
 }
