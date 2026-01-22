@@ -646,27 +646,28 @@ export default function ModalFuncionario({
 
               <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
                 <label className="text-xs font-bold text-slate-400 mb-3 block">Modo de Validação</label>
+
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setModoValidacao('GPS')}
-                    className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
+                    className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all w-full ${
                       modoValidacao === 'GPS'
                         ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-slate-950 border-slate-700 text-slate-400'
+                        : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'
                     }`}
                   >
                     <MapPin size={20} />
                     <span className="text-xs font-bold">GPS</span>
-                  </button><source />
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => setModoValidacao('PC_IP')}
-                    className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
+                    className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all w-full ${
                       modoValidacao === 'PC_IP'
                         ? 'bg-emerald-600 border-emerald-500 text-white'
-                        : 'bg-slate-950 border-slate-700 text-slate-400'
+                        : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'
                     }`}
                   >
                     <Monitor size={20} />
@@ -674,6 +675,7 @@ export default function ModalFuncionario({
                   </button>
                 </div>
               </div>
+
 
               {modoValidacao === 'GPS' && (
                 <div className="space-y-4 animate-in fade-in">
