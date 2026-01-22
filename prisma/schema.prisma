@@ -3,113 +3,82 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
-
 datasource db {
-  provider = "postgresql" // Ou "sqlite" se estiver usando local
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Empresa {
-  id            String    @id @default(cuid())
-  nome          String
-  cnpj          String?
-  criadoEm      DateTime  @default(now())
-  
-  // Configurações do SaaS e do App
-  configuracoes Json?     // Ex: { "bloquearForaDoRaio": true, "exigirFoto": true }
-  status        String    @default("ATIVO") // "ATIVO", "BLOQUEADO"
-
-  intervaloPago   Boolean  @default(false)
-  fluxoEstrito    Boolean  @default(true)
-
-  matrizId      String?  // Se tiver ID, é filial. Se for null, é Matriz.
-  matriz        Empresa? @relation("MatrizFilial", fields: [matrizId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  filiais       Empresa[] @relation("MatrizFilial")
-  
-  usuarios      Usuario[]
-  feriados      Feriado[]
-  adminsPermitidos AdminLoja[]
-
-  diaVencimento Int      @default(15)      // Dia padrão: 15
-  chavePix      String?  @default("118.544.546-33")
+  id                  String      @id @default(cuid())
+  nome                String
+  cnpj                String?
+  criadoEm            DateTime    @default(now())
+  configuracoes       Json?
+  status              String      @default("ATIVO")
+  intervaloPago       Boolean     @default(false)
+  fluxoEstrito        Boolean     @default(true)
+  matrizId            String?
+  chavePix            String?     @default("118.544.546-33")
+  diaVencimento       Int         @default(15)
   dataUltimoPagamento DateTime?
+  adminsPermitidos    AdminLoja[]
+  matriz              Empresa?    @relation("MatrizFilial", fields: [matrizId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  filiais             Empresa[]   @relation("MatrizFilial")
+  feriados            Feriado[]
+  usuarios            Usuario[]
 }
 
 model Usuario {
-  id            String    @id @default(cuid())
-  nome          String
-  email         String    @unique
-  
-  
-  senha      String    
-  
-  tituloCargo   String?
-  
-  // Biometria e Regras
-  fotoPerfilUrl String?   
-  jornada       Json?     
-  assinaturaUrl String?
-  
-  // Controle
-  cargo         String    @default("FUNCIONARIO") // ADMIN, SUPER_ADMIN, FUNCIONARIO
-  deveTrocarSenha Boolean @default(false)
-  
-  // Vínculo
-  empresaId     String?   
-  empresa       Empresa?  @relation(fields: [empresaId], references: [id])
-
-  lojasPermitidas AdminLoja[]
-
-  // Geofencing Avançado
-  latitudeBase  Float     @default(0)
-  longitudeBase Float     @default(0)
-  raioPermitido Int       @default(100)
-  pontoLivre    Boolean   @default(false) 
-  locaisAdicionais Json?
-
-  // Relacionamentos
-  pontos        Ponto[]
-  ausencias     Ausencia[]
-  solicitacoes  SolicitacaoAjuste[] 
-
-  criadoEm      DateTime @default(now())
-
-  ipsPermitidos       String?  @default("") // Lista de IPs separados por vírgula
-  modoValidacaoPonto  String   @default("GPS") // "GPS" ou "PC_IP"
-  
-  resetToken       String?   @unique
-  resetTokenExpiry DateTime?
+  id                 String              @id @default(cuid())
+  nome               String
+  email              String              @unique
+  senha              String
+  tituloCargo        String?
+  fotoPerfilUrl      String?
+  jornada            Json?
+  assinaturaUrl      String?
+  cargo              String              @default("FUNCIONARIO")
+  deveTrocarSenha    Boolean             @default(false)
+  empresaId          String?
+  latitudeBase       Float               @default(0)
+  longitudeBase      Float               @default(0)
+  raioPermitido      Int                 @default(100)
+  pontoLivre         Boolean             @default(false)
+  locaisAdicionais   Json?
+  criadoEm           DateTime            @default(now())
+  resetToken         String?             @unique
+  resetTokenExpiry   DateTime?
+  ipsPermitidos      String?
+  modoValidacaoPonto String              @default("GPS")
+  lojasPermitidas    AdminLoja[]
+  ausencias          Ausencia[]
+  pontos             Ponto[]
+  solicitacoes       SolicitacaoAjuste[]
+  empresa            Empresa?            @relation(fields: [empresaId], references: [id])
 }
-
 
 model AdminLoja {
   id        String  @id @default(cuid())
   usuarioId String
   empresaId String
-  
-  usuario   Usuario @relation(fields: [usuarioId], references: [id])
   empresa   Empresa @relation(fields: [empresaId], references: [id])
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
 
-  @@unique([usuarioId, empresaId]) // Evita duplicatas
+  @@unique([usuarioId, empresaId])
 }
 
-
 model Ponto {
-  id        String   @id @default(cuid())
-  dataHora  DateTime @default(now())
-  latitude  Float
-  longitude Float
-  endereco  String?
-  fotoUrl   String?
-  tipo      String   @default("NORMAL")
-  subTipo     String?
-  
-  // Campo para motivo de edição do Admin
-  descricao String?
-
-  usuarioId String
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
+  id           String              @id @default(cuid())
+  dataHora     DateTime            @default(now())
+  latitude     Float
+  longitude    Float
+  endereco     String?
+  fotoUrl      String?
+  tipo         String              @default("NORMAL")
+  subTipo      String?
+  descricao    String?
+  usuarioId    String
+  usuario      Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   solicitacoes SolicitacaoAjuste[]
 }
 
@@ -117,54 +86,52 @@ model SolicitacaoAjuste {
   id          String   @id @default(cuid())
   novoHorario DateTime
   motivo      String
-  status      String   @default("PENDENTE") 
-  
-  // Tipo do ponto (ENTRADA, SAIDA) para quando for inclusão de ponto esquecido
-  tipo        String?  
-
+  status      String   @default("PENDENTE")
+  tipo        String?
   usuarioId   String
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  
-  // Opcional: Se for ajuste de um ponto existente
-  pontoId     String?  
-  ponto       Ponto?   @relation(fields: [pontoId], references: [id], onDelete: Cascade)
-
+  pontoId     String?
   criadoEm    DateTime @default(now())
+  ponto       Ponto?   @relation(fields: [pontoId], references: [id], onDelete: Cascade)
+  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  decididoPorId   String?
+  decididoPorNome String?
+  decididoEm      DateTime?
+
 }
 
 model Ausencia {
   id             String   @id @default(cuid())
   dataInicio     DateTime
   dataFim        DateTime
-  tipo           String   // ATESTADO, FERIAS, FALTA_JUSTIFICADA
+  tipo           String
   motivo         String
-  comprovanteUrl String?  
-  status         String   @default("PENDENTE") 
-  
+  comprovanteUrl String?
+  status         String   @default("PENDENTE")
   usuarioId      String
-  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
   criadoEm       DateTime @default(now())
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model Feriado {
   id        String   @id @default(cuid())
   data      DateTime
-  nome      String   
-  
+  nome      String
   empresaId String?
-  empresa   Empresa? @relation(fields: [empresaId], references: [id])
-
   criadoEm  DateTime @default(now())
+  empresa   Empresa? @relation(fields: [empresaId], references: [id])
 }
 
 model LogAuditoria {
   id        String   @id @default(cuid())
   dataHora  DateTime @default(now())
-  acao      String   
-  detalhes  String   
-  
-  adminNome String   
-  adminId   String   
-  empresaId String   
+  acao      String
+  detalhes  String
+  adminNome String
+  adminId   String
+  empresaId String
+}
+
+enum ModoValidacaoPonto {
+  GPS
+  PC_IP
 }
