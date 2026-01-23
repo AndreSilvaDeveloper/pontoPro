@@ -79,7 +79,7 @@ export default function LoginPage() {
         
         if (sessionData?.user?.cargo === 'SUPER_ADMIN') router.push('/saas');
         else if (sessionData?.user?.cargo === 'ADMIN') router.push('/admin');
-        else router.push('/');
+        else router.push('/funcionario');
       }
     } catch (err) { 
         toast.error('Erro de conexão.', { id: toastId });

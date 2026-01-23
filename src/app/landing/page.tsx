@@ -39,14 +39,14 @@ export default function LandingPage() {
               variant="outline"
               className="hidden border-purple-500/30 bg-transparent text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white md:inline-flex"
             >
-              <a href="https://ontimeia.com/login" target="_blank" rel="noopener noreferrer">Login</a>
+              <a href="/login" target="_blank" rel="noopener noreferrer">Login</a>
             </Button>
             
             <Button 
               asChild
               className="hidden bg-purple-600 font-bold text-white shadow-lg shadow-purple-500/50 transition-all hover:bg-purple-700 hover:shadow-purple-500/70 md:inline-flex"
             >
-              <Link href="/signup">Cadastre-se</Link>
+              <Link href="/landing/signup">Cadastre-se</Link>
             </Button>
           </div>
         </nav>
