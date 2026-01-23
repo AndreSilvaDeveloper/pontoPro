@@ -32,6 +32,11 @@ import ModalLancarAusencia from '@/components/ModalLancarAusencia';
 
 import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
+import FinanceAlertBanner from '@/components/admin/FinanceAlertBanner';
+
+
+
+
 
 export default function AdminDashboard() {
   const a = useAdminDashboard();
@@ -44,11 +49,15 @@ export default function AdminDashboard() {
       </div>
     );
 
+
+    
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-purple-500/30 relative overflow-x-hidden">
       {/* Efeitos de Fundo */}
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* <FinanceAlertBanner alertaFinanceiro={a.alertaFinanceiro} /> */}
 
       {/* Toast */}
       {a.notificacaoVisivel && (
