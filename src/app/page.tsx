@@ -5,7 +5,8 @@ import Webcam from 'react-webcam';
 import axios from 'axios';
 import { 
   MapPin, Camera, LogOut, History, RefreshCcw, 
-  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock
+  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock,
+  PlusCircle, X, Save // Adicionados novos ícones
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -15,9 +16,9 @@ export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  // === ESTADOS ORIGINAIS ===
   const [loading, setLoading] = useState(false);
   const [acaoEmProcesso, setAcaoEmProcesso] = useState<string | null>(null);
-
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [cameraErro, setCameraErro] = useState(false);
@@ -34,12 +35,19 @@ export default function Home() {
   const [ultimoPontoData, setUltimoPontoData] = useState<Date | null>(null);
   const [tempoIntervalo, setTempoIntervalo] = useState('00:00:00');
   const [jaAlmocou, setJaAlmocou] = useState(false);
-  
   const [carregandoStatus, setCarregandoStatus] = useState(true);
   const [tipoManual, setTipoManual] = useState('ENTRADA');
+  
   const webcamRef = useRef<Webcam>(null);
 
-  // Relógio e Cronômetro
+  // === NOVOS ESTADOS PARA O MODAL DE INCLUSÃO ===
+  const [modalInclusaoAberto, setModalInclusaoAberto] = useState(false);
+  const [dataNova, setDataNova] = useState('');
+  const [horaNova, setHoraNova] = useState('');
+  const [tipoNovo, setTipoNovo] = useState('ENTRADA');
+  const [motivo, setMotivo] = useState('');
+
+  // === RELÓGIO E CRONÔMETRO ===
   useEffect(() => {
     const timer = setInterval(() => {
         const agora = new Date();
@@ -109,6 +117,7 @@ export default function Home() {
     }
   }, [status, router, session]);
 
+  // === FUNÇÕES DE CÂMERA E GPS ===
   const tentarRecuperarCamera = async () => {
     setCameraErro(false);
     setStatusMsg({ tipo: 'info', texto: 'Tentando ativar câmera...' });
@@ -191,6 +200,36 @@ export default function Home() {
     }
   };
 
+  // === FUNÇÕES DA NOVA MODAL DE INCLUSÃO ===
+  const abrirModalInclusao = () => {
+      // Data de hoje formatada YYYY-MM-DD
+      const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
+      setDataNova(hoje);
+      setHoraNova('');
+      setTipoNovo('ENTRADA');
+      setMotivo('');
+      setModalInclusaoAberto(true);
+  };
+
+  const enviarSolicitacaoInclusao = async () => { 
+      if (!motivo || !horaNova || !dataNova) return alert('Preencha todos os campos!'); 
+      
+      const dataHoraFinal = new Date(`${dataNova}T${horaNova}:00`); 
+      
+      try { 
+          await axios.post('/api/funcionario/solicitar-ajuste', { 
+              pontoId: null, // null indica que é inclusão de novo registro
+              tipo: tipoNovo, 
+              novoHorario: dataHoraFinal.toISOString(), 
+              motivo 
+          }); 
+          alert('Solicitação enviada com sucesso! Acompanhe no Histórico.'); 
+          setModalInclusaoAberto(false);
+      } catch (error) { 
+          alert('Erro ao enviar solicitação.'); 
+      } 
+  };
+
   if (status === 'loading') return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-slate-400 gap-3">
         <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
@@ -252,8 +291,6 @@ export default function Home() {
           );
       }
 
-      // REMOVIDO IntervalDisplay daqui de dentro para não duplicar.
-      // O timer agora aparece lá em cima, independente da localização.
       if (statusPonto === 'SAIDA_ALMOCO') {
         return (
           <div className="animate-in slide-in-from-bottom-4 fade-in">
@@ -322,7 +359,7 @@ export default function Home() {
             </button>
         </div>
 
-        {/* NOVO: CRONÔMETRO DE INTERVALO (VISÍVEL SEMPRE QUE ESTIVER EM PAUSA) */}
+        {/* CRONÔMETRO DE INTERVALO */}
         {(statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO') && (
              <IntervalDisplay 
                 label={statusPonto === 'SAIDA_ALMOCO' ? "Em Almoço" : "Em Pausa"} 
@@ -340,7 +377,7 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Câmera visível apenas se exigir foto e tiver localização */}
+            {/* Câmera */}
             {configs.exigirFoto && location && (
                 <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'}`}>
                     {!cameraErro ? (
@@ -390,16 +427,23 @@ export default function Home() {
             )}
         </div>
 
-        {/* MENU RÁPIDO */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* MENU RÁPIDO (AGORA COM O BOTÃO 'ESQUECI' INCLUÍDO) */}
+        <div className="grid grid-cols-2 gap-3">
+            <button onClick={abrirModalInclusao} className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
+                <div className="bg-emerald-500/10 text-emerald-500 p-2.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors"><PlusCircle size={20} /></div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Esqueci de bater o Ponto</span>
+            </button>
+            
             <Link href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-purple-500/10 text-purple-400 p-2.5 rounded-xl group-hover:bg-purple-500 group-hover:text-white transition-colors"><PenTool size={20} /></div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Assinar</span>
             </Link>
+            
             <Link href="/funcionario/ausencias" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-yellow-500/10 text-yellow-500 p-2.5 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors"><FileText size={20} /></div>
-                <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Justificar</span>
+                <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Justificar Falta</span>
             </Link>
+            
             <Link href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-blue-500/10 text-blue-400 p-2.5 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-colors"><History size={20} /></div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Histórico</span>
@@ -415,6 +459,49 @@ export default function Home() {
         )}
 
       </div>
+
+      {/* MODAL DE INCLUSÃO (MOVIDO DO HISTÓRICO PARA CÁ) */}
+      {modalInclusaoAberto && (
+            <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 sm:p-6">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setModalInclusaoAberto(false)} />
+                <div className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                           <PlusCircle size={20} className="text-emerald-400"/> Incluir Registro
+                        </h3>
+                        <button onClick={() => setModalInclusaoAberto(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data</label>
+                            <input type="date" value={dataNova} onChange={e=>setDataNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm text-center outline-none focus:border-purple-500 transition-colors" />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Tipo</label>
+                            <select value={tipoNovo} onChange={e=>setTipoNovo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none">
+                                <option value="ENTRADA">ENTRADA</option>
+                                <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
+                                <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
+                                <option value="SAIDA">SAÍDA</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Novo Horário</label>
+                        <input type="time" value={horaNova} onChange={e=>setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
+                        <textarea value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater, estava em reunião..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors" />
+                    </div>
+                    <button onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <Save size={18} /> Enviar Solicitação
+                    </button>
+                </div>
+            </div>
+        )}
     </main>
   );
 }
