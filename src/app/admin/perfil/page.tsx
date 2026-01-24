@@ -17,7 +17,7 @@ import {
 import { useSession } from 'next-auth/react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { format, differenceInDays, isSameMonth, isSameYear } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 
 // === FUNÇÕES AUXILIARES DE PIX ===
 const normalizeText = (text: string) =>
@@ -42,15 +42,11 @@ const crc16ccitt = (payload: string) => {
 
 const formatarChaveParaPayload = (chave: string) => {
   const limpa = chave.trim();
-  // 1. Chave Aleatória (UUID)
   if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(limpa)) {
     return limpa;
   }
-  // 2. Email
   if (limpa.includes('@')) return limpa;
-  // 3. Telefone Internacional
   if (limpa.startsWith('+')) return limpa;
-  // 4. CPF/CNPJ
   return limpa.replace(/[^0-9]/g, '');
 };
 
@@ -87,13 +83,33 @@ const gerarPayloadPix = (
   return payload + crc;
 };
 
-// Definição do tipo
+type BillingDTO = {
+  ok: boolean;
+  empresa?: {
+    id: string;
+    nome: string;
+    diaVencimento: number;
+    chavePix: string | null;
+    cobrancaAtiva: boolean;
+    cobrancaWhatsapp?: string | null;
+  };
+  billing?: {
+    blocked: boolean;
+    code: string;
+    message: string;
+    dueAt: string | null;
+    days: number;
+    isTrial?: boolean;
+    isPaid?: boolean;
+  };
+};
+
 type FaturaState = {
   empresa: any;
   valor: number;
   vencimento: Date;
   chavePix: string;
-  pago: boolean; // Novo campo
+  pago: boolean;
   itens: {
     vidasExcedentes: number;
     adminsExcedentes: number;
@@ -111,58 +127,68 @@ export default function PerfilAdmin() {
   const [msg, setMsg] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
 
   const [fatura, setFatura] = useState<FaturaState | null>(null);
+  const [billing, setBilling] = useState<BillingDTO | null>(null);
   const [loadingFatura, setLoadingFatura] = useState(true);
 
   useEffect(() => {
-    carregarDadosFinanceiros();
+    carregarDados();
   }, []);
 
-  const carregarDadosFinanceiros = async () => {
+  const carregarDados = async () => {
+    setLoadingFatura(true);
+
+    const [rEmp, rBill] = await Promise.allSettled([
+      axios.get('/api/admin/empresa'),
+      axios.get('/api/empresa/billing-status'),
+    ]);
+
+    let empresa: any = null;
+    let bill: BillingDTO | null = null;
+
+    if (rBill.status === 'fulfilled') {
+      bill = rBill.value.data;
+      setBilling(bill);
+    } else {
+      setBilling(null);
+    }
+
+    if (rEmp.status === 'fulfilled') {
+      empresa = rEmp.value.data;
+    }
+
+    // Se falhou empresa, pelo menos os alertas de billing vão aparecer
+    if (!empresa) {
+      setLoadingFatura(false);
+      return;
+    }
+
     try {
-      const res = await axios.get('/api/admin/empresa');
-      const empresa = res.data;
-
-      // === BLOQUEIO PARA FILIAIS ===
-      // Se for filial (tem matrizId), não carrega financeiro
-      if (empresa.matrizId) {
-        setLoadingFatura(false);
-        return; 
-      }
-
-      // === CÁLCULO FINANCEIRO ===
+      // === CÁLCULO FINANCEIRO (seu cálculo original) ===
       let totalVidas = empresa._count?.usuarios || 0;
       const adminsUnicos = new Set<string>();
-      
-      // Função para verificar se é Admin (Cargos pagos)
+
       const ehAdmin = (u: any) => ['ADMIN', 'SUPER_ADMIN', 'DONO'].includes(u.cargo);
 
-      // Processa Matriz
       if (empresa.usuarios) {
-        empresa.usuarios.forEach((u: any) => { 
-            if(ehAdmin(u)) adminsUnicos.add(u.id); 
+        empresa.usuarios.forEach((u: any) => {
+          if (ehAdmin(u)) adminsUnicos.add(u.id);
         });
       }
 
-      // Processa Filiais
       if (empresa.filiais && empresa.filiais.length > 0) {
         empresa.filiais.forEach((f: any) => {
           totalVidas += f._count?.usuarios || 0;
           if (f.usuarios) {
-            f.usuarios.forEach((u: any) => { 
-                if(ehAdmin(u)) adminsUnicos.add(u.id); 
+            f.usuarios.forEach((u: any) => {
+              if (ehAdmin(u)) adminsUnicos.add(u.id);
             });
           }
         });
       }
 
-      // IMPORTANTE: Subtrai os admins do total de vidas para não cobrar dobrado
-      // (Assumindo que o admin também está na contagem total de usuários do banco)
-      // Se sua contagem _count já exclui admins no backend, remova essa subtração.
-      // Aqui assumimos que _count pega TODOS da tabela Usuario.
       const totalAdmins = adminsUnicos.size;
       const totalVidasAjustado = Math.max(0, totalVidas - totalAdmins);
 
-      // Regra de Negócio
       const VALOR_BASE = 99.90;
       const FRANQUIA_VIDAS = 20;
       const FRANQUIA_ADMINS = 1;
@@ -172,26 +198,23 @@ export default function PerfilAdmin() {
 
       const valorFinal = VALOR_BASE + (vidasExcedentes * 7.90) + (adminsExcedentes * 49.90);
 
-      // Datas
-      const diaVencimentoConfig = empresa.diaVencimento ? parseInt(empresa.diaVencimento) : 15;
-      const hoje = new Date();
-      let vencimento = new Date();
-      vencimento.setDate(diaVencimentoConfig);
+      // ✅ Vencimento vem do billing (matriz/filial) quando disponível
+      const vencISO = bill?.billing?.dueAt || null;
+      const vencimento = vencISO ? new Date(vencISO) : new Date();
 
-      // Se já passou muito do vencimento (ex: 20 dias), joga para o próximo mês
-      if (hoje.getDate() > diaVencimentoConfig + 20) {
-         vencimento.setMonth(vencimento.getMonth() + 1);
-      }
+      // ✅ Pago vem do billing (mais confiável)
+      const isPago = !!bill?.billing?.isPaid;
 
-      // Verificação de Pagamento (Novo)
-      const ultimoPag = empresa.dataUltimoPagamento ? new Date(empresa.dataUltimoPagamento) : null;
-      const isPago = ultimoPag ? (isSameMonth(ultimoPag, hoje) && isSameYear(ultimoPag, hoje)) : false;
+      const chavePix =
+        bill?.empresa?.chavePix ||
+        (empresa.chavePix && String(empresa.chavePix).length > 3 ? empresa.chavePix : null) ||
+        '118.544.546-33';
 
       setFatura({
         empresa,
         valor: valorFinal,
         vencimento,
-        chavePix: (empresa.chavePix && empresa.chavePix.length > 3) ? empresa.chavePix : '118.544.546-33',
+        chavePix,
         pago: isPago,
         itens: {
           vidasExcedentes,
@@ -237,10 +260,14 @@ export default function PerfilAdmin() {
   };
 
   const baixarBoleto = () => {
-    if (!fatura) return;
+    if (!fatura) return alert('Ainda carregando dados da fatura...');
 
     const janela = window.open('', '_blank');
-    if (janela) janela.document.write('<html><head><title>Gerando Fatura...</title></head><body style="background:#f0f2f5;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><h3>Gerando Fatura... Aguarde.</h3></body></html>');
+    if (janela) {
+      janela.document.write(
+        '<html><head><title>Gerando Fatura...</title></head><body style="background:#f0f2f5;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><h3>Gerando Fatura... Aguarde.</h3></body></html>'
+      );
+    }
 
     try {
       const doc = new jsPDF();
@@ -267,16 +294,11 @@ export default function PerfilAdmin() {
 
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.text(`VENCIMENTO: ${format(fatura.vencimento, 'dd/MM/yyyy')}`, 195, 20, {
-        align: 'right',
-      });
+      doc.text(`VENCIMENTO: ${format(fatura.vencimento, 'dd/MM/yyyy')}`, 195, 20, { align: 'right' });
 
       doc.setFontSize(14);
       doc.text(
-        `TOTAL: ${fatura.valor.toLocaleString('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-        })}`,
+        `TOTAL: ${fatura.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`,
         195,
         30,
         { align: 'right' }
@@ -319,14 +341,7 @@ export default function PerfilAdmin() {
         theme: 'striped',
         headStyles: { fillColor: [55, 65, 81] },
         columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
-        foot: [
-          [
-            '',
-            '',
-            'TOTAL A PAGAR',
-            fatura.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-          ],
-        ],
+        foot: [['', '', 'TOTAL A PAGAR', fatura.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]],
         footStyles: {
           fillColor: [240, 253, 244],
           textColor: [22, 101, 52],
@@ -355,9 +370,7 @@ export default function PerfilAdmin() {
       doc.text(fatura.chavePix, 20, finalY + 32);
 
       try {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-          payloadPix
-        )}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(payloadPix)}`;
         doc.addImage(qrUrl, 'PNG', 135, finalY + 5, 50, 50);
         doc.setFontSize(8);
         doc.setTextColor(100, 100, 100);
@@ -382,167 +395,161 @@ export default function PerfilAdmin() {
     }
   };
 
-  // === RENDERIZA ALERTAS ===
+  // ✅ ALERTAS agora usam billing primeiro (não dependem do fatura existir)
   const renderAlertasFinanceiros = () => {
-    if (!fatura) return null;
+    const st = billing?.billing;
+    const dueISO = st?.dueAt || null;
 
-    // 0) SE ESTIVER PAGO: MOSTRA VERDE
-    if (fatura.pago) {
-        return (
-            <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="bg-emerald-900/50 p-2.5 rounded-full text-emerald-400">
-                        <CheckCircle size={24} />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-emerald-400 text-lg">Fatura Paga</h3>
-                        <p className="text-emerald-200/70 text-sm">
-                            Obrigado! Sua assinatura está em dia. Próximo ciclo em {format(fatura.vencimento, 'MM/yyyy')}.
-                        </p>
-                    </div>
-                </div>
+    if (!st || !dueISO) return null;
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const dataVenc = new Date(dueISO);
+    dataVenc.setHours(0, 0, 0, 0);
+
+    const diasParaVencimento = differenceInDays(dataVenc, hoje);
+
+    // PAGO
+    if (st.isPaid) {
+      return (
+        <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-emerald-900/50 p-2.5 rounded-full text-emerald-400">
+              <CheckCircle size={24} />
             </div>
-        );
+            <div>
+              <h3 className="font-bold text-emerald-400 text-lg">Fatura Paga</h3>
+              <p className="text-emerald-200/70 text-sm">
+                Obrigado! Sua assinatura está em dia. Próximo ciclo em {format(new Date(dueISO), 'MM/yyyy')}.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
     }
 
-    // Lógica para quando NÃO está pago
-    // const hoje = new Date();
-    // hoje.setHours(0, 0, 0, 0);
+    // BLOQUEADO
+    if (st.blocked || diasParaVencimento <= -10) {
+      return (
+        <div className="bg-slate-900 border-l-4 border-red-600 rounded-r-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-red-900/20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-red-600/5 animate-pulse pointer-events-none" />
+          <div className="flex items-center gap-4 z-10">
+            <div className="bg-red-600 p-3 rounded-full text-white">
+              <Lock size={28} />
+            </div>
+            <div>
+              <h3 className="font-bold text-red-500 text-xl">BLOQUEIO DE ACESSO</h3>
+              <p className="text-slate-300 text-sm mt-1">
+                {st.message}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={baixarBoleto}
+            className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg transition-transform hover:scale-105"
+          >
+            REGULARIZAR AGORA
+          </button>
+        </div>
+      );
+    }
 
-    // const dataVenc = new Date(fatura.vencimento);
-    // dataVenc.setHours(0, 0, 0, 0);
+    // VENCIDA (1..9 dias)
+    if (diasParaVencimento < 0) {
+      return (
+        <div className="bg-red-950/30 border border-red-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-red-900/50 p-2.5 rounded-full text-red-400">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-red-400 text-lg">Fatura Vencida</h3>
+              <p className="text-red-200/70 text-sm">
+                Vencimento foi dia {format(new Date(dueISO), 'dd/MM')}. Evite bloqueio.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={baixarBoleto}
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
+          >
+            <FileText size={16} /> 2ª VIA DO BOLETO
+          </button>
+        </div>
+      );
+    }
 
-    // const diasParaVencimento = differenceInDays(dataVenc, hoje);
+    // PRÓXIMO (0..5)
+    if (diasParaVencimento >= 0 && diasParaVencimento <= 5) {
+      return (
+        <div className="bg-yellow-950/30 border border-yellow-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-yellow-900/50 p-2.5 rounded-full text-yellow-400">
+              <Clock size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-yellow-400 text-lg">Fatura em Aberto</h3>
+              <p className="text-yellow-200/70 text-sm">
+                {diasParaVencimento === 0
+                  ? 'Vence HOJE!'
+                  : `Vence em ${diasParaVencimento} dias (${format(new Date(dueISO), 'dd/MM')}).`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={baixarBoleto}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-yellow-900/20"
+          >
+            <FileText size={16} /> PAGAR AGORA
+          </button>
+        </div>
+      );
+    }
 
-    // // 1) BLOQUEIO IMINENTE (10+ dias atrasado)
-    // if (diasParaVencimento <= -10) {
-    //   return (
-    //     <div className="bg-slate-900 border-l-4 border-red-600 rounded-r-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-red-900/20 relative overflow-hidden">
-    //       <div className="absolute inset-0 bg-red-600/5 animate-pulse pointer-events-none" />
-    //       <div className="flex items-center gap-4 z-10">
-    //         <div className="bg-red-600 p-3 rounded-full text-white">
-    //           <Lock size={28} />
-    //         </div>
-    //         <div>
-    //           <h3 className="font-bold text-red-500 text-xl">BLOQUEIO DE ACESSO</h3>
-    //           <p className="text-slate-300 text-sm mt-1">
-    //             Sua fatura venceu há {Math.abs(diasParaVencimento)} dias. O sistema será bloqueado
-    //             nas próximas 24h.
-    //           </p>
-    //         </div>
-    //       </div>
-    //       <button
-    //         onClick={baixarBoleto}
-    //         className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-sm shadow-lg transition-transform hover:scale-105"
-    //       >
-    //         REGULARIZAR AGORA
-    //       </button>
-    //     </div>
-    //   );
-    // }
+    // EM DIA
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="bg-emerald-900/20 p-2.5 rounded-full text-emerald-500">
+            <Calendar size={24} />
+          </div>
+          <div>
+            <h3 className="font-bold text-white text-lg">Minha Assinatura</h3>
+            <p className="text-slate-400 text-sm">
+              Próximo vencimento:{' '}
+              <span className="text-emerald-400 font-bold">
+                {format(new Date(dueISO), 'dd/MM/yyyy')}
+              </span>
+            </p>
+          </div>
+        </div>
 
-    // // 2) FATURA VENCIDA (1 a 9 dias atrasado)
-    // if (diasParaVencimento < 0) {
-    //   return (
-    //     <div className="bg-red-950/30 border border-red-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-    //       <div className="flex items-center gap-4">
-    //         <div className="bg-red-900/50 p-2.5 rounded-full text-red-400">
-    //           <AlertTriangle size={24} />
-    //         </div>
-    //         <div>
-    //           <h3 className="font-bold text-red-400 text-lg">Fatura Vencida</h3>
-    //           <p className="text-red-200/70 text-sm">
-    //             Vencimento foi dia {format(fatura.vencimento, 'dd/MM')}. Evite juros e bloqueio.
-    //           </p>
-    //         </div>
-    //       </div>
-    //       <button
-    //         onClick={baixarBoleto}
-    //         className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
-    //       >
-    //         <FileText size={16} /> 2ª VIA DO BOLETO
-    //       </button>
-    //     </div>
-    //   );
-    // }
-
-    // // 3) VENCIMENTO PRÓXIMO (0 a 5 dias)
-    // if (diasParaVencimento >= 0 && diasParaVencimento <= 5) {
-    //   return (
-    //     <div className="bg-yellow-950/30 border border-yellow-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-    //       <div className="flex items-center gap-4">
-    //         <div className="bg-yellow-900/50 p-2.5 rounded-full text-yellow-400">
-    //           <Clock size={24} />
-    //         </div>
-    //         <div>
-    //           <h3 className="font-bold text-yellow-400 text-lg">Fatura em Aberto</h3>
-    //           <p className="text-yellow-200/70 text-sm">
-    //             {diasParaVencimento === 0
-    //               ? 'Vence HOJE!'
-    //               : `Vence em ${diasParaVencimento} dias (${format(fatura.vencimento, 'dd/MM')}).`}
-    //           </p>
-    //         </div>
-    //       </div>
-    //       <button
-    //         onClick={baixarBoleto}
-    //         className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 shadow-lg shadow-yellow-900/20"
-    //       >
-    //         <FileText size={16} /> PAGAR AGORA
-    //       </button>
-    //     </div>
-    //   );
-    // }
-
-    // 4) EM DIA (mais de 5 dias)
-    // return (
-    //   <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-    //     {/* <div className="flex items-center gap-4">
-    //       <div className="bg-emerald-900/20 p-2.5 rounded-full text-emerald-500">
-    //         <Calendar size={24} />
-    //       </div>
-    //       <div>
-    //         <h3 className="font-bold text-white text-lg">Minha Assinatura</h3>
-    //         <p className="text-slate-400 text-sm">
-    //           Próximo vencimento:{' '}
-    //           <span className="text-emerald-400 font-bold">
-    //             {format(fatura.vencimento, 'dd/MM/yyyy')}
-    //           </span>
-    //         </p>
-    //       </div>
-    //     </div>
-
-    //     <button
-    //       onClick={baixarBoleto}
-    //       className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs transition-all flex items-center gap-2"
-    //     >
-    //       <FileText size={16} /> VISUALIZAR FATURA
-    //     </button> */}
-    //   </div>
-    // );
+        <button
+          onClick={baixarBoleto}
+          className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs transition-all flex items-center gap-2"
+        >
+          <FileText size={16} /> VISUALIZAR FATURA
+        </button>
+      </div>
+    );
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
       <div className="max-w-2xl mx-auto space-y-8">
-        
-        {/* Cabeçalho */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-6">
           <div>
             <h1 className="text-2xl font-bold text-purple-400">Meu Perfil</h1>
             <p className="text-slate-400 text-sm">Gerencie sua conta e assinatura</p>
           </div>
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-          >
+          <Link href="/admin" className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
             <ArrowLeft size={20} /> Voltar ao Painel
           </Link>
         </div>
 
-        {/* ALERTAS FINANCEIROS */}
         {!loadingFatura && renderAlertasFinanceiros()}
 
-        {/* Cartão de Dados Pessoais */}
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center gap-4">
           <div className="w-16 h-16 bg-purple-900/30 rounded-full flex items-center justify-center text-purple-400">
             <User size={32} />
@@ -556,7 +563,6 @@ export default function PerfilAdmin() {
           </div>
         </div>
 
-        {/* Formulário de Alterar Senha */}
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800">
           <h2 className="font-bold mb-6 flex items-center gap-2 text-white">
             <Lock size={20} className="text-yellow-500" /> Alterar Senha
@@ -576,9 +582,7 @@ export default function PerfilAdmin() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
-                Confirme a Nova Senha
-              </label>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Confirme a Nova Senha</label>
               <input
                 type="password"
                 value={confirmar}
@@ -592,9 +596,7 @@ export default function PerfilAdmin() {
             {msg && (
               <div
                 className={`p-3 rounded-lg text-sm text-center font-bold ${
-                  msg.tipo === 'erro'
-                    ? 'bg-red-900/50 text-red-200'
-                    : 'bg-green-900/50 text-green-200'
+                  msg.tipo === 'erro' ? 'bg-red-900/50 text-red-200' : 'bg-green-900/50 text-green-200'
                 }`}
               >
                 {msg.texto}
@@ -607,9 +609,7 @@ export default function PerfilAdmin() {
                 disabled={loading}
                 className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50"
               >
-                {loading ? (
-                  'Salvando...'
-                ) : (
+                {loading ? 'Salvando...' : (
                   <>
                     <Save size={20} /> ATUALIZAR SENHA
                   </>
@@ -618,6 +618,7 @@ export default function PerfilAdmin() {
             </div>
           </form>
         </div>
+
       </div>
     </div>
   );

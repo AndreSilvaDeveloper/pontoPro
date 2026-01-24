@@ -46,7 +46,7 @@ export default function LandingPage() {
               asChild
               className="hidden bg-purple-600 font-bold text-white shadow-lg shadow-purple-500/50 transition-all hover:bg-purple-700 hover:shadow-purple-500/70 md:inline-flex"
             >
-              <Link href="/landing/signup">Cadastre-se</Link>
+              <Link href="/signup">Cadastre-se</Link>
             </Button>
           </div>
         </nav>
@@ -57,9 +57,7 @@ export default function LandingPage() {
         <div className="container mx-auto">
           <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
             <div className="flex flex-col justify-center text-center lg:text-left">
-              <Badge className="mb-4 w-fit border-purple-500/50 bg-purple-950/50 text-purple-300 md:mb-6 lg:mx-0 mx-auto">
-                Powered by AI
-              </Badge>
+             
               <h1 className="mb-4 text-balance text-[32px] font-extrabold leading-tight text-white md:mb-6 md:text-5xl lg:text-6xl xl:text-7xl">
                 <span className="md:hidden">
                   OntimeIA: A evolução do tempo com{' '}

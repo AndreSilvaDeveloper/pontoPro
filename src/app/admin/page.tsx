@@ -32,8 +32,7 @@ import ModalLancarAusencia from '@/components/ModalLancarAusencia';
 
 import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
-import FinanceAlertBanner from '@/components/admin/FinanceAlertBanner';
-
+import BillingAlertModal from '@/components/admin/BillingAlertModal';
 
 
 
@@ -57,13 +56,16 @@ export default function AdminDashboard() {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* <FinanceAlertBanner alertaFinanceiro={a.alertaFinanceiro} /> */}
+      <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
+
+
+
 
       {/* Toast */}
       {a.notificacaoVisivel && (
         <div
           className={`fixed top-16 right-6 z-[100] animate-in slide-in-from-right duration-500 fade-in ${
-            a.alertaFinanceiro ? 'mt-12' : ''
+            a.billingEmpresa ? 'mt-16' : ''
           }`}
         >
           <Link href={a.pendenciasAjuste > 0 ? '/admin/solicitacoes' : '/admin/pendencias'}>
@@ -83,7 +85,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className={`max-w-7xl mx-auto p-4 md:p-8 relative z-10 space-y-8 ${a.alertaFinanceiro ? 'mt-8' : ''}`}>
+      <div className={`max-w-7xl mx-auto p-4 md:p-8 relative z-10 space-y-8 ${a.billingEmpresa ? 'mt-10' : ''}`}>
         {/* === CABEÇALHO === */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
           <div className="flex flex-col gap-2">

@@ -26,6 +26,13 @@ model Empresa {
   filiais             Empresa[]   @relation("MatrizFilial")
   feriados            Feriado[]
   usuarios            Usuario[]
+
+  cobrancaAtiva      Boolean  @default(false)
+  trialAte           DateTime?
+  pagoAte            DateTime?
+
+  billingAnchorAt   DateTime?  // âncora real do vencimento (recomendado)
+  cobrancaWhatsapp  String?    // ex: "5532991473554"
 }
 
 model Usuario {

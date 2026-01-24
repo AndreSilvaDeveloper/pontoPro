@@ -1,28 +1,48 @@
+// src/app/api/saas/atualizar-financeiro/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-export async function POST(req: Request) {
+export const runtime = "nodejs";
+
+export async function PUT(req: Request) {
   const session = await getServerSession(authOptions);
-  
-  // Segurança básica (adicione verificação de SUPER_ADMIN se tiver)
-  if (!session) return NextResponse.json({ erro: "Não autorizado" }, { status: 401 });
 
-  
+  if (!session || (session.user as any).cargo !== "SUPER_ADMIN") {
+    return NextResponse.json({ erro: "Não autorizado" }, { status: 403 });
+  }
+
   try {
-    const { empresaId } = await req.json();
+    const body = await req.json();
+    const empresaId = String(body.empresaId || "").trim();
+    const diaVencimento = Number(body.diaVencimento);
+    const chavePix = String(body.chavePix || "").trim();
 
-    // Define que o pagamento foi feito AGORA
-    await prisma.empresa.update({
+    if (!empresaId) return NextResponse.json({ erro: "empresaId obrigatório" }, { status: 400 });
+
+    // limite seguro: 1..28
+    if (!Number.isFinite(diaVencimento) || diaVencimento < 1 || diaVencimento > 28) {
+      return NextResponse.json({ erro: "diaVencimento inválido (1..28)" }, { status: 400 });
+    }
+
+    const empresa = await prisma.empresa.update({
       where: { id: empresaId },
       data: {
-        dataUltimoPagamento: new Date()
-      }
+        diaVencimento,
+        chavePix: chavePix.length ? chavePix : null,
+      },
+      select: {
+        id: true,
+        nome: true,
+        diaVencimento: true,
+        chavePix: true,
+      },
     });
 
-    return NextResponse.json({ sucesso: true });
+    return NextResponse.json({ ok: true, empresa });
   } catch (error) {
-    return NextResponse.json({ erro: "Erro ao confirmar" }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ erro: "Erro ao atualizar" }, { status: 500 });
   }
 }
