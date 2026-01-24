@@ -11,18 +11,22 @@ export type BillingCode =
   | "COBRANCA_DESATIVADA";
 
 export type BillingStatus = {
-  blocked: boolean;
+  blocked: boolean;      // padrão novo
+  bloqueado: boolean;    // compat antigo
   code: BillingCode;
-  message: string;
-  dueAt: string | null; // ISO
-  days: number; // dias para vencer (>=0) ou dias em atraso (>=0)
+  message: string;       // padrão novo
+  mensagem: string;      // compat antigo
+  dueAt: string | null;  // ISO
+  days: number;          // dias para vencer (>=0) ou atrasado (>=0)
   isTrial: boolean;
   isPaid: boolean;
 };
 
-type EmpresaBillingShape = {
-  id: string;
-  nome: string;
+export type EmpresaBillingShape = {
+  // ✅ agora opcionais (para evitar erro de TS quando seu select não traz)
+  id?: string;
+  nome?: string;
+
   status?: string | null; // "ATIVO" | "BLOQUEADO"
   cobrancaAtiva?: boolean | null;
 
@@ -91,13 +95,13 @@ function addMonthsKeepingDay(base: Date, months: number, dayWanted: number) {
  */
 function resolveDueDay(emp: EmpresaBillingShape): number {
   const fromConfig =
-    emp.diaVencimento !== null && emp.diaVencimento !== undefined
+    emp?.diaVencimento !== null && emp?.diaVencimento !== undefined
       ? Number(emp.diaVencimento)
       : NaN;
 
   if (!Number.isNaN(fromConfig) && fromConfig >= 1 && fromConfig <= 28) return fromConfig;
 
-  const anchor = toDate(emp.billingAnchorAt);
+  const anchor = toDate(emp?.billingAnchorAt);
   if (anchor) return Math.min(Math.max(anchor.getDate(), 1), 28);
 
   return 15;
@@ -121,6 +125,14 @@ export function computeDueAt(emp: EmpresaBillingShape, nowInput = new Date()): D
   return due;
 }
 
+function makeStatus(partial: Omit<BillingStatus, "bloqueado" | "mensagem">): BillingStatus {
+  return {
+    ...partial,
+    bloqueado: partial.blocked,
+    mensagem: partial.message,
+  };
+}
+
 export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
   const now = startOfDay(new Date());
 
@@ -133,7 +145,7 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
     const diff = daysDiff(due, now);
     const atrasado = diff < 0 ? Math.abs(diff) : 0;
 
-    return {
+    return makeStatus({
       blocked: true,
       code: "BLOQUEADO_MANUAL",
       message: "Acesso suspenso manualmente. Entre em contato para regularização.",
@@ -141,14 +153,14 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: atrasado,
       isTrial: false,
       isPaid: false,
-    };
+    });
   }
 
   // 2) cobrança desativada => nunca bloqueia
   if (!cobrancaAtiva) {
     const due = computeDueAt(emp, now);
     const diff = daysDiff(due, now);
-    return {
+    return makeStatus({
       blocked: false,
       code: "COBRANCA_DESATIVADA",
       message: "Cobrança desativada para este cliente.",
@@ -156,11 +168,11 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: Math.abs(diff),
       isTrial: false,
       isPaid: true,
-    };
+    });
   }
 
-  const trialAte = toDate(emp.trialAte);
-  const pagoAte = toDate(emp.pagoAte);
+  const trialAte = toDate(emp?.trialAte);
+  const pagoAte = toDate(emp?.pagoAte);
 
   const paidOk = pagoAte ? now.getTime() <= endOfDay(pagoAte).getTime() : false;
   const trialOk = trialAte ? now.getTime() <= endOfDay(trialAte).getTime() : false;
@@ -169,7 +181,7 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
   if (paidOk) {
     const due = computeDueAt(emp, now);
     const diff = daysDiff(due, now);
-    return {
+    return makeStatus({
       blocked: false,
       code: "PAGO",
       message: "Assinatura em dia.",
@@ -177,14 +189,14 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: diff >= 0 ? diff : Math.abs(diff),
       isTrial: false,
       isPaid: true,
-    };
+    });
   }
 
   // 4) trial ativo => ok
   if (trialOk) {
     const due = computeDueAt(emp, now);
     const diff = daysDiff(due, now);
-    return {
+    return makeStatus({
       blocked: false,
       code: "TRIAL",
       message: "Período de teste ativo.",
@@ -192,14 +204,14 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: diff >= 0 ? diff : Math.abs(diff),
       isTrial: true,
       isPaid: false,
-    };
+    });
   }
 
   // ✅ 5) trial expirou e não está pago => BLOQUEIA IMEDIATO
   if (trialAte && !trialOk && !paidOk) {
     const due = startOfDay(trialAte);
     const diff = daysDiff(due, now); // negativo = atrasado
-    return {
+    return makeStatus({
       blocked: true,
       code: "TRIAL_EXPIRADO",
       message: "Seu teste gratuito expirou. Entre em contato para ativar a assinatura.",
@@ -207,17 +219,17 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: diff < 0 ? Math.abs(diff) : 0,
       isTrial: false,
       isPaid: false,
-    };
+    });
   }
 
-  // ✅ 6) se tinha pagoAte e venceu, usa o pagoAte como referência de atraso
+  // ✅ 6) se tinha pagoAte e venceu, usa pagoAte como referência
   if (pagoAte && !paidOk) {
     const due = startOfDay(pagoAte);
-    const diff = daysDiff(due, now); // negativo = atrasado
+    const diff = daysDiff(due, now);
     const atraso = diff < 0 ? Math.abs(diff) : 0;
 
     if (diff <= -10) {
-      return {
+      return makeStatus({
         blocked: true,
         code: "BLOQUEIO",
         message: `Fatura vencida há ${atraso} dias. Acesso bloqueado até pagamento.`,
@@ -225,11 +237,11 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
         days: atraso,
         isTrial: false,
         isPaid: false,
-      };
+      });
     }
 
     if (diff < 0) {
-      return {
+      return makeStatus({
         blocked: false,
         code: "VENCIDO",
         message: `Fatura vencida há ${atraso} dias. Evite bloqueio.`,
@@ -237,16 +249,16 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
         days: atraso,
         isTrial: false,
         isPaid: false,
-      };
+      });
     }
   }
 
-  // 7) fallback: cobrança por vencimento mensal
+  // 7) fallback: vencimento mensal
   const due = computeDueAt(emp, now);
-  const diff = daysDiff(due, now); // due - now
+  const diff = daysDiff(due, now);
 
   if (diff <= -10) {
-    return {
+    return makeStatus({
       blocked: true,
       code: "BLOQUEIO",
       message: `Fatura vencida há ${Math.abs(diff)} dias. Acesso bloqueado até pagamento.`,
@@ -254,11 +266,11 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: Math.abs(diff),
       isTrial: false,
       isPaid: false,
-    };
+    });
   }
 
   if (diff < 0) {
-    return {
+    return makeStatus({
       blocked: false,
       code: "VENCIDO",
       message: `Fatura vencida há ${Math.abs(diff)} dias. Evite bloqueio.`,
@@ -266,11 +278,11 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: Math.abs(diff),
       isTrial: false,
       isPaid: false,
-    };
+    });
   }
 
   if (diff >= 0 && diff <= 5) {
-    return {
+    return makeStatus({
       blocked: false,
       code: "PROXIMO",
       message: diff === 0 ? "Fatura vence hoje." : `Fatura vence em ${diff} dias.`,
@@ -278,10 +290,10 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
       days: diff,
       isTrial: false,
       isPaid: false,
-    };
+    });
   }
 
-  return {
+  return makeStatus({
     blocked: false,
     code: "OK",
     message: "Fatura em aberto.",
@@ -289,7 +301,7 @@ export function getBillingStatus(emp: EmpresaBillingShape): BillingStatus {
     days: diff,
     isTrial: false,
     isPaid: false,
-  };
+  });
 }
 
 function base64UrlEncodeUtf8(obj: any): string {
@@ -313,5 +325,5 @@ export function buildBillingBlockPayload(params: {
   });
 }
 
-// ✅ compat
+// ✅ compat: alguns lugares importam makeBillingBlockPayload
 export const makeBillingBlockPayload = buildBillingBlockPayload;
