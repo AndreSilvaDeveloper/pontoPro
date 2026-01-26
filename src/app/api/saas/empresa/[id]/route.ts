@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+// src/app/api/saas/empresa/[id]/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
@@ -13,22 +14,26 @@ async function requireSuperAdmin() {
   return session;
 }
 
-export async function GET(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
+type Ctx = { params: Promise<{ id: string }> };
+
+export async function GET(_request: NextRequest, context: Ctx) {
   const session = await requireSuperAdmin();
   if (!session) {
     return NextResponse.json({ ok: false, erro: "403" }, { status: 403 });
   }
 
+  const { id } = await context.params;
+
   const empresa = await prisma.empresa.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { _count: { select: { usuarios: true } } },
   });
 
   if (!empresa) {
-    return NextResponse.json({ ok: false, erro: "Empresa não encontrada" }, { status: 404 });
+    return NextResponse.json(
+      { ok: false, erro: "Empresa não encontrada" },
+      { status: 404 }
+    );
   }
 
   // Json do Prisma já vem ok — mas mantemos compatível com seu padrão
@@ -39,14 +44,13 @@ export async function GET(
   return NextResponse.json({ ok: true, empresa: { ...empresa, configuracoes: configs } });
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, context: Ctx) {
   const session = await requireSuperAdmin();
   if (!session) {
     return NextResponse.json({ ok: false, erro: "403" }, { status: 403 });
   }
+
+  const { id } = await context.params;
 
   try {
     const body = await request.json();
@@ -62,7 +66,7 @@ export async function PUT(
     }
 
     await prisma.empresa.update({
-      where: { id: params.id },
+      where: { id },
       data: { configuracoes: novasConfigs },
     });
 
