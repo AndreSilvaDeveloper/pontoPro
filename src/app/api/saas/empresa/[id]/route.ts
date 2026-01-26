@@ -1,47 +1,74 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../auth/[...nextauth]/route";
 
-async function isSuperAdmin() {
-    const session = await getServerSession(authOptions);
-    // @ts-ignore
-    return session?.user?.cargo === 'SUPER_ADMIN';
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+async function requireSuperAdmin() {
+  const session = await getServerSession(authOptions);
+  const cargo = (session?.user as any)?.cargo;
+  if (!session || cargo !== "SUPER_ADMIN") return null;
+  return session;
 }
 
 export async function GET(
-  request: Request, 
-  props: { params: Promise<{ id: string }> }
+  _request: Request,
+  { params }: { params: { id: string } }
 ) {
-  const params = await props.params; 
-  if (!(await isSuperAdmin())) return NextResponse.json({ erro: '403' }, { status: 403 });
+  const session = await requireSuperAdmin();
+  if (!session) {
+    return NextResponse.json({ ok: false, erro: "403" }, { status: 403 });
+  }
 
   const empresa = await prisma.empresa.findUnique({
     where: { id: params.id },
-    include: { _count: { select: { usuarios: true } } }
+    include: { _count: { select: { usuarios: true } } },
   });
 
-  if (!empresa) return NextResponse.json({ erro: 'Empresa não encontrada' }, { status: 404 });
+  if (!empresa) {
+    return NextResponse.json({ ok: false, erro: "Empresa não encontrada" }, { status: 404 });
+  }
 
-  const configs = empresa.configuracoes ? JSON.parse(JSON.stringify(empresa.configuracoes)) : {};
-  return NextResponse.json({ ...empresa, configuracoes: configs });
+  // Json do Prisma já vem ok — mas mantemos compatível com seu padrão
+  const configs = empresa.configuracoes
+    ? JSON.parse(JSON.stringify(empresa.configuracoes))
+    : {};
+
+  return NextResponse.json({ ok: true, empresa: { ...empresa, configuracoes: configs } });
 }
 
 export async function PUT(
-  request: Request, 
-  props: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
-  const params = await props.params; 
-  if (!(await isSuperAdmin())) return NextResponse.json({ erro: '403' }, { status: 403 });
-  
+  const session = await requireSuperAdmin();
+  if (!session) {
+    return NextResponse.json({ ok: false, erro: "403" }, { status: 403 });
+  }
+
   try {
-    const { novasConfigs } = await request.json();
+    const body = await request.json();
+
+    // Mantém compatível com seu payload antigo: { novasConfigs }
+    const novasConfigs = body?.novasConfigs ?? body?.configuracoes;
+
+    if (typeof novasConfigs !== "object" || novasConfigs === null) {
+      return NextResponse.json(
+        { ok: false, erro: "novasConfigs inválido" },
+        { status: 400 }
+      );
+    }
+
     await prisma.empresa.update({
       where: { id: params.id },
-      data: { configuracoes: novasConfigs }
+      data: { configuracoes: novasConfigs },
     });
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ erro: 'Erro ao salvar' }, { status: 500 });
+    console.error("PUT /api/saas/empresa/[id] error:", error);
+    return NextResponse.json({ ok: false, erro: "Erro ao salvar" }, { status: 500 });
   }
 }

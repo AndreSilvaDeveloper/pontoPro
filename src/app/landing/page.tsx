@@ -1,3 +1,5 @@
+'use client'
+
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -10,8 +12,18 @@ import { MobileCarousel } from "@/components/landing/mobile-carousel";
 import { MobileMenu } from "@/components/landing/mobile-menu";
 import { DesktopMenu } from "@/components/landing/desktop-menu";
 
+import { useState } from 'react'
+import { LINKS, waLink } from '@/config/links'
+
+
+
+
+
+
 
 export default function LandingPage() {
+  const [demoOpen, setDemoOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-[#0a0e27]">
       {/* Animated Grid Background */}
@@ -92,14 +104,14 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 size-5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
-                <Button 
-                  asChild
-                  size="lg" 
-                  variant="outline"
-                  className="w-full border-2 border-purple-500/30 bg-transparent font-medium text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white sm:w-auto"
-                >
-                  <Link href="#demo">Ver demonstração</Link>
+                <Button asChild size="lg" variant="outline" className="...">
+                  <a href={LINKS.demoVideo.shortUrl} target="_blank" rel="noopener noreferrer">
+                    Ver demonstração
+                  </a>
                 </Button>
+
+
+
               </div>
               
               <p className="mt-4 text-sm text-gray-500">
@@ -452,14 +464,22 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 size-5" />
                   </Link>
                 </Button>
-                <Button 
-                  asChild
-                  size="lg" 
-                  variant="outline"
-                  className="border-2 border-purple-500/30 bg-transparent font-medium text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white"
-                >
-                  <Link href="#demo">Agendar demonstração</Link>
-                </Button>
+                <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="border-2 border-purple-500/30 bg-transparent font-medium text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white"
+                  >
+                    <a
+                      href={waLink(LINKS.whatsapp.messages.agendarDemo)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Agendar demonstração
+                    </a>
+                  </Button>
+
+
               </div>
               
               <p className="mt-6 text-sm text-gray-400">

@@ -653,11 +653,9 @@ export default function SuperAdminPage() {
                 empresas.map((matriz) => {
                   const dadosFin = calcularFinanceiro(matriz);
                   const hoje = new Date();
-                  const ultimoPag = matriz.dataUltimoPagamento
-                    ? new Date(matriz.dataUltimoPagamento)
-                    : null;
-                  const estaPago =
-                    !!ultimoPag && isSameMonth(ultimoPag, hoje) && isSameYear(ultimoPag, hoje);
+                  const pagoAte = matriz.pagoAte ? new Date(matriz.pagoAte) : null;
+                  const estaPago = !!pagoAte && hoje <= pagoAte;
+
 
                   return (
                     <div
@@ -1120,7 +1118,7 @@ export default function SuperAdminPage() {
                     })
                   }
                 >
-                  {[1, 5, 10, 15, 20, 25, 28].map((d) => (
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                     <option key={d} value={d}>
                       Dia {d}
                     </option>

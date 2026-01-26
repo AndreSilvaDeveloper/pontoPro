@@ -9,34 +9,39 @@ export const runtime = "nodejs";
 export async function PUT(req: Request) {
   const session = await getServerSession(authOptions);
 
-  if (!session || (session.user as any).cargo !== "SUPER_ADMIN") {
+  // @ts-ignore
+  const cargo = session?.user?.cargo;
+  if (!session || cargo !== "SUPER_ADMIN") {
     return NextResponse.json({ erro: "Não autorizado" }, { status: 403 });
   }
 
   try {
     const body = await req.json();
-    const empresaId = String(body.empresaId || "").trim();
-    const diaVencimento = Number(body.diaVencimento);
-    const chavePix = String(body.chavePix || "").trim();
+    const {
+      empresaId,
+      diaVencimento,
+      chavePix,
+      cobrancaAtiva,
+      status,
+      trialAteISO,
+      pagoAteISO,
+      billingAnchorAtISO,
+      cobrancaWhatsapp,
+    } = body;
 
-    if (!empresaId) return NextResponse.json({ erro: "empresaId obrigatório" }, { status: 400 });
-
-    // limite seguro: 1..28
-    if (!Number.isFinite(diaVencimento) || diaVencimento < 1 || diaVencimento > 28) {
-      return NextResponse.json({ erro: "diaVencimento inválido (1..28)" }, { status: 400 });
-    }
+    if (!empresaId) return NextResponse.json({ erro: "empresaId é obrigatório" }, { status: 400 });
 
     const empresa = await prisma.empresa.update({
       where: { id: empresaId },
       data: {
-        diaVencimento,
-        chavePix: chavePix.length ? chavePix : null,
-      },
-      select: {
-        id: true,
-        nome: true,
-        diaVencimento: true,
-        chavePix: true,
+        ...(diaVencimento !== undefined ? { diaVencimento: Number(diaVencimento) } : {}),
+        ...(chavePix !== undefined ? { chavePix: String(chavePix) } : {}),
+        ...(cobrancaWhatsapp !== undefined ? { cobrancaWhatsapp: String(cobrancaWhatsapp) } : {}),
+        ...(cobrancaAtiva !== undefined ? { cobrancaAtiva: Boolean(cobrancaAtiva) } : {}),
+        ...(status !== undefined ? { status: String(status) } : {}),
+        ...(trialAteISO !== undefined ? { trialAte: trialAteISO ? new Date(trialAteISO) : null } : {}),
+        ...(pagoAteISO !== undefined ? { pagoAte: pagoAteISO ? new Date(pagoAteISO) : null } : {}),
+        ...(billingAnchorAtISO !== undefined ? { billingAnchorAt: billingAnchorAtISO ? new Date(billingAnchorAtISO) : null } : {}),
       },
     });
 

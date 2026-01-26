@@ -15,16 +15,9 @@ export async function GET() {
     where: { email: session.user.email },
     select: { empresaId: true, cargo: true },
   });
-
   if (!usuario?.empresaId) return NextResponse.json({ ok: false }, { status: 404 });
 
-  // SUPER_ADMIN: não precisa disso, mas pode retornar ok
-  if ((usuario as any).cargo === "SUPER_ADMIN") {
-    return NextResponse.json({ ok: true, billing: { blocked: false, code: "OK", message: "SUPER_ADMIN", dueAt: null, days: 0 } });
-  }
-
-  // pega empresa e se for filial, usa matriz
-  const empresaBase = await prisma.empresa.findUnique({
+  const empUser = await prisma.empresa.findUnique({
     where: { id: usuario.empresaId },
     select: {
       id: true,
@@ -41,13 +34,12 @@ export async function GET() {
     },
   });
 
-  if (!empresaBase) return NextResponse.json({ ok: false }, { status: 404 });
+  if (!empUser) return NextResponse.json({ ok: false }, { status: 404 });
 
-  let empresa = empresaBase;
-
-  if (empresaBase.matrizId) {
+  let billingEmpresa = empUser;
+  if (empUser.matrizId) {
     const matriz = await prisma.empresa.findUnique({
-      where: { id: empresaBase.matrizId },
+      where: { id: empUser.matrizId },
       select: {
         id: true,
         nome: true,
@@ -62,20 +54,20 @@ export async function GET() {
         cobrancaWhatsapp: true,
       },
     });
-    if (matriz) empresa = matriz;
+    if (matriz) billingEmpresa = matriz;
   }
 
-  const st = getBillingStatus(empresa as any);
+  const st = getBillingStatus(billingEmpresa as any);
 
   return NextResponse.json({
     ok: true,
     empresa: {
-      id: empresa.id,
-      nome: empresa.nome,
-      diaVencimento: (empresa as any).diaVencimento ?? 15,
-      chavePix: (empresa as any).chavePix ?? null,
-      cobrancaAtiva: (empresa as any).cobrancaAtiva ?? true,
-      cobrancaWhatsapp: (empresa as any).cobrancaWhatsapp ?? null,
+      id: billingEmpresa.id,
+      nome: billingEmpresa.nome,
+      diaVencimento: billingEmpresa.diaVencimento ?? 15,
+      chavePix: billingEmpresa.chavePix ?? null,
+      cobrancaAtiva: billingEmpresa.cobrancaAtiva ?? true,
+      isFilial: Boolean(empUser.matrizId),
     },
     billing: st,
   });

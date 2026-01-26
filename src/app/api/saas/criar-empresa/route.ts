@@ -1,16 +1,19 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { hash } from 'bcryptjs';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
-import { enviarEmailSeguro } from '@/lib/email'; 
+// src/app/api/saas/criar-empresa/route.ts
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { hash } from "bcryptjs";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
+import { enviarEmailSeguro } from "@/lib/email";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  
+
   // @ts-ignore
-  if (!session || session.user.cargo !== 'SUPER_ADMIN') {
-      return NextResponse.json({ erro: 'Acesso restrito ao Super Admin' }, { status: 403 });
+  if (!session || session.user.cargo !== "SUPER_ADMIN") {
+    return NextResponse.json({ erro: "Acesso restrito ao Super Admin" }, { status: 403 });
   }
 
   try {
@@ -19,31 +22,53 @@ export async function POST(request: Request) {
 
     const userExistente = await prisma.usuario.findUnique({ where: { email: emailDono } });
     if (userExistente) {
-      return NextResponse.json({ erro: 'Este email já possui cadastro.' }, { status: 400 });
+      return NextResponse.json({ erro: "Este email já possui cadastro." }, { status: 400 });
     }
 
-    // 1. Cria a Empresa
+    // ✅ Trial de 14 dias
+    const agora = new Date();
+    const trialAte = new Date(agora.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    // 1) Cria a Empresa (já com cobrança configurada)
     const empresa = await prisma.empresa.create({
       data: {
         nome: nomeEmpresa,
         cnpj: cnpj || null,
-        status: 'ATIVO',
-        configuracoes: { 
-            bloquearForaDoRaio: true, exigirFoto: true, permitirEdicaoFunc: false, ocultarSaldoHoras: false 
-        }
-      }
+        status: "ATIVO",
+        configuracoes: {
+          bloquearForaDoRaio: true,
+          exigirFoto: true,
+          permitirEdicaoFunc: false,
+          ocultarSaldoHoras: false,
+        },
+
+        // ✅ defaults do SaaS
+        intervaloPago: false,
+        fluxoEstrito: true,
+
+        // ✅ cobrança / trial
+        cobrancaAtiva: true,
+        trialAte,
+        pagoAte: null,
+        diaVencimento: 15,       // importante se sua coluna é NOT NULL
+        billingAnchorAt: agora,  // opcional, mas ajuda manter consistente
+      } as any,
     });
 
-    // 2. Cria o Dono (Admin)
+    // 2) Cria o Dono (Admin)
     const hashedPassword = await hash(senhaInicial, 10);
     const dono = await prisma.usuario.create({
       data: {
-        nome: nomeDono, email: emailDono, senha: hashedPassword,
-        cargo: 'ADMIN', empresaId: empresa.id, deveTrocarSenha: false
-      }
+        nome: nomeDono,
+        email: emailDono,
+        senha: hashedPassword,
+        cargo: "ADMIN",
+        empresaId: empresa.id,
+        deveTrocarSenha: false,
+      } as any,
     });
 
-    // === 3. E-MAIL DE BOAS-VINDAS AO PARCEIRO (NOVO) ===
+    // 3) E-mail de boas-vindas
     const htmlEmail = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
         <div style="background-color: #5b21b6; padding: 30px; text-align: center;">
@@ -54,7 +79,7 @@ export async function POST(request: Request) {
             <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nomeDono}</strong>!</p>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
                 A empresa <strong>${nomeEmpresa}</strong> foi ativada com sucesso em nossa plataforma. <br>
-                Você agora tem acesso total ao Painel Administrativo para gerenciar seus colaboradores.
+                Seu período de teste é de <strong>14 dias</strong>.
             </p>
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
                 <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold;">Credenciais de Gestor</p>
@@ -74,15 +99,14 @@ export async function POST(request: Request) {
       </div>
     `;
 
-    await enviarEmailSeguro(emailDono, 'Sua empresa foi ativada! 🚀', htmlEmail);
+    await enviarEmailSeguro(emailDono, "Sua empresa foi ativada! 🚀", htmlEmail);
 
     return NextResponse.json({
       success: true,
-      dados: { empresa: empresa.nome, login: dono.email }
+      dados: { empresa: empresa.nome, login: dono.email },
     });
-
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ erro: 'Erro interno' }, { status: 500 });
+    return NextResponse.json({ erro: "Erro interno" }, { status: 500 });
   }
 }
