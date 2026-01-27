@@ -354,7 +354,7 @@ export default function Home() {
                     <h1 className="font-mono text-xl font-bold text-white tracking-tight">{horaAtual || '--:--'}</h1>
                 </div>
             </div>
-            <button onClick={() => signOut()} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
+            <button onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
                 <LogOut size={20} />
             </button>
         </div>

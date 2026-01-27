@@ -56,7 +56,7 @@ export default function AssinaturaDigital() {
           <PenTool className="text-purple-400" />
           <h1 className="text-xl font-bold">Assinatura Digital</h1>
         </div>
-        <Link href="/" className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition"><ArrowLeft size={20} /></Link>
+        <Link href="/funcionario" className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition"><ArrowLeft size={20} /></Link>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center space-y-6">
