@@ -28,7 +28,7 @@ export function AboutModal({ open, onOpenChange }: AboutModalProps) {
               <h3 className="text-xl font-bold text-white">A Origem</h3>
             </div>
             <p className="text-pretty leading-relaxed text-gray-300">
-              O OntimeIA nasceu da necessidade de simplificar o que era complexo. Percebemos que as empresas modernas perdiam horas valiosas em processos de gestão de ponto burocráticos e ultrapassados.
+              O WorkID nasceu da necessidade de simplificar o que era complexo. Percebemos que as empresas modernas perdiam horas valiosas em processos de gestão de ponto burocráticos e ultrapassados.
             </p>
           </div>
 

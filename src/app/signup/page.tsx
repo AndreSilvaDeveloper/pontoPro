@@ -195,7 +195,7 @@ export default function SignupPage() {
                 <Rocket className="size-7 text-white" />
               </div>
             </Link>
-            <h1 className="mt-4 text-3xl font-extrabold text-white">OntimeIA</h1>
+            <h1 className="mt-4 text-3xl font-extrabold text-white">WorkID</h1>
             <p className="mt-2 text-sm text-gray-400">Gestão Inteligente de Ponto</p>
           </div>
 
@@ -220,7 +220,7 @@ export default function SignupPage() {
                       id="empresa"
                       value={empresaNome}
                       onChange={(e) => setEmpresaNome(e.target.value)}
-                      placeholder="Ex: OntimeIA Tecnologia"
+                      placeholder="Ex: WorkID Tecnologia"
                       className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
                     />
@@ -386,7 +386,7 @@ export default function SignupPage() {
               </p>
 
               <p className="text-center text-xs text-gray-600">
-                © 2026 OntimeIA • Tecnologia em Gestão
+                © 2026 WorkID • Tecnologia em Gestão
               </p>
             </CardContent>
           </Card>

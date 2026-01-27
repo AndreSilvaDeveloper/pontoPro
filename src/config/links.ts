@@ -1,7 +1,10 @@
 export const LINKS = {
   demoVideo: {
+    // ✅ mantenha UM ÚNICO ID e gere a URL a partir dele
     id: 'K8pNHlq31EQ',
-    shortUrl: 'https://www.youtube.com/watch?v=K8pNHIq31EQ', 
+    shortUrl: 'https://www.youtube.com/watch?v=K8pNHlq31EQ',
+    // se preferir ainda mais “universal”:
+    // shortUrl: 'https://youtu.be/K8pNHlq31EQ',
   },
 
   whatsapp: {
@@ -26,8 +29,10 @@ export const LINKS = {
   },
 } as const
 
+// ✅ mais compatível que wa.me em muitos mobiles/webviews
 export function waLink(text: string) {
-  return `https://wa.me/${LINKS.whatsapp.number}?text=${encodeURIComponent(text)}`
+  const phone = LINKS.whatsapp.number.replace(/\D/g, '')
+  return `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`
 }
 
 export function mailto(email: string) {
