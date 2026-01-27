@@ -126,14 +126,23 @@ export default function AdminDashboard() {
 
         {/* === AÇÕES RÁPIDAS === */}
         <div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 grid-flow-dense">
             <button
               onClick={a.abrirModalAusencia}
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl transition-all shadow-lg shadow-black/20 hover:-translate-y-1"
+              className="flex flex-col items-center justify-center gap-2 p-4
+                        bg-slate-800/50 hover:bg-slate-800
+                        text-slate-200
+                        border border-white/5
+                        rounded-2xl transition-all
+                        hover:border-purple-500/20 hover:-translate-y-1
+                        group shadow-lg shadow-black/20"
             >
-              <Plane size={24} />
+              <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
+                <Plane size={20} className="text-slate-300 group-hover:text-white" />
+              </div>
               <span className="text-xs font-bold">Lançar Ausência</span>
             </button>
+
 
             <Link
               href="/admin/solicitacoes"
@@ -169,18 +178,25 @@ export default function AdminDashboard() {
 
             <Link
               href="/admin/funcionarios"
-              className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl transition-all hover:-translate-y-1 group
-                        bg-slate-800/60 hover:bg-slate-800
-                        text-slate-100
-                        border border-white/10 hover:border-white/25
-                        ring-1 ring-fuchsia-500/25 hover:ring-fuchsia-400/40
-                        shadow-lg shadow-fuchsia-900/10"
+              className="col-span-2 md:col-span-1
+                        order-first md:order-none
+                        flex flex-col items-center justify-center gap-2
+                        p-5 md:p-4
+                        bg-slate-800/50 hover:bg-slate-800
+                        text-slate-200
+                        border border-white/5
+                        rounded-2xl transition-all
+                        hover:border-purple-500/30 hover:-translate-y-1
+                        ring-1 ring-purple-500/15
+                        group shadow-lg shadow-black/20"
             >
-              <div className="bg-fuchsia-500/10 p-2 rounded-full group-hover:bg-fuchsia-500/15 transition-colors">
-                <User size={20} className="text-fuchsia-300 group-hover:text-fuchsia-200" />
+              <div className="bg-purple-500/10 p-2 rounded-full group-hover:bg-purple-500/20 transition-colors">
+                <User size={20} className="text-purple-400 group-hover:text-purple-300" />
               </div>
               <span className="text-xs font-bold">Gestão da Equipe</span>
             </Link>
+
+
 
             <Link
               href="/admin/feriados"
