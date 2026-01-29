@@ -13,6 +13,17 @@ type Props = {
 
 const OK_KEY = "billing_alert_ok_v1";
 
+
+function parseDateOnlyToLocal(dateOrIso: string) {
+  const base = dateOrIso?.slice(0, 10); // pega YYYY-MM-DD
+  if (!base || base.length !== 10) return null;
+
+  const [y, m, d] = base.split("-").map(Number);
+  if (!y || !m || !d) return null;
+
+  return new Date(y, m - 1, d); // local time (00:00 local)
+}
+
 export default function BillingAlertModal({ empresa, billing }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -44,7 +55,8 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
 
   const Icon = ui.icon;
 
-  const due = billing.dueAtISO ? new Date(billing.dueAtISO) : null;
+  // ✅ FIX: usar parse "data pura" para não converter em UTC e voltar 1 dia no Brasil
+  const due = billing.dueAtISO ? parseDateOnlyToLocal(billing.dueAtISO) : null;
 
   const bg =
     ui.tone === "danger"
@@ -94,6 +106,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
                   <span className="font-semibold">
                     {billing.phase === "TRIAL" ? "Fim do teste:" : "Vencimento:"}
                   </span>{" "}
+                  {/* ✅ agora não "volta 1 dia" */}
                   {due.toLocaleDateString("pt-BR")}
                 </div>
               )}
