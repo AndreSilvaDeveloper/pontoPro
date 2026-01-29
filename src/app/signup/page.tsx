@@ -343,15 +343,36 @@ export default function SignupPage() {
                 </div>
 
                 {/* Termos */}
-                <label className="flex items-center gap-3 rounded-lg border border-purple-500/20 bg-[#0a0e27]/50 p-3 text-sm text-gray-300">
+                <label className="flex items-start gap-3 rounded-lg border border-purple-500/20 bg-[#0a0e27]/50 p-3 text-sm text-gray-300">
                   <input
                     type="checkbox"
                     checked={aceitar}
                     onChange={(e) => setAceitar(e.target.checked)}
-                    className="size-4 accent-purple-500"
+                    className="mt-1 size-4 accent-purple-500"
                   />
-                  Aceito os termos e a política de privacidade.
+                  <span>
+                    Aceito os{" "}
+                    <Link
+                      href="/termos"
+                      target="_blank"
+                      className="text-purple-300 hover:text-purple-200 underline underline-offset-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Termos de Uso
+                    </Link>{" "}
+                    e a{" "}
+                    <Link
+                      href="/privacidade"
+                      target="_blank"
+                      className="text-purple-300 hover:text-purple-200 underline underline-offset-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Política de Privacidade
+                    </Link>
+                    .
+                  </span>
                 </label>
+
 
                 <Button
                   type="submit"

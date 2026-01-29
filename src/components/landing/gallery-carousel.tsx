@@ -33,8 +33,7 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
     return [...slides, ...slides, ...slides]
   }, [slides, canLoop])
 
-  // Começa no “meio” do triplo (set central)
-  const middleStart = total // índice inicial físico (começo do bloco do meio)
+  const middleStart = total
   const physicalIndexRef = React.useRef(middleStart)
 
   const itemSizeRef = React.useRef<number>(0)
@@ -113,19 +112,17 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
     rafRef.current = requestAnimationFrame(() => {
       updateActiveFromScroll()
-
-      // evita normalizar no meio de uma transição suave
-      if (!settlingRef.current) {
-        normalizePhysicalIfNeeded()
-      }
+      if (!settlingRef.current) normalizePhysicalIfNeeded()
     })
   }
 
   function go(delta: number) {
     if (!total) return
+
     if (!canLoop) {
       const next = Math.max(0, Math.min(total - 1, active + delta))
       setActive(next)
+      smoothToPhysical(next)
       return
     }
 
@@ -134,7 +131,6 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
     physicalIndexRef.current = target
     smoothToPhysical(target)
 
-    // depois de “assentar”, normaliza caso tenha passado do limite
     window.setTimeout(() => {
       settlingRef.current = false
       normalizePhysicalIfNeeded()
@@ -152,7 +148,6 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
   React.useEffect(() => {
     if (!total) return
 
-    // mede e posiciona no meio
     measure()
     if (canLoop) {
       physicalIndexRef.current = middleStart
@@ -165,7 +160,6 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
     const handleResize = () => {
       const prevPhysical = physicalIndexRef.current
       measure()
-      // mantém no mesmo item após resize
       if (canLoop) jumpToPhysical(prevPhysical)
       else jumpToPhysical(active)
     }
@@ -204,11 +198,20 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
 
         {/* Scroller */}
         <div
-            ref={scrollerRef}
-            onScroll={onScroll}
-            className="relative z-10 overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
+          ref={scrollerRef}
+          onScroll={onScroll}
+          className="
+            relative z-10
+            overflow-x-auto overflow-y-hidden
+            [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
 
+            /* ✅ Centraliza no mobile sem mexer no tamanho: cria “gutter” lateral */
+            px-6 sm:px-0
+
+            /* ✅ Snap melhora centralização e sensação no mobile */
+            snap-x snap-mandatory
+          "
+        >
           <div
             ref={trackRef}
             className="flex gap-6"
@@ -225,10 +228,14 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
                     border border-purple-500/20 bg-[#0a0e27]/55 backdrop-blur-sm
                     shadow-lg shadow-black/20
                     shrink-0
+
                     basis-[80%]
                     sm:basis-[55%]
                     md:basis-[40%]
                     lg:basis-[23%]
+
+                    /* ✅ centraliza o item no snap */
+                    snap-center
                   "
                 >
                   <div className="relative aspect-[4/5] w-full">
@@ -281,26 +288,44 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
             )
           })}
         </div>
+
+        {/* ✅ Setas “pra frente” (visíveis e clicáveis) */}
+        {total > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() => go(-1)}
+              className="
+                absolute left-3 top-1/2 -translate-y-1/2
+                z-[50] pointer-events-auto
+                rounded-2xl border border-purple-500/25
+                bg-[#0a0e27]/80 p-3 text-white backdrop-blur
+                hover:border-purple-500/50 hover:bg-[#0a0e27]
+                focus:outline-none focus:ring-2 focus:ring-purple-400/30
+              "
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => go(1)}
+              className="
+                absolute right-3 top-1/2 -translate-y-1/2
+                z-[50] pointer-events-auto
+                rounded-2xl border border-purple-500/25
+                bg-[#0a0e27]/80 p-3 text-white backdrop-blur
+                hover:border-purple-500/50 hover:bg-[#0a0e27]
+                focus:outline-none focus:ring-2 focus:ring-purple-400/30
+              "
+              aria-label="Próximo"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </>
+        )}
       </div>
-
-      {/* Setas (fora do frame, centralizadas, igual o print) */}
-      <button
-        type="button"
-        onClick={() => go(-1)}
-        className="absolute left-3 top-1/2 -translate-y-1/2 rounded-2xl border border-purple-500/20 bg-[#0a0e27]/60 p-3 text-white backdrop-blur hover:border-purple-500/40 hover:bg-[#0a0e27]/80"
-        aria-label="Anterior"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-
-      <button
-        type="button"
-        onClick={() => go(1)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-2xl border border-purple-500/20 bg-[#0a0e27]/60 p-3 text-white backdrop-blur hover:border-purple-500/40 hover:bg-[#0a0e27]/80"
-        aria-label="Próximo"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
     </div>
   )
 }

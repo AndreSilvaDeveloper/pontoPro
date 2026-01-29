@@ -38,7 +38,7 @@ export default function BloqueadoPage() {
 
     // 2) tenta buscar status (se tiver sessão)
     fetch("/api/empresa/billing-status")
-      .then(r => r.ok ? r.json() : Promise.reject())
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(setData)
       .catch(() => setData({ ok: false }));
   }, []);
@@ -53,7 +53,7 @@ export default function BloqueadoPage() {
     "Pendência financeira ou teste expirado.";
 
   const pixKey = empresa?.chavePix || payload?.pixKey || null;
-  const whatsapp = (empresa?.cobrancaWhatsapp || payload?.whatsapp || "5532991473554")?.replace(/\D/g, '');
+  const whatsapp = (empresa?.cobrancaWhatsapp || payload?.whatsapp || "5532991473554")?.replace(/\D/g, "");
 
   const whatsappMsg = useMemo(() => {
     const base = `Olá! Preciso regularizar meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nMotivo: ${motivo}\nE-mail: ${payload?.email || ""}\n\nVou enviar o comprovante aqui.`;
@@ -83,13 +83,24 @@ export default function BloqueadoPage() {
             )}
           </div>
 
-          <div className="flex gap-2">
-            <Button asChild className="w-full bg-purple-600 hover:bg-purple-700">
+          {/* ✅ Mobile: empilha | Desktop: lado a lado */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              asChild
+              className="w-full bg-purple-600 hover:bg-purple-700"
+            >
               <Link href="/login">Voltar</Link>
             </Button>
 
-            <Button asChild variant="outline" className="w-full border-purple-500/20 text-gray-200 hover:bg-purple-950/30">
-              <a href={whatsappMsg} target="_blank" rel="noreferrer">Enviar comprovante</a>
+            {/* ✅ FIX: força estilo visível (sem depender de bg-background/text-foreground) */}
+            <Button
+              asChild
+              type="button"
+              className="w-full bg-transparent text-white border border-white/15 hover:bg-white/10 hover:text-white"
+            >
+              <a href={whatsappMsg} target="_blank" rel="noreferrer">
+                Enviar comprovante
+              </a>
             </Button>
           </div>
 
