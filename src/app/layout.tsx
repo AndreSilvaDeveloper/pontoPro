@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Provider from "@/providers/SessionProvider"; 
-// 1. Importe o Toaster
+import { Suspense } from "react";
 import { Toaster } from "sonner";
 import OnboardingMount from "@/components/onboarding/OnboardingMount";
 
@@ -25,12 +25,15 @@ export default function RootLayout({
       <body className={inter.className}>
         {/* Envolvemos tudo com o Provider */}
         <Provider>
-          <OnboardingMount />
+          <Suspense fallback={null}>
+            <OnboardingMount />
+          </Suspense>
 
           {children}
 
           <Toaster position="top-right" richColors theme="dark" closeButton />
         </Provider>
+
       </body>
     </html>
   );
