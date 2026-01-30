@@ -59,7 +59,7 @@ export default function GestaoFuncionarios() {
     if (!confirm(`Resetar senha de ${nomeFunc}?`)) return;
     try { 
         await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id }); 
-        alert('Senha resetada!'); 
+        alert('Senha resetada! \n senha padrão: 1234'); 
     } catch (error) { 
         alert('Erro ao resetar.'); 
     }
@@ -111,10 +111,37 @@ export default function GestaoFuncionarios() {
               </div>
               
               <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-3">
-                <button onClick={() => handleEditar(func)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-blue-400 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors"><Pencil size={14} /> Editar</button>
-                <button onClick={() => resetarSenha(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-yellow-500 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors"><RefreshCw size={14} /> Senha</button>
-                <button onClick={() => excluirFuncionario(func.id, func.nome)} className="flex items-center justify-center gap-2 py-2 bg-slate-800 text-red-500 rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors"><Trash2 size={14} /> Excluir</button>
+                <button
+                  onClick={() => handleEditar(func)}
+                  className="flex items-center justify-center gap-2 py-2 px-2 bg-slate-800 text-blue-400 rounded-lg text-[11px] sm:text-xs font-bold hover:bg-slate-700 transition-colors whitespace-nowrap"
+                >
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">Editar</span>
+                  <span className="sm:hidden">Editar</span>
+                </button>
+
+                <button
+                  onClick={() => resetarSenha(func.id, func.nome)}
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-2 bg-slate-800 text-yellow-500 rounded-lg text-[11px] sm:text-xs font-bold hover:bg-slate-700 transition-colors leading-tight"
+                >
+                  <RefreshCw size={14} />
+                  <span className="sm:hidden text-center">
+                    Resetar<br />Senha
+                  </span>
+                  <span className="hidden sm:inline whitespace-nowrap">Resetar Senha</span>
+                </button>
+
+
+                <button
+                  onClick={() => excluirFuncionario(func.id, func.nome)}
+                  className="flex items-center justify-center gap-2 py-2 px-2 bg-slate-800 text-red-500 rounded-lg text-[11px] sm:text-xs font-bold hover:bg-slate-700 transition-colors whitespace-nowrap"
+                >
+                  <Trash2 size={14} />
+                  <span className="sm:hidden">Excluir</span>
+                  <span className="hidden sm:inline">Excluir</span>
+                </button>
               </div>
+
             </div>
           ))}
         </div>
