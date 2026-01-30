@@ -341,7 +341,9 @@ export default function Home() {
       <div className="w-full max-w-md space-y-6 relative z-10">
         
         {/* CABEÇALHO */}
-        <div className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
+        <div 
+        data-tour="emp-header"
+        className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
             <div className="flex items-center gap-4">
                 <div className="relative">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
@@ -354,7 +356,7 @@ export default function Home() {
                     <h1 className="font-mono text-xl font-bold text-white tracking-tight">{horaAtual || '--:--'}</h1>
                 </div>
             </div>
-            <button onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
+            <button data-tour="emp-logout" onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
                 <LogOut size={20} />
             </button>
         </div>
@@ -368,7 +370,7 @@ export default function Home() {
         )}
 
         {/* ÁREA PRINCIPAL (CÂMERA E AÇÃO) */}
-        <div className="bg-slate-900/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-white/5 p-5 space-y-5">
+        <div data-tour="emp-main" className="bg-slate-900/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-white/5 p-5 space-y-5">
             
             {statusMsg && (
                 <div className={`p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top-2 ${statusMsg.tipo === 'erro' ? 'bg-red-500/20 text-red-200 border border-red-500/30' : statusMsg.tipo === 'sucesso' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
@@ -377,74 +379,103 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Câmera */}
-            {configs.exigirFoto && location && (
-                <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'}`}>
-                    {!cameraErro ? (
-                        <Webcam 
-                            audio={false} 
-                            ref={webcamRef} 
-                            screenshotFormat="image/jpeg" 
-                            videoConstraints={{ facingMode: "user" }}
-                            className="w-full h-full object-cover" 
-                            onUserMediaError={() => setCameraErro(true)} 
-                        />
-                    ) : (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
-                            <div className="bg-red-500/10 p-4 rounded-full mb-3"><AlertCircle size={32} className="text-red-500" /></div>
-                            <p className="text-red-400 font-bold mb-1">Câmera Indisponível</p>
-                            <p className="text-slate-500 text-xs mb-4">Verifique as permissões do navegador</p>
-                            <button onClick={tentarRecuperarCamera} className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors">Tentar Novamente</button>
-                        </div>
-                    )}
-                    {!cameraErro && <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">AO VIVO</div>}
+            {/* Câmera (sempre existe para o tour) */}
+            <div
+            data-tour="emp-camera"
+            className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${
+                cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'
+            }`}
+            >
+          
+            {!configs.exigirFoto || !location ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-slate-400 text-sm px-6 text-center">
+                A câmera aparece após permitir o GPS (se a empresa exigir foto).
+                </div>
+            ) : !cameraErro ? (
+                <>
+                <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{ facingMode: 'user' }}
+                    className="w-full h-full object-cover"
+                    onUserMediaError={() => setCameraErro(true)}
+                />
+                <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
+                    AO VIVO
+                </div>
+                </>
+            ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
+                <div className="bg-red-500/10 p-4 rounded-full mb-3">
+                    <AlertCircle size={32} className="text-red-500" />
+                </div>
+                <p className="text-red-400 font-bold mb-1">Câmera Indisponível</p>
+                <p className="text-slate-500 text-xs mb-4">Verifique as permissões do navegador</p>
+                <button
+                    onClick={tentarRecuperarCamera}
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                >
+                    Tentar Novamente
+                </button>
                 </div>
             )}
+            </div>
 
-            {/* Botão de Localização ou Ações */}
-            {!location ? (
-                <div className="py-8 flex flex-col items-center text-center">
+
+            <div data-tour="emp-actions" className="mt-2">
+                {!location ? (
+                    <div className="py-8 flex flex-col items-center text-center">
                     <div className="bg-purple-500/10 p-6 rounded-full mb-4 animate-bounce">
                         <MapPin size={40} className="text-purple-500" />
                     </div>
                     <h3 className="text-white font-bold text-lg mb-2">Ativar Localização</h3>
-                    <p className="text-slate-400 text-sm mb-6 max-w-[200px]">Precisamos do seu GPS para validar o ponto.</p>
-                    <button onClick={capturarLocalizacao} className="w-full py-4 bg-white text-slate-900 hover:bg-slate-200 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95">
+                    <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
+                        Precisamos do seu GPS para validar o ponto.
+                    </p>
+
+                    <button
+                        data-tour="emp-gps"
+                        onClick={capturarLocalizacao}
+                        className="w-full py-4 bg-white text-slate-900 hover:bg-slate-200 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95"
+                    >
                         PERMITIR ACESSO
                     </button>
-                </div>
-            ) : (
-                <div className="mt-2">
+                    </div>
+                ) : (
+                    <>
                     {carregandoStatus ? (
-                         <div className="py-10 text-center">
-                             <div className="inline-block w-8 h-8 border-4 border-slate-600 border-t-purple-500 rounded-full animate-spin mb-3"></div>
-                             <p className="text-slate-500 text-sm font-medium">Sincronizando...</p>
-                         </div>
+                        <div className="py-10 text-center">
+                        <div className="inline-block w-8 h-8 border-4 border-slate-600 border-t-purple-500 rounded-full animate-spin mb-3"></div>
+                        <p className="text-slate-500 text-sm font-medium">Sincronizando...</p>
+                        </div>
                     ) : (
                         configs.fluxoEstrito ? renderizarBotoesInteligentes() : renderizarBotoesFlexiveis()
                     )}
+                    </>
+                )}
                 </div>
-            )}
+
         </div>
 
         {/* MENU RÁPIDO (AGORA COM O BOTÃO 'ESQUECI' INCLUÍDO) */}
         <div className="grid grid-cols-2 gap-3">
-            <button onClick={abrirModalInclusao} className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
+            <button data-tour="emp-forgot" onClick={abrirModalInclusao} className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
                 <div className="bg-emerald-500/10 text-emerald-500 p-2.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors"><PlusCircle size={20} /></div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Esqueci de bater o Ponto</span>
             </button>
             
-            <Link href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
+            <Link data-tour="emp-sign" href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-purple-500/10 text-purple-400 p-2.5 rounded-xl group-hover:bg-purple-500 group-hover:text-white transition-colors"><PenTool size={20} /></div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Assinar</span>
             </Link>
             
-            <Link href="/funcionario/ausencias" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
+            <Link data-tour="emp-justify" href="/funcionario/ausencias" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-yellow-500/10 text-yellow-500 p-2.5 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors"><FileText size={20} /></div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Justificar Falta</span>
             </Link>
             
-            <Link href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
+            <Link data-tour="emp-history" href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
                 <div className="bg-blue-500/10 text-blue-400 p-2.5 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-colors"><History size={20} /></div>
                 <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Histórico</span>
             </Link>
@@ -464,8 +495,8 @@ export default function Home() {
       {modalInclusaoAberto && (
             <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 sm:p-6">
                 <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setModalInclusaoAberto(false)} />
-                <div className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
-                    <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                <div data-tour="emp-modal-incluir" className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
+                    <div data-tour="emp-header" className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2">
                            <PlusCircle size={20} className="text-emerald-400"/> Incluir Registro
                         </h3>
@@ -496,7 +527,7 @@ export default function Home() {
                         <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
                         <textarea value={motivo} onChange={e=>setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater, estava em reunião..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors" />
                     </div>
-                    <button onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <button data-tour="emp-send-request" onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
                         <Save size={18} /> Enviar Solicitação
                     </button>
                 </div>

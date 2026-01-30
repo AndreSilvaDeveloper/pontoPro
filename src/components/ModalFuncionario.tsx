@@ -433,7 +433,7 @@ export default function ModalFuncionario({
         alert('Atualizado com sucesso!');
       } else {
         await axios.post('/api/admin/funcionarios', formData);
-        alert('Cadastrado com sucesso!');
+        alert('Cadastrado com sucesso\nSenha inicial: 1234!');
       }
 
       onSuccess();

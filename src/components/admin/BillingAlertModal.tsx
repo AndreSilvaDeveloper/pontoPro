@@ -13,6 +13,10 @@ type Props = {
 
 const OK_KEY = "billing_alert_ok_v1";
 
+const BILLING_CLOSED_KEY = "ui:billing-modal-closed:v1";
+const BILLING_EVENT = "billing-modal-closed";
+
+
 
 function parseDateOnlyToLocal(dateOrIso: string) {
   const base = dateOrIso?.slice(0, 10); // pega YYYY-MM-DD
@@ -32,6 +36,17 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
     const alreadyOk = sessionStorage.getItem(OK_KEY) === "1";
     if (!alreadyOk) setOpen(true);
   }, [billing]);
+
+
+  const closeModal = () => {
+  try {
+    localStorage.setItem(BILLING_CLOSED_KEY, "1");
+    window.dispatchEvent(new Event(BILLING_EVENT));
+  } catch {}
+
+  setOpen(false);
+};
+
 
   const ui = useMemo(() => {
     const code = billing?.code;
@@ -81,7 +96,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
       <div className={`relative w-full max-w-md rounded-2xl border ${bg} p-5 shadow-2xl`}>
         <button
           className="absolute right-3 top-3 text-white/60 hover:text-white"
-          onClick={() => setOpen(false)}
+          onClick={closeModal}
           aria-label="Fechar"
         >
           ✕
@@ -133,7 +148,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
                 className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/15"
                 onClick={() => {
                   sessionStorage.setItem(OK_KEY, "1");
-                  setOpen(false);
+                  closeModal();
                 }}
               >
                 Ok

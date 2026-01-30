@@ -69,7 +69,7 @@ export default function AdminDashboard() {
             a.billingEmpresa ? 'mt-16' : ''
           }`}
         >
-          <Link href={a.pendenciasAjuste > 0 ? '/admin/solicitacoes' : '/admin/pendencias'}>
+          <Link data-tour="admin-ajustes" href={a.pendenciasAjuste > 0 ? '/admin/solicitacoes' : '/admin/pendencias'}>
             <div className="bg-purple-600 text-white p-4 rounded-xl shadow-2xl border border-purple-400 flex items-center gap-4 cursor-pointer hover:bg-purple-700 hover:scale-105 transition-all">
               <div className="bg-white p-2 rounded-full animate-bounce text-purple-600">
                 <Bell size={24} fill="currentColor" />
@@ -95,7 +95,12 @@ export default function AdminDashboard() {
                 <LayoutDashboard size={20} className="text-purple-400" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-white tracking-tight">{a.empresa.nome}</h1>
+                <h1
+                  data-tour="admin-title"
+                  className="text-3xl font-bold text-white tracking-tight"
+                >
+                  {a.empresa.nome}
+                </h1>
                 <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
               </div>
             </div>
@@ -103,15 +108,19 @@ export default function AdminDashboard() {
 
           <div className="flex items-center gap-3 w-full xl:w-auto">
             <div className="flex-1 xl:flex-none">
-              <SeletorLoja empresaAtualId={a.empresa.id} empresaAtualNome={a.empresa.nome} />
+              <div data-tour="admin-store-selector" className="flex-1 xl:flex-none">
+                <SeletorLoja empresaAtualId={a.empresa.id} empresaAtualNome={a.empresa.nome} />
+              </div>
             </div>
 
             <div className="flex items-center gap-2 bg-slate-900/50 backdrop-blur border border-white/5 p-1.5 rounded-xl">
               <Link
+                data-tour="admin-profile"
                 href="/admin/perfil"
                 className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                 title="Minha Conta"
               >
+
                 <User size={18} />
               </Link>
               <button
@@ -129,6 +138,7 @@ export default function AdminDashboard() {
         <div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 grid-flow-dense">
             <button
+              data-tour="admin-ausencia"
               onClick={a.abrirModalAusencia}
               className="flex flex-col items-center justify-center gap-2 p-4
                         bg-slate-800/50 hover:bg-slate-800
@@ -146,6 +156,7 @@ export default function AdminDashboard() {
 
 
             <Link
+              data-tour="admin-ajustes"
               href="/admin/solicitacoes"
               className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-purple-500/30 hover:-translate-y-1 relative group"
             >
@@ -162,6 +173,7 @@ export default function AdminDashboard() {
 
             {!a.configs.ocultar_menu_atestados && (
               <Link
+                data-tour="admin-atestados"
                 href="/admin/pendencias"
                 className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-yellow-500/30 hover:-translate-y-1 relative group"
               >
@@ -178,6 +190,7 @@ export default function AdminDashboard() {
             )}
 
             <Link
+              data-tour="admin-team"
               href="/admin/funcionarios"
               className="col-span-2 md:col-span-1
                         order-first md:order-none
@@ -200,6 +213,7 @@ export default function AdminDashboard() {
 
 
             <Link
+              data-tour="admin-feriados"
               href="/admin/feriados"
               className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
             >
@@ -210,6 +224,7 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
+              data-tour="admin-auditoria"
               href="/admin/logs"
               className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
             >
@@ -220,6 +235,7 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
+              data-tour="admin-visao-geral"
               href="/admin/dashboard"
               className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
             >
@@ -245,6 +261,7 @@ export default function AdminDashboard() {
                   />
 
                   <button
+                    data-tour="admin-filter-user"
                     type="button"
                     onClick={() => a.setDropdownAberto((v) => !v)}
                     className="w-full bg-slate-950/50 border border-white/10 hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-10 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-left cursor-pointer"
@@ -341,7 +358,7 @@ export default function AdminDashboard() {
 
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">Período</label>
-              <div className="flex gap-2 items-center bg-slate-950/50 border border-white/10 rounded-xl p-1">
+              <div data-tour="admin-filter-period" className="flex gap-2 items-center bg-slate-950/50 border border-white/10 rounded-xl p-1">
                 <input
                   type="date"
                   value={a.dataInicio}
@@ -359,7 +376,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="w-full lg:w-auto">
+          <div data-tour="admin-report">           
             <BotaoRelatorio
               pontos={a.registrosFiltrados}
               filtro={{

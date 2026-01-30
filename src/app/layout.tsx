@@ -4,6 +4,8 @@ import "./globals.css";
 import Provider from "@/providers/SessionProvider"; 
 // 1. Importe o Toaster
 import { Toaster } from "sonner";
+import OnboardingMount from "@/components/onboarding/OnboardingMount";
+
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,11 +25,11 @@ export default function RootLayout({
       <body className={inter.className}>
         {/* Envolvemos tudo com o Provider */}
         <Provider>
+          <OnboardingMount />
+
           {children}
-          
-          {/* 2. Adicione o componente aqui para funcionar em TODAS as telas */}
+
           <Toaster position="top-right" richColors theme="dark" closeButton />
-          
         </Provider>
       </body>
     </html>
