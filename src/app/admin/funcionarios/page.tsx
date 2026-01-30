@@ -59,7 +59,7 @@ export default function GestaoFuncionarios() {
     if (!confirm(`Resetar senha de ${nomeFunc}?`)) return;
     try { 
         await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id }); 
-        alert('Senha resetada! \n senha padrão: 1234'); 
+        alert('Senha resetada!\nSenha padrão: 1234'); 
     } catch (error) { 
         alert('Erro ao resetar.'); 
     }
