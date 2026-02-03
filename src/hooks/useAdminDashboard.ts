@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { differenceInDays, format, isSameMonth, isSameYear } from 'date-fns';
+import { format } from 'date-fns';
 import { calcularEstatisticas } from '@/lib/admin/calcularEstatisticas';
+import type { BillingStatus } from '@/lib/billing';
 
 const SOM_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
@@ -28,10 +29,9 @@ export function useAdminDashboard() {
   const [pendenciasAjuste, setPendenciasAjuste] = useState(0);
   const [pendenciasAusencia, setPendenciasAusencia] = useState(0);
 
-  const [alertaFinanceiro, setAlertaFinanceiro] = useState<{
-    tipo: 'BLOQUEIO' | 'VENCIDO' | 'PROXIMO';
-    dias: number;
-  } | null>(null);
+  // ✅ NOVO: Billing status central
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [billingEmpresa, setBillingEmpresa] = useState<any>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -69,6 +69,7 @@ export function useAdminDashboard() {
         resPendencias,
         resFeriados,
         resEmpresa,
+        resBilling,
       ] = await Promise.all([
         axios.get('/api/admin/pontos-todos'),
         axios.get('/api/admin/ausencias-aprovadas'),
@@ -77,6 +78,7 @@ export function useAdminDashboard() {
         axios.get('/api/admin/ausencias'),
         axios.get('/api/admin/feriados'),
         axios.get('/api/admin/empresa'),
+        axios.get('/api/empresa/billing-status').catch(() => ({ data: null })),
       ]);
 
       setUsuarios(resUsers.data);
@@ -85,37 +87,12 @@ export function useAdminDashboard() {
       setPendenciasAjuste(resSolicitacoes.data.length);
       setPendenciasAusencia(resPendencias.data.length);
 
-      const dadosEmpresa = resEmpresa.data;
-
-      if (!dadosEmpresa.matrizId) {
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
-        const ultimoPag = dadosEmpresa.dataUltimoPagamento ? new Date(dadosEmpresa.dataUltimoPagamento) : null;
-        const isPago = ultimoPag && isSameMonth(ultimoPag, hoje) && isSameYear(ultimoPag, hoje);
-
-        if (!isPago) {
-          const diaVenc = dadosEmpresa.diaVencimento ? parseInt(dadosEmpresa.diaVencimento) : 15;
-          let dataVencimento = new Date();
-          dataVencimento.setDate(diaVenc);
-          dataVencimento.setHours(0, 0, 0, 0);
-
-          const diffDias = differenceInDays(dataVencimento, hoje);
-
-          if (diffDias <= -10) {
-            setAlertaFinanceiro({ tipo: 'BLOQUEIO', dias: Math.abs(diffDias) });
-          } else if (diffDias < 0) {
-            setAlertaFinanceiro({ tipo: 'VENCIDO', dias: Math.abs(diffDias) });
-          } else if (diffDias >= 0 && diffDias <= 5) {
-            setAlertaFinanceiro({ tipo: 'PROXIMO', dias: diffDias });
-          } else {
-            setAlertaFinanceiro(null);
-          }
-        } else {
-          setAlertaFinanceiro(null);
-        }
+      if (resBilling?.data?.ok) {
+        setBilling(resBilling.data.billing || null);
+        setBillingEmpresa(resBilling.data.empresa || null);
       } else {
-        setAlertaFinanceiro(null);
+        setBilling(null);
+        setBillingEmpresa(null);
       }
 
       const listaUnificada: any[] = [];
@@ -324,23 +301,22 @@ export function useAdminDashboard() {
   const configs = empresa.configuracoes || {};
 
   return {
-    // dados base
     registros,
     usuarios,
     feriados,
     empresa,
     configs,
 
-    // loading/alertas
     loading,
-    alertaFinanceiro,
 
-    // pendencias/toast
+    // ✅ billing central
+    billing,
+    billingEmpresa,
+
     notificacaoVisivel,
     pendenciasAjuste,
     pendenciasAusencia,
 
-    // filtros
     filtroUsuario,
     setFiltroUsuario,
     dataInicio,
@@ -348,7 +324,6 @@ export function useAdminDashboard() {
     dataFim,
     setDataFim,
 
-    // combobox
     buscaFuncionario,
     setBuscaFuncionario,
     dropdownAberto,
@@ -357,7 +332,6 @@ export function useAdminDashboard() {
     usuariosFiltrados,
     usuarioSelecionado,
 
-    // modais
     modalEdicaoAberto,
     setModalEdicaoAberto,
     modalAusenciaAberto,
@@ -365,7 +339,6 @@ export function useAdminDashboard() {
     modalJornadaAberto,
     setModalJornadaAberto,
 
-    // edição ponto
     pontoEmEdicao,
     novaHora,
     setNovaHora,
@@ -375,7 +348,6 @@ export function useAdminDashboard() {
     abrirModalEdicao,
     salvarEdicaoPonto,
 
-    // ausência
     ausenciaUser,
     setAusenciaUser,
     ausenciaTipo,
@@ -390,7 +362,6 @@ export function useAdminDashboard() {
     abrirModalAusencia,
     salvarAusenciaAdmin,
 
-    // ações e derivados
     carregarDados,
     registrosFiltrados,
     excluirPonto,

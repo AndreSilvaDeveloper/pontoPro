@@ -364,9 +364,9 @@ export default function MeuHistorico() {
                   <p className="text-xs text-slate-400 mt-1">{empresaNome}</p>
               </div>
           </div>
-          <Link href="/" className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all active:scale-95"><ArrowLeft size={18} /></Link>
+          <Link href="/funcionario" className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all active:scale-95"><ArrowLeft size={18} /></Link>
         </div>
-
+''
         {/* SELETOR DE ABAS */}
         <div className="bg-slate-900/60 p-1 rounded-xl flex gap-1 border border-white/5">
             <button onClick={() => setAbaAtiva('PONTO')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${abaAtiva === 'PONTO' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
