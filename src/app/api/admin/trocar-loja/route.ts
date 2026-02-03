@@ -1,112 +1,160 @@
+// src/app/api/admin/trocar-loja/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
-// === GET: LISTAR AS LOJAS DISPONÍVEIS ===
-export async function GET(request: Request) {
-  const session = await getServerSession(authOptions);
 
+export async function GET() {
+  const session = await getServerSession(authOptions);
   // @ts-ignore
-  if (!session?.user?.id) {
-      return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  const userId = session?.user?.id as string | undefined;
+
+  if (!userId) {
+    return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
   }
 
   try {
-    // 1. Busca os IDs das lojas que o usuário tem permissão DIRETA (tabela AdminLoja)
-    const vinculos = await prisma.adminLoja.findMany({
-        // @ts-ignore
-        where: { usuarioId: session.user.id },
-        select: { empresaId: true }
+    // 1) Usuário atual e empresa atual
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, empresaId: true },
     });
 
-    const idsDiretos = vinculos.map(v => v.empresaId);
+    if (!usuario?.empresaId) {
+      return NextResponse.json([], { status: 200 });
+    }
 
-    // 2. BUSCA INTELIGENTE (MATRIZ + FILIAIS)
+    // 2) Empresa atual para descobrir matrizId (se estiver numa filial)
+    const empresaAtual = await prisma.empresa.findUnique({
+      where: { id: usuario.empresaId },
+      select: { id: true, matrizId: true },
+    });
+
+    // 3) Vínculos diretos em AdminLoja
+    const vinculos = await prisma.adminLoja.findMany({
+      where: { usuarioId: userId },
+      select: { empresaId: true },
+    });
+
+    // 4) IDs base acessíveis
+    const idsBase = new Set<string>();
+
+    // A) AdminLoja direto
+    vinculos.forEach(v => idsBase.add(v.empresaId));
+
+    // B) empresa atual sempre entra
+    idsBase.add(usuario.empresaId);
+
+    // C) se a empresa atual é filial, inclui a matriz
+    if (empresaAtual?.matrizId) {
+      idsBase.add(empresaAtual.matrizId);
+    }
+
+    // 5) Lista lojas (bases + filiais das bases)
     const lojas = await prisma.empresa.findMany({
-        where: {
-            OR: [
-                { id: { in: idsDiretos } },          // Acesso direto (Sou dono)
-                { matrizId: { in: idsDiretos } }     // Acesso herdado (Sou dono da Matriz)
-            ],
-            status: { not: 'BLOQUEADO' } 
-        },
-        select: {
-            id: true,
-            nome: true,
-            cnpj: true,
-            matrizId: true
-        },
-        // === AQUI ESTÁ A CORREÇÃO DA ORDEM ===
-        orderBy: {
-            criadoEm: 'asc' // A mais antiga (Matriz) aparece primeiro
-        }
-        // =====================================
+      where: {
+        OR: [
+          { id: { in: Array.from(idsBase) } },          // acesso direto / atual / matriz
+          { matrizId: { in: Array.from(idsBase) } },     // filiais das matrizes acessíveis
+        ],
+        status: { not: 'BLOQUEADO' },
+      },
+      select: {
+        id: true,
+        nome: true,
+        cnpj: true,
+        matrizId: true,
+        criadoEm: true,
+      },
+      orderBy: { criadoEm: 'asc' }, // matriz (mais antiga) tende a aparecer primeiro
     });
 
     return NextResponse.json(lojas);
-
   } catch (error) {
-    console.error("Erro ao listar lojas:", error);
+    console.error('Erro ao listar lojas:', error);
     return NextResponse.json({ erro: 'Erro ao buscar lojas' }, { status: 500 });
   }
 }
 
-// === POST: TROCAR A SESSÃO ===
+
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    
-    // @ts-ignore
-    if (!session?.user?.id) {
-        return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  const session = await getServerSession(authOptions);
+  // @ts-ignore
+  const userId = session?.user?.id as string | undefined;
+
+  if (!userId) {
+    return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+
+    // Aceita variações pra compatibilidade
+    const empresaId = body.empresaId || body.novaEmpresaId || body.id;
+
+    if (!empresaId) {
+      return NextResponse.json({ erro: 'ID da loja não informado' }, { status: 400 });
     }
 
-    try {
-        const body = await request.json();
-        // Aceita variações para garantir compatibilidade com o frontend
-        const empresaId = body.empresaId || body.novaEmpresaId || body.id;
+    // 1) Busca empresa atual do usuário
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, empresaId: true },
+    });
 
-        if (!empresaId) {
-            return NextResponse.json({ erro: 'ID da loja não informado' }, { status: 400 });
-        }
-
-        // === SEGURANÇA EXTRA ===
-        // Verifica se o usuário tem acesso antes de trocar
-        const vinculos = await prisma.adminLoja.findMany({
-            // @ts-ignore
-            where: { usuarioId: session.user.id },
-            select: { empresaId: true }
-        });
-        const idsDiretos = vinculos.map(v => v.empresaId);
-
-        const temAcesso = await prisma.empresa.findFirst({
-            where: {
-                id: empresaId,
-                OR: [
-                    { id: { in: idsDiretos } },
-                    { matrizId: { in: idsDiretos } }
-                ]
-            }
-        });
-
-        if (!temAcesso) {
-            return NextResponse.json({ erro: 'Acesso negado a esta unidade.' }, { status: 403 });
-        }
-
-        // Atualiza a empresa atual do usuário no banco
-        await prisma.usuario.update({
-            // @ts-ignore
-            where: { id: session.user.id },
-            data: { empresaId: empresaId }
-        });
-
-        return NextResponse.json({ success: true });
-
-    } catch (error: any) {
-        console.error("ERRO AO TROCAR LOJA:", error);
-        return NextResponse.json(
-            { erro: 'Erro interno', detalhe: error.message }, 
-            { status: 500 }
-        );
+    if (!usuario?.empresaId) {
+      return NextResponse.json({ erro: 'Usuário sem empresa atual.' }, { status: 400 });
     }
+
+    // 2) Descobre matriz da empresa atual
+    const empresaAtual = await prisma.empresa.findUnique({
+      where: { id: usuario.empresaId },
+      select: { matrizId: true },
+    });
+
+    // 3) Vínculos AdminLoja
+    const vinculos = await prisma.adminLoja.findMany({
+      where: { usuarioId: userId },
+      select: { empresaId: true },
+    });
+
+    const idsBase = new Set<string>();
+    vinculos.forEach(v => idsBase.add(v.empresaId));
+    idsBase.add(usuario.empresaId);
+    if (empresaAtual?.matrizId) idsBase.add(empresaAtual.matrizId);
+
+    // 4) Confirma acesso:
+    // - pode ser uma loja base
+    // - ou uma filial de uma base
+    const temAcesso = await prisma.empresa.findFirst({
+      where: {
+        id: empresaId,
+        status: { not: 'BLOQUEADO' },
+        OR: [
+          { id: { in: Array.from(idsBase) } },
+          { matrizId: { in: Array.from(idsBase) } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (!temAcesso) {
+      return NextResponse.json({ erro: 'Acesso negado a esta unidade.' }, { status: 403 });
+    }
+
+    // 5) Atualiza contexto (empresa atual do usuário)
+    await prisma.usuario.update({
+      where: { id: userId },
+      data: { empresaId },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('ERRO AO TROCAR LOJA:', error);
+    return NextResponse.json(
+      { erro: 'Erro interno', detalhe: error?.message || 'Erro desconhecido' },
+      { status: 500 }
+    );
+  }
 }
