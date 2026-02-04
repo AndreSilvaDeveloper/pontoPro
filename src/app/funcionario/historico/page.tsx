@@ -277,39 +277,48 @@ const ajustarId = searchParams.get('ajustar');
 
   useEffect(() => { carregar(); }, [carregar]);
 
-  useEffect(() => {
+
+
+  // === AÇÕES DO MODAL ===
+  //const abrirEdicao = (ponto: any) => { setModoModal('EDICAO'); setPontoSelecionado(ponto); setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); setMotivo(''); setModalAberto(true); };
+  const abrirInclusao = () => { setModoModal('INCLUSAO'); setPontoSelecionado(null); setDataNova(format(new Date(), 'yyyy-MM-dd')); setHoraNova(''); setTipoNovo('ENTRADA'); setMotivo(''); setModalAberto(true); };
+  
+
+  const abrirEdicao = useCallback((ponto: any) => {
+  setModoModal('EDICAO');
+  setPontoSelecionado(ponto);
+  setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd'));
+  setHoraNova(format(new Date(ponto.dataHora), 'HH:mm'));
+  setMotivo('');
+  setModalAberto(true);
+}, []);
+
+
+    useEffect(() => {
   if (!ajustarId) return;
   if (abriuAutoRef.current) return;
-
-  // Só tenta quando já carregou e já tem pontos
   if (loading) return;
   if (!pontos || pontos.length === 0) return;
 
   const pontoEncontrado = pontos.find(p => p.id === ajustarId);
 
+  abriuAutoRef.current = true;
+
   if (pontoEncontrado) {
-    abriuAutoRef.current = true;
     abrirEdicao(pontoEncontrado);
-
-    // Remove o param da URL pra não abrir de novo em re-render
-    setTimeout(() => {
-      router.replace('/funcionario/historico', { scroll: false });
-    }, 50);
   } else {
-    // Se não achar (id inválido/fora do filtro), limpa o param e avisa
-    abriuAutoRef.current = true;
-    setTimeout(() => {
-      router.replace('/funcionario/historico', { scroll: false });
-      window.alert('Não encontramos o registro para ajuste. Verifique o período do filtro ou tente novamente.');
-    }, 50);
+    window.alert('Não encontramos o registro para ajuste. Verifique o período do filtro ou tente novamente.');
   }
-}, [ajustarId, loading, pontos, router]);
+
+  setTimeout(() => {
+    router.replace('/funcionario/historico', { scroll: false });
+  }, 50);
+}, [ajustarId, loading, pontos, router, abrirEdicao]);
 
 
-  // === AÇÕES DO MODAL ===
-  const abrirEdicao = (ponto: any) => { setModoModal('EDICAO'); setPontoSelecionado(ponto); setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); setMotivo(''); setModalAberto(true); };
-  const abrirInclusao = () => { setModoModal('INCLUSAO'); setPontoSelecionado(null); setDataNova(format(new Date(), 'yyyy-MM-dd')); setHoraNova(''); setTipoNovo('ENTRADA'); setMotivo(''); setModalAberto(true); };
-  
+
+
+
   const enviarSolicitacao = async () => { 
       if (!motivo || !horaNova || (modoModal === 'INCLUSAO' && !dataNova)) return alert('Preencha tudo!'); 
       const dataBase = modoModal === 'EDICAO' ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd') : dataNova; 
@@ -417,7 +426,6 @@ const ajustarId = searchParams.get('ajustar');
           </div>
           <Link href="/funcionario" className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all active:scale-95"><ArrowLeft size={18} /></Link>
         </div>
-''
         {/* SELETOR DE ABAS */}
         <div className="bg-slate-900/60 p-1 rounded-xl flex gap-1 border border-white/5">
             <button onClick={() => setAbaAtiva('PONTO')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${abaAtiva === 'PONTO' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
