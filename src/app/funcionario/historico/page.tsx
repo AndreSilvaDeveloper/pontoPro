@@ -6,6 +6,9 @@ import { format, differenceInMinutes, isSameDay, getDay, eachDayOfInterval, getI
 import { ArrowLeft, History, Calendar, Search, Clock, Edit3, PlusCircle, LogIn, LogOut, AlertTriangle, X, Save, FileText, CheckCircle2, XCircle, ListFilter, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useRef } from 'react';
+
 
 // Função auxiliar de data
 const criarDataLocal = (dataString: string) => {
@@ -44,6 +47,13 @@ export default function MeuHistorico() {
   const [horaNova, setHoraNova] = useState(''); 
   const [tipoNovo, setTipoNovo] = useState('ENTRADA'); 
   const [motivo, setMotivo] = useState('');
+
+  const searchParams = useSearchParams();
+const router = useRouter();
+const abriuAutoRef = useRef(false);
+
+const ajustarId = searchParams.get('ajustar');
+
 
  
   // === CÁLCULO INTELIGENTE (COM TOLERÂNCIA CLT DE 10 MINUTOS) ===
@@ -267,10 +277,48 @@ export default function MeuHistorico() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+
+
   // === AÇÕES DO MODAL ===
-  const abrirEdicao = (ponto: any) => { setModoModal('EDICAO'); setPontoSelecionado(ponto); setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); setMotivo(''); setModalAberto(true); };
+  //const abrirEdicao = (ponto: any) => { setModoModal('EDICAO'); setPontoSelecionado(ponto); setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd')); setHoraNova(format(new Date(ponto.dataHora), 'HH:mm')); setMotivo(''); setModalAberto(true); };
   const abrirInclusao = () => { setModoModal('INCLUSAO'); setPontoSelecionado(null); setDataNova(format(new Date(), 'yyyy-MM-dd')); setHoraNova(''); setTipoNovo('ENTRADA'); setMotivo(''); setModalAberto(true); };
   
+
+  const abrirEdicao = useCallback((ponto: any) => {
+  setModoModal('EDICAO');
+  setPontoSelecionado(ponto);
+  setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd'));
+  setHoraNova(format(new Date(ponto.dataHora), 'HH:mm'));
+  setMotivo('');
+  setModalAberto(true);
+}, []);
+
+
+    useEffect(() => {
+  if (!ajustarId) return;
+  if (abriuAutoRef.current) return;
+  if (loading) return;
+  if (!pontos || pontos.length === 0) return;
+
+  const pontoEncontrado = pontos.find(p => p.id === ajustarId);
+
+  abriuAutoRef.current = true;
+
+  if (pontoEncontrado) {
+    abrirEdicao(pontoEncontrado);
+  } else {
+    window.alert('Não encontramos o registro para ajuste. Verifique o período do filtro ou tente novamente.');
+  }
+
+  setTimeout(() => {
+    router.replace('/funcionario/historico', { scroll: false });
+  }, 50);
+}, [ajustarId, loading, pontos, router, abrirEdicao]);
+
+
+
+
+
   const enviarSolicitacao = async () => { 
       if (!motivo || !horaNova || (modoModal === 'INCLUSAO' && !dataNova)) return alert('Preencha tudo!'); 
       const dataBase = modoModal === 'EDICAO' ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd') : dataNova; 
@@ -286,8 +334,20 @@ export default function MeuHistorico() {
           alert('Solicitação enviada! Acompanhe na aba "Solicitações".'); 
           setModalAberto(false);
           carregar(); 
-      } catch (error) { alert('Erro ao enviar.'); } 
-  };
+      } catch (error: any) {
+        const data = error?.response?.data ?? {};
+        const msg = data?.erro;
+        const code = data?.code;
+
+        if (code === 'USE_AJUSTE') {
+            window.alert(msg || 'Você já registrou esse ponto hoje. Em vez de INCLUIR, solicite AJUSTE.');
+            return;
+        }
+
+        window.alert(msg || 'Erro ao enviar.');
+        }
+
+    };
 
   // === FILTROS DE PONTOS ===
   const pontosFiltrados = pontos.filter(p => {
@@ -366,7 +426,6 @@ export default function MeuHistorico() {
           </div>
           <Link href="/funcionario" className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all active:scale-95"><ArrowLeft size={18} /></Link>
         </div>
-''
         {/* SELETOR DE ABAS */}
         <div className="bg-slate-900/60 p-1 rounded-xl flex gap-1 border border-white/5">
             <button onClick={() => setAbaAtiva('PONTO')} className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${abaAtiva === 'PONTO' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
@@ -473,10 +532,17 @@ export default function MeuHistorico() {
                                 </div>
                             </div>
                             {ponto.tipo !== 'AUSENCIA' && (
-                                <button onClick={() => abrirEdicao(ponto)} className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors" title="Solicitar Ajuste">
-                                    <Edit3 size={18} />
-                                </button>
+                            <button
+                                onClick={() => abrirEdicao(ponto)}
+                                className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-2 shadow-lg"
+                                title="Solicitar Ajuste"
+                            >
+                                <Edit3 size={16} />
+                                Ajustar Ponto
+                            </button>
                             )}
+
+
                         </div>
                         </div>
                     );
@@ -528,7 +594,7 @@ export default function MeuHistorico() {
                         </div>
                     )}
                     <div className="space-y-1">
-                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Novo Horário</label>
+                        <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Digite aqui o Novo Horário</label>
                         <input type="time" value={horaNova} onChange={e=>setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20" />
                     </div>
                     <div className="space-y-1">
