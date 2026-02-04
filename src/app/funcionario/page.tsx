@@ -225,9 +225,28 @@ export default function Home() {
           }); 
           alert('Solicitação enviada com sucesso! Acompanhe no Histórico.'); 
           setModalInclusaoAberto(false);
-      } catch (error) { 
-          alert('Erro ao enviar solicitação.'); 
-      } 
+      } catch (error: any) {
+        const data = error?.response?.data ?? {};
+        const msg = data?.erro;
+        const code = data?.code;
+        const pontoIdSugerido = data?.pontoIdSugerido;
+
+        if (code === 'USE_AJUSTE') {
+            window.alert(msg || 'Você já bateu esse ponto hoje. Solicite AJUSTE no Histórico.');
+
+            if (pontoIdSugerido) {
+            // pequeno delay pra garantir que o alert finalizou no mobile
+            setTimeout(() => {
+                router.push(`/funcionario/historico?ajustar=${pontoIdSugerido}`);
+            }, 150);
+            }
+            return;
+        }
+
+        window.alert(msg || 'Erro ao enviar solicitação.');
+        }
+
+ 
   };
 
   if (status === 'loading') return (
