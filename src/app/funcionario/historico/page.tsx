@@ -44,6 +44,19 @@ const criarDataLocal = (dataString: string) => {
 function toHHmm(date: Date) {
   return String(date.toTimeString()).slice(0, 5);
 }
+function maskHora(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4); // HHMM
+  const h = digits.slice(0, 2);
+  const m = digits.slice(2, 4);
+  if (digits.length <= 2) return h;
+  return `${h}:${m}`;
+}
+
+function isHoraValida(hhmm: string) {
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return false;
+  const [h, m] = hhmm.split(':').map(Number);
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
 
 export default function MeuHistorico() {
   // === ESTADOS ===
@@ -285,7 +298,7 @@ export default function MeuHistorico() {
     setModoModal('EDICAO');
     setPontoSelecionado(ponto);
     setDataNova(format(new Date(ponto.dataHora), 'yyyy-MM-dd'));
-    setHoraNova(format(new Date(ponto.dataHora), 'HH:mm'));
+    setHoraNova('');
     setMotivo('');
     setModalAberto(true);
   }, []);
@@ -325,6 +338,11 @@ export default function MeuHistorico() {
       setFeedback({ tipo: 'erro', texto: 'Preencha o novo horário e a justificativa.' });
       return;
     }
+    if (!isHoraValida(horaNova)) {
+    setFeedback({ tipo: 'erro', texto: 'Digite um horário válido no formato HH:MM (ex: 08:30).' });
+    return;
+  }
+
 
     const dataBase = modoModal === 'EDICAO' ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd') : dataNova;
     const dataHoraFinal = new Date(`${dataBase}T${horaNova}:00`);
@@ -678,7 +696,16 @@ export default function MeuHistorico() {
                 setModalAberto(false);
               }}
             />
-            <div className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
+              <div
+                className="
+                  bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl
+                  p-5 space-y-4 relative z-10
+                  animate-in slide-in-from-bottom-10 fade-in duration-300
+
+                  max-h-[85vh] overflow-y-auto
+                  pb-[calc(env(safe-area-inset-bottom)+16px)]
+                "
+              >
               <div className="flex justify-between items-center border-b border-white/5 pb-4">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   {modoModal === 'EDICAO' ? (
@@ -703,7 +730,8 @@ export default function MeuHistorico() {
               </div>
 
               {modoModal === 'INCLUSAO' && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data</label>
                     <input
@@ -745,11 +773,16 @@ export default function MeuHistorico() {
                   <div className="space-y-1">
                     <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Novo horário</label>
                     <input
-                      type="time"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder="HH:MM"
                       value={horaNova}
-                      onChange={e => setHoraNova(e.target.value)}
+                      onChange={(e) => setHoraNova(maskHora(e.target.value))}
                       className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"
                     />
+                    <p className="text-[11px] text-slate-500 text-center">Digite no formato 08:30</p>
+
                     <div className="text-[12px] text-slate-400 text-center">
                       De <span className="text-white font-semibold">{toHHmm(new Date(pontoSelecionado.dataHora))}</span> → Para{' '}
                       <span className="text-white font-semibold">{horaNova || '--:--'}</span>
@@ -762,11 +795,16 @@ export default function MeuHistorico() {
                 <div className="space-y-1">
                   <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Horário do registro</label>
                   <input
-                    type="time"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="HH:MM"
                     value={horaNova}
-                    onChange={e => setHoraNova(e.target.value)}
+                    onChange={(e) => setHoraNova(maskHora(e.target.value))}
                     className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"
                   />
+                  <p className="text-[11px] text-slate-500 text-center">Digite no formato 08:30</p>
+
                 </div>
               )}
 
