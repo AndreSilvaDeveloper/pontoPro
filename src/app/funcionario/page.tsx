@@ -12,6 +12,20 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+function maskHora(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4); // HHMM
+  const h = digits.slice(0, 2);
+  const m = digits.slice(2, 4);
+  if (digits.length <= 2) return h;
+  return `${h}:${m}`;
+}
+
+function isHoraValida(hhmm: string) {
+  if (!/^\d{2}:\d{2}$/.test(hhmm)) return false;
+  const [h, m] = hhmm.split(':').map(Number);
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -225,6 +239,12 @@ export default function Home() {
       return;
     }
 
+    // ✅ valida hora no formato HH:MM (como agora é input texto)
+    if (!isHoraValida(horaNova)) {
+      setAvisoInclusao({ tipo: 'erro', texto: 'Digite um horário válido no formato HH:MM (ex: 08:30).' });
+      return;
+    }
+
     const dataHoraFinal = new Date(`${dataNova}T${horaNova}:00`);
 
     try {
@@ -237,13 +257,13 @@ export default function Home() {
 
       setAvisoInclusao({
         tipo: 'sucesso',
-        texto: 'Solicitação enviada com sucesso! Acompanhe no Histórico.'
+        texto: 'Solicitação enviada! Você pode acompanhar em “Histórico”. O admin irá analisar seu pedido.'
       });
 
       setTimeout(() => {
         setModalInclusaoAberto(false);
         setAvisoInclusao(null);
-      }, 1200);
+      }, 1400);
 
     } catch (error: any) {
       const data = error?.response?.data ?? {};
@@ -458,7 +478,6 @@ export default function Home() {
             )}
           </div>
 
-
           <div data-tour="emp-actions" className="mt-2">
             {!location ? (
               <div className="py-8 flex flex-col items-center text-center">
@@ -534,12 +553,25 @@ export default function Home() {
             className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
             onClick={() => setModalInclusaoAberto(false)}
           />
-          <div data-tour="emp-modal-incluir" className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div data-tour="emp-header" className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
+
+          <div
+            data-tour="emp-modal-incluir"
+            className="
+              bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl
+              p-5 space-y-4 relative z-10
+              animate-in slide-in-from-bottom-10 fade-in duration-300
+              max-h-[85vh] overflow-y-auto
+              pb-[calc(env(safe-area-inset-bottom)+16px)]
+            "
+          >
+            {/* Header mais compacto (evita quebrar no mobile) */}
+            <div className="flex justify-between items-center border-b border-white/5 pb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <PlusCircle size={20} className="text-emerald-400" /> Incluir Registro
               </h3>
-              <button onClick={() => setModalInclusaoAberto(false)} className="text-slate-500 hover:text-white"><X size={20} /></button>
+              <button onClick={() => setModalInclusaoAberto(false)} className="text-slate-500 hover:text-white">
+                <X size={20} />
+              </button>
             </div>
 
             {/* ✅ AVISO VISUAL (FUNCIONA NO MOBILE) */}
@@ -576,14 +608,24 @@ export default function Home() {
               </button>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data</label>
-                <input type="date" value={dataNova} onChange={e => setDataNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm text-center outline-none focus:border-purple-500 transition-colors" />
+                <input
+                  type="date"
+                  value={dataNova}
+                  onChange={e => setDataNova(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm text-center outline-none focus:border-purple-500 transition-colors"
+                />
               </div>
+
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Tipo</label>
-                <select value={tipoNovo} onChange={e => setTipoNovo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none">
+                <select
+                  value={tipoNovo}
+                  onChange={e => setTipoNovo(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none"
+                >
                   <option value="ENTRADA">ENTRADA</option>
                   <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
                   <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
@@ -594,13 +636,38 @@ export default function Home() {
 
             <div className="space-y-1">
               <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Novo Horário</label>
-              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20" />
+
+              {/* ✅ iOS: troca type="time" por text + máscara => teclado numérico */}
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="HH:MM"
+                value={horaNova}
+                onChange={(e) => setHoraNova(maskHora(e.target.value))}
+                className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"
+              />
+
+              <p className="text-[11px] text-slate-500 text-center">
+                Digite no formato 08:30
+              </p>
             </div>
+
             <div className="space-y-1">
               <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
-              <textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater, estava em reunião..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors" />
+              <textarea
+                value={motivo}
+                onChange={e => setMotivo(e.target.value)}
+                placeholder="Ex: Esqueci de bater, estava em reunião..."
+                className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors"
+              />
             </div>
-            <button data-tour="emp-send-request" onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+
+            <button
+              data-tour="emp-send-request"
+              onClick={enviarSolicitacaoInclusao}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
               <Save size={18} /> Enviar Solicitação
             </button>
           </div>
