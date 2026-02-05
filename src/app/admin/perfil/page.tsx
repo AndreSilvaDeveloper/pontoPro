@@ -71,6 +71,7 @@ type FaturaState = {
   };
 };
 
+
 export default function PerfilAdmin() {
   const { data: session } = useSession();
 
@@ -118,6 +119,26 @@ export default function PerfilAdmin() {
     }
   };
 
+  const gerarQrCodeDataUrl = async (payloadPix: string, size = 220) => {
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(payloadPix)}`;
+
+  const res = await fetch(qrUrl);
+  if (!res.ok) throw new Error("Falha ao gerar QR Code");
+
+  const blob = await res.blob();
+
+  // Converte Blob -> DataURL (base64) para o jsPDF
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  return dataUrl;
+};
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
@@ -138,7 +159,7 @@ export default function PerfilAdmin() {
     }
   };
 
-  const baixarBoleto = () => {
+  const baixarBoleto = async () => {
     if (!fatura) return;
 
     const janela = window.open("", "_blank");
@@ -225,30 +246,57 @@ export default function PerfilAdmin() {
       });
 
       // @ts-ignore
-      const finalY = doc.lastAutoTable.finalY + 20;
+      // @ts-ignore
+const finalY = doc.lastAutoTable.finalY + 20;
 
-      doc.setDrawColor(200, 200, 200);
-      doc.setFillColor(250, 250, 250);
-      doc.roundedRect(14, finalY, 182, 75, 3, 3, "FD");
+doc.setDrawColor(200, 200, 200);
+doc.setFillColor(250, 250, 250);
+doc.roundedRect(14, finalY, 182, 75, 3, 3, "FD");
 
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(88, 28, 135);
-      doc.text("PAGAMENTO VIA PIX", 20, finalY + 12);
+doc.setFontSize(12);
+doc.setFont("helvetica", "bold");
+doc.setTextColor(88, 28, 135);
+doc.text("PAGAMENTO VIA PIX", 20, finalY + 12);
 
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Chave Pix:", 20, finalY + 25);
+doc.setFontSize(10);
+doc.setTextColor(0, 0, 0);
+doc.setFont("helvetica", "normal");
+doc.text("Chave Pix:", 20, finalY + 25);
 
-      doc.setFontSize(12);
-      doc.text(fatura.chavePix, 20, finalY + 32);
+doc.setFontSize(12);
+doc.setFont("helvetica", "bold");
+doc.text(fatura.chavePix, 20, finalY + 32);
 
-      doc.setFontSize(7);
-      doc.setTextColor(150, 150, 150);
-      doc.text("Copia e Cola:", 20, finalY + 45);
+// === QR CODE (igual Super Admin, mas do jeito CERTO pro browser) ===
+try {
+  const qrDataUrl = await gerarQrCodeDataUrl(payloadPix, 220);
 
-      const splitPayload = doc.splitTextToSize(payloadPix, 160);
-      doc.text(splitPayload, 20, finalY + 52);
+  // QR no canto direito do card
+  doc.addImage(qrDataUrl, "PNG", 145, finalY + 10, 45, 45);
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  doc.text("Escaneie no App do Banco", 146, finalY + 60);
+} catch (err) {
+  // fallback visual (caso QR falhe)
+  doc.setDrawColor(180, 180, 180);
+  doc.rect(145, finalY + 10, 45, 45);
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text("QR indisponível", 148, finalY + 35);
+}
+
+// Copia e Cola (deixa com largura menor pra caber o QR ao lado)
+doc.setFontSize(7);
+doc.setTextColor(150, 150, 150);
+doc.setFont("helvetica", "normal");
+doc.text("Copia e Cola:", 20, finalY + 45);
+
+const splitPayload = doc.splitTextToSize(payloadPix, 120);
+doc.setTextColor(80, 80, 80);
+doc.text(splitPayload, 20, finalY + 52);
+
 
       const blobUrl = doc.output("bloburl");
       if (janela) janela.location.href = String(blobUrl);
