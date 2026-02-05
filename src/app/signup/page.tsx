@@ -272,7 +272,7 @@ export default function SignupPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
-                      placeholder="exemplo@ontimeia.com"
+                      placeholder="exemplo@gmail.com"
                       className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
                     />

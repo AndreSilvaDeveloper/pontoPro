@@ -54,6 +54,29 @@ export default function Home() {
 
   const webcamRef = useRef<Webcam>(null);
 
+  // ✅ CAMERA AUTO-FECHA APÓS BATER PONTO
+  const [cameraAtiva, setCameraAtiva] = useState(true);
+
+  const stopCamera = () => {
+    try {
+      const videoEl = (webcamRef.current as any)?.video as HTMLVideoElement | undefined;
+      const stream = (videoEl?.srcObject as MediaStream | null) ?? null;
+
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+      }
+      if (videoEl) videoEl.srcObject = null;
+    } catch (e) {
+      console.log('Não foi possível parar a câmera:', e);
+    }
+  };
+
+  // cleanup ao sair da página
+  useEffect(() => {
+    return () => stopCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // === NOVOS ESTADOS PARA O MODAL DE INCLUSÃO ===
   const [modalInclusaoAberto, setModalInclusaoAberto] = useState(false);
   const [dataNova, setDataNova] = useState('');
@@ -147,6 +170,7 @@ export default function Home() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       stream.getTracks().forEach(track => track.stop());
       setStatusMsg(null);
+      setCameraAtiva(true);
     } catch (err) {
       setCameraErro(true);
       setStatusMsg({ tipo: 'erro', texto: 'O acesso continua bloqueado.' });
@@ -162,6 +186,10 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+
+        // ✅ se exige foto, garante que a câmera fica ativa após liberar o GPS
+        if (configs.exigirFoto) setCameraAtiva(true);
+
         setStatusMsg({ tipo: 'sucesso', texto: 'Localização Confirmada!' });
         setTimeout(() => setStatusMsg(null), 4500);
       },
@@ -177,6 +205,15 @@ export default function Home() {
       setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' });
       setAcaoEmProcesso(null);
       return;
+    }
+
+    // ✅ se exige foto e a câmera está desativada, reativa automaticamente
+    if (configs.exigirFoto && !cameraAtiva) {
+      setCameraAtiva(true);
+      setStatusMsg({ tipo: 'info', texto: 'Ativando câmera...' });
+      // dá um pequeno tempo pro vídeo montar antes do screenshot
+      await new Promise((r) => setTimeout(r, 350));
+      setStatusMsg(null);
     }
 
     let imageSrc = null;
@@ -207,6 +244,12 @@ export default function Home() {
       if (tipoFinal === 'VOLTA_ALMOCO') setJaAlmocou(true);
 
       setStatusMsg({ tipo: 'sucesso', texto: `✅ Ponto Registrado!` });
+
+      // ✅ FECHA A CÂMERA IMEDIATAMENTE APÓS REGISTRAR
+      if (configs.exigirFoto) {
+        stopCamera();
+        setCameraAtiva(false);
+      }
 
       setTimeout(() => {
         setStatusMsg(null);
@@ -367,6 +410,8 @@ export default function Home() {
         </div>
       );
     }
+
+    return null;
   };
 
   const renderizarBotoesFlexiveis = () => {
@@ -442,12 +487,11 @@ export default function Home() {
             className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'
               }`}
           >
-
             {!configs.exigirFoto || !location ? (
               <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-slate-400 text-sm px-6 text-center">
                 A câmera aparece após permitir o GPS (se a empresa exigir foto).
               </div>
-            ) : !cameraErro ? (
+            ) : (!cameraErro && cameraAtiva) ? (
               <>
                 <Webcam
                   audio={false}
@@ -461,6 +505,17 @@ export default function Home() {
                   AO VIVO
                 </div>
               </>
+            ) : !cameraErro ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
+                <p className="text-slate-300 font-bold mb-2">Câmera desativada</p>
+                <p className="text-slate-500 text-xs mb-4">Toque para ativar quando precisar.</p>
+                <button
+                  onClick={() => setCameraAtiva(true)}
+                  className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                >
+                  Ativar câmera
+                </button>
+              </div>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
                 <div className="bg-red-500/10 p-4 rounded-full mb-3">
