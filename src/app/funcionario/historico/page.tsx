@@ -776,7 +776,7 @@ export default function MeuHistorico() {
                       type="text"
                       inputMode="numeric"
                       autoComplete="off"
-                      placeholder="HH:MM"
+                      placeholder="Ex: 07:00"
                       value={horaNova}
                       onChange={(e) => setHoraNova(maskHora(e.target.value))}
                       className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"

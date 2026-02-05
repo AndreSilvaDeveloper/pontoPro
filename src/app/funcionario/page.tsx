@@ -163,7 +163,7 @@ export default function Home() {
       (position) => {
         setLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
         setStatusMsg({ tipo: 'sucesso', texto: 'Localização Confirmada!' });
-        setTimeout(() => setStatusMsg(null), 3000);
+        setTimeout(() => setStatusMsg(null), 4500);
       },
       (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message })
     );
@@ -212,7 +212,7 @@ export default function Home() {
         setStatusMsg(null);
         carregarConfigEStatus();
         setAcaoEmProcesso(null);
-      }, 1500);
+      }, 5000);
 
     } catch (error: any) {
       setStatusMsg({ tipo: 'erro', texto: `❌ ${error.response?.data?.erro || 'Erro ao registrar'}` });
