@@ -507,7 +507,7 @@ export default function Home() {
               </>
             ) : !cameraErro ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
-                <p className="text-slate-300 font-bold mb-2">Câmera desativada</p>
+                {/* <p className="text-slate-300 font-bold mb-2">Ponto registrado. Câmera desativada</p> */}
                 <p className="text-slate-500 text-xs mb-4">Toque para ativar quando precisar.</p>
                 <button
                   onClick={() => setCameraAtiva(true)}
