@@ -34,6 +34,16 @@ function rangeDiaSPFromISO(novoHorarioISO: string) {
   return { dia, inicio, fim };
 }
 
+function isoDiaToBR(isoDia: string) {
+  // isoDia esperado: YYYY-MM-DD
+  const [y, m, d] = String(isoDia).split('-');
+  if (!y || !m || !d) return isoDia; // fallback seguro
+  return `${d}/${m}/${y}`;
+}
+
+
+
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
@@ -74,17 +84,20 @@ export async function POST(request: Request) {
       });
 
       if (pontoExistente) {
-        return NextResponse.json(
-          {
-            erro: `Você já registrou ${String(tipo).replaceAll('_', ' ')} em ${dia}. Para corrigir horário, solicite AJUSTE (não INCLUSÃO).`,
-            code: 'USE_AJUSTE',
-            dia,
-            tipoExistente: tipo,
-            pontoIdSugerido: pontoExistente.id,
-            horarioExistente: pontoExistente.dataHora,
-          },
-          { status: 400 }
-        );
+        const diaBR = isoDiaToBR(dia);
+
+      return NextResponse.json(
+        {
+          erro: `Você já registrou ${String(tipo).replaceAll('_', ' ')} em ${diaBR}. Para corrigir horário, solicite AJUSTE (não INCLUSÃO).`,
+          code: 'USE_AJUSTE',
+          dia: diaBR, // opcional: se o front espera iso, mantenha "dia" como iso e mande "diaBR" separado
+          tipoExistente: tipo,
+          pontoIdSugerido: pontoExistente.id,
+          horarioExistente: pontoExistente.dataHora,
+        },
+        { status: 400 }
+      );
+
       }
     }
 
