@@ -9,30 +9,30 @@ datasource db {
 }
 
 model Empresa {
-  id                  String      @id @default(cuid())
+  id                  String          @id @default(cuid())
   nome                String
   cnpj                String?
-  criadoEm            DateTime    @default(now())
+  criadoEm            DateTime        @default(now())
   configuracoes       Json?
-  status              String      @default("ATIVO")
-  intervaloPago       Boolean     @default(false)
-  fluxoEstrito        Boolean     @default(true)
+  status              String          @default("ATIVO")
+  intervaloPago       Boolean         @default(false)
+  fluxoEstrito        Boolean         @default(true)
   matrizId            String?
-  chavePix            String?     @default("118.544.546-33")
-  diaVencimento       Int         @default(15)
+  chavePix            String?         @default("118.544.546-33")
+  diaVencimento       Int             @default(15)
   dataUltimoPagamento DateTime?
+  cobrancaAtiva       Boolean         @default(false)
+  pagoAte             DateTime?
+  trialAte            DateTime?
+  billingAnchorAt     DateTime?
+  cobrancaWhatsapp    String?
   adminsPermitidos    AdminLoja[]
-  matriz              Empresa?    @relation("MatrizFilial", fields: [matrizId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  filiais             Empresa[]   @relation("MatrizFilial")
+  matriz              Empresa?        @relation("MatrizFilial", fields: [matrizId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  filiais             Empresa[]       @relation("MatrizFilial")
   feriados            Feriado[]
   usuarios            Usuario[]
-
-  cobrancaAtiva      Boolean  @default(false)
-  trialAte           DateTime?
-  pagoAte            DateTime?
-
-  billingAnchorAt   DateTime?  // âncora real do vencimento (recomendado)
-  cobrancaWhatsapp  String?    // ex: "5532991473554"
+  asaasCustomerId     String?         @db.VarChar(40)
+  cobrancasAsaas      CobrancaAsaas[]
 }
 
 model Usuario {
@@ -90,20 +90,19 @@ model Ponto {
 }
 
 model SolicitacaoAjuste {
-  id          String   @id @default(cuid())
-  novoHorario DateTime
-  motivo      String
-  status      String   @default("PENDENTE")
-  tipo        String?
-  usuarioId   String
-  pontoId     String?
-  criadoEm    DateTime @default(now())
-  ponto       Ponto?   @relation(fields: [pontoId], references: [id], onDelete: Cascade)
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  novoHorario     DateTime
+  motivo          String
+  status          String    @default("PENDENTE")
+  tipo            String?
+  usuarioId       String
+  pontoId         String?
+  criadoEm        DateTime  @default(now())
+  decididoEm      DateTime?
   decididoPorId   String?
   decididoPorNome String?
-  decididoEm      DateTime?
-
+  ponto           Ponto?    @relation(fields: [pontoId], references: [id], onDelete: Cascade)
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 }
 
 model Ausencia {
@@ -138,7 +137,40 @@ model LogAuditoria {
   empresaId String
 }
 
+model OnboardingProgress {
+  id          String   @id
+  userId      String
+  empresaId   String   @default("no_empresa")
+  role        String
+  version     String
+  completedAt DateTime @default(now())
+
+  @@unique([userId, empresaId, role, version])
+  @@index([empresaId])
+  @@index([userId])
+}
+
 enum ModoValidacaoPonto {
   GPS
   PC_IP
+}
+
+model CobrancaAsaas {
+  id                String   @id @default(cuid())
+  empresaId         String
+  competencia       String // "YYYY-MM"
+  meses             Int      @default(1)
+  valueCents        Int
+  dueDate           DateTime
+  status            String
+  paymentId         String   @unique
+  bankSlipUrl       String?
+  invoiceUrl        String?
+  externalReference String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+
+  @@unique([empresaId, competencia], name: "empresaId_competencia")
 }

@@ -1,7 +1,7 @@
 // src/app/admin/perfil/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
 import {
@@ -14,6 +14,8 @@ import {
   CheckCircle,
   Clock,
   Calendar,
+  ExternalLink,
+  Receipt,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import jsPDF from "jspdf";
@@ -56,6 +58,20 @@ const gerarPayloadPix = (chave: string, nome: string, cidade: string, valor?: st
   return payload + crc16ccitt(payload);
 };
 
+type CobrancaStatus = "PENDING" | "OVERDUE" | "RECEIVED" | string;
+
+type CobrancaInfo = {
+  status: CobrancaStatus;
+  paymentId: string;
+  bankSlipUrl?: string | null;
+  invoiceUrl?: string | null;
+  dueDateISO?: string | null;
+  competencia?: string | null;
+  value?: number | null;
+  meses?: number | null;
+  updatedAtISO?: string | null;
+};
+
 type FaturaState = {
   empresa: any;
   billing: BillingStatus;
@@ -63,6 +79,7 @@ type FaturaState = {
   vencimento: Date;
   chavePix: string;
   pago: boolean;
+  cobranca?: CobrancaInfo | null;
   itens: {
     vidasExcedentes: number;
     adminsExcedentes: number;
@@ -71,6 +88,10 @@ type FaturaState = {
   };
 };
 
+function pickBoletoUrl(c?: { bankSlipUrl?: any; invoiceUrl?: any } | null) {
+  const url = c?.bankSlipUrl || c?.invoiceUrl;
+  return url ? String(url) : "";
+}
 
 export default function PerfilAdmin() {
   const { data: session } = useSession();
@@ -92,13 +113,13 @@ export default function PerfilAdmin() {
       const res = await axios.get("/api/admin/fatura");
       if (!res.data?.ok) return;
 
-      // se for filial, você pode optar por esconder
       if (res.data?.empresa?.isFilial) {
         setLoadingFatura(false);
         return;
       }
 
-      const vencISO = res.data?.fatura?.vencimentoISO;
+      const cobranca: CobrancaInfo | null = res.data?.fatura?.cobranca || null;
+      const vencISO = cobranca?.dueDateISO || res.data?.fatura?.vencimentoISO;
       const venc = vencISO ? new Date(vencISO) : new Date();
 
       setFatura({
@@ -106,10 +127,12 @@ export default function PerfilAdmin() {
         billing: res.data.billing,
         valor: res.data.fatura.valor,
         vencimento: venc,
-        chavePix: res.data.empresa?.chavePix && String(res.data.empresa.chavePix).length > 3
-          ? String(res.data.empresa.chavePix)
-          : "118.544.546-33",
+        chavePix:
+          res.data.empresa?.chavePix && String(res.data.empresa.chavePix).length > 3
+            ? String(res.data.empresa.chavePix)
+            : "118.544.546-33",
         pago: Boolean(res.data.fatura.pago),
+        cobranca,
         itens: res.data.fatura.itens,
       });
     } catch (e) {
@@ -120,24 +143,20 @@ export default function PerfilAdmin() {
   };
 
   const gerarQrCodeDataUrl = async (payloadPix: string, size = 220) => {
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(payloadPix)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(payloadPix)}`;
+    const res = await fetch(qrUrl);
+    if (!res.ok) throw new Error("Falha ao gerar QR Code");
+    const blob = await res.blob();
 
-  const res = await fetch(qrUrl);
-  if (!res.ok) throw new Error("Falha ao gerar QR Code");
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
 
-  const blob = await res.blob();
-
-  // Converte Blob -> DataURL (base64) para o jsPDF
-  const dataUrl: string = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-
-  return dataUrl;
-};
-
+    return dataUrl;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +178,7 @@ export default function PerfilAdmin() {
     }
   };
 
+  // ✅ Mantido (PDF PIX). Serve como fallback.
   const baixarBoleto = async () => {
     if (!fatura) return;
 
@@ -246,57 +266,50 @@ export default function PerfilAdmin() {
       });
 
       // @ts-ignore
-      // @ts-ignore
-const finalY = doc.lastAutoTable.finalY + 20;
+      const finalY = doc.lastAutoTable.finalY + 20;
 
-doc.setDrawColor(200, 200, 200);
-doc.setFillColor(250, 250, 250);
-doc.roundedRect(14, finalY, 182, 75, 3, 3, "FD");
+      doc.setDrawColor(200, 200, 200);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(14, finalY, 182, 75, 3, 3, "FD");
 
-doc.setFontSize(12);
-doc.setFont("helvetica", "bold");
-doc.setTextColor(88, 28, 135);
-doc.text("PAGAMENTO VIA PIX", 20, finalY + 12);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(88, 28, 135);
+      doc.text("PAGAMENTO VIA PIX", 20, finalY + 12);
 
-doc.setFontSize(10);
-doc.setTextColor(0, 0, 0);
-doc.setFont("helvetica", "normal");
-doc.text("Chave Pix:", 20, finalY + 25);
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "normal");
+      doc.text("Chave Pix:", 20, finalY + 25);
 
-doc.setFontSize(12);
-doc.setFont("helvetica", "bold");
-doc.text(fatura.chavePix, 20, finalY + 32);
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text(fatura.chavePix, 20, finalY + 32);
 
-// === QR CODE (igual Super Admin, mas do jeito CERTO pro browser) ===
-try {
-  const qrDataUrl = await gerarQrCodeDataUrl(payloadPix, 220);
+      try {
+        const qrDataUrl = await gerarQrCodeDataUrl(payloadPix, 220);
+        doc.addImage(qrDataUrl, "PNG", 145, finalY + 10, 45, 45);
 
-  // QR no canto direito do card
-  doc.addImage(qrDataUrl, "PNG", 145, finalY + 10, 45, 45);
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        doc.text("Escaneie no App do Banco", 146, finalY + 60);
+      } catch (err) {
+        doc.setDrawColor(180, 180, 180);
+        doc.rect(145, finalY + 10, 45, 45);
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text("QR indisponível", 148, finalY + 35);
+      }
 
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
-  doc.text("Escaneie no App do Banco", 146, finalY + 60);
-} catch (err) {
-  // fallback visual (caso QR falhe)
-  doc.setDrawColor(180, 180, 180);
-  doc.rect(145, finalY + 10, 45, 45);
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text("QR indisponível", 148, finalY + 35);
-}
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.setFont("helvetica", "normal");
+      doc.text("Copia e Cola:", 20, finalY + 45);
 
-// Copia e Cola (deixa com largura menor pra caber o QR ao lado)
-doc.setFontSize(7);
-doc.setTextColor(150, 150, 150);
-doc.setFont("helvetica", "normal");
-doc.text("Copia e Cola:", 20, finalY + 45);
-
-const splitPayload = doc.splitTextToSize(payloadPix, 120);
-doc.setTextColor(80, 80, 80);
-doc.text(splitPayload, 20, finalY + 52);
-
+      const splitPayload = doc.splitTextToSize(payloadPix, 120);
+      doc.setTextColor(80, 80, 80);
+      doc.text(splitPayload, 20, finalY + 52);
 
       const blobUrl = doc.output("bloburl");
       if (janela) janela.location.href = String(blobUrl);
@@ -306,6 +319,60 @@ doc.text(splitPayload, 20, finalY + 52);
       alert("Erro ao gerar boleto.");
     }
   };
+
+  // ✅ abre link salvo; se não tiver, cria (e fallback PDF PIX se Asaas falhar)
+  const abrirBoletoAsaas = async () => {
+    if (!fatura) return;
+
+    const urlLocal = pickBoletoUrl(fatura.cobranca || null);
+    if (urlLocal) {
+      window.open(urlLocal, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    const janela = window.open("", "_blank");
+    if (janela) {
+      janela.document.write(
+        '<html><head><title>Gerando Boleto...</title></head><body style="background:#0b1220;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:white;"><h3>Gerando Boleto... Aguarde.</h3></body></html>'
+      );
+    }
+
+    try {
+      const res = await axios.post("/api/saas/criar-cobranca", {
+        empresaId: fatura.empresa.id,
+        value: fatura.valor,
+        meses: 1,
+        dueDateISO: format(fatura.vencimento, "yyyy-MM-dd"),
+        description: `Mensalidade ${fatura.empresa?.nome || ""}`.trim(),
+      });
+
+      if (!res.data?.ok) {
+        if (janela) janela.close();
+        await baixarBoleto();
+        return;
+      }
+
+      const url = res.data.bankSlipUrl || res.data.invoiceUrl;
+      if (!url) {
+        if (janela) janela.close();
+        await baixarBoleto();
+        return;
+      }
+
+      if (janela) janela.location.href = String(url);
+      else window.open(url, "_blank", "noopener,noreferrer");
+
+      carregarDadosFinanceiros();
+    } catch {
+      if (janela) janela.close();
+      await baixarBoleto();
+    }
+  };
+
+  const statusAtual = useMemo(() => {
+    const s = String(fatura?.cobranca?.status || "").toUpperCase();
+    return s as CobrancaStatus;
+  }, [fatura?.cobranca?.status]);
 
   const renderAlertasFinanceiros = () => {
     if (!fatura) return null;
@@ -325,8 +392,9 @@ doc.text(splitPayload, 20, finalY + 52);
               </p>
             </div>
           </div>
+
           <button
-            onClick={baixarBoleto}
+            onClick={abrirBoletoAsaas}
             className="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
           >
             <FileText size={16} /> VER FATURA
@@ -335,8 +403,7 @@ doc.text(splitPayload, 20, finalY + 52);
       );
     }
 
-    // PAGO
-    if (fatura.pago) {
+    if (statusAtual === "RECEIVED") {
       return (
         <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -348,11 +415,43 @@ doc.text(splitPayload, 20, finalY + 52);
               <p className="text-emerald-200/70 text-sm">Obrigado! Sua assinatura está em dia.</p>
             </div>
           </div>
+
+          {pickBoletoUrl(fatura.cobranca || null) ? (
+            <button
+              onClick={abrirBoletoAsaas}
+              className="bg-emerald-500 hover:bg-emerald-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
+            >
+              <ExternalLink size={16} /> ABRIR COBRANÇA
+            </button>
+          ) : null}
         </div>
       );
     }
 
-    // Billing normal (usa vencimento da API)
+    // OVERDUE real
+    if (statusAtual === "OVERDUE") {
+      return (
+        <div className="bg-red-950/30 border border-red-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-red-900/50 p-2.5 rounded-full text-red-400">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-red-400 text-lg">Fatura Vencida</h3>
+              <p className="text-red-200/70 text-sm">Venceu em {format(fatura.vencimento, "dd/MM")}. Evite bloqueio.</p>
+            </div>
+          </div>
+          <button
+            onClick={abrirBoletoAsaas}
+            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2"
+          >
+            <FileText size={16} /> 2ª VIA DO BOLETO
+          </button>
+        </div>
+      );
+    }
+
+    // fallback por data (PENDING / sem cobrança)
     const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
     const dataVenc = new Date(fatura.vencimento); dataVenc.setHours(0, 0, 0, 0);
     const diasParaVencimento = differenceInDays(dataVenc, hoje);
@@ -372,7 +471,7 @@ doc.text(splitPayload, 20, finalY + 52);
               </p>
             </div>
           </div>
-          <button onClick={baixarBoleto} className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-sm">
+          <button onClick={abrirBoletoAsaas} className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-sm">
             REGULARIZAR AGORA
           </button>
         </div>
@@ -388,12 +487,10 @@ doc.text(splitPayload, 20, finalY + 52);
             </div>
             <div>
               <h3 className="font-bold text-red-400 text-lg">Fatura Vencida</h3>
-              <p className="text-red-200/70 text-sm">
-                Venceu em {format(fatura.vencimento, "dd/MM")}. Evite bloqueio.
-              </p>
+              <p className="text-red-200/70 text-sm">Venceu em {format(fatura.vencimento, "dd/MM")}. Evite bloqueio.</p>
             </div>
           </div>
-          <button onClick={baixarBoleto} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
+          <button onClick={abrirBoletoAsaas} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
             <FileText size={16} /> 2ª VIA DO BOLETO
           </button>
         </div>
@@ -414,7 +511,7 @@ doc.text(splitPayload, 20, finalY + 52);
               </p>
             </div>
           </div>
-          <button onClick={baixarBoleto} className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
+          <button onClick={abrirBoletoAsaas} className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
             <FileText size={16} /> PAGAR AGORA
           </button>
         </div>
@@ -434,9 +531,16 @@ doc.text(splitPayload, 20, finalY + 52);
             </p>
           </div>
         </div>
-        <button onClick={baixarBoleto} className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2">
-          <FileText size={16} /> VISUALIZAR FATURA
-        </button>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button onClick={abrirBoletoAsaas} className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2">
+            <FileText size={16} /> VISUALIZAR BOLETO
+          </button>
+
+          <button onClick={baixarBoleto} className="bg-slate-950 hover:bg-slate-900 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2" title="PDF Pix (fallback)">
+            <FileText size={16} /> PDF PIX
+          </button>
+        </div>
       </div>
     );
   };
@@ -455,6 +559,25 @@ doc.text(splitPayload, 20, finalY + 52);
         </div>
 
         {!loadingFatura && renderAlertasFinanceiros()}
+
+        {/* ✅ botão para ir ao histórico */}
+        <Link
+          href="/admin/faturas"
+          className="block bg-slate-900 border border-slate-800 rounded-xl p-4 hover:bg-slate-800 transition-all"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-900/30 p-2 rounded-lg text-purple-300">
+                <Receipt size={18} />
+              </div>
+              <div>
+                <div className="font-bold text-slate-100">Ver histórico de faturas</div>
+                <div className="text-xs text-slate-400">Acompanhe cobranças, pagas e vencidas</div>
+              </div>
+            </div>
+            <ExternalLink size={16} className="text-slate-400" />
+          </div>
+        </Link>
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center gap-4">
           <div className="w-16 h-16 bg-purple-900/30 rounded-full flex items-center justify-center text-purple-400">
