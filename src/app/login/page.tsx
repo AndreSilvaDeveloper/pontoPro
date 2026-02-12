@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const STORAGE_KEY = 'billing_block_payload';
+const STORAGE_KEY = 'workid_billing_block';
+const FIN_ALERT_DISMISS_KEY = 'workid_admin_finance_alert_dismissed_v1';
 
 function base64UrlEncodeUtf8(obj: any) {
   const json = JSON.stringify(obj);
@@ -32,16 +33,13 @@ function base64UrlEncodeUtf8(obj: any) {
 export default function LoginPage() {
   const router = useRouter();
 
-  // === ESTADOS DO FORMULÁRIO ===
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // === NOVO: ESTADO PARA TROCAR ENTRE LOGIN E RECUPERAÇÃO ===
   const [showRecovery, setShowRecovery] = useState(false);
 
-  // === ESTADOS PWA ===
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -82,84 +80,95 @@ export default function LoginPage() {
     }
   };
 
-  // === LOGIN ===
-  const FIN_ALERT_DISMISS_KEY = 'workid_admin_finance_alert_dismissed_v1';
+  // ✅ LOGIN (corrigido)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
 
-    const handleLogin = async (e: React.FormEvent) => {
-      e.preventDefault();
-      setLoading(true);
+    const toastId = toast.loading('Autenticando credenciais...');
+    sessionStorage.removeItem('workid_billing_alert_ok');
 
-      const toastId = toast.loading('Autenticando credenciais...');
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-      sessionStorage.removeItem('workid_billing_alert_ok');
+      // DEBUG (se quiser ver no console do browser)
+      // console.log("SIGNIN_RESULT:", result);
 
-      try {
-        const result = await signIn('credentials', {
-          redirect: false,
-          email: email.trim().toLowerCase(),
-          password,
-        });
+      // ✅ 1) Preferencial: vem no result.url (quando CredentialsSignin com code)
+      if (result?.url) {
+        const u = new URL(result.url, window.location.origin);
+        const code = u.searchParams.get('code');
 
-        if (result?.error) {
-          const err = String(result.error);
-
-          // ✅ NOVO: se vier no formato BILLING_BLOCK:<base64url>
-          if (err.startsWith('BILLING_BLOCK:')) {
-            const payload = err.replace('BILLING_BLOCK:', '').trim();
-            sessionStorage.setItem(STORAGE_KEY, payload);
-            toast.dismiss(toastId);
-            setLoading(false);
-            router.push('/acesso_bloqueado');
-            return;
-          }
-
-          // ✅ COMPAT: seu erro antigo de bloqueio manual
-          const isOldBlocked =
-            err.includes('ACESSO SUSPENSO') ||
-            err.includes('Acesso suspenso') ||
-            err.includes('teste gratuito expirou') ||
-            err.includes('Seu teste gratuito expirou');
-
-          if (isOldBlocked) {
-            // monta payload mínimo pra tela /acesso_bloqueado não ficar vazia sem sessão
-            const fallbackPayload = base64UrlEncodeUtf8({
-              code: err.includes('teste gratuito') ? 'TRIAL_EXPIRADO' : 'BLOQUEADO',
-              motivo: err.replace(/^🚫\s*/g, ''),
-              email: email.trim().toLowerCase(),
-            });
-
-            sessionStorage.setItem(STORAGE_KEY, fallbackPayload);
-            toast.dismiss(toastId);
-            setLoading(false);
-            router.push('/acesso_bloqueado');
-            return;
-          }
-
-          // Erro normal (senha, usuário, etc.)
-          toast.error(err, { id: toastId });
+        if (code?.startsWith('BILLING_BLOCK:')) {
+          const token = code.slice('BILLING_BLOCK:'.length).trim();
+          sessionStorage.setItem(STORAGE_KEY, token);
+          toast.dismiss(toastId);
           setLoading(false);
+          router.push('/acesso_bloqueado');
+          return;
+        }
+      }
+
+      // ✅ 2) Fallback: algumas builds/versões podem trazer no result.error
+      if (result?.error) {
+        const err = String(result.error);
+
+        if (err.startsWith('BILLING_BLOCK:')) {
+          const token = err.slice('BILLING_BLOCK:'.length).trim();
+          sessionStorage.setItem(STORAGE_KEY, token);
+          toast.dismiss(toastId);
+          setLoading(false);
+          router.push('/acesso_bloqueado');
           return;
         }
 
-        toast.success('Login autorizado! Entrando...', { id: toastId });
+        // compat antigo
+        const isOldBlocked =
+          err.includes('ACESSO SUSPENSO') ||
+          err.includes('Acesso suspenso') ||
+          err.includes('teste gratuito expirou') ||
+          err.includes('Seu teste gratuito expirou');
 
-        // ✅ IMPORTANTE: faz o alerta financeiro reaparecer a cada novo login
-        try {
-          sessionStorage.removeItem(FIN_ALERT_DISMISS_KEY);
-        } catch {}
+        if (isOldBlocked) {
+          const fallbackPayload = base64UrlEncodeUtf8({
+            code: err.includes('teste gratuito') ? 'TRIAL_EXPIRADO' : 'BLOQUEADO',
+            motivo: err.replace(/^🚫\s*/g, ''),
+            email: email.trim().toLowerCase(),
+          });
 
-        const sessionRes = await fetch('/api/auth/session');
-        const sessionData = await sessionRes.json();
+          sessionStorage.setItem(STORAGE_KEY, fallbackPayload);
+          toast.dismiss(toastId);
+          setLoading(false);
+          router.push('/acesso_bloqueado');
+          return;
+        }
 
-        if (sessionData?.user?.cargo === 'SUPER_ADMIN') router.push('/saas');
-        else if (sessionData?.user?.cargo === 'ADMIN') router.push('/admin');
-        else router.push('/funcionario');
-      } catch (err) {
-        toast.error('Erro de conexão.', { id: toastId });
+        toast.error('E-mail ou senha inválidos.', { id: toastId });
         setLoading(false);
+        return;
       }
-    };
 
+      toast.success('Login autorizado! Entrando...', { id: toastId });
+
+      try {
+        sessionStorage.removeItem(FIN_ALERT_DISMISS_KEY);
+      } catch {}
+
+      const sessionRes = await fetch('/api/auth/session');
+      const sessionData = await sessionRes.json();
+
+      if (sessionData?.user?.cargo === 'SUPER_ADMIN') router.push('/saas');
+      else if (sessionData?.user?.cargo === 'ADMIN') router.push('/admin');
+      else router.push('/funcionario');
+    } catch {
+      toast.error('Erro de conexão.', { id: toastId });
+      setLoading(false);
+    }
+  };
 
   // === RECUPERAR SENHA ===
   const handleRecovery = async (e: React.FormEvent) => {
@@ -179,7 +188,7 @@ export default function LoginPage() {
       toast.success('Se o e-mail existir, enviamos um link para você!', { id: toastId, duration: 5000 });
       setShowRecovery(false);
       setPassword('');
-    } catch (error) {
+    } catch {
       toast.error('Erro ao tentar enviar e-mail.', { id: toastId });
     } finally {
       setLoading(false);
@@ -259,7 +268,6 @@ export default function LoginPage() {
           <p className="text-slate-400 text-sm">Gestão Inteligente de Ponto</p>
         </div>
 
-        {/* FORMULÁRIO (ALTERNÂNCIA) */}
         {!showRecovery ? (
           <form onSubmit={handleLogin} className="space-y-5 animate-in slide-in-from-left-4 duration-300">
             <div className="space-y-1">
@@ -372,7 +380,6 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* RODAPÉ DO APP (PWA) */}
         {!isStandalone && !showRecovery && (
           <div className="pt-6 mt-2">
             <div className="relative flex py-2 items-center">

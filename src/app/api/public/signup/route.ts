@@ -13,6 +13,11 @@ function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
 
+const MS_DAY = 24 * 60 * 60 * 1000;
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * MS_DAY);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -57,16 +62,20 @@ export async function POST(req: Request) {
     }
     if (cnpj && cnpj.length !== 14) {
       return NextResponse.json(
-        { ok: false, erro: "CNPJ inválido. Informe 14 dígitos ou deixe em branco." },
+        {
+          ok: false,
+          erro: "CNPJ inválido. Informe 14 dígitos ou deixe em branco.",
+        },
         { status: 400 }
       );
     }
 
     const senhaHash = await bcrypt.hash(password, 10);
 
-    // ✅ Trial de 14 dias (regra do "teste grátis")
+    // ✅ Trial de 14 dias + 1ª fatura 30 dias depois do fim do trial (44 dias após criação)
     const agora = new Date();
-    const trialAte = new Date(agora.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const trialAte = addDays(agora, 14);
+    const primeiraFaturaVenceEm = addDays(trialAte, 30);
 
     const result = await prisma.$transaction(async (tx) => {
       const empresa = await tx.empresa.create({
@@ -87,6 +96,12 @@ export async function POST(req: Request) {
           cobrancaAtiva: true,
           trialAte,
           pagoAte: null,
+
+          // ✅ novo fluxo: vencimento real controlado por anchor
+          billingAnchorAt: primeiraFaturaVenceEm,
+
+          // mantém default, mas não vamos depender dele para o primeiro ciclo
+          diaVencimento: 15,
         } as any,
       });
 

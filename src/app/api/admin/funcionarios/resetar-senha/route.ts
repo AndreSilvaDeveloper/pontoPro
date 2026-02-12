@@ -15,8 +15,8 @@ export async function POST(request: Request) {
   try {
     const { usuarioId } = await request.json();
 
-    // 1. Criptografa a senha padrão "mudar123"
-    const senhaPadraoHash = await bcrypt.hash('mudar123', 10);
+    // 1. Criptografa a senha padrão "1234"
+    const senhaPadraoHash = await bcrypt.hash('1234', 10);
 
     // 2. Salva o HASH no banco, não o texto puro
     await prisma.usuario.update({
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ sucesso: true, mensagem: 'Senha resetada para mudar123' });
+    return NextResponse.json({ sucesso: true, mensagem: 'Senha resetada para 1234' });
 
   } catch (error) {
     console.error(error);

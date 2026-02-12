@@ -46,7 +46,7 @@ export default function TrocarSenhaPage() {
           <div className="mx-auto w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mb-4 text-red-500">
             <Lock size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Troca Obrigatória</h1>
+          <h1 className="text-2xl font-bold text-white mb-2">Troca de senha Obrigatória</h1>
           <p className="text-slate-400 text-sm">
             Para sua segurança, você precisa definir uma nova senha antes de continuar.
           </p>

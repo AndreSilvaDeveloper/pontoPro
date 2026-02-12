@@ -8,26 +8,40 @@ import { enviarEmailSeguro } from "@/lib/email";
 
 export const runtime = "nodejs";
 
+const MS_DAY = 24 * 60 * 60 * 1000;
+function addDays(date: Date, days: number) {
+  return new Date(date.getTime() + days * MS_DAY);
+}
+
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
 
   // @ts-ignore
   if (!session || session.user.cargo !== "SUPER_ADMIN") {
-    return NextResponse.json({ erro: "Acesso restrito ao Super Admin" }, { status: 403 });
+    return NextResponse.json(
+      { erro: "Acesso restrito ao Super Admin" },
+      { status: 403 }
+    );
   }
 
   try {
     const body = await request.json();
     const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial } = body;
 
-    const userExistente = await prisma.usuario.findUnique({ where: { email: emailDono } });
+    const userExistente = await prisma.usuario.findUnique({
+      where: { email: emailDono },
+    });
     if (userExistente) {
-      return NextResponse.json({ erro: "Este email já possui cadastro." }, { status: 400 });
+      return NextResponse.json(
+        { erro: "Este email já possui cadastro." },
+        { status: 400 }
+      );
     }
 
-    // ✅ Trial de 14 dias
+    // ✅ Trial 14 dias + 1ª fatura 30 dias depois do trial (44 dias após criação)
     const agora = new Date();
-    const trialAte = new Date(agora.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const trialAte = addDays(agora, 14);
+    const primeiraFaturaVenceEm = addDays(trialAte, 30);
 
     // 1) Cria a Empresa (já com cobrança configurada)
     const empresa = await prisma.empresa.create({
@@ -50,8 +64,12 @@ export async function POST(request: Request) {
         cobrancaAtiva: true,
         trialAte,
         pagoAte: null,
-        diaVencimento: 15,       // importante se sua coluna é NOT NULL
-        billingAnchorAt: agora,  // opcional, mas ajuda manter consistente
+
+        // ✅ vencimento oficial do ciclo (1ª fatura)
+        billingAnchorAt: primeiraFaturaVenceEm,
+
+        // mantém por compatibilidade (não é mais fonte principal)
+        diaVencimento: 15,
       } as any,
     });
 
@@ -79,7 +97,7 @@ export async function POST(request: Request) {
             <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nomeDono}</strong>!</p>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
                 A empresa <strong>${nomeEmpresa}</strong> foi ativada com sucesso em nossa plataforma. <br>
-                Seu período de teste é de <strong>14 dias</strong>.
+                Seu período de teste é de <strong>14 dias</strong> e a <strong>primeira fatura</strong> vence 30 dias após o fim do teste.
             </p>
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
                 <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold;">Credenciais de Gestor</p>
