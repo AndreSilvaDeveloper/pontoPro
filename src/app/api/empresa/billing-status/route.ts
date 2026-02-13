@@ -7,13 +7,15 @@ import { getBillingStatus } from "@/lib/billing";
 
 export const runtime = "nodejs";
 
+const ADMIN_CARGOS = ["ADMIN", "SUPER_ADMIN", "DONO"] as const;
+
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ ok: false }, { status: 401 });
 
   const usuario = await prisma.usuario.findUnique({
     where: { email: session.user.email },
-    select: { empresaId: true, cargo: true },
+    select: { id: true, empresaId: true, cargo: true, email: true, nome: true },
   });
   if (!usuario?.empresaId) return NextResponse.json({ ok: false }, { status: 404 });
 
@@ -70,24 +72,47 @@ export async function GET() {
 
   const st = getBillingStatus(billingEmpresa as any);
 
+  const cargo = (usuario.cargo || "FUNCIONARIO").toString().toUpperCase();
+  const isAdmin = (ADMIN_CARGOS as readonly string[]).includes(cargo);
+
+  // 🔐 Para funcionário: NÃO vazar motivo, nem dados financeiros, nem detalhes do billing
+  const billingSafeForEmployee = {
+    blocked: Boolean(st?.blocked),
+    // sem "message", sem "days", sem "reason" etc.
+  };
+
   return NextResponse.json({
     ok: true,
+
+    // ✅ info mínima do usuário para o front decidir a tela
+    user: {
+      id: usuario.id,
+      nome: usuario.nome ?? null,
+      email: usuario.email ?? session.user.email ?? null,
+      cargo,
+    },
+    isAdmin,
+
     empresa: {
       id: billingEmpresa.id,
       nome: billingEmpresa.nome,
       diaVencimento: billingEmpresa.diaVencimento ?? 15,
-      chavePix: billingEmpresa.chavePix ?? null,
       cobrancaAtiva: billingEmpresa.cobrancaAtiva ?? true,
-      cobrancaWhatsapp: billingEmpresa.cobrancaWhatsapp ?? null,
       isFilial: Boolean(empUser.matrizId),
 
-      // ASAAS (ciclo atual)
-      asaasCustomerId: billingEmpresa.asaasCustomerId ?? null,
-      asaasCurrentPaymentId: billingEmpresa.asaasCurrentPaymentId ?? null,
-      asaasCurrentDueDate: billingEmpresa.asaasCurrentDueDate
-        ? billingEmpresa.asaasCurrentDueDate.toISOString()
-        : null,
+      // 🔐 Só admin recebe dados financeiros/asaas
+      chavePix: isAdmin ? billingEmpresa.chavePix ?? null : null,
+      cobrancaWhatsapp: isAdmin ? billingEmpresa.cobrancaWhatsapp ?? null : null,
+
+      asaasCustomerId: isAdmin ? billingEmpresa.asaasCustomerId ?? null : null,
+      asaasCurrentPaymentId: isAdmin ? billingEmpresa.asaasCurrentPaymentId ?? null : null,
+      asaasCurrentDueDate:
+        isAdmin && billingEmpresa.asaasCurrentDueDate
+          ? billingEmpresa.asaasCurrentDueDate.toISOString()
+          : null,
     },
-    billing: st,
+
+    // 🔐 Só admin recebe billing completo (com motivo/mensagem)
+    billing: isAdmin ? st : billingSafeForEmployee,
   });
 }
