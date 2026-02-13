@@ -33,6 +33,16 @@ model Empresa {
 
   billingAnchorAt   DateTime?  // âncora real do vencimento (recomendado)
   cobrancaWhatsapp  String?    // ex: "5532991473554"
+  
+  asaasCustomerId     String?
+  asaasCurrentPaymentId String?
+  asaasCurrentDueDate DateTime?
+
+
+
+
+
+
 }
 
 model Usuario {
@@ -62,6 +72,8 @@ model Usuario {
   pontos             Ponto[]
   solicitacoes       SolicitacaoAjuste[]
   empresa            Empresa?            @relation(fields: [empresaId], references: [id])
+
+
 }
 
 model AdminLoja {
@@ -142,3 +154,18 @@ enum ModoValidacaoPonto {
   GPS
   PC_IP
 }
+
+
+model AsaasWebhookEvent {
+  id        String   @id @default(cuid())
+  event     String
+  paymentId String
+  // payload bruto (útil pra auditoria/debug)
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@unique([event, paymentId])
+  @@index([paymentId])
+  @@map("asaas_webhook_event")
+}
+

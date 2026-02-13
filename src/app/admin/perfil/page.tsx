@@ -71,6 +71,23 @@ type FaturaState = {
   };
 };
 
+type AsaasPix = {
+  success: boolean;
+  encodedImage: string; // base64 (png)
+  payload: string; // copia e cola
+  expirationDate?: string;
+  description?: string;
+};
+
+type AsaasPaymentState = {
+  paymentId: string;
+  dueDate: string | null;
+  invoiceUrl: string | null;
+  boletoUrl: string | null;
+  identificationField: string | null;
+  pix: AsaasPix | null;
+};
+
 export default function PerfilAdmin() {
   const { data: session } = useSession();
 
@@ -82,8 +99,13 @@ export default function PerfilAdmin() {
   const [fatura, setFatura] = useState<FaturaState | null>(null);
   const [loadingFatura, setLoadingFatura] = useState(true);
 
+  const [asaas, setAsaas] = useState<AsaasPaymentState | null>(null);
+  const [loadingAsaas, setLoadingAsaas] = useState(false);
+  const [msgAsaas, setMsgAsaas] = useState<string | null>(null);
+
   useEffect(() => {
     carregarDadosFinanceiros();
+    carregarCobrancaAtual();
   }, []);
 
   const carregarDadosFinanceiros = async () => {
@@ -118,6 +140,47 @@ export default function PerfilAdmin() {
     }
   };
 
+  const carregarCobrancaAtual = async () => {
+    try {
+      const res = await axios.get("/api/admin/asaas/cobranca-atual");
+      if (!res.data?.ok) return;
+
+      if (res.data?.hasPayment) setAsaas(res.data.asaas);
+      else setAsaas(null);
+    } catch (e) {
+      console.error("Erro ao buscar cobrança atual", e);
+    }
+  };
+
+  const gerarCobrancaAsaas = async () => {
+    setLoadingAsaas(true);
+    setMsgAsaas(null);
+    try {
+      const res = await axios.post("/api/admin/asaas/gerar-cobranca");
+      if (!res.data?.ok) throw new Error("Falha ao gerar cobrança");
+      setAsaas(res.data.asaas);
+      setMsgAsaas(res.data.reused ? "Cobrança carregada." : "Cobrança gerada com sucesso!");
+    } catch (e) {
+      console.error("Erro ao gerar cobrança ASAAS", e);
+      setMsgAsaas("Erro ao gerar cobrança. Tente novamente.");
+    } finally {
+      setLoadingAsaas(false);
+    }
+  };
+
+  const copiarPix = async () => {
+    const payload = asaas?.pix?.payload;
+    if (!payload) return;
+    try {
+      await navigator.clipboard.writeText(payload);
+      setMsgAsaas("Código PIX copiado!");
+      setTimeout(() => setMsgAsaas(null), 2000);
+    } catch {
+      setMsgAsaas("Não foi possível copiar. Copie manualmente.");
+      setTimeout(() => setMsgAsaas(null), 2500);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
@@ -138,6 +201,7 @@ export default function PerfilAdmin() {
     }
   };
 
+  // Mantido (fallback), mas a UI principal agora usa ASAAS
   const baixarBoleto = () => {
     if (!fatura) return;
 
@@ -259,6 +323,129 @@ export default function PerfilAdmin() {
     }
   };
 
+  const renderPagamentoAsaas = () => {
+    if (!asaas) return null;
+
+    const qrSrc = asaas.pix?.encodedImage
+      ? `data:image/png;base64,${asaas.pix.encodedImage}`
+      : null;
+
+    return (
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-white text-lg">Pagamento</h3>
+            <p className="text-slate-400 text-sm">
+              Vencimento: <span className="text-emerald-400 font-bold">{asaas.dueDate ?? "—"}</span>{" "}
+              • ID: <span className="text-slate-300">{asaas.paymentId}</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {asaas.boletoUrl && (
+              <a
+                href={asaas.boletoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2"
+              >
+                <FileText size={16} /> Abrir Boleto (PDF)
+              </a>
+            )}
+
+            {asaas.invoiceUrl && (
+              <a
+                href={asaas.invoiceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-xs"
+              >
+                Pagar no Cartão
+              </a>
+            )}
+
+            <button
+              onClick={gerarCobrancaAsaas}
+              disabled={loadingAsaas}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs disabled:opacity-50"
+            >
+              {loadingAsaas ? "Gerando..." : "Gerar/Recarregar"}
+            </button>
+          </div>
+        </div>
+
+        {msgAsaas && (
+          <div className="mt-4 p-3 rounded-lg text-sm font-bold bg-slate-950 border border-slate-800 text-slate-200">
+            {msgAsaas}
+          </div>
+        )}
+
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+            <h4 className="font-bold text-emerald-400 mb-3">PIX</h4>
+
+            {qrSrc ? (
+              <div className="flex flex-col items-center gap-3">
+                <img src={qrSrc} alt="QR Code Pix" className="w-60 h-60 rounded-lg bg-white p-2" />
+                <button
+                  onClick={copiarPix}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs"
+                >
+                  Copiar PIX (Copia e Cola)
+                </button>
+
+                <div className="w-full">
+                  <p className="text-slate-400 text-xs mb-1">Copia e cola:</p>
+                  <textarea
+                    readOnly
+                    value={asaas.pix?.payload ?? ""}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-200"
+                    rows={4}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="text-slate-400 text-sm">
+                PIX não disponível para esta cobrança (por enquanto). Use o boleto ou cartão.
+              </p>
+            )}
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+            <h4 className="font-bold text-slate-200 mb-3">Boleto</h4>
+
+            {asaas.identificationField ? (
+              <div>
+                <p className="text-slate-400 text-xs mb-1">Linha digitável:</p>
+                <textarea
+                  readOnly
+                  value={asaas.identificationField}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-200"
+                  rows={3}
+                />
+              </div>
+            ) : (
+              <p className="text-slate-400 text-sm">
+                Linha digitável ainda não retornou (normal em alguns casos). Use “Abrir Boleto (PDF)”.
+              </p>
+            )}
+
+            {asaas.boletoUrl && (
+              <a
+                href={asaas.boletoUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg font-bold text-xs items-center gap-2"
+              >
+                <FileText size={16} /> Abrir 2ª via / PDF
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderAlertasFinanceiros = () => {
     if (!fatura) return null;
 
@@ -278,7 +465,7 @@ export default function PerfilAdmin() {
             </div>
           </div>
           <button
-            onClick={baixarBoleto}
+            onClick={gerarCobrancaAsaas}
             className="bg-amber-500 hover:bg-amber-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2"
           >
             <FileText size={16} /> VER FATURA
@@ -288,7 +475,7 @@ export default function PerfilAdmin() {
     }
 
     // PAGO
-    if (fatura.pago) {
+    if (fatura.pago && !asaas) {
       return (
         <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -324,7 +511,7 @@ export default function PerfilAdmin() {
               </p>
             </div>
           </div>
-          <button onClick={baixarBoleto} className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-sm">
+          <button onClick={gerarCobrancaAsaas} className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold text-sm">
             REGULARIZAR AGORA
           </button>
         </div>
@@ -345,7 +532,7 @@ export default function PerfilAdmin() {
               </p>
             </div>
           </div>
-          <button onClick={baixarBoleto} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
+          <button onClick={gerarCobrancaAsaas} className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/50 px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
             <FileText size={16} /> 2ª VIA DO BOLETO
           </button>
         </div>
@@ -366,7 +553,7 @@ export default function PerfilAdmin() {
               </p>
             </div>
           </div>
-          <button onClick={baixarBoleto} className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
+          <button onClick={gerarCobrancaAsaas} className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2">
             <FileText size={16} /> PAGAR AGORA
           </button>
         </div>
@@ -386,7 +573,7 @@ export default function PerfilAdmin() {
             </p>
           </div>
         </div>
-        <button onClick={baixarBoleto} className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2">
+        <button onClick={gerarCobrancaAsaas} className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-lg font-bold text-xs flex items-center gap-2">
           <FileText size={16} /> VISUALIZAR FATURA
         </button>
       </div>
@@ -407,6 +594,9 @@ export default function PerfilAdmin() {
         </div>
 
         {!loadingFatura && renderAlertasFinanceiros()}
+
+        {/* Render do ASAAS (PIX + boleto + cartão) */}
+        {renderPagamentoAsaas()}
 
         <div className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex items-center gap-4">
           <div className="w-16 h-16 bg-purple-900/30 rounded-full flex items-center justify-center text-purple-400">

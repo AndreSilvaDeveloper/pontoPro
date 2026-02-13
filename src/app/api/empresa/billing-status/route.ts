@@ -31,12 +31,19 @@ export async function GET() {
       billingAnchorAt: true,
       chavePix: true,
       cobrancaWhatsapp: true,
+
+      // ASAAS (ciclo atual)
+      asaasCustomerId: true,
+      asaasCurrentPaymentId: true,
+      asaasCurrentDueDate: true,
     },
   });
 
   if (!empUser) return NextResponse.json({ ok: false }, { status: 404 });
 
   let billingEmpresa = empUser;
+
+  // Se for filial, usa matriz para billing
   if (empUser.matrizId) {
     const matriz = await prisma.empresa.findUnique({
       where: { id: empUser.matrizId },
@@ -52,6 +59,10 @@ export async function GET() {
         billingAnchorAt: true,
         chavePix: true,
         cobrancaWhatsapp: true,
+
+        asaasCustomerId: true,
+        asaasCurrentPaymentId: true,
+        asaasCurrentDueDate: true,
       },
     });
     if (matriz) billingEmpresa = matriz;
@@ -67,7 +78,15 @@ export async function GET() {
       diaVencimento: billingEmpresa.diaVencimento ?? 15,
       chavePix: billingEmpresa.chavePix ?? null,
       cobrancaAtiva: billingEmpresa.cobrancaAtiva ?? true,
+      cobrancaWhatsapp: billingEmpresa.cobrancaWhatsapp ?? null,
       isFilial: Boolean(empUser.matrizId),
+
+      // ASAAS (ciclo atual)
+      asaasCustomerId: billingEmpresa.asaasCustomerId ?? null,
+      asaasCurrentPaymentId: billingEmpresa.asaasCurrentPaymentId ?? null,
+      asaasCurrentDueDate: billingEmpresa.asaasCurrentDueDate
+        ? billingEmpresa.asaasCurrentDueDate.toISOString()
+        : null,
     },
     billing: st,
   });
