@@ -192,8 +192,8 @@ export function getBillingStatus(
         code: "PENDING_FIRST_INVOICE",
         message:
           diasAteVencer === 0
-            ? "Seu trial acabou e sua 1ª fatura vence hoje."
-            : `Seu trial acabou. Sua 1ª fatura vence em ${diasAteVencer} dias.`,
+            ? "Seu período de teste acabou e sua 1ª fatura vence hoje."
+            : `Seu período de teste acabou. Sua 1ª fatura vence em ${diasAteVencer} dias.`,
         dueAtISO: anchorAt.toISOString(),
         dueAt: anchorAt.toISOString(),
         days: diasAteVencer,
