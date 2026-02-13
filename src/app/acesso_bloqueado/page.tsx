@@ -79,79 +79,101 @@ export default function BloqueadoPage() {
   };
 
   const abrirPagamento = async () => {
-    setPayLoading(true);
-    setPayError(null);
+  setPayLoading(true);
+  setPayError(null);
 
+  // resolve o melhor link possível (prioriza BOLETO Pix)
+  const resolveUrlFromAsaas = (obj: any): string | null => {
+    if (!obj) return null;
+
+    // ✅ PRIORIDADE: invoice do PIX (BOLETO Pix)
+    const pixInvoice =
+      obj?.pix?.invoiceUrl ??
+      obj?.asaas?.pix?.invoiceUrl ??
+      obj?.pixInvoiceUrl ??
+      null;
+
+    if (pixInvoice) return pixInvoice;
+
+    // fallback: invoiceUrl genérico (checkout)
+    const invoice = obj?.invoiceUrl ?? obj?.asaas?.invoiceUrl ?? null;
+    if (invoice) return invoice;
+
+    // fallback: boleto url/pdf
+    const boletoUrl =
+      obj?.boleto?.boletoUrl ??
+      obj?.boleto?.bankSlipUrl ??
+      obj?.bankSlipUrl ??
+      obj?.boletoUrl ??
+      null;
+
+    if (boletoUrl) return boletoUrl;
+
+    return null;
+  };
+
+  // helper: lê resposta como JSON quando possível, senão tenta extrair mensagem
+  const safeJson = async (r: Response) => {
+    const text = await r.text();
+    if (!text) return null;
     try {
-      // 1) tenta pegar cobrança atual
-      const r1 = await fetch("/api/admin/asaas/cobranca-atual", { cache: "no-store" });
-      const j1 = await r1.json();
-
-      let asaas = j1?.hasPayment ? j1?.asaas : null;
-
-      // 2) se não tiver link, gera
-      const resolveUrlFromAsaas = (obj: any): string | null => {
-        if (!obj) return null;
-
-        // ✅ PRIORIDADE: BOLETO Pix (invoice do PIX)
-        const pixInvoice =
-          obj?.pix?.invoiceUrl ??
-          obj?.asaas?.pix?.invoiceUrl ??
-          obj?.pixInvoiceUrl ??
-          null;
-
-        if (pixInvoice) return pixInvoice;
-
-        // fallback: invoiceUrl genérico
-        const invoice = obj?.invoiceUrl ?? obj?.asaas?.invoiceUrl ?? null;
-        if (invoice) return invoice;
-
-        // fallback: boleto url/pdf se existir
-        const boletoUrl =
-          obj?.boleto?.boletoUrl ??
-          obj?.boleto?.bankSlipUrl ??
-          obj?.bankSlipUrl ??
-          obj?.boletoUrl ??
-          null;
-
-        if (boletoUrl) return boletoUrl;
-
-        return null;
-      };
-
-      let url = resolveUrlFromAsaas(asaas);
-
-      if (!url) {
-        const r2 = await fetch("/api/admin/asaas/gerar-cobranca", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        const text = await r2.text();
-        let j2: any = null;
-        try {
-          j2 = text ? JSON.parse(text) : null;
-        } catch {
-          throw new Error("API não retornou JSON ao gerar cobrança.");
-        }
-
-        if (!r2.ok || !j2?.ok) throw new Error(j2?.error || "Falha ao gerar cobrança");
-
-        asaas = j2?.asaas ?? null;
-        url = resolveUrlFromAsaas(asaas);
-      }
-
-      if (!url) {
-        throw new Error("Não foi possível obter o link do BOLETO Pix no Asaas.");
-      }
-
-      openInNewTab(url);
-    } catch (e: any) {
-      setPayError(e?.message || "Erro ao abrir pagamento");
-    } finally {
-      setPayLoading(false);
+      return JSON.parse(text);
+    } catch {
+      // se veio HTML/texto, devolve algo "parseável"
+      return { ok: false, error: text.slice(0, 300) };
     }
   };
+
+  try {
+    // 1) tenta pegar cobrança atual
+    let asaas: any = null;
+
+    const r1 = await fetch("/api/admin/asaas/cobranca-atual", { cache: "no-store" });
+    const j1 = await safeJson(r1);
+
+    // aceita formatos:
+    // { hasPayment: true, asaas: {...} }
+    // { ok: true, asaas: {...} }
+    // { asaas: {...} }
+    if (r1.ok) {
+      if (j1?.hasPayment === true) asaas = j1?.asaas ?? null;
+      else if (j1?.ok === true) asaas = j1?.asaas ?? null;
+      else if (j1?.asaas) asaas = j1.asaas;
+    }
+
+    let url = resolveUrlFromAsaas(asaas);
+
+    // 2) se não tem cobrança/link, gera agora
+    if (!url) {
+      const r2 = await fetch("/api/admin/asaas/gerar-cobranca", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const j2 = await safeJson(r2);
+
+      if (!r2.ok || j2?.ok === false) {
+        throw new Error(j2?.error || "Falha ao gerar cobrança no Asaas.");
+      }
+
+      asaas = j2?.asaas ?? j2;
+      url = resolveUrlFromAsaas(asaas);
+    }
+
+    // 3) se ainda não tem url, erro claro
+    if (!url) {
+      throw new Error("Não foi possível obter o link do BOLETO Pix (invoice) no Asaas.");
+    }
+
+    // 4) abre
+    openInNewTab(url);
+  } catch (e: any) {
+    setPayError(e?.message || "Erro ao abrir pagamento");
+  } finally {
+    setPayLoading(false);
+  }
+};
+
 
   useEffect(() => {
     mountedRef.current = true;
