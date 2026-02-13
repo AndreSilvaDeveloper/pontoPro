@@ -27,11 +27,20 @@ function rangeDiaSPFromISO(novoHorarioISO: string) {
   const dt = new Date(novoHorarioISO);
   const dia = getDiaSP(dt);
 
-  // Brasil normalmente -03:00 (SP). Isso resolve o caso prático do seu sistema.
+  // SP normalmente -03:00. (mesma abordagem que você já usa)
   const inicio = new Date(`${dia}T00:00:00.000-03:00`);
   const fim = new Date(`${dia}T23:59:59.999-03:00`);
 
   return { dia, inicio, fim };
+}
+
+// ✅ range do minuto (trava “mesmo horário”, ignorando segundos/ms)
+function rangeMinuto(date: Date) {
+  const ini = new Date(date);
+  ini.setSeconds(0, 0);
+  const fim = new Date(ini);
+  fim.setMinutes(fim.getMinutes() + 1);
+  return { ini, fim };
 }
 
 export async function POST(request: Request) {
@@ -49,39 +58,106 @@ export async function POST(request: Request) {
       return NextResponse.json({ erro: 'Horário e Motivo são obrigatórios' }, { status: 400 });
     }
 
+    const novoHorarioDate = new Date(novoHorario);
+
     // ============================
-    // NOVO: Trava INCLUSÃO indevida
+    // ✅ DEFINE O TIPO EFETIVO
+    // - EDIÇÃO (pontoId): tipo vem do próprio ponto (subTipo)
+    // - INCLUSÃO (sem pontoId): tipo é obrigatório e vem do payload
     // ============================
-    // Se pontoId for null => é INCLUSÃO.
-    // Regra: só pode incluir se NÃO existir ponto do MESMO tipo no MESMO dia.
-    if (!pontoId) {
+    let tipoEfetivo: string | null = null;
+
+    if (pontoId) {
+      const pontoAtual = await prisma.ponto.findUnique({
+        where: { id: pontoId },
+        select: { dataHora: true, subTipo: true, usuarioId: true },
+      });
+
+      if (!pontoAtual) {
+        return NextResponse.json({ erro: 'Registro de ponto não encontrado.' }, { status: 404 });
+      }
+
+      // Segurança: impede mexer em ponto de outro usuário
+      if (pontoAtual.usuarioId !== session.user.id) {
+        return NextResponse.json({ erro: 'Não autorizado' }, { status: 403 });
+      }
+
+      tipoEfetivo = pontoAtual.subTipo;
+
+      // ✅ trava “ajuste para o mesmo horário do próprio registro” (mesmo minuto)
+      const { ini: atualIni, fim: atualFim } = rangeMinuto(pontoAtual.dataHora);
+      if (novoHorarioDate >= atualIni && novoHorarioDate < atualFim) {
+        return NextResponse.json(
+          {
+            erro: 'O novo horário é igual ao horário atual do registro (mesmo minuto). Altere para um horário diferente.',
+            code: 'SAME_AS_CURRENT',
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Inclusão: precisa do tipo
       if (!tipo) {
         return NextResponse.json({ erro: 'Tipo é obrigatório para inclusão.' }, { status: 400 });
       }
+      tipoEfetivo = tipo;
+    }
 
+    // ============================
+    // ✅ TRAVA: “mesmo horário já batido”
+    // - checa ponto no MESMO minuto para o MESMO subTipo
+    // - se for edição, ignora o próprio pontoId
+    // ============================
+    const { ini: minutoIni, fim: minutoFim } = rangeMinuto(novoHorarioDate);
+
+    const pontoMesmoHorario = await prisma.ponto.findFirst({
+      where: {
+        usuarioId: session.user.id,
+        subTipo: tipoEfetivo!,
+        dataHora: { gte: minutoIni, lt: minutoFim },
+        ...(pontoId ? { id: { not: pontoId } } : {}),
+      },
+      orderBy: { dataHora: 'asc' },
+    });
+
+    if (pontoMesmoHorario) {
+      return NextResponse.json(
+        {
+          erro: 'Você já possui um ponto registrado exatamente neste horário (mesmo minuto). Escolha um horário diferente.',
+          code: 'DUPLICATE_TIME',
+          tipo: tipoEfetivo,
+          horarioExistente: pontoMesmoHorario.dataHora,
+          pontoIdExistente: pontoMesmoHorario.id,
+        },
+        { status: 400 }
+      );
+    }
+
+    // ============================
+    // Trava INCLUSÃO indevida (sua regra atual)
+    // Regra: só pode incluir se NÃO existir ponto do MESMO tipo no MESMO dia.
+    // ============================
+    if (!pontoId) {
       const { dia, inicio, fim } = rangeDiaSPFromISO(novoHorario);
 
-      const pontoExistente = await prisma.ponto.findFirst({
+      const pontoExistenteDiaTipo = await prisma.ponto.findFirst({
         where: {
           usuarioId: session.user.id,
-          // seu schema: tipo = "NORMAL" e subTipo armazena ENTRADA/SAIDA...
-          // Pelo seu frontend, você está mandando "tipo" como ENTRADA/SAIDA...
-          // então aqui a checagem correta deve ser em subTipo (porque é o que representa ENTRADA/SAIDA_ALMOCO etc)
-          subTipo: tipo,
+          subTipo: tipoEfetivo!,
           dataHora: { gte: inicio, lte: fim },
         },
         orderBy: { dataHora: 'asc' },
       });
 
-      if (pontoExistente) {
+      if (pontoExistenteDiaTipo) {
         return NextResponse.json(
           {
-            erro: `Você já registrou ${String(tipo).replaceAll('_', ' ')} em ${dia}. Para corrigir horário, solicite AJUSTE (não INCLUSÃO).`,
+            erro: `Você já registrou ${String(tipoEfetivo).replaceAll('_', ' ')} em ${dia}. Para corrigir horário, solicite AJUSTE (não INCLUSÃO).`,
             code: 'USE_AJUSTE',
             dia,
-            tipoExistente: tipo,
-            pontoIdSugerido: pontoExistente.id,
-            horarioExistente: pontoExistente.dataHora,
+            tipoExistente: tipoEfetivo,
+            pontoIdSugerido: pontoExistenteDiaTipo.id,
+            horarioExistente: pontoExistenteDiaTipo.dataHora,
           },
           { status: 400 }
         );
@@ -89,7 +165,7 @@ export async function POST(request: Request) {
     }
 
     // ============================
-    // TRAVA DE DUPLICIDADE (solicitação pendente)
+    // TRAVA DE DUPLICIDADE (solicitação pendente) - sua regra atual
     // ============================
     if (pontoId) {
       const jaExiste = await prisma.solicitacaoAjuste.findFirst({
@@ -100,7 +176,10 @@ export async function POST(request: Request) {
       });
 
       if (jaExiste) {
-        return NextResponse.json({ erro: 'Já existe uma solicitação pendente para este registro.' }, { status: 400 });
+        return NextResponse.json(
+          { erro: 'Já existe uma solicitação pendente para este registro.' },
+          { status: 400 }
+        );
       }
     } else {
       // Inclusão: trava por mesmo horário + tipo + pendente
@@ -108,7 +187,7 @@ export async function POST(request: Request) {
         where: {
           usuarioId: session.user.id,
           novoHorario: new Date(novoHorario),
-          tipo: tipo,
+          tipo: tipoEfetivo!,
           status: 'PENDENTE',
         },
       });
@@ -120,12 +199,14 @@ export async function POST(request: Request) {
 
     // ============================
     // CRIAR SOLICITAÇÃO
+    // - edição: salva tipo como null (ou pode salvar tipoEfetivo se quiser)
+    // - inclusão: salva tipoEfetivo
     // ============================
     const solicitacao = await prisma.solicitacaoAjuste.create({
       data: {
         usuarioId: session.user.id,
         pontoId: pontoId || null,
-        tipo: tipo || null,
+        tipo: pontoId ? null : tipoEfetivo, // <- mantém comportamento: edição não precisa tipo
         novoHorario: new Date(novoHorario),
         motivo,
         status: 'PENDENTE',
