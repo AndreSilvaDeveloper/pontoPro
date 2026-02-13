@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,8 @@ import { LINKS, waLink } from '@/config/links'
 import { GalleryCarousel } from "@/components/landing/gallery-carousel";
 
 export default function LandingPage() {
+  const router = useRouter();
+
   // ========= Helpers (mobile/pwa-safe external open) =========
   const isMobile = () =>
     typeof navigator !== 'undefined' &&
@@ -25,6 +29,13 @@ export default function LandingPage() {
     typeof window !== 'undefined' &&
     (window.matchMedia?.('(display-mode: standalone)')?.matches ||
       (window.navigator as any).standalone)
+
+  // ✅ PWA instalado: abrir direto no /login
+  useEffect(() => {
+    if (isStandalone()) {
+      router.replace("/login");
+    }
+  }, [router]);
 
   const normalizeUrl = (rawUrl: string) => {
     if (!rawUrl) return ''
@@ -153,7 +164,8 @@ export default function LandingPage() {
               variant="outline"
               className="hidden border-purple-500/30 bg-transparent text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white md:inline-flex"
             >
-              <a href="/login" target="_blank" rel="noopener noreferrer">Login</a>
+              {/* ✅ Não usar target=_blank (no PWA vira outra janela/aba) */}
+              <Link href="/login">Login</Link>
             </Button>
 
             <Button

@@ -12,7 +12,8 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "WorkID - Gestão Inteligente",
   description: "Sistema de Ponto com Biometria e Geolocalização",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
+
 };
 
 export default function RootLayout({

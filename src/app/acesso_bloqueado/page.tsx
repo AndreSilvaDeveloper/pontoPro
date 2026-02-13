@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -20,6 +20,22 @@ type BlockPayload = {
   days?: number;
   at?: string;
 };
+
+// helper: abre link como o Histórico (target=_blank) com fallback
+function openInNewTab(url: string) {
+  // 1) tenta window.open simples (mais compatível p/ Asaas)
+  const w = window.open(url, "_blank");
+  if (w) return;
+
+  // 2) fallback: cria <a> e dispara click
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
 export default function BloqueadoPage() {
   const router = useRouter();
@@ -46,8 +62,6 @@ export default function BloqueadoPage() {
 
       setData(j);
 
-      // Heurística: se o backend retornar ok=true e não existir sinal de blocked,
-      // consideramos liberado e saímos da tela automaticamente.
       const isBlocked =
         j?.blocked === true ||
         j?.status?.blocked === true ||
@@ -58,11 +72,9 @@ export default function BloqueadoPage() {
 
       if (!isBlocked) {
         setAutoMsg("Pagamento identificado. Redirecionando...");
-        // Ajuste o destino se preferir (ex.: "/" ou "/app")
         router.replace("/admin");
       }
     } catch {
-      // Se der erro, mantém bloqueado (sem quebrar a tela)
       setData({ ok: false });
     } finally {
       if (!silent) setChecking(false);
@@ -74,33 +86,75 @@ export default function BloqueadoPage() {
     setPayError(null);
 
     try {
+      // 1) tenta pegar cobrança atual
       const r1 = await fetch("/api/admin/asaas/cobranca-atual", { cache: "no-store" });
       const j1 = await r1.json();
 
       let asaas = j1?.hasPayment ? j1?.asaas : null;
 
-      if (!asaas?.invoiceUrl && !asaas?.boletoUrl) {
+      // 2) se não tiver link, gera
+      // (aceita endpoints que retornem { ok, asaas: {...} } ou { hasPayment, asaas: {...} })
+      const resolveUrlFromAsaas = (obj: any): string | null => {
+        if (!obj) return null;
+
+        // ✅ PRIORIDADE: BOLETO Pix (invoice do PIX)
+        const pixInvoice =
+          obj?.pix?.invoiceUrl ??
+          obj?.asaas?.pix?.invoiceUrl ??
+          obj?.pixInvoiceUrl ??
+          null;
+
+        if (pixInvoice) return pixInvoice;
+
+        // fallback: invoiceUrl genérico (alguns endpoints retornam direto)
+        const invoice =
+          obj?.invoiceUrl ??
+          obj?.asaas?.invoiceUrl ??
+          null;
+
+        if (invoice) return invoice;
+
+        // fallback: boleto url/pdf se existir
+        const boletoUrl =
+          obj?.boleto?.boletoUrl ??
+          obj?.boleto?.bankSlipUrl ??
+          obj?.bankSlipUrl ??
+          obj?.boletoUrl ??
+          null;
+
+        if (boletoUrl) return boletoUrl;
+
+        return null;
+      };
+
+      let url = resolveUrlFromAsaas(asaas);
+
+      if (!url) {
         const r2 = await fetch("/api/admin/asaas/gerar-cobranca", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         });
 
-        const j2 = await r2.json();
-        if (!j2?.ok) throw new Error(j2?.error || "Falha ao gerar cobrança");
+        const text = await r2.text();
+        let j2: any = null;
+        try {
+          j2 = text ? JSON.parse(text) : null;
+        } catch {
+          throw new Error("API não retornou JSON ao gerar cobrança.");
+        }
+
+        if (!r2.ok || !j2?.ok) throw new Error(j2?.error || "Falha ao gerar cobrança");
 
         asaas = j2?.asaas ?? null;
+        url = resolveUrlFromAsaas(asaas);
       }
-
-      const url = asaas?.invoiceUrl || asaas?.boletoUrl;
 
       if (!url) {
-        throw new Error("Não foi possível obter o link da fatura no Asaas.");
+        throw new Error("Não foi possível obter o link do BOLETO Pix no Asaas.");
       }
 
-      const newWindow = window.open(url, "_blank", "noopener,noreferrer");
-      if (!newWindow) {
-        throw new Error("O navegador bloqueou a abertura da nova aba.");
-      }
+      // ✅ abre como o Histórico
+      openInNewTab(url);
     } catch (e: any) {
       setPayError(e?.message || "Erro ao abrir pagamento");
     } finally {
@@ -140,16 +194,18 @@ export default function BloqueadoPage() {
   const billing = data?.billing;
 
   const nomeEmpresa = empresa?.nome || payload?.empresaNome || "Empresa";
-  const motivo =
-    billing?.message ||
-    payload?.motivo ||
-    "Pendência financeira ou teste expirado.";
+  const motivo = billing?.message || payload?.motivo || "Pendência financeira ou teste expirado.";
 
   const pixKey = empresa?.chavePix || payload?.pixKey || null;
-  const whatsapp = (empresa?.cobrancaWhatsapp || payload?.whatsapp || "5532991473554")?.replace(/\D/g, "");
+  const whatsapp = (empresa?.cobrancaWhatsapp || payload?.whatsapp || "5532991473554")?.replace(
+    /\D/g,
+    ""
+  );
 
   const whatsappMsg = useMemo(() => {
-    const base = `Olá! Preciso regularizar meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nMotivo: ${motivo}\nE-mail: ${payload?.email || ""}\n\nVou enviar o comprovante aqui.`;
+    const base = `Olá! Preciso regularizar meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nMotivo: ${motivo}\nE-mail: ${
+      payload?.email || ""
+    }\n\nVou enviar o comprovante aqui.`;
     return `https://wa.me/${whatsapp}?text=${encodeURIComponent(base)}`;
   }, [whatsapp, nomeEmpresa, motivo, payload?.email]);
 
@@ -158,9 +214,7 @@ export default function BloqueadoPage() {
       <Card className="w-full max-w-md border-purple-500/20 bg-gradient-to-b from-[#0f1535]/95 to-[#0a0e27]/95 shadow-2xl shadow-purple-500/20">
         <CardHeader>
           <CardTitle className="text-white text-2xl">Acesso suspenso</CardTitle>
-          <CardDescription className="text-gray-400">
-            Empresa: {nomeEmpresa}
-          </CardDescription>
+          <CardDescription className="text-gray-400">Empresa: {nomeEmpresa}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4 text-gray-300">
@@ -178,10 +232,7 @@ export default function BloqueadoPage() {
 
           {/* ✅ Mobile: empilha | Desktop: lado a lado */}
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              asChild
-              className="w-full bg-purple-600 hover:bg-purple-700"
-            >
+            <Button asChild className="w-full bg-purple-600 hover:bg-purple-700">
               <Link href="/login">Voltar</Link>
             </Button>
 
@@ -196,7 +247,7 @@ export default function BloqueadoPage() {
             </Button>
           </div>
 
-          {/* Se houver sessão ativa, deixar um atalho pra fatura */}
+          {/* ✅ Botão para abrir BOLETO Pix */}
           {data?.ok && (
             <>
               <Button
@@ -205,33 +256,22 @@ export default function BloqueadoPage() {
                 disabled={payLoading}
                 className="w-full bg-emerald-600 hover:bg-emerald-700"
               >
-                {payLoading ? "Abrindo fatura..." : "Realizar pagamento"}
+                {payLoading ? "Abrindo BOLETO Pix..." : "Realizar pagamento"}
               </Button>
 
-              {payError && (
-                <p className="text-center text-xs text-red-400">
-                  {payError}
-                </p>
-              )}
+              {payError && <p className="text-center text-xs text-red-400">{payError}</p>}
             </>
           )}
 
-          {/* Status do polling */}
           <p className="text-center text-xs text-gray-500">
             {autoMsg
               ? autoMsg
               : checking
-                ? "Verificando status de pagamento..."
-                : "Verificação automática a cada 10s. Após pagar, esta tela será liberada automaticamente."}
+              ? "Verificando status de pagamento..."
+              : "Verificação automática a cada 10s. Após pagar, esta tela será liberada automaticamente."}
           </p>
 
-          {/* Botão manual pra forçar refresh agora */}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => fetchStatus()}
-            className="w-full"
-          >
+          <Button type="button" variant="secondary" onClick={() => fetchStatus()} className="w-full">
             Já paguei, atualizar agora
           </Button>
 
