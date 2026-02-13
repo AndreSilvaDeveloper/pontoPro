@@ -38,14 +38,22 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
   }, [billing]);
 
 
-  const closeModal = () => {
-  try {
-    localStorage.setItem(BILLING_CLOSED_KEY, "1");
-    window.dispatchEvent(new Event(BILLING_EVENT));
-  } catch {}
+    const closeModal = () => {
+    // 1) primeiro fecha o modal
+    setOpen(false);
 
-  setOpen(false);
-};
+    // 2) depois marca/avisa (no próximo ciclo de render)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try {
+          localStorage.setItem(BILLING_CLOSED_KEY, "1");
+        } catch {}
+
+        window.dispatchEvent(new Event(BILLING_EVENT));
+      });
+    });
+  };
+
 
 
   const ui = useMemo(() => {
@@ -90,7 +98,10 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
       : "bg-amber-500 hover:bg-amber-600 text-black";
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        data-billing-modal="open"
+      >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {}} />
 
       <div className={`relative w-full max-w-md rounded-2xl border ${bg} p-5 shadow-2xl`}>

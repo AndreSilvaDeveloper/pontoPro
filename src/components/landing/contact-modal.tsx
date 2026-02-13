@@ -15,8 +15,8 @@ export function ContactModal({ open, onOpenChange }: ContactModalProps) {
   const email = 'andreworkid@gmail.com'
   const emailUrl = `mailto:${email}`
 
-  const whatsappNumber = '5532991473554'
-  const whatsappLabel = '+55 32 99147-3554'
+  const whatsappNumber = '5532935005492'
+  const whatsappLabel = '+55 32 93500-5492'
   const whatsappText = encodeURIComponent('Olá! Vim pelo site OntimeIA. Quero conhecer o sistema e valores.')
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappText}`
 

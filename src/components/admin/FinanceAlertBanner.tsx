@@ -17,7 +17,7 @@ export default function FinanceAlertBanner({
   empresaNome,
   chavePix,
   linkPagamento = '/admin/perfil',
-  suporteWhats = '5532991473554',
+  suporteWhats = '5532935005492',
 }: {
   alertaFinanceiro: AlertaFinanceiro | null;
   empresaNome?: string;

@@ -32,7 +32,7 @@ model Empresa {
   pagoAte            DateTime?
 
   billingAnchorAt   DateTime?  // âncora real do vencimento (recomendado)
-  cobrancaWhatsapp  String?    // ex: "5532991473554"
+  cobrancaWhatsapp  String?    // ex: "5532935005492"
   
   asaasCustomerId     String?
   asaasCurrentPaymentId String?

@@ -78,7 +78,10 @@ export async function GET() {
   const billing = getBillingStatus(billingEmpresa as any);
 
   // IDs envolvidos (matriz + filiais)
-  const idsEmpresas = [billingEmpresa.id, ...(billingEmpresa.filiais?.map((f) => f.id) ?? [])];
+  const idsEmpresas = [
+    billingEmpresa.id,
+    ...(billingEmpresa.filiais?.map((f) => f.id) ?? []),
+  ];
 
   // funcionários (vidas) = NÃO admins
   const totalFuncionarios = await prisma.usuario.count({
@@ -114,6 +117,14 @@ export async function GET() {
       id: billingEmpresa.id,
       nome: billingEmpresa.nome,
       cnpj: billingEmpresa.cnpj ?? null,
+
+      // ✅ IMPORTANTÍSSIMO: enviar essas datas para o front mostrar corretamente
+      trialAte: billingEmpresa.trialAte ? billingEmpresa.trialAte.toISOString() : null,
+      billingAnchorAt: billingEmpresa.billingAnchorAt
+        ? billingEmpresa.billingAnchorAt.toISOString()
+        : null,
+      pagoAte: billingEmpresa.pagoAte ? billingEmpresa.pagoAte.toISOString() : null,
+
       chavePix: billingEmpresa.chavePix ?? null,
       cobrancaWhatsapp: billingEmpresa.cobrancaWhatsapp ?? null,
       diaVencimento: billingEmpresa.diaVencimento ?? 15,
@@ -122,7 +133,10 @@ export async function GET() {
     billing,
     fatura: {
       valor: valorFinal,
-      vencimentoISO: billing.dueAtISO, // trial => trialAte, billing => due day
+
+      // billing.dueAtISO em TRIAL = trialAte, em BILLING = dueAt (anchor/fallback)
+      vencimentoISO: billing.dueAtISO,
+
       pago: billing.paidForCycle,
       itens: {
         vidasExcedentes,

@@ -6,7 +6,7 @@ export const LINKS = {
 
   whatsapp: {
     // só números: país + DDD + número
-    number: '5532991473554',
+    number: '5532935005492',
 
     messages: {
       agendarDemo:

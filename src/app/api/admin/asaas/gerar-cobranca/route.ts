@@ -29,6 +29,7 @@ function maxISODate(a: string, b: string) {
 }
 
 function safeDateSP(dateISO: string) {
+  // 03:00Z evita “voltar um dia” em timezone BR
   return new Date(dateISO + "T03:00:00.000Z");
 }
 
@@ -67,9 +68,7 @@ function isValidCNPJ(cnpjRaw?: string | null) {
         : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
 
     let sum = 0;
-    for (let i = 0; i < weights.length; i++) {
-      sum += Number(base[i]) * weights[i];
-    }
+    for (let i = 0; i < weights.length; i++) sum += Number(base[i]) * weights[i];
     const mod = sum % 11;
     return mod < 2 ? 0 : 11 - mod;
   };
@@ -86,7 +85,7 @@ function normalizeCpfCnpj(doc?: string | null) {
   if (!d) return null;
   if (d.length === 11 && isValidCPF(d)) return d;
   if (d.length === 14 && isValidCNPJ(d)) return d;
-  return null; // inválido => não envia pro Asaas
+  return null;
 }
 
 async function ensureCustomer(params: {
@@ -107,7 +106,7 @@ async function ensureCustomer(params: {
 
   const { data } = await asaas.post("/customers", {
     name: params.nome,
-    ...(cpfCnpj ? { cpfCnpj } : {}), // ✅ só manda se for válido
+    ...(cpfCnpj ? { cpfCnpj } : {}),
     email: params.email ?? undefined,
     phone: params.phone ?? undefined,
   });
@@ -122,31 +121,68 @@ async function ensureCustomer(params: {
   return data.id;
 }
 
+async function getPixSafe(paymentId: string) {
+  try {
+    const pix = (await asaas.get(`/payments/${paymentId}/pixQrCode`)).data;
+    return pix ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function mapPix(payment: any, dueDate: string, pix: any) {
+  return {
+    paymentId: payment?.id ?? "",
+    dueDate,
+    invoiceUrl: payment?.invoiceUrl ?? null,
+    pix,
+  };
+}
+
+// tenta achar pagamento existente por externalReference + tipo + dueDate
+async function findExistingPayment(params: {
+  externalReference: string;
+  billingType: "PIX";
+  dueDate: string;
+}) {
+  try {
+    const { data } = await asaas.get("/payments", {
+      params: {
+        externalReference: params.externalReference,
+        billingType: params.billingType,
+        limit: 10,
+        offset: 0,
+      },
+    });
+
+    const list: any[] = Array.isArray(data?.data) ? data.data : [];
+    const match =
+      list.find((p) => String(p?.dueDate ?? "").slice(0, 10) === params.dueDate) ?? null;
+
+    return match;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST() {
   try {
     if (!process.env.ASAAS_BASE_URL || !process.env.ASAAS_API_KEY) {
-      return NextResponse.json(
-        { ok: false, error: "ASAAS não configurado" },
-        { status: 500 }
-      );
+      return NextResponse.json({ ok: false, error: "ASAAS não configurado" }, { status: 500 });
     }
 
     const session = await getServerSession(authOptions);
-    const empresaId = (session?.user as any)?.empresaId;
-
-    if (!empresaId)
-      return NextResponse.json({ ok: false }, { status: 401 });
+    const empresaIdSessao = (session?.user as any)?.empresaId as string | undefined;
+    if (!empresaIdSessao) return NextResponse.json({ ok: false }, { status: 401 });
 
     const empUser = await prisma.empresa.findUnique({
-      where: { id: empresaId },
+      where: { id: empresaIdSessao },
       include: { filiais: true },
     });
+    if (!empUser) return NextResponse.json({ ok: false }, { status: 404 });
 
-    if (!empUser)
-      return NextResponse.json({ ok: false }, { status: 404 });
-
-    let billingEmpresa = empUser;
-
+    // se for filial, cobra pela matriz
+    let billingEmpresa: any = empUser;
     if (empUser.matrizId) {
       const matriz = await prisma.empresa.findUnique({
         where: { id: empUser.matrizId },
@@ -168,9 +204,10 @@ export async function POST() {
     const rawDueDate = dueDateFromAnchor || dueDateFromBilling || todayISO;
     const dueDate = maxISODate(rawDueDate, todayISO);
 
+    // calcula valor
     const ids = [
       billingEmpresa.id,
-      ...(billingEmpresa.filiais?.map((f) => f.id) ?? []),
+      ...(billingEmpresa.filiais?.map((f: any) => f.id) ?? []),
     ];
 
     const totalFuncionarios = await prisma.usuario.count({
@@ -189,30 +226,6 @@ export async function POST() {
       (VALOR_BASE + vidasExcedentes * 7.9 + adminsExcedentes * 49.9).toFixed(2)
     );
 
-    if (
-      billingEmpresa.asaasCurrentPaymentId &&
-      billingEmpresa.asaasCurrentDueDate &&
-      billingEmpresa.asaasCurrentDueDate.toISOString().slice(0, 10) === dueDate
-    ) {
-      const paymentId = billingEmpresa.asaasCurrentPaymentId;
-
-      const payment = (await asaas.get(`/payments/${paymentId}`)).data;
-      const pix = (await asaas.get(`/payments/${paymentId}/pixQrCode`)).data;
-
-      return NextResponse.json({
-        ok: true,
-        reused: true,
-        asaas: {
-          paymentId,
-          dueDate,
-          invoiceUrl: payment?.invoiceUrl ?? null,
-          boletoUrl: payment?.bankSlipUrl ?? null,
-          identificationField: payment?.identificationField ?? null,
-          pix,
-        },
-      });
-    }
-
     const customerId = await ensureCustomer({
       empresaId: billingEmpresa.id,
       nome: billingEmpresa.nome,
@@ -221,50 +234,50 @@ export async function POST() {
       phone: billingEmpresa.cobrancaWhatsapp,
     });
 
-    const created = (
-      await asaas.post("/payments", {
-        customer: customerId,
+    // ✅ SOMENTE PIX: tenta achar PIX do ciclo, senão cria
+    let pixPayment =
+      (await findExistingPayment({
+        externalReference: billingEmpresa.id,
         billingType: "PIX",
-        value: valorFinal,
         dueDate,
-        description: `Assinatura Ontime - ${billingEmpresa.nome}`,
-        externalReference: billingEmpresa.id, // ok: webhook aceita id puro
-      })
-    ).data;
+      })) ?? null;
 
-    if (!created?.id)
-      return NextResponse.json(
-        { ok: false, error: "ASAAS não retornou id" },
-        { status: 500 }
-      );
+    if (!pixPayment) {
+      pixPayment = (
+        await asaas.post("/payments", {
+          customer: customerId,
+          billingType: "PIX",
+          value: valorFinal,
+          dueDate,
+          description: `Assinatura Ontime - ${billingEmpresa.nome}`,
+          externalReference: billingEmpresa.id,
+        })
+      ).data;
+    }
 
-    await prisma.empresa.update({
-      where: { id: billingEmpresa.id },
-      data: {
-        asaasCurrentPaymentId: created.id,
-        asaasCurrentDueDate: safeDateSP(dueDate),
-      },
-    });
+    // ✅ salva o PIX como current
+    if (pixPayment?.id) {
+      await prisma.empresa.update({
+        where: { id: billingEmpresa.id },
+        data: {
+          asaasCurrentPaymentId: pixPayment.id,
+          asaasCurrentDueDate: safeDateSP(dueDate),
+        },
+      });
+    }
 
-    const pix = (await asaas.get(`/payments/${created.id}/pixQrCode`)).data;
+    const pix = pixPayment?.id ? await getPixSafe(pixPayment.id) : null;
 
     return NextResponse.json({
       ok: true,
-      reused: false,
       asaas: {
-        paymentId: created.id,
         dueDate,
-        invoiceUrl: created?.invoiceUrl ?? null,
-        boletoUrl: created?.bankSlipUrl ?? null,
-        identificationField: created?.identificationField ?? null,
-        pix,
+        pix: pixPayment?.id ? mapPix(pixPayment, dueDate, pix) : null,
+        boleto: null, // ✅ não tem boleto
       },
     });
   } catch (err: any) {
-    console.error("[GERAR_COBRANCA_ASAAS]", err?.response?.data ?? err);
-    return NextResponse.json(
-      { ok: false, error: "Erro ao gerar cobrança" },
-      { status: 500 }
-    );
+    console.error("[GERAR_COBRANCA_ASAAS_PIX]", err?.response?.data ?? err);
+    return NextResponse.json({ ok: false, error: "Erro ao gerar cobrança" }, { status: 500 });
   }
 }
