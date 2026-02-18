@@ -292,7 +292,7 @@ export async function POST(request: Request) {
             data: {
               usuarioId: sol.usuarioId,
               dataHora: dataFinal,
-              tipo: 'NORMAL',
+              tipo: subTipoSolicitado ?? undefined, 
               subTipo: subTipoSolicitado, // ✅ AQUI é o certo
               latitude: 0,
               longitude: 0,
