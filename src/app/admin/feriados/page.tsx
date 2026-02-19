@@ -4,9 +4,19 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Calendar, Trash2, Plus, ArrowLeft, DownloadCloud, Loader } from 'lucide-react';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
 
 const PARCIAL_MARK = '__PARCIAL__:';
+
+type FeriadoDTO = {
+  id: string;
+  nome: string;
+  data: string; // ISO datetime (DateTime do Prisma serializado)
+  dataISO: string; // "YYYY-MM-DD" (enviado pelo GET normalizado)
+  empresaId?: string | null;
+  criadoEm: string;
+};
 
 function isValidTimeHHMM(v: string) {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
@@ -33,8 +43,14 @@ function parseParcialFromNome(nome: string): { baseNome: string; horaInicio?: st
   return { baseNome };
 }
 
+function dateFromISO(iso: string) {
+  // iso esperado: "YYYY-MM-DD"
+  // Força uma data estável (não varia com timezone do servidor/cliente)
+  return new Date(`${iso}T00:00:00`);
+}
+
 export default function GestaoFeriados() {
-  const [feriados, setFeriados] = useState<any[]>([]);
+  const [feriados, setFeriados] = useState<FeriadoDTO[]>([]);
   const [data, setData] = useState('');
   const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +66,7 @@ export default function GestaoFeriados() {
   }, []);
 
   const carregar = async () => {
-    const res = await axios.get('/api/admin/feriados');
+    const res = await axios.get<FeriadoDTO[]>('/api/admin/feriados');
     setFeriados(res.data);
   };
 
@@ -84,7 +100,7 @@ export default function GestaoFeriados() {
       setHoraInicio('08:00');
       setHoraFim('12:00');
 
-      carregar();
+      await carregar();
     } catch (error) {
       alert('Erro ao salvar');
     } finally {
@@ -98,13 +114,11 @@ export default function GestaoFeriados() {
 
     setImportando(true);
     try {
-      // Importa ano atual
       await axios.post('/api/admin/feriados/importar', { ano: anoAtual });
-      // Importa próximo ano (para garantir planejamento)
       const res = await axios.post('/api/admin/feriados/importar', { ano: anoAtual + 1 });
 
-      alert(res.data.message || 'Feriados importados com sucesso!');
-      carregar();
+      alert((res.data as any)?.message || 'Feriados importados com sucesso!');
+      await carregar();
     } catch (error) {
       alert('Erro ao conectar com a Brasil API.');
     } finally {
@@ -115,7 +129,7 @@ export default function GestaoFeriados() {
   const excluir = async (id: string) => {
     if (!confirm('Excluir este feriado?')) return;
     await axios.delete(`/api/admin/feriados?id=${id}`);
-    carregar();
+    await carregar();
   };
 
   return (
@@ -213,9 +227,7 @@ export default function GestaoFeriados() {
                     />
                   </div>
 
-                  <div className="text-[11px] text-slate-500 pb-2">
-                    Ex: Quarta-feira de Cinzas (08:00–12:00)
-                  </div>
+                  <div className="text-[11px] text-slate-500 pb-2">Ex: Quarta-feira de Cinzas (08:00–12:00)</div>
                 </div>
               )}
             </div>
@@ -225,6 +237,10 @@ export default function GestaoFeriados() {
         <div className="space-y-2">
           {feriados.map((f) => {
             const parsed = parseParcialFromNome(f.nome);
+
+            // ✅ Jeito 1: usa dataISO vindo do backend (estável e sem timezone bug)
+            const d = dateFromISO(f.dataISO);
+
             return (
               <div
                 key={f.id}
@@ -232,8 +248,8 @@ export default function GestaoFeriados() {
               >
                 <div className="flex items-center gap-4">
                   <div className="bg-purple-900/50 text-purple-300 p-2 rounded font-bold text-sm text-center min-w-[60px] flex flex-col">
-                    <span className="text-lg">{format(new Date(f.data), 'dd')}</span>
-                    <span className="text-[10px] uppercase">{format(new Date(f.data), 'MMM')}</span>
+                    <span className="text-lg">{format(d, 'dd', { locale: ptBR })}</span>
+                    <span className="text-[10px] uppercase">{format(d, 'MMM', { locale: ptBR })}</span>
                   </div>
 
                   <div>
@@ -245,7 +261,7 @@ export default function GestaoFeriados() {
                         </span>
                       )}
                     </span>
-                    <span className="text-xs text-slate-500">{format(new Date(f.data), 'yyyy')}</span>
+                    <span className="text-xs text-slate-500">{format(d, 'yyyy', { locale: ptBR })}</span>
                   </div>
                 </div>
 
