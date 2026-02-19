@@ -12,6 +12,15 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// ✅ TIPAGEM DOS TIPOS (para não errar string)
+type TipoSolicitacao =
+  | 'ENTRADA'
+  | 'SAIDA_INTERVALO'
+  | 'VOLTA_INTERVALO'
+  | 'SAIDA_ALMOCO'
+  | 'VOLTA_ALMOCO'
+  | 'SAIDA';
+
 export default function Home() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -36,7 +45,7 @@ export default function Home() {
   const [tempoIntervalo, setTempoIntervalo] = useState('00:00:00');
   const [jaAlmocou, setJaAlmocou] = useState(false);
   const [carregandoStatus, setCarregandoStatus] = useState(true);
-  const [tipoManual, setTipoManual] = useState('ENTRADA');
+  const [tipoManual, setTipoManual] = useState<TipoSolicitacao>('ENTRADA');
 
   const webcamRef = useRef<Webcam>(null);
 
@@ -44,7 +53,7 @@ export default function Home() {
   const [modalInclusaoAberto, setModalInclusaoAberto] = useState(false);
   const [dataNova, setDataNova] = useState('');
   const [horaNova, setHoraNova] = useState('');
-  const [tipoNovo, setTipoNovo] = useState('ENTRADA');
+  const [tipoNovo, setTipoNovo] = useState<TipoSolicitacao>('ENTRADA');
   const [motivo, setMotivo] = useState('');
 
   // ✅ AVISO VISUAL (SUBSTITUI window.alert NO MOBILE)
@@ -155,8 +164,8 @@ export default function Home() {
     );
   };
 
-  const baterPonto = async (tipoAcao?: string) => {
-    const tipoFinal = tipoAcao || tipoManual;
+  const baterPonto = async (tipoAcao?: TipoSolicitacao) => {
+    const tipoFinal = (tipoAcao || tipoManual) as TipoSolicitacao;
     setAcaoEmProcesso(tipoFinal);
 
     if (!location) {
@@ -458,7 +467,6 @@ export default function Home() {
             )}
           </div>
 
-
           <div data-tour="emp-actions" className="mt-2">
             {!location ? (
               <div className="py-8 flex flex-col items-center text-center">
@@ -583,10 +591,21 @@ export default function Home() {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Tipo</label>
-                <select value={tipoNovo} onChange={e => setTipoNovo(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none">
+
+                {/* ✅ agora com Saída Café / Volta Café (valores técnicos continuam) */}
+                <select
+                  value={tipoNovo}
+                  onChange={(e) => setTipoNovo(e.target.value as TipoSolicitacao)}
+                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none"
+                >
                   <option value="ENTRADA">ENTRADA</option>
+
+                  <option value="SAIDA_INTERVALO">SAÍDA CAFÉ</option>
+                  <option value="VOLTA_INTERVALO">VOLTA CAFÉ</option>
+
                   <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
                   <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
+
                   <option value="SAIDA">SAÍDA</option>
                 </select>
               </div>
