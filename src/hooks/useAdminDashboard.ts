@@ -77,6 +77,10 @@ export function useAdminDashboard() {
   const [ausenciaMotivo, setAusenciaMotivo] = useState('');
   const [salvandoAusencia, setSalvandoAusencia] = useState(false);
 
+  const [ausenciaHoraInicio, setAusenciaHoraInicio] = useState<string>('');
+const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
+
+
   const carregarDados = useCallback(async () => {
     try {
       const [
@@ -396,6 +400,11 @@ export function useAdminDashboard() {
     ausenciaMotivo,
     setAusenciaMotivo,
     salvandoAusencia,
+
+     ausenciaHoraInicio,
+    setAusenciaHoraInicio,
+    ausenciaHoraFim,
+    setAusenciaHoraFim,
     abrirModalAusencia,
     salvarAusenciaAdmin,
 
