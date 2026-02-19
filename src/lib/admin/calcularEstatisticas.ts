@@ -1,3 +1,4 @@
+// src/lib/admin/calcularEstatisticas.ts
 import {
   differenceInMinutes,
   eachDayOfInterval,
@@ -14,15 +15,90 @@ const criarDataLocal = (dataString: string) => {
   return new Date(ano, mes - 1, dia);
 };
 
+function isValidTimeHHMM(v: any) {
+  if (typeof v !== 'string') return false;
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+}
+
+function parseHHMMToMinutes(hhmm: string) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function overlapMinutes(aStart: number, aEnd: number, bStart: number, bEnd: number) {
+  const start = Math.max(aStart, bStart);
+  const end = Math.min(aEnd, bEnd);
+  return Math.max(0, end - start);
+}
+
+function getWorkWindowsFromConfig(configDia: any): Array<{ start: number; end: number }> {
+  const windows: Array<{ start: number; end: number }> = [];
+
+  const pushIfValid = (i?: string, f?: string) => {
+    if (!i || !f) return;
+    if (!isValidTimeHHMM(i) || !isValidTimeHHMM(f)) return;
+    const s = parseHHMMToMinutes(i);
+    const e = parseHHMMToMinutes(f);
+    if (e > s) windows.push({ start: s, end: e });
+  };
+
+  if (configDia && configDia.ativo) {
+    pushIfValid(configDia.e1, configDia.s1);
+    pushIfValid(configDia.e2, configDia.s2);
+  }
+
+  return windows;
+}
+
+function isFolgaParcial(aus: any) {
+  if (aus?.subTipo !== 'FOLGA') return false;
+
+  const ini = new Date(aus.dataHora);
+  const fim = aus.extra?.dataFim ? new Date(aus.extra.dataFim) : ini;
+
+  const sameDay = format(ini, 'yyyy-MM-dd') === format(fim, 'yyyy-MM-dd');
+  if (!sameDay) return false;
+
+  const iniMin = ini.getHours() * 60 + ini.getMinutes();
+  const fimMin = fim.getHours() * 60 + fim.getMinutes();
+
+  if (iniMin === fimMin) return false;
+  if (fimMin <= iniMin) return false;
+
+  return true;
+}
+
+// ✅ NOVO: descobre qual "número" do sábado no mês (1..5)
+function getNumeroDoSabadoNoMes(date: Date) {
+  // só faz sentido se for sábado
+  if (getDay(date) !== 6) return 0;
+
+  const y = date.getFullYear();
+  const m = date.getMonth(); // 0-11
+  const d = date.getDate();
+
+  let count = 0;
+  for (let day = 1; day <= d; day++) {
+    const cur = new Date(y, m, day);
+    if (getDay(cur) === 6) count++;
+  }
+  return count; // 1..5
+}
+
 export function calcularEstatisticas(args: {
   filtroUsuario: string;
   registros: any[];
   usuarios: any[];
-  feriados: string[];
+  feriados: string[]; // somente integrais
+  feriadosParciais?: Record<string, { inicio: string; fim: string }>;
   dataInicio: string;
   dataFim: string;
 }) {
-  const { filtroUsuario, registros, usuarios, feriados, dataInicio, dataFim } = args;
+  const { filtroUsuario, registros, usuarios, feriados, feriadosParciais, dataInicio, dataFim } = args;
 
   if (!filtroUsuario) return null;
 
@@ -53,8 +129,39 @@ export function calcularEstatisticas(args: {
   };
 
   const diasIsentos = new Set<string>();
+  const folgaParcialMinutosPorDia: Record<string, number> = {};
+
   const ausencias = registros.filter((r) => r.usuario.id === filtroUsuario && r.tipo === 'AUSENCIA');
+
   ausencias.forEach((aus) => {
+    if (isFolgaParcial(aus)) {
+      const ini = new Date(aus.dataHora);
+      const fim = aus.extra?.dataFim ? new Date(aus.extra.dataFim) : ini;
+
+      const diaStr = format(ini, 'yyyy-MM-dd');
+
+      const diaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][getDay(ini)];
+      const configDia = jornadaConfig[diaSemana] || {};
+      const windows = getWorkWindowsFromConfig(configDia);
+
+      const iniMin = ini.getHours() * 60 + ini.getMinutes();
+      const fimMin = fim.getHours() * 60 + fim.getMinutes();
+      const duracao = fimMin - iniMin;
+
+      let abonar = 0;
+
+      if (windows.length > 0) {
+        for (const w of windows) {
+          abonar += overlapMinutes(iniMin, fimMin, w.start, w.end);
+        }
+      } else {
+        abonar = Math.max(0, duracao);
+      }
+
+      folgaParcialMinutosPorDia[diaStr] = (folgaParcialMinutosPorDia[diaStr] || 0) + abonar;
+      return;
+    }
+
     const inicio = fixData(aus.dataHora);
     const fim = aus.extra?.dataFim ? fixData(aus.extra.dataFim) : inicio;
     try {
@@ -64,9 +171,15 @@ export function calcularEstatisticas(args: {
     } catch (e) {}
   });
 
+  const isSabadoAlternadoAtivo = Boolean(jornadaConfig?.sab?.ativo && jornadaConfig?.sab?.alternado === true);
+  const sabadoParidadeSemanaISO =
+    typeof jornadaConfig?.sab?.paridadeSemanaISO === 'number' ? jornadaConfig.sab.paridadeSemanaISO : 0;
+
   const getMetaDoDia = (data: Date) => {
     const dataString = format(data, 'yyyy-MM-dd');
-    if (feriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
+
+    if (feriados.includes(dataString)) return 0;
+    if (diasIsentos.has(dataString)) return 0;
 
     const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
     const diaSemanaIndex = getDay(data);
@@ -90,27 +203,155 @@ export function calcularEstatisticas(args: {
       config && config.ativo ? calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2) : 0;
 
     // --- LÓGICA HÍBRIDA INTELIGENTE ---
-
-    // Segunda a Sexta
     if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
       if (trabalhouSabado) {
         if (!minutosConfigurados) return 480;
-
         if (minutosConfigurados > 520) return 480;
-
-        return minutosConfigurados;
       }
     }
 
-    // Sábado
+    // ✅ SÁBADO: suportar regra de sábados do mês
     if (diaSemanaIndex === 6) {
       const configSab = jornadaConfig['sab'];
       const temConfiguracao = configSab && configSab.ativo;
 
+      // ✅ NOVO: regra "SABADOS_DO_MES" (ex: [1,3])
+      const regra = configSab?.regra;
+      if (temConfiguracao && regra?.tipo === 'SABADOS_DO_MES') {
+        const quais = Array.isArray(regra?.quais) ? regra.quais : [];
+        const numero = getNumeroDoSabadoNoMes(data); // 1..5
+        const trabalhaNesteSabado = numero > 0 && quais.includes(numero);
+        if (!trabalhaNesteSabado) return 0;
+
+        // se trabalha, calcula meta sab (com abatimentos)
+        const minsSab = calcDiff(configSab.e1, configSab.s1) + calcDiff(configSab.e2, configSab.s2);
+        const metaBaseSab = minsSab || 240;
+
+        let meta = metaBaseSab;
+
+        const abonoParcialFeriado = feriadosParciais?.[dataString];
+        if (
+          abonoParcialFeriado &&
+          isValidTimeHHMM(abonoParcialFeriado.inicio) &&
+          isValidTimeHHMM(abonoParcialFeriado.fim)
+        ) {
+          const iniMin = parseHHMMToMinutes(abonoParcialFeriado.inicio);
+          const fimMin = parseHHMMToMinutes(abonoParcialFeriado.fim);
+          if (fimMin > iniMin) {
+            const windows = getWorkWindowsFromConfig(configSab);
+            let abonar = 0;
+            if (windows.length > 0) {
+              for (const w of windows) abonar += overlapMinutes(iniMin, fimMin, w.start, w.end);
+            } else {
+              abonar = fimMin - iniMin;
+            }
+            meta = clamp(meta - abonar, 0, meta);
+          }
+        }
+
+        const abonoFolgaParcial = folgaParcialMinutosPorDia[dataString] || 0;
+        if (abonoFolgaParcial > 0 && meta > 0) meta = clamp(meta - abonoFolgaParcial, 0, meta);
+
+        return meta;
+      }
+
+      // ✅ mantém a lógica antiga de alternado (sem quebrar quem já usa)
+      if (isSabadoAlternadoAtivo) {
+        const semanaISO = getISOWeek(data);
+        const trabalhaNesteSabado = semanaISO % 2 === sabadoParidadeSemanaISO;
+        if (!trabalhaNesteSabado) return 0;
+
+        if (temConfiguracao) {
+          const minsSab = calcDiff(configSab.e1, configSab.s1) + calcDiff(configSab.e2, configSab.s2);
+          const metaBaseSab = minsSab || 240;
+
+          let meta = metaBaseSab;
+
+          const abonoParcialFeriado = feriadosParciais?.[dataString];
+          if (
+            abonoParcialFeriado &&
+            isValidTimeHHMM(abonoParcialFeriado.inicio) &&
+            isValidTimeHHMM(abonoParcialFeriado.fim)
+          ) {
+            const iniMin = parseHHMMToMinutes(abonoParcialFeriado.inicio);
+            const fimMin = parseHHMMToMinutes(abonoParcialFeriado.fim);
+            if (fimMin > iniMin) {
+              const windows = getWorkWindowsFromConfig(configSab);
+              let abonar = 0;
+              if (windows.length > 0) {
+                for (const w of windows) abonar += overlapMinutes(iniMin, fimMin, w.start, w.end);
+              } else {
+                abonar = fimMin - iniMin;
+              }
+              meta = clamp(meta - abonar, 0, meta);
+            }
+          }
+
+          const abonoFolgaParcial = folgaParcialMinutosPorDia[dataString] || 0;
+          if (abonoFolgaParcial > 0 && meta > 0) meta = clamp(meta - abonoFolgaParcial, 0, meta);
+
+          return meta;
+        }
+
+        let meta = 240;
+
+        const abonoParcialFeriado = feriadosParciais?.[dataString];
+        if (
+          abonoParcialFeriado &&
+          isValidTimeHHMM(abonoParcialFeriado.inicio) &&
+          isValidTimeHHMM(abonoParcialFeriado.fim)
+        ) {
+          const iniMin = parseHHMMToMinutes(abonoParcialFeriado.inicio);
+          const fimMin = parseHHMMToMinutes(abonoParcialFeriado.fim);
+          if (fimMin > iniMin) {
+            meta = clamp(meta - (fimMin - iniMin), 0, meta);
+          }
+        }
+
+        const abonoFolgaParcial = folgaParcialMinutosPorDia[dataString] || 0;
+        if (abonoFolgaParcial > 0 && meta > 0) meta = clamp(meta - abonoFolgaParcial, 0, meta);
+
+        return meta;
+      }
+
       if (trabalhouSabado && !temConfiguracao) return 240;
     }
 
-    return minutosConfigurados;
+    // meta base padrão
+    let metaBase = minutosConfigurados;
+
+    const feriadoParcial = feriadosParciais?.[dataString];
+    if (
+      feriadoParcial &&
+      isValidTimeHHMM(feriadoParcial.inicio) &&
+      isValidTimeHHMM(feriadoParcial.fim) &&
+      metaBase > 0
+    ) {
+      const iniMin = parseHHMMToMinutes(feriadoParcial.inicio);
+      const fimMin = parseHHMMToMinutes(feriadoParcial.fim);
+
+      if (fimMin > iniMin) {
+        const windows = getWorkWindowsFromConfig(config);
+        let abonar = 0;
+
+        if (windows.length > 0) {
+          for (const w of windows) {
+            abonar += overlapMinutes(iniMin, fimMin, w.start, w.end);
+          }
+        } else {
+          abonar = fimMin - iniMin;
+        }
+
+        metaBase = clamp(metaBase - abonar, 0, metaBase);
+      }
+    }
+
+    const abonoFolgaParcial = folgaParcialMinutosPorDia[dataString] || 0;
+    if (abonoFolgaParcial > 0 && metaBase > 0) {
+      metaBase = clamp(metaBase - abonoFolgaParcial, 0, metaBase);
+    }
+
+    return metaBase;
   };
 
   let minutosHoje = 0;

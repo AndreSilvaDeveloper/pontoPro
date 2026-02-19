@@ -34,10 +34,6 @@ import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
 
-
-
-
-
 export default function AdminDashboard() {
   const a = useAdminDashboard();
 
@@ -49,8 +45,6 @@ export default function AdminDashboard() {
       </div>
     );
 
-
-    
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-purple-500/30 relative overflow-x-hidden">
       {/* Efeitos de Fundo */}
@@ -58,9 +52,6 @@ export default function AdminDashboard() {
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
-
-
-
 
       {/* Toast */}
       {a.notificacaoVisivel && (
@@ -95,10 +86,7 @@ export default function AdminDashboard() {
                 <LayoutDashboard size={20} className="text-purple-400" />
               </div>
               <div>
-                <h1
-                  data-tour="admin-title"
-                  className="text-3xl font-bold text-white tracking-tight"
-                >
+                <h1 data-tour="admin-title" className="text-3xl font-bold text-white tracking-tight">
                   {a.empresa.nome}
                 </h1>
                 <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
@@ -120,7 +108,6 @@ export default function AdminDashboard() {
                 className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
                 title="Minha Conta"
               >
-
                 <User size={18} />
               </Link>
               <button
@@ -153,7 +140,6 @@ export default function AdminDashboard() {
               </div>
               <span className="text-xs font-bold">Lançar Ausência</span>
             </button>
-
 
             <Link
               data-tour="admin-ajustes"
@@ -209,8 +195,6 @@ export default function AdminDashboard() {
               </div>
               <span className="text-xs font-bold">Gestão da Equipe</span>
             </Link>
-
-
 
             <Link
               data-tour="admin-feriados"
@@ -376,7 +360,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div data-tour="admin-report">           
+          <div data-tour="admin-report">
             <BotaoRelatorio
               pontos={a.registrosFiltrados}
               filtro={{
@@ -550,6 +534,13 @@ export default function AdminDashboard() {
           setAusenciaFim={a.setAusenciaFim}
           ausenciaMotivo={a.ausenciaMotivo}
           setAusenciaMotivo={a.setAusenciaMotivo}
+
+          // ✅ NOVO — PASSAR AS HORAS
+          ausenciaHoraInicio={a.ausenciaHoraInicio}
+          setAusenciaHoraInicio={a.setAusenciaHoraInicio}
+          ausenciaHoraFim={a.ausenciaHoraFim}
+          setAusenciaHoraFim={a.setAusenciaHoraFim}
+
           salvando={a.salvandoAusencia}
           onConfirmar={a.salvarAusenciaAdmin}
         />

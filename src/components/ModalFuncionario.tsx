@@ -75,6 +75,12 @@ function validarBloco(e: string, s: string) {
   return null;
 }
 
+function uniqSortedNumbers(arr: any[]) {
+  const out = Array.from(new Set(arr.map((n) => Number(n)).filter((n) => Number.isFinite(n))));
+  out.sort((a, b) => a - b);
+  return out;
+}
+
 export default function ModalFuncionario({
   isOpen,
   onClose,
@@ -186,10 +192,54 @@ export default function ModalFuncionario({
 
   // === LÓGICA DE JORNADA ===
   const updateJornada = (dia: string, campo: string, valor: any) => {
-    setJornada((prev: any) => ({
-      ...prev,
-      [dia]: { ...prev[dia], [campo]: valor },
-    }));
+    setJornada((prev: any) => {
+      const diaAtual = prev?.[dia] || {};
+      const novoDia = { ...diaAtual, [campo]: valor };
+
+      // ✅ Se está ativando o sábado, garante regra SABADOS_DO_MES (com quais vazio = não cobra meta até selecionar)
+      if (dia === 'sab' && campo === 'ativo' && valor === true) {
+        if (!novoDia.regra || novoDia.regra?.tipo !== 'SABADOS_DO_MES') {
+          novoDia.regra = { tipo: 'SABADOS_DO_MES', quais: [] };
+        } else {
+          // normaliza caso venha bagunçado
+          novoDia.regra = {
+            tipo: 'SABADOS_DO_MES',
+            quais: uniqSortedNumbers(Array.isArray(novoDia.regra?.quais) ? novoDia.regra.quais : []),
+          };
+        }
+      }
+
+      // ✅ Se está desativando o sábado, remove a regra (limpa)
+      if (dia === 'sab' && campo === 'ativo' && valor === false) {
+        if (novoDia.regra) {
+          const copy = { ...novoDia };
+          delete copy.regra;
+          return { ...prev, [dia]: copy };
+        }
+      }
+
+      return { ...prev, [dia]: novoDia };
+    });
+  };
+
+  const toggleSabadoDoMes = (n: number) => {
+    setJornada((prev: any) => {
+      const sab = prev?.sab || {};
+      const regra = sab?.regra && sab.regra.tipo === 'SABADOS_DO_MES' ? sab.regra : { tipo: 'SABADOS_DO_MES', quais: [] };
+      const atuais = uniqSortedNumbers(Array.isArray(regra.quais) ? regra.quais : []);
+      const has = atuais.includes(n);
+      const novos = has ? atuais.filter((x) => x !== n) : uniqSortedNumbers([...atuais, n]);
+
+      return {
+        ...prev,
+        sab: {
+          ...sab,
+          // mantém o sábado ativo (por segurança)
+          ativo: true,
+          regra: { tipo: 'SABADOS_DO_MES', quais: novos },
+        },
+      };
+    });
   };
 
   const replicarHorarioSegunda = () => {
@@ -279,7 +329,6 @@ export default function ModalFuncionario({
     setEnderecosConferidosExtras((prev) => {
       const copy = { ...prev };
       delete copy[idx];
-      // reindex simples: recalcula no useEffect abaixo quando necessário
       return copy;
     });
 
@@ -343,11 +392,6 @@ export default function ModalFuncionario({
         const lo = Number(locaisExtras[i]?.lng);
         if (!Number.isFinite(la) || !Number.isFinite(lo) || !la || !lo) continue;
 
-        // se já tem igual, pula
-        const current = enderecosConferidosExtras[i];
-        if (current && current.includes(la.toFixed(4)) === false) {
-          // não dá pra comparar perfeito, então só atualiza se não existe ainda
-        }
         if (!enderecosConferidosExtras[i]) {
           updates[i] = await obterEndereco(la, lo);
         }
@@ -370,7 +414,6 @@ export default function ModalFuncionario({
     const isImage = file.type.startsWith('image/');
     if (!isImage) return 'Envie uma imagem (JPG/PNG).';
 
-    // 5MB (ajuste se quiser)
     const max = 5 * 1024 * 1024;
     if (file.size > max) return 'Imagem muito grande. Máx: 5MB.';
 
@@ -398,12 +441,9 @@ export default function ModalFuncionario({
     if (modoValidacao === 'PC_IP' && !ipsPermitidos)
       return alert('Modo IP exige IPs cadastrados!');
 
-    // Validação suave de jornada (não impede salvar por padrão, mas você pode exigir)
     const temErroJornada = Object.keys(errosJornada).length > 0;
     if (temErroJornada) {
-      const ok = confirm(
-        'Existem horários inválidos em alguns dias. Quer salvar mesmo assim?',
-      );
+      const ok = confirm('Existem horários inválidos em alguns dias. Quer salvar mesmo assim?');
       if (!ok) return;
     }
 
@@ -421,9 +461,6 @@ export default function ModalFuncionario({
       formData.append('locaisAdicionais', JSON.stringify(locaisExtras));
       formData.append('modoValidacaoPonto', modoValidacao);
       formData.append('ipsPermitidos', ipsPermitidos);
-
-      // endereçoPrincipal é UI. Só envie se seu backend aceitar campos extras:
-      // formData.append('enderecoPrincipal', enderecoPrincipal);
 
       if (fotoArquivo) formData.append('foto', fotoArquivo);
 
@@ -446,7 +483,17 @@ export default function ModalFuncionario({
     }
   };
 
+  const sabQuais: number[] = useMemo(() => {
+    const regra = jornada?.sab?.regra;
+    if (jornada?.sab?.ativo && regra?.tipo === 'SABADOS_DO_MES') {
+      return uniqSortedNumbers(Array.isArray(regra?.quais) ? regra.quais : []);
+    }
+    return [];
+  }, [jornada]);
+
   if (!isOpen) return null;
+
+  
 
   return (
     <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center bg-slate-950 md:bg-black/80 md:backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
@@ -538,7 +585,6 @@ export default function ModalFuncionario({
                 </button>
               </div>
 
-              {/* aviso geral */}
               {Object.keys(errosJornada).length > 0 && (
                 <div className="flex items-start gap-2 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-3">
                   <AlertTriangle className="text-yellow-300 mt-0.5" size={16} />
@@ -623,6 +669,46 @@ export default function ModalFuncionario({
                             </div>
                           </div>
 
+                          {/* ✅ NOVO: Regra do sábado (sábados do mês) */}
+                          {dia === 'sab' && (
+                            <div className="mt-3 bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-[10px] text-slate-500 font-bold uppercase">
+                                  Sábados do mês que trabalha
+                                </p>
+                                <span className="text-[10px] text-slate-500">
+                                  (marque 1-5)
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-5 gap-2">
+                                {[1, 2, 3, 4, 5].map((n) => {
+                                  const active = sabQuais.includes(n);
+                                  return (
+                                    <button
+                                      key={n}
+                                      type="button"
+                                      onClick={() => toggleSabadoDoMes(n)}
+                                      className={`py-2 rounded-lg border text-xs font-bold transition-all ${
+                                        active
+                                          ? 'bg-purple-600 border-purple-500 text-white'
+                                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500'
+                                      }`}
+                                      title={`${n}º sábado do mês`}
+                                    >
+                                      {n}º
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              <div className="text-[10px] text-slate-400 leading-relaxed">
+                                • Se não marcar nenhum, o sistema considera folga e <b>não cobra meta</b> no sábado. <br />
+                                • Ex.: 1º e 3º sábado → marque <b>1º</b> e <b>3º</b>.
+                              </div>
+                            </div>
+                          )}
+
                           {diaErros.length > 0 && (
                             <div className="text-[10px] text-yellow-200 bg-yellow-900/10 border border-yellow-500/20 rounded-lg p-2">
                               {diaErros.map((m, i) => (
@@ -675,7 +761,6 @@ export default function ModalFuncionario({
                   </button>
                 </div>
               </div>
-
 
               {modoValidacao === 'GPS' && (
                 <div className="space-y-4 animate-in fade-in">
@@ -741,7 +826,6 @@ export default function ModalFuncionario({
                           />
                         </div>
 
-                        {/* Endereço conferido */}
                         {!!enderecoConferidoPrincipal && (
                           <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
                             <p className="text-[10px] text-slate-500 font-bold uppercase">Endereço conferido</p>
@@ -749,7 +833,6 @@ export default function ModalFuncionario({
                           </div>
                         )}
 
-                        {/* Inputs Lat/Lng/Raio */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <input
                             placeholder="Lat"
@@ -774,7 +857,6 @@ export default function ModalFuncionario({
                           </div>
                         </div>
 
-                        {/* Mapa colapsável */}
                         {mostrarMapaPrincipal && (
                           <div className="pt-2">
                             <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} />
@@ -936,7 +1018,6 @@ export default function ModalFuncionario({
                             </button>
                           </div>
 
-                          {/* Mapa apenas para selecionar o NOVO local extra */}
                           {modoMapaExtra === 'NOVO' && (
                             <div className="pt-2">
                               <MapaCaptura
@@ -957,7 +1038,6 @@ export default function ModalFuncionario({
                           )}
                         </div>
 
-                        {/* Mapa para editar um Extra existente */}
                         {typeof modoMapaExtra === 'number' && (
                           <div className="pt-2">
                             <MapaCaptura

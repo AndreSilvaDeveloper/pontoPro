@@ -8,16 +8,34 @@ import type { BillingStatus } from '@/lib/billing';
 
 const SOM_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
 
+const PARCIAL_MARK = '__PARCIAL__:';
+
 export const criarDataLocal = (dataString: string) => {
   if (!dataString) return new Date();
   const [ano, mes, dia] = dataString.split('-').map(Number);
   return new Date(ano, mes - 1, dia);
 };
 
+function isValidTimeHHMM(v: any) {
+  if (typeof v !== 'string') return false;
+  return /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+}
+
+function parseParcialFromNome(nome: string): { horaInicio?: string; horaFim?: string } {
+  if (!nome) return {};
+  const idx = nome.indexOf(PARCIAL_MARK);
+  if (idx === -1) return {};
+  const rest = nome.slice(idx + PARCIAL_MARK.length).trim(); // "08:00-12:00"
+  const [h1, h2] = rest.split('-').map((s) => (s || '').trim());
+  if (isValidTimeHHMM(h1) && isValidTimeHHMM(h2)) return { horaInicio: h1, horaFim: h2 };
+  return {};
+}
+
 export function useAdminDashboard() {
   const [registros, setRegistros] = useState<any[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [feriados, setFeriados] = useState<string[]>([]);
+  const [feriadosParciais, setFeriadosParciais] = useState<Record<string, { inicio: string; fim: string }>>({});
   const [empresa, setEmpresa] = useState<any>({
     nome: 'Carregando...',
     cnpj: '',
@@ -82,7 +100,24 @@ export function useAdminDashboard() {
       ]);
 
       setUsuarios(resUsers.data);
-      setFeriados(resFeriados.data.map((f: any) => format(new Date(f.data), 'yyyy-MM-dd')));
+
+      // ✅ NOVO: separa feriados integrais vs parciais usando o "nome"
+      const feriadosIntegrais: string[] = [];
+      const parciaisMap: Record<string, { inicio: string; fim: string }> = {};
+
+      (resFeriados.data || []).forEach((f: any) => {
+        const dia = format(new Date(f.data), 'yyyy-MM-dd');
+        const parsed = parseParcialFromNome(f.nome || '');
+        if (parsed.horaInicio && parsed.horaFim) {
+          parciaisMap[dia] = { inicio: parsed.horaInicio, fim: parsed.horaFim };
+        } else {
+          feriadosIntegrais.push(dia);
+        }
+      });
+
+      setFeriados(feriadosIntegrais);
+      setFeriadosParciais(parciaisMap);
+
       setEmpresa(resEmpresa.data);
       setPendenciasAjuste(resSolicitacoes.data.length);
       setPendenciasAusencia(resPendencias.data.length);
@@ -293,10 +328,11 @@ export function useAdminDashboard() {
       registros,
       usuarios,
       feriados,
+      feriadosParciais, 
       dataInicio,
       dataFim,
     });
-  }, [dataFim, dataInicio, feriados, filtroUsuario, registros, usuarios]);
+  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios]);
 
   const configs = empresa.configuracoes || {};
 
@@ -304,6 +340,7 @@ export function useAdminDashboard() {
     registros,
     usuarios,
     feriados,
+    feriadosParciais, // ✅ NOVO
     empresa,
     configs,
 
