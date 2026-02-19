@@ -11,6 +11,26 @@ export default function AdminRegistrosTable(props: {
 }) {
   const { registrosFiltrados, abrirModalEdicao, excluirPonto, excluirAusencia } = props;
 
+  const isFolgaParcial = (reg: any) => {
+    if (!reg || reg.tipo !== 'AUSENCIA') return false;
+    if (reg.subTipo !== 'FOLGA') return false;
+    if (!reg.extra?.dataFim) return false;
+
+    const ini = new Date(reg.dataHora);
+    const fim = new Date(reg.extra.dataFim);
+
+    const mesmoDia = format(ini, 'yyyy-MM-dd') === format(fim, 'yyyy-MM-dd');
+    if (!mesmoDia) return false;
+
+    const iniMin = ini.getHours() * 60 + ini.getMinutes();
+    const fimMin = fim.getHours() * 60 + fim.getMinutes();
+
+    if (iniMin === fimMin) return false;
+    if (fimMin <= iniMin) return false;
+
+    return true;
+  };
+
   return (
     <div className="bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
       <div className="hidden md:grid grid-cols-5 bg-slate-950/50 p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5">
@@ -94,6 +114,13 @@ export default function AdminRegistrosTable(props: {
                   </>
                 ) : (
                   <div className="flex items-center gap-2">
+                    {/* ✅ NOVO: mostrar HH:mm–HH:mm quando for FOLGA parcial */}
+                    {isFolgaParcial(reg) && (
+                      <span className="text-sm font-bold text-yellow-300 font-mono bg-yellow-900/20 px-2 py-0.5 rounded border border-yellow-600/20">
+                        {format(new Date(reg.dataHora), 'HH:mm')}–{format(new Date(reg.extra.dataFim), 'HH:mm')}
+                      </span>
+                    )}
+
                     <span className="text-xs font-bold bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 px-2 py-1 rounded uppercase tracking-wider">
                       {reg.subTipo?.replace('_', ' ')}
                     </span>

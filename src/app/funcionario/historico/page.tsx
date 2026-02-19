@@ -676,7 +676,15 @@ export default function MeuHistorico() {
 
         {/* MODAL DE AJUSTE */}
         {modalAberto && (
-          <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 sm:p-6">
+          <div
+            className="
+              fixed inset-0 z-50 flex items-center justify-center
+              px-4
+              pt-[calc(1rem+env(safe-area-inset-top))]
+              pb-[calc(1rem+env(safe-area-inset-bottom))]
+            "
+          >
+
             <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setModalAberto(false)} />
 
             <div className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">

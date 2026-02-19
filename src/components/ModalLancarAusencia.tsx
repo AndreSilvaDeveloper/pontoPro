@@ -1,3 +1,4 @@
+// src/components/ModalLancarAusencia.tsx
 'use client';
 
 import { Plane, X, PlusCircle } from 'lucide-react';
@@ -29,9 +30,23 @@ type Props = {
   ausenciaMotivo: string;
   setAusenciaMotivo: (v: string) => void;
 
+  // ✅ NOVO (opcional por enquanto, pra não quebrar o pai)
+  ausenciaHoraInicio?: string;
+  setAusenciaHoraInicio?: (v: string) => void;
+
+  ausenciaHoraFim?: string;
+  setAusenciaHoraFim?: (v: string) => void;
+
   salvando: boolean;
   onConfirmar: () => void;
 };
+
+function timeToMinutes(t?: string) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map((x) => Number(x));
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
 
 export default function ModalLancarAusencia({
   aberto,
@@ -53,10 +68,38 @@ export default function ModalLancarAusencia({
   ausenciaMotivo,
   setAusenciaMotivo,
 
+  // novo (opcional)
+  ausenciaHoraInicio,
+  setAusenciaHoraInicio,
+
+  ausenciaHoraFim,
+  setAusenciaHoraFim,
+
   salvando,
   onConfirmar,
 }: Props) {
   if (!aberto) return null;
+
+  const isFolga = ausenciaTipo === 'FOLGA';
+  const hasTimeSupport = Boolean(setAusenciaHoraInicio && setAusenciaHoraFim);
+
+  const iniMin = timeToMinutes(ausenciaHoraInicio);
+  const fimMin = timeToMinutes(ausenciaHoraFim);
+
+  const folgaHorarioInvalido =
+    isFolga &&
+    hasTimeSupport &&
+    (
+      !ausenciaHoraInicio ||
+      !ausenciaHoraFim ||
+      iniMin === null ||
+      fimMin === null ||
+      fimMin <= iniMin
+    );
+
+  const bloquearConfirmar =
+    salvando ||
+    (isFolga && hasTimeSupport && folgaHorarioInvalido);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
@@ -130,6 +173,52 @@ export default function ModalLancarAusencia({
           />
         </div>
 
+        {/* ✅ NOVO: Horário (somente para FOLGA) */}
+        {isFolga && hasTimeSupport && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-slate-400 uppercase tracking-wider font-bold">
+                Horário da Folga
+              </label>
+              <span className="text-[10px] text-slate-500">
+                (ex.: Quarta-feira de Cinzas)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-500 block mb-1 uppercase tracking-wider font-bold">
+                  Hora início
+                </label>
+                <input
+                  type="time"
+                  value={ausenciaHoraInicio || ''}
+                  onChange={(e) => setAusenciaHoraInicio?.(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-sm text-center"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] text-slate-500 block mb-1 uppercase tracking-wider font-bold">
+                  Hora fim
+                </label>
+                <input
+                  type="time"
+                  value={ausenciaHoraFim || ''}
+                  onChange={(e) => setAusenciaHoraFim?.(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-white text-sm text-center"
+                />
+              </div>
+            </div>
+
+            {folgaHorarioInvalido && (
+              <div className="text-xs text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-xl p-2">
+                Informe um intervalo válido: <b>hora fim</b> precisa ser maior que <b>hora início</b>.
+              </div>
+            )}
+          </div>
+        )}
+
         <div>
           <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">
             Observação
@@ -137,14 +226,14 @@ export default function ModalLancarAusencia({
           <textarea
             value={ausenciaMotivo}
             onChange={(e) => setAusenciaMotivo(e.target.value)}
-            placeholder="Ex: Férias coletivas..."
+            placeholder="Ex: Quarta-feira de Cinzas - folga parcial..."
             className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-20 resize-none"
           />
         </div>
 
         <button
           onClick={onConfirmar}
-          disabled={salvando}
+          disabled={bloquearConfirmar}
           className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all"
         >
           {salvando ? (

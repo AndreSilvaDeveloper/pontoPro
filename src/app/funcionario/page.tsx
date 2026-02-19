@@ -537,12 +537,33 @@ export default function Home() {
 
       {/* MODAL DE INCLUSÃO */}
       {modalInclusaoAberto && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4 sm:p-6">
+        <div
+          className="
+            fixed inset-0 z-50 flex items-center justify-center
+            px-4
+            pt-[calc(1rem+env(safe-area-inset-top))]
+            pb-[calc(1rem+env(safe-area-inset-bottom))]
+          "
+        >
+
           <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
             onClick={() => setModalInclusaoAberto(false)}
           />
-          <div data-tour="emp-modal-incluir" className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div
+              data-tour="emp-modal-incluir"
+              className="
+                relative z-10 w-full md:max-w-sm
+                bg-[#0f172a] border border-slate-700 shadow-2xl
+                rounded-3xl
+                px-6 pt-6
+                pb-[calc(1.5rem+env(safe-area-inset-bottom))]
+                max-h-[90dvh] overflow-y-auto
+                space-y-5
+                animate-in slide-in-from-bottom-10 fade-in duration-300
+              "
+            >
+
             <div data-tour="emp-header" className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <PlusCircle size={20} className="text-emerald-400" /> Incluir Registro
