@@ -5,6 +5,7 @@ import Provider from "@/providers/SessionProvider";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import OnboardingMount from "@/components/onboarding/OnboardingMount";
+import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot";
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -33,6 +34,8 @@ export default function RootLayout({
           {children}
 
           <Toaster position="top-right" richColors theme="dark" closeButton />
+           <ImpersonationRoot />
+ 
         </Provider>
 
       </body>
