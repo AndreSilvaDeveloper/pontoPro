@@ -3,13 +3,31 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  Building2,Lock, Ban, PlayCircle, RefreshCw, LogOut, Settings, Trash2, UserPlus, X, Loader2,
-  Users, Link as LinkIcon, FileText, DollarSign, CheckCircle,} from "lucide-react";
+  Building2,
+  Lock,
+  Ban,
+  PlayCircle,
+  RefreshCw,
+  LogOut,
+  Settings,
+  Trash2,
+  UserPlus,
+  X,
+  Loader2,
+  Users,
+  Link as LinkIcon,
+  FileText,
+  DollarSign,
+  CheckCircle,
+  LogIn,
+} from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format, isSameMonth, isSameYear } from "date-fns";
+import { format } from "date-fns";
+import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
 
 // === FUNÇÕES AUXILIARES PARA GERAR PIX (EMV) ===
 
@@ -96,6 +114,8 @@ const gerarPayloadPix = (
 };
 
 export default function SuperAdminPage() {
+  const router = useRouter();
+
   // === ESTADOS GERAIS ===
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loadingListar, setLoadingListar] = useState(false);
@@ -138,6 +158,14 @@ export default function SuperAdminPage() {
   const [loadingFatura, setLoadingFatura] = useState(false);
   const [loadingPagamento, setLoadingPagamento] = useState<string | null>(null);
 
+  // === EQUIPE (INCLUI FUNCIONÁRIO) PARA MODAL GESTÃO DE ACESSOS ===
+  const [equipeUsers, setEquipeUsers] = useState<any[]>([]);
+  const [loadingEquipeUsers, setLoadingEquipeUsers] = useState(false);
+
+  // ✅ Busca inteligente (server-side)
+  const [qEquipe, setQEquipe] = useState("");
+  const [cargoEquipe, setCargoEquipe] = useState("TODOS");
+
   useEffect(() => {
     listarEmpresas();
   }, []);
@@ -152,6 +180,58 @@ export default function SuperAdminPage() {
       console.error("Erro listar", error);
     } finally {
       setLoadingListar(false);
+    }
+  };
+
+  const carregarUsuariosDaEmpresa = async (
+    empresaId: string,
+    opts?: { q?: string; cargo?: string }
+  ) => {
+    setLoadingEquipeUsers(true);
+    try {
+      const res = await axios.post("/api/saas/usuarios", {
+        empresaId,
+        q: opts?.q || "",
+        cargo: opts?.cargo || "TODOS",
+        take: 200,
+      });
+      setEquipeUsers(res.data?.usuarios || []);
+    } catch (err) {
+      console.error("Erro ao carregar usuários da empresa", err);
+      setEquipeUsers([]);
+    } finally {
+      setLoadingEquipeUsers(false);
+    }
+  };
+
+  // ✅ debounce da busca: quando digitar/mudar filtro com modal aberto, busca no backend
+  useEffect(() => {
+    if (!modalEquipeOpen) return;
+    if (!empresaSelecionada?.id) return;
+
+    const t = setTimeout(() => {
+      carregarUsuariosDaEmpresa(empresaSelecionada.id, {
+        q: qEquipe,
+        cargo: cargoEquipe,
+      });
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [qEquipe, cargoEquipe, modalEquipeOpen, empresaSelecionada?.id]);
+
+  const entrarComo = async (user: any) => {
+    try {
+      await axios.post("/api/admin/impersonate", { userId: user.id });
+
+      // fecha modal pra não ficar aberto
+      setModalEquipeOpen(false);
+
+      // redireciona conforme cargo
+      if (user.cargo === "FUNCIONARIO") router.push("/funcionario");
+      else router.push("/admin");
+    } catch (err) {
+      console.error("Erro ao impersonar", err);
+      alert("Não foi possível entrar como este usuário.");
     }
   };
 
@@ -203,10 +283,21 @@ export default function SuperAdminPage() {
     if (!confirm("Tem certeza que deseja remover este acesso?")) return;
     try {
       await axios.delete("/api/saas/excluir-usuario", { data: { id: userId } });
-      const novaLista = empresaSelecionada.usuarios.filter(
+
+      // ✅ recarrega lista com filtro atual (server-side)
+      if (empresaSelecionada?.id) {
+        await carregarUsuariosDaEmpresa(empresaSelecionada.id, {
+          q: qEquipe,
+          cargo: cargoEquipe,
+        });
+      }
+
+      // Mantém compatibilidade com lista “antiga” da empresaSelecionada (se existir em res)
+      const novaLista = (empresaSelecionada?.usuarios || []).filter(
         (u: any) => u.id !== userId
       );
       setEmpresaSelecionada({ ...empresaSelecionada, usuarios: novaLista });
+
       listarEmpresas();
     } catch (e: any) {
       alert(e.response?.data?.erro || "Erro ao excluir usuário");
@@ -225,6 +316,15 @@ export default function SuperAdminPage() {
       });
       alert(`Acesso criado para ${adminData.nome}!`);
       setModalAdminOpen(false);
+
+      // ✅ Recarrega equipe com filtros atuais
+      if (empresaSelecionada?.id) {
+        await carregarUsuariosDaEmpresa(empresaSelecionada.id, {
+          q: qEquipe,
+          cargo: cargoEquipe,
+        });
+      }
+
       listarEmpresas();
     } catch (error: any) {
       alert(error.response?.data?.erro || "Erro ao criar admin");
@@ -262,7 +362,8 @@ export default function SuperAdminPage() {
   };
 
   const confirmarPagamentoManual = async (empresaId: string) => {
-    if (!confirm("Deseja marcar a fatura deste mês como PAGA para este cliente?")) return;
+    if (!confirm("Deseja marcar a fatura deste mês como PAGA para este cliente?"))
+      return;
 
     setLoadingPagamento(empresaId);
     try {
@@ -414,20 +515,28 @@ export default function SuperAdminPage() {
       doc.text(`CNPJ: ${empresa.cnpj || "Não Informado"}`, 14, 68);
       doc.text(`Responsável: ${empresa.usuarios?.[0]?.nome || "Admin"}`, 14, 74);
 
-      const dadosTabela: any[] = [["Assinatura Mensal (Pacote Base)", "1", "R$ 99,90", "R$ 99,90"]];
+      const dadosTabela: any[] = [
+        ["Assinatura Mensal (Pacote Base)", "1", "R$ 99,90", "R$ 99,90"],
+      ];
       if (fin.vidasExcedentes > 0)
         dadosTabela.push([
           `Funcionários Excedentes (${fin.vidasExcedentes} x R$ 7,90)`,
           `${fin.vidasExcedentes}`,
           "R$ 7,90",
-          fin.custoVidas.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+          fin.custoVidas.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
         ]);
       if (fin.adminsExcedentes > 0)
         dadosTabela.push([
           `Administradores Adicionais (${fin.adminsExcedentes} x R$ 49,90)`,
           `${fin.adminsExcedentes}`,
           "R$ 49,90",
-          fin.custoAdmins.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+          fin.custoAdmins.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }),
         ]);
 
       autoTable(doc, {
@@ -442,7 +551,10 @@ export default function SuperAdminPage() {
             "",
             "",
             "TOTAL A PAGAR",
-            fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+            fin.valorFinal.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }),
           ],
         ],
         footStyles: {
@@ -537,6 +649,9 @@ export default function SuperAdminPage() {
 
   return (
     <div className="min-h-screen bg-black text-white px-3 sm:px-6 py-4">
+      {/* ✅ Banner de impersonação (modo suporte) */}
+      <ImpersonationBanner />
+
       {/* HEADER RESPONSIVO (corrige mobile) */}
       <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-center sm:text-left">
@@ -656,7 +771,6 @@ export default function SuperAdminPage() {
                   const pagoAte = matriz.pagoAte ? new Date(matriz.pagoAte) : null;
                   const estaPago = !!pagoAte && hoje <= pagoAte;
 
-
                   return (
                     <div
                       key={matriz.id}
@@ -671,49 +785,45 @@ export default function SuperAdminPage() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                              <Building2 size={16} className="text-purple-500 shrink-0" />
+                            <Building2 size={16} className="text-purple-500 shrink-0" />
 
-                              {/* NOME: no mobile ocupa a linha toda */}
-                              <p
-                                className={`font-bold text-base text-white w-full sm:w-auto break-words sm:truncate-0 sm:max-w-none ${
-                                  matriz.status === "BLOQUEADO" ? "text-red-400" : "text-white"
-                                }`}
-                                title={matriz.nome}
+                            <p
+                              className={`font-bold text-base text-white w-full sm:w-auto break-words sm:truncate-0 sm:max-w-none ${
+                                matriz.status === "BLOQUEADO" ? "text-red-400" : "text-white"
+                              }`}
+                              title={matriz.nome}
+                            >
+                              {matriz.nome}
+                            </p>
+
+                            <div className="flex flex-wrap gap-1 sm:ml-2">
+                              <span
+                                className="text-[9px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold flex items-center gap-1"
+                                title="Funcionários"
                               >
-                                {matriz.nome}
-                              </p>
+                                <Users size={10} /> {dadosFin.totalVidas}
+                              </span>
 
-                              {/* BADGES: no mobile ficam abaixo do nome */}
-                              <div className="flex flex-wrap gap-1 sm:ml-2">
-                                <span
-                                  className="text-[9px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold flex items-center gap-1"
-                                  title="Funcionários"
-                                >
-                                  <Users size={10} /> {dadosFin.totalVidas}
+                              <span
+                                className="text-[9px] bg-indigo-900/30 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold flex items-center gap-1"
+                                title="Admins"
+                              >
+                                <Lock size={10} /> {dadosFin.totalAdmins}
+                              </span>
+
+                              {estaPago && (
+                                <span className="text-[9px] bg-green-500 text-black px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                                  <CheckCircle size={8} /> PAGO
                                 </span>
-
-                                <span
-                                  className="text-[9px] bg-indigo-900/30 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold flex items-center gap-1"
-                                  title="Admins"
-                                >
-                                  <Lock size={10} /> {dadosFin.totalAdmins}
-                                </span>
-
-                                {estaPago && (
-                                  <span className="text-[9px] bg-green-500 text-black px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
-                                    <CheckCircle size={8} /> PAGO
-                                  </span>
-                                )}
-                              </div>
+                              )}
                             </div>
-
+                          </div>
 
                           <p className="text-[10px] text-gray-400 mt-1">
                             MATRIZ • {matriz.cnpj || "Sem CNPJ"}
                           </p>
                         </div>
 
-                        {/* AÇÕES (responsivo) */}
                         <div className="shrink-0 grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:justify-end sm:gap-1">
                           <button
                             onClick={() => abrirModalFatura(matriz)}
@@ -769,6 +879,10 @@ export default function SuperAdminPage() {
                             onClick={() => {
                               setEmpresaSelecionada(matriz);
                               setModalEquipeOpen(true);
+                              // ✅ reset de filtros ao abrir (opcional, mas recomendado)
+                              setQEquipe("");
+                              setCargoEquipe("TODOS");
+                              carregarUsuariosDaEmpresa(matriz.id, { q: "", cargo: "TODOS" });
                             }}
                             className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded"
                             title="Equipe Matriz"
@@ -783,7 +897,6 @@ export default function SuperAdminPage() {
                           >
                             <Settings size={14} />
                           </Link>
-
 
                           <button
                             onClick={() => alternarStatus(matriz.id, matriz.nome, matriz.status)}
@@ -840,6 +953,9 @@ export default function SuperAdminPage() {
                                   onClick={() => {
                                     setEmpresaSelecionada(filial);
                                     setModalEquipeOpen(true);
+                                    setQEquipe("");
+                                    setCargoEquipe("TODOS");
+                                    carregarUsuariosDaEmpresa(filial.id, { q: "", cargo: "TODOS" });
                                   }}
                                   className="p-1.5 hover:bg-blue-600 hover:text-white text-gray-500 rounded"
                                   title="Equipe Filial"
@@ -931,11 +1047,7 @@ export default function SuperAdminPage() {
                 disabled={loadingFatura || !chavePixManual}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-lg font-bold flex justify-center items-center gap-2 transition-colors disabled:opacity-50 text-white"
               >
-                {loadingFatura ? (
-                  <Loader2 className="animate-spin" size={18} />
-                ) : (
-                  "VISUALIZAR PDF"
-                )}
+                {loadingFatura ? <Loader2 className="animate-spin" size={18} /> : "VISUALIZAR PDF"}
               </button>
             </div>
           </div>
@@ -1041,29 +1153,68 @@ export default function SuperAdminPage() {
               <X size={20} />
             </button>
 
-            <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+            <h3 className="text-xl font-bold mb-3 text-white flex items-center gap-2">
               <Users className="text-purple-500" /> Gestão de Acessos
             </h3>
 
+            {/* ✅ BUSCA INTELIGENTE (SERVER-SIDE) */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+              <input
+                value={qEquipe}
+                onChange={(e) => setQEquipe(e.target.value)}
+                placeholder="Buscar por nome ou email..."
+                className="w-full bg-gray-800 p-2.5 rounded-lg text-white border border-gray-700 outline-none focus:border-purple-500 text-sm"
+              />
+              <select
+                value={cargoEquipe}
+                onChange={(e) => setCargoEquipe(e.target.value)}
+                className="w-full sm:w-[180px] bg-gray-800 p-2.5 rounded-lg text-white border border-gray-700 outline-none focus:border-purple-500 text-sm"
+              >
+                <option value="TODOS">Todos</option>
+                <option value="ADMIN">Admins</option>
+                <option value="FUNCIONARIO">Funcionários</option>
+                <option value="SUPER_ADMIN">Super Admin</option>
+              </select>
+            </div>
+
+            {loadingEquipeUsers && (
+              <p className="text-center text-gray-400 text-sm mb-3">Carregando usuários...</p>
+            )}
+
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {!empresaSelecionada.usuarios || empresaSelecionada.usuarios.length === 0 ? (
-                <p className="text-center text-gray-500">Nenhum usuário.</p>
+              {(!equipeUsers || equipeUsers.length === 0) && !loadingEquipeUsers ? (
+                <p className="text-center text-gray-500">Nenhum usuário encontrado.</p>
               ) : (
-                empresaSelecionada.usuarios.map((user: any) => (
+                (equipeUsers || []).map((user: any) => (
                   <div
                     key={user.id}
-                    className="bg-gray-800 p-3 rounded flex justify-between items-center border border-gray-700"
+                    className="bg-gray-800 p-3 rounded flex justify-between items-center border border-gray-700 gap-2"
                   >
-                    <div>
-                      <p className="font-bold text-sm text-white">{user.nome}</p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-white truncate">{user.nome}</p>
+                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      {user.cargo && (
+                        <p className="text-[11px] text-gray-500 mt-1">{user.cargo}</p>
+                      )}
                     </div>
-                    <button
-                      onClick={() => excluirUsuario(user.id)}
-                      className="p-2 bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white rounded"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => entrarComo(user)}
+                        className="p-2 bg-blue-900/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded"
+                        title="Entrar como"
+                      >
+                        <LogIn size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => excluirUsuario(user.id)}
+                        className="p-2 bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white rounded"
+                        title="Excluir usuário"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -1118,9 +1269,6 @@ export default function SuperAdminPage() {
                     })
                   }
                 >
-
-
-                  {/* Dia do Vencimento    */}
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                     <option key={d} value={d}>
                       Dia {d}

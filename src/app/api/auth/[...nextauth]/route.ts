@@ -253,10 +253,14 @@ export const authOptions: NextAuthOptions = {
         token.cargo = (user as any).cargo;
         token.empresaId = (user as any).empresaId ?? null;
         token.deveTrocarSenha = (user as any).deveTrocarSenha;
+
+        // ✅ preserve se alguém (ex: endpoint de impersonação) já setou isso no user
+        token.impersonatedBy = (user as any).impersonatedBy ?? (token as any).impersonatedBy ?? null;
       }
 
       if (trigger === "update" && session) {
-        return { ...token, ...session };
+        // ✅ mantém o impersonatedBy (caso o update sobrescreva)
+        return { ...token, ...session, impersonatedBy: (token as any).impersonatedBy ?? null };
       }
 
       return token;
@@ -264,11 +268,18 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (token && session.user) {
-        (session.user as any).id = token.id as string;
-        (session.user as any).cargo = token.cargo;
+        // ✅ fallback: se token.id não existir (ex: token criado via encode com sub),
+        // usa token.sub
+        (session.user as any).id = ((token as any).id ?? (token as any).sub) as string;
+
+        (session.user as any).cargo = (token as any).cargo;
         (session.user as any).empresaId =
-          (token.empresaId as string | null) ?? null;
-        (session.user as any).deveTrocarSenha = token.deveTrocarSenha;
+          ((token as any).empresaId as string | null) ?? null;
+
+        (session.user as any).deveTrocarSenha = (token as any).deveTrocarSenha;
+
+        // ✅ novo: expõe a marca de impersonação no session
+        (session.user as any).impersonatedBy = (token as any).impersonatedBy ?? null;
 
         // SUPER_ADMIN não precisa buscar empresa e não bloqueia
         if ((session.user as any).cargo === "SUPER_ADMIN") {
@@ -277,7 +288,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const usuarioFresco = await prisma.usuario.findUnique({
-            where: { id: token.id as string },
+            where: { id: ((token as any).id ?? (token as any).sub) as string },
             select: {
               empresaId: true,
               empresa: {
@@ -303,8 +314,7 @@ export const authOptions: NextAuthOptions = {
 
             // Se bloquear enquanto navega
             if (isBillingBlockedLegacy(usuarioFresco.empresa)) {
-              (session as any).error = "BILLING_BLOCK";
-              (session as any).billing = {
+              const billingData = {
                 empresaNome: usuarioFresco.empresa?.nome,
                 chavePix: usuarioFresco.empresa?.chavePix,
                 diaVencimento: usuarioFresco.empresa?.diaVencimento,
@@ -314,6 +324,17 @@ export const authOptions: NextAuthOptions = {
                 cobrancaAtiva: usuarioFresco.empresa?.cobrancaAtiva,
                 cobrancaWhatsapp: usuarioFresco.empresa?.cobrancaWhatsapp,
               };
+
+              const isImpersonating = !!(session.user as any).impersonatedBy;
+
+              if (isImpersonating) {
+                // ✅ Modo suporte: não trava o app, só avisa
+                (session as any).billingWarning = billingData;
+              } else {
+                // ✅ Comportamento normal: trava
+                (session as any).error = "BILLING_BLOCK";
+                (session as any).billing = billingData;
+              }
             }
           }
         } catch (e) {
