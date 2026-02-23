@@ -193,7 +193,7 @@ export function getBillingStatus(
         message:
           diasAteVencer === 0
             ? "Seu período de teste acabou e sua 1ª fatura vence hoje."
-            : `Seu período de teste acabou. Sua 1ª fatura vence em ${diasAteVencer} dias.`,
+            : `Seu período de teste acabou. Sua fatura vence em ${diasAteVencer} dias.`,
         dueAtISO: anchorAt.toISOString(),
         dueAt: anchorAt.toISOString(),
         days: diasAteVencer,
