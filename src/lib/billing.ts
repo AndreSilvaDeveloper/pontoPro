@@ -170,7 +170,7 @@ export function getBillingStatus(
         code,
         message:
           code === "TRIAL_ENDING"
-            ? "Seu período de teste está acabando. Regularize para evitar bloqueio."
+            ? "Seu período de teste está acabando."
             : "Período de teste ativo.",
         // aqui faz sentido mostrar quando acaba o trial
         dueAtISO: trialAte.toISOString(),
