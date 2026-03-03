@@ -200,42 +200,13 @@ export const authOptions: NextAuthOptions = {
           message: st.message,
         });
 
-        // ✅ BLOQUEIO: manda payload via result.error (funciona no client)
+        // Billing bloqueado: permite login (sessão é criada),
+        // o redirect para /acesso_bloqueado acontece no client/layout.
         if (st.blocked) {
-          console.log("FAIL: BILLING_BLOCK");
-
-          const payload = {
-            code: st.code,
-            motivo: st.message,
-
-            empresaId: empresa.id,
-            empresaNome: empresa.nome,
-
-            email: user.email ?? null,
-            cargo: user.cargo ?? null,
-
-            chavePix: empresa.chavePix ?? null,
-            cobrancaWhatsapp: empresa.cobrancaWhatsapp ?? null,
-            diaVencimento: empresa.diaVencimento ?? null,
-
-            trialAteISO: empresa.trialAte
-              ? new Date(empresa.trialAte).toISOString()
-              : null,
-            pagoAteISO: empresa.pagoAte
-              ? new Date(empresa.pagoAte).toISOString()
-              : null,
-
-            dueAtISO: st.dueAtISO ?? null,
-            overdueDays: st.days ?? null,
-          };
-
-          const token = buildBillingBlockPayload(payload as any);
-
-          // 🔥 Este formato chega no client em result.error
-          throw new Error(`BILLING_BLOCK:${token}`);
+          console.log("BILLING_BLOCK: login permitido, redirect será feito no client");
+        } else {
+          console.log("OK: LOGIN SUCCESS");
         }
-
-        console.log("OK: LOGIN SUCCESS");
 
         return {
           id: user.id,

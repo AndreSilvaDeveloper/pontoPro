@@ -95,64 +95,11 @@ export default function LoginPage() {
         password,
       });
 
-      // DEBUG (se quiser ver no console do browser)
-      // console.log("SIGNIN_RESULT:", result);
-
-      // ✅ 1) Preferencial: vem no result.url (quando CredentialsSignin com code)
-      if (result?.url) {
-        const u = new URL(result.url, window.location.origin);
-        const code = u.searchParams.get('code');
-
-        if (code?.startsWith('BILLING_BLOCK:')) {
-          const token = code.slice('BILLING_BLOCK:'.length).trim();
-          sessionStorage.setItem(STORAGE_KEY, token);
-          toast.dismiss(toastId);
-          setLoading(false);
-          router.push('/acesso_bloqueado');
-          return;
-        }
-      }
-
-      // ✅ 2) Fallback: algumas builds/versões podem trazer no result.error
       if (result?.error) {
-        const err = String(result.error);
-
-        if (err.startsWith('BILLING_BLOCK:')) {
-          const token = err.slice('BILLING_BLOCK:'.length).trim();
-          sessionStorage.setItem(STORAGE_KEY, token);
-          toast.dismiss(toastId);
-          setLoading(false);
-          router.push('/acesso_bloqueado');
-          return;
-        }
-
-        // compat antigo
-        const isOldBlocked =
-          err.includes('ACESSO SUSPENSO') ||
-          err.includes('Acesso suspenso') ||
-          err.includes('teste gratuito expirou') ||
-          err.includes('Seu teste gratuito expirou');
-
-        if (isOldBlocked) {
-          const fallbackPayload = base64UrlEncodeUtf8({
-            code: err.includes('teste gratuito') ? 'TRIAL_EXPIRADO' : 'BLOQUEADO',
-            motivo: err.replace(/^🚫\s*/g, ''),
-            email: email.trim().toLowerCase(),
-          });
-
-          sessionStorage.setItem(STORAGE_KEY, fallbackPayload);
-          toast.dismiss(toastId);
-          setLoading(false);
-          router.push('/acesso_bloqueado');
-          return;
-        }
-
         toast.error('E-mail ou senha inválidos.', { id: toastId });
         setLoading(false);
         return;
       }
-
-      toast.success('Login autorizado! Entrando...', { id: toastId });
 
       try {
         sessionStorage.removeItem(FIN_ALERT_DISMISS_KEY);
@@ -160,6 +107,24 @@ export default function LoginPage() {
 
       const sessionRes = await fetch('/api/auth/session');
       const sessionData = await sessionRes.json();
+
+      // Verifica bloqueio financeiro após login (sessão já criada)
+      if (sessionData?.error === 'BILLING_BLOCK') {
+        const blockPayload = base64UrlEncodeUtf8({
+          code: 'BLOCKED',
+          motivo: 'Acesso suspenso por pendência financeira.',
+          empresaNome: sessionData?.billing?.empresaNome || '',
+          email: email.trim().toLowerCase(),
+          cargo: sessionData?.user?.cargo || null,
+        });
+        sessionStorage.setItem(STORAGE_KEY, blockPayload);
+        toast.dismiss(toastId);
+        setLoading(false);
+        router.push('/acesso_bloqueado');
+        return;
+      }
+
+      toast.success('Login autorizado! Entrando...', { id: toastId });
 
       if (sessionData?.user?.cargo === 'SUPER_ADMIN') router.push('/saas');
       else if (sessionData?.user?.cargo === 'ADMIN') router.push('/admin');

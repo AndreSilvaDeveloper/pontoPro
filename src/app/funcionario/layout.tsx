@@ -12,6 +12,12 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
   useEffect(() => {
     if (status !== 'authenticated') return;
 
+    // Bloqueio financeiro
+    if ((session as any)?.error === 'BILLING_BLOCK') {
+      router.push('/acesso_bloqueado');
+      return;
+    }
+
     if (session?.user?.deveTrocarSenha) {
       router.push('/trocar-senha');
       return;
