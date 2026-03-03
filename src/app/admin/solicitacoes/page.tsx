@@ -5,12 +5,13 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { Check, X, Clock, ArrowLeft, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function SolicitacoesAjuste() {
   const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processando, setProcessando] = useState<string | null>(null);
 
-  // Estado para edição do admin
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [horarioAdmin, setHorarioAdmin] = useState('');
 
@@ -24,77 +25,96 @@ export default function SolicitacoesAjuste() {
   };
 
   const responder = async (id: string, acao: 'APROVAR' | 'REJEITAR', horarioFinal?: string) => {
+    setProcessando(id);
     try {
-      await axios.post('/api/admin/solicitacoes', { 
-        id, 
+      await axios.post('/api/admin/solicitacoes', {
+        id,
         acao,
-        novoHorarioFinal: horarioFinal // Se o admin editou, manda esse
+        novoHorarioFinal: horarioFinal
       });
-      alert(acao === 'APROVAR' ? 'Ajuste realizado!' : 'Solicitação rejeitada.');
+      toast.success(acao === 'APROVAR' ? 'Ajuste realizado!' : 'Solicitação rejeitada.');
       carregar();
       setEditandoId(null);
-    } catch (e) { alert('Erro ao processar.'); }
+    } catch (e) {
+      toast.error('Erro ao processar.');
+    } finally {
+      setProcessando(null);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        
-        <div className="flex items-center justify-between border-b border-slate-800 pb-6">
-          <h1 className="text-2xl font-bold text-purple-400">Solicitações de Ajuste</h1>
-          <Link href="/admin" className="flex items-center gap-2 text-slate-400 hover:text-white"><ArrowLeft size={20} /> Voltar</Link>
+    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      {/* Orbs decorativos */}
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="max-w-4xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
+
+        {/* CABEÇALHO */}
+        <div className="flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center gap-3">
+            <Link href="/admin" className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/5 transition-all active:scale-95" title="Voltar">
+              <ArrowLeft size={20} />
+            </Link>
+            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+              <AlertCircle size={24} className="text-purple-400" />
+            </div>
+            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Solicitações de Ajuste</h1>
+          </div>
         </div>
 
-        {loading ? <p>Carregando...</p> : solicitacoes.length === 0 ? (
-          <div className="text-center py-10 bg-slate-900 rounded-xl border border-slate-800">
-            <p className="text-slate-500">Nenhuma solicitação pendente. 🎉</p>
+        {loading ? (
+          <div className="flex items-center justify-center gap-3 py-20 text-slate-400">
+            <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            Carregando...
+          </div>
+        ) : solicitacoes.length === 0 ? (
+          <div className="text-center py-10 bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-white/5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <p className="text-slate-500">Nenhuma solicitação pendente.</p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
             {solicitacoes.map((sol) => (
-              <div key={sol.id} className="bg-slate-900 p-6 rounded-xl border border-slate-800 flex flex-col md:flex-row gap-6 items-start md:items-center">
-                
+              <div key={sol.id} className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row gap-6 items-start md:items-center">
+
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded text-xs font-bold uppercase">{sol.usuario.nome}</span>
-                    
-                    {/* TAG PARA DIFERENCIAR */}
+                    <span className="bg-purple-900/50 text-purple-300 px-2 py-0.5 rounded-lg text-xs font-bold uppercase">{sol.usuario.nome}</span>
                     {!sol.pontoId ? (
-                        <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">NOVO PONTO</span>
+                      <span className="bg-blue-600 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase">NOVO PONTO</span>
                     ) : (
-                        <span className="bg-yellow-600 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase">AJUSTE</span>
+                      <span className="bg-yellow-600 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase">AJUSTE</span>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-4 text-sm">
-                    {/* LÓGICA VISUAL: Se tem pontoId, mostra o antigo. Se não, mostra só o novo. */}
                     {sol.ponto ? (
-                        <>
-                            <div className="text-slate-400">
-                                <p className="text-[10px] uppercase">Original</p>
-                                <p className="font-mono text-red-400 line-through decoration-red-500/50">{format(new Date(sol.ponto.dataHora), 'HH:mm')}</p>
-                            </div>
-                            <div className="text-slate-400">➡️</div>
-                        </>
-                    ) : (
+                      <>
                         <div className="text-slate-400">
-                            <p className="text-[10px] uppercase">Data</p>
-                            <p className="font-mono text-white">{format(new Date(sol.novoHorario), 'dd/MM/yyyy')}</p>
+                          <p className="text-[10px] uppercase">Original</p>
+                          <p className="font-mono text-red-400 line-through decoration-red-500/50">{format(new Date(sol.ponto.dataHora), 'HH:mm')}</p>
                         </div>
+                        <div className="text-slate-400">➡️</div>
+                      </>
+                    ) : (
+                      <div className="text-slate-400">
+                        <p className="text-[10px] uppercase">Data</p>
+                        <p className="font-mono text-white">{format(new Date(sol.novoHorario), 'dd/MM/yyyy')}</p>
+                      </div>
                     )}
 
                     <div>
                       <p className="text-[10px] uppercase text-slate-400">Solicitado ({sol.tipo || sol.ponto?.tipo})</p>
                       {editandoId === sol.id ? (
-                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-slate-800 border border-purple-500 rounded px-2 py-1 text-white font-bold"/>
+                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-slate-950/50 border border-purple-500 rounded-xl px-2 py-1 text-white font-bold focus:border-purple-400 outline-none"/>
                       ) : (
                         <p className="font-mono text-green-400 font-bold text-lg">{format(new Date(sol.novoHorario), 'HH:mm')}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-slate-950 p-3 rounded border border-slate-800 mt-2">
-                    <p className="text-xs text-slate-500 italic">" {sol.motivo} "</p>
+                  <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 mt-2">
+                    <p className="text-xs text-slate-500 italic">&quot; {sol.motivo} &quot;</p>
                   </div>
                 </div>
 
@@ -102,36 +122,37 @@ export default function SolicitacoesAjuste() {
                 <div className="flex flex-col gap-2 w-full md:w-auto">
                   {editandoId === sol.id ? (
                     <>
-                      <button 
+                      <button
                         onClick={() => {
-                            // Constrói a data completa com o novo horário do admin
-                            const dataBase = format(new Date(sol.novoHorario), 'yyyy-MM-dd');
-                            const final = new Date(`${dataBase}T${horarioAdmin}:00`).toISOString();
-                            responder(sol.id, 'APROVAR', final);
-                        }} 
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold"
+                          const dataBase = format(new Date(sol.novoHorario), 'yyyy-MM-dd');
+                          const final = new Date(`${dataBase}T${horarioAdmin}:00`).toISOString();
+                          responder(sol.id, 'APROVAR', final);
+                        }}
+                        disabled={!!processando}
+                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
                       >
                         Confirmar Edição
                       </button>
-                      <button onClick={() => setEditandoId(null)} className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Cancelar</button>
+                      <button onClick={() => setEditandoId(null)} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">Cancelar</button>
                     </>
                   ) : (
                     <>
-                      <button onClick={() => responder(sol.id, 'APROVAR')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2">
+                      <button onClick={() => responder(sol.id, 'APROVAR')} disabled={!!processando} className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors">
                         <Check size={16} /> Aceitar
                       </button>
-                      
-                      <button 
+
+                      <button
                         onClick={() => {
-                            setEditandoId(sol.id);
-                            setHorarioAdmin(format(new Date(sol.novoHorario), 'HH:mm'));
-                        }} 
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2"
+                          setEditandoId(sol.id);
+                          setHorarioAdmin(format(new Date(sol.novoHorario), 'HH:mm'));
+                        }}
+                        disabled={!!processando}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
                       >
                         <Clock size={16} /> Editar Horário
                       </button>
 
-                      <button onClick={() => responder(sol.id, 'REJEITAR')} className="bg-red-600/20 hover:bg-red-600/40 text-red-400 px-4 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border border-red-900">
+                      <button onClick={() => responder(sol.id, 'REJEITAR')} disabled={!!processando} className="bg-red-600/20 hover:bg-red-600/40 disabled:opacity-50 text-red-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-red-900/50 transition-colors">
                         <X size={16} /> Rejeitar
                       </button>
                     </>

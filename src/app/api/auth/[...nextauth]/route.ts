@@ -66,6 +66,7 @@ export const authOptions: NextAuthOptions = {
             cargo: true,
             empresaId: true,
             deveTrocarSenha: true,
+            deveCadastrarFoto: true,
           },
         });
 
@@ -107,6 +108,7 @@ export const authOptions: NextAuthOptions = {
             cargo: user.cargo,
             empresaId: user.empresaId ?? null,
             deveTrocarSenha: user.deveTrocarSenha,
+            deveCadastrarFoto: user.deveCadastrarFoto,
           } as any;
         }
 
@@ -210,6 +212,7 @@ export const authOptions: NextAuthOptions = {
             empresaNome: empresa.nome,
 
             email: user.email ?? null,
+            cargo: user.cargo ?? null,
 
             chavePix: empresa.chavePix ?? null,
             cobrancaWhatsapp: empresa.cobrancaWhatsapp ?? null,
@@ -241,6 +244,7 @@ export const authOptions: NextAuthOptions = {
           cargo: user.cargo,
           empresaId: user.empresaId,
           deveTrocarSenha: user.deveTrocarSenha,
+          deveCadastrarFoto: user.deveCadastrarFoto,
         } as any;
       },
     }),
@@ -253,6 +257,7 @@ export const authOptions: NextAuthOptions = {
         token.cargo = (user as any).cargo;
         token.empresaId = (user as any).empresaId ?? null;
         token.deveTrocarSenha = (user as any).deveTrocarSenha;
+        token.deveCadastrarFoto = (user as any).deveCadastrarFoto;
 
         // ✅ preserve se alguém (ex: endpoint de impersonação) já setou isso no user
         token.impersonatedBy = (user as any).impersonatedBy ?? (token as any).impersonatedBy ?? null;
@@ -277,6 +282,7 @@ export const authOptions: NextAuthOptions = {
           ((token as any).empresaId as string | null) ?? null;
 
         (session.user as any).deveTrocarSenha = (token as any).deveTrocarSenha;
+        (session.user as any).deveCadastrarFoto = (token as any).deveCadastrarFoto;
 
         // ✅ novo: expõe a marca de impersonação no session
         (session.user as any).impersonatedBy = (token as any).impersonatedBy ?? null;

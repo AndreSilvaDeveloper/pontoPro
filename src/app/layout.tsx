@@ -1,7 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Provider from "@/providers/SessionProvider"; 
+import Provider from "@/providers/SessionProvider";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
 import OnboardingMount from "@/components/onboarding/OnboardingMount";
@@ -9,6 +9,10 @@ import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot"
 
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const viewport: Viewport = {
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: "WorkID - Gestão Inteligente",

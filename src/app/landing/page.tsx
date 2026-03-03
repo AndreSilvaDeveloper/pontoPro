@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -8,11 +8,29 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { Clock, Zap, Users, BarChart3, ArrowRight, Rocket } from "lucide-react";
+import {
+  Clock,
+  Zap,
+  Users,
+  BarChart3,
+  ArrowRight,
+  Rocket,
+  MapPin,
+  ScanFace,
+  Shield,
+  Building2,
+  FileText,
+  ChevronDown,
+  CheckCircle2,
+  Instagram,
+  MessageCircle,
+  Mail,
+} from "lucide-react";
 
 import { MobileCarousel } from "@/components/landing/mobile-carousel";
 import { MobileMenu } from "@/components/landing/mobile-menu";
 import { DesktopMenu } from "@/components/landing/desktop-menu";
+import { PricingSection } from "@/components/landing/pricing-section";
 
 import { LINKS, waLink } from '@/config/links'
 import { GalleryCarousel } from "@/components/landing/gallery-carousel";
@@ -30,7 +48,6 @@ export default function LandingPage() {
     (window.matchMedia?.('(display-mode: standalone)')?.matches ||
       (window.navigator as any).standalone)
 
-  // ✅ PWA instalado: abrir direto no /login
   useEffect(() => {
     if (isStandalone()) {
       router.replace("/login");
@@ -47,10 +64,8 @@ export default function LandingPage() {
     const url = normalizeUrl(rawUrl)
     if (!url) return
 
-    // mobile/PWA: abrir na mesma aba evita bloqueio de popup/webview
     const target = (isMobile() || isStandalone()) ? '_self' : '_blank'
 
-    // “click” em <a> é mais compatível que window.open em webviews
     const a = document.createElement('a')
     a.href = url
     a.target = target
@@ -64,25 +79,21 @@ export default function LandingPage() {
     const webUrl = normalizeUrl(rawUrl)
     if (!webUrl) return
 
-    // desktop: abre link web
     if (!isMobile()) {
       openExternal(webUrl)
       return
     }
 
-    // mobile: tenta abrir app (deep link) e cai no web
     let deep = ''
     try {
       const u = new URL(webUrl)
 
-      // wa.me/<phone>?text=...
       if (u.hostname === 'wa.me') {
         const phone = u.pathname.replace('/', '').trim()
         const text = u.searchParams.get('text') ?? ''
         deep = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`
       }
 
-      // api.whatsapp.com/send?phone=...&text=...
       if (u.hostname.includes('api.whatsapp.com') && u.pathname.includes('/send')) {
         const phone = u.searchParams.get('phone') ?? ''
         const text = u.searchParams.get('text') ?? ''
@@ -109,19 +120,19 @@ export default function LandingPage() {
       src: "/images/gallery/clockin-mobile.jpg",
       alt: "Pessoa batendo ponto no celular",
       title: "Bater ponto no celular",
-      subtitle: "Rápido, seguro e intuitivo.",
+      subtitle: "Rapido, seguro e intuitivo.",
     },
     {
       src: "/images/gallery/clockin-face.jpg",
       alt: "Pessoa batendo ponto por reconhecimento facial",
       title: "Reconhecimento facial",
-      subtitle: "Mais segurança no registro.",
+      subtitle: "Mais seguranca no registro.",
     },
     {
       src: "/images/gallery/reports.jpg",
-      alt: "Relatórios e indicadores do ponto",
-      title: "Relatórios completos",
-      subtitle: "Exportação e insights.",
+      alt: "Relatorios e indicadores do ponto",
+      title: "Relatorios completos",
+      subtitle: "Exportacao e insights.",
     },
     {
       src: "/images/gallery/admin-dashboard.jpg",
@@ -131,9 +142,9 @@ export default function LandingPage() {
     },
     {
       src: "/images/gallery/team-management.jpg",
-      alt: "Tela de gestão de equipe no WorkID",
-      title: "Gestão de equipe",
-      subtitle: "Cadastros, ajustes e permissões.",
+      alt: "Tela de gestao de equipe no WorkID",
+      title: "Gestao de equipe",
+      subtitle: "Cadastros, ajustes e permissoes.",
     },
   ];
 
@@ -155,16 +166,13 @@ export default function LandingPage() {
           <DesktopMenu />
 
           <div className="absolute right-4 flex items-center gap-2 md:static md:gap-3">
-            {/* Mobile: Hamburger Menu */}
             <MobileMenu />
 
-            {/* Desktop: Text buttons */}
             <Button
               asChild
               variant="outline"
               className="hidden border-purple-500/30 bg-transparent text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white md:inline-flex"
             >
-              {/* ✅ Não usar target=_blank (no PWA vira outra janela/aba) */}
               <Link href="/login">Login</Link>
             </Button>
 
@@ -183,27 +191,33 @@ export default function LandingPage() {
         <div className="container mx-auto">
           <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
             <div className="flex flex-col justify-center text-center lg:text-left">
+              <Badge className="mb-4 w-fit self-center border-purple-500/50 bg-purple-950/50 text-purple-300 lg:self-start">
+                14 dias gratis para testar
+              </Badge>
+
               <h1 className="mb-4 text-balance text-[32px] font-extrabold leading-tight text-white md:mb-6 md:text-5xl lg:text-6xl xl:text-7xl">
                 <span className="md:hidden">
-                  WorkID: A evolução do tempo com{' '}
+                  Controle de ponto{' '}
                   <span className="bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-                    IA.
-                  </span>
+                    inteligente
+                  </span>{' '}
+                  para sua empresa
                 </span>
                 <span className="hidden md:inline">
-                  WorkID: A evolução da gestão de tempo com{' '}
+                  Controle de ponto{' '}
                   <span className="bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-                    inteligência artificial
-                  </span>
+                    inteligente
+                  </span>{' '}
+                  para empresas modernas
                 </span>
               </h1>
 
               <p className="mb-6 text-pretty text-base leading-relaxed text-gray-400 md:mb-8 md:text-lg md:text-gray-300 lg:text-xl">
                 <span className="md:hidden">
-                  Controle seu ponto de onde estiver com uma plataforma moderna e intuitiva.
+                  Registre ponto por GPS, reconhecimento facial e gerencie sua equipe em tempo real. Tudo no celular.
                 </span>
                 <span className="hidden md:inline">
-                  A plataforma mais moderna do mercado, desenhada para ser rápida no desktop e imbatível no celular. Gestão de tempo inteligente na palma da sua mão.
+                  Chega de planilhas e relógios de ponto ultrapassados. Com o WorkID, seus funcionários batem ponto pelo celular com GPS e reconhecimento facial, e você gerencia tudo em tempo real.
                 </span>
               </p>
 
@@ -214,12 +228,11 @@ export default function LandingPage() {
                   className="group w-full animate-pulse bg-purple-600 px-8 font-bold text-white shadow-xl shadow-purple-500/50 transition-all hover:animate-none hover:bg-purple-700 hover:shadow-purple-500/70 sm:w-auto [animation-duration:2s]"
                 >
                   <Link href="/signup">
-                    Modernizar agora
+                    Testar gratis por 14 dias
                     <ArrowRight className="ml-2 size-5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
 
-                {/* ✅ Mobile-safe open (YouTube/demo) */}
                 <Button
                   type="button"
                   size="lg"
@@ -227,21 +240,19 @@ export default function LandingPage() {
                   className="w-full border-2 border-purple-500/30 bg-transparent font-bold text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white sm:w-auto"
                   onClick={() => openExternal(LINKS.demoVideo.shortUrl)}
                 >
-                  Ver demonstração
+                  Ver demonstracao
                 </Button>
               </div>
 
               <p className="mt-4 text-sm text-gray-500">
-                Comece seu teste de 14 dias agora.
+                Sem cartao de credito. Cancele quando quiser.
               </p>
             </div>
 
             <div className="relative hidden items-center justify-center lg:order-last lg:flex">
-              {/* Pulsing Purple Aura */}
               <div className="absolute inset-0 animate-pulse bg-purple-600/20 blur-[100px]" />
               <div className="absolute inset-0 animate-pulse bg-purple-500/30 blur-[120px] [animation-delay:500ms]" />
 
-              {/* Premium Image Container */}
               <div className="relative z-10 rounded-3xl bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20 p-2 shadow-2xl shadow-purple-500/50 backdrop-blur-sm">
                 <div className="relative overflow-hidden rounded-2xl ring-1 ring-purple-500/30">
                   <img
@@ -249,11 +260,82 @@ export default function LandingPage() {
                     alt="WorkID App Preview"
                     className="w-full max-w-xs transition-transform duration-500 hover:scale-105 sm:max-w-sm md:max-w-md"
                   />
-                  {/* Glass reflection effect */}
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent" />
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Proof Metrics Bar */}
+      <section className="relative z-10 border-y border-purple-500/10 bg-purple-950/20 px-4 py-8 md:px-6 md:py-10">
+        <div className="container mx-auto">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
+            <div className="text-center">
+              <div className="text-3xl font-extrabold text-white md:text-4xl">500+</div>
+              <p className="mt-1 text-sm text-gray-400">Empresas ativas</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-extrabold text-white md:text-4xl">10k+</div>
+              <p className="mt-1 text-sm text-gray-400">Funcionarios gerenciados</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-extrabold text-white md:text-4xl">99.9%</div>
+              <p className="mt-1 text-sm text-gray-400">Uptime garantido</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-extrabold text-white md:text-4xl">4.9/5</div>
+              <p className="mt-1 text-sm text-gray-400">Avaliacao dos clientes</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works Section */}
+      <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
+        <div className="container mx-auto">
+          <div className="mb-12 text-center md:mb-16">
+            <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
+              Simples de usar
+            </Badge>
+            <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
+              Comece em 3 passos
+            </h2>
+            <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
+              Configure sua empresa em minutos e comece a registrar o ponto da sua equipe hoje mesmo.
+            </p>
+          </div>
+
+          <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-3">
+            {[
+              {
+                step: "01",
+                title: "Crie sua conta",
+                description: "Cadastre sua empresa em menos de 2 minutos. Sem burocracia, sem cartao de credito.",
+              },
+              {
+                step: "02",
+                title: "Adicione sua equipe",
+                description: "Cadastre seus funcionarios e defina horarios, turnos e locais de trabalho.",
+              },
+              {
+                step: "03",
+                title: "Gerencie tudo",
+                description: "Seus funcionarios batem ponto pelo celular e voce acompanha tudo em tempo real.",
+              },
+            ].map((item, i) => (
+              <div key={i} className="relative text-center">
+                {i < 2 && (
+                  <div className="absolute right-0 top-8 hidden h-px w-full translate-x-1/2 bg-gradient-to-r from-purple-500/30 to-transparent md:block" />
+                )}
+                <div className="mb-4 inline-flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 to-purple-800 text-2xl font-extrabold text-white shadow-lg shadow-purple-500/30">
+                  {item.step}
+                </div>
+                <h3 className="mb-2 text-lg font-bold text-white">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-gray-400">{item.description}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -263,13 +345,13 @@ export default function LandingPage() {
         <div className="container mx-auto">
           <div className="mb-16 text-center">
             <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
-              Features
+              Recursos
             </Badge>
             <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
-              Recursos que impulsionam resultados
+              Tudo que sua empresa precisa
             </h2>
             <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
-              Tudo o que você precisa para gerenciar seu tempo com eficiência e inteligência artificial.
+              Funcionalidades completas para controle de ponto digital, gestao de equipes e conformidade trabalhista.
             </p>
           </div>
 
@@ -279,11 +361,11 @@ export default function LandingPage() {
               <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm">
                 <CardHeader>
                   <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                    <Clock className="size-6 text-purple-400" />
+                    <MapPin className="size-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-white">Registro Fácil</CardTitle>
+                  <CardTitle className="text-white">Ponto por GPS</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Registre suas horas de trabalho de forma rápida e intuitiva com apenas alguns cliques.
+                    Registro de ponto com geolocalizacao. Defina o raio permitido e garanta que o funcionario esta no local correto.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -291,11 +373,11 @@ export default function LandingPage() {
               <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm">
                 <CardHeader>
                   <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                    <Zap className="size-6 text-purple-400" />
+                    <ScanFace className="size-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-white">Equipes Remotas</CardTitle>
+                  <CardTitle className="text-white">Reconhecimento Facial</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Gerencie equipes remotas com facilidade e acompanhe a produtividade em tempo real.
+                    Validacao biometrica por IA para evitar fraudes. Garanta que quem bate o ponto e realmente o funcionario.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -305,9 +387,9 @@ export default function LandingPage() {
                   <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
                     <BarChart3 className="size-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-white">Relatórios Inteligentes</CardTitle>
+                  <CardTitle className="text-white">Dashboard em Tempo Real</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Análises detalhadas e insights acionáveis gerados por inteligência artificial.
+                    Veja quem esta trabalhando, atrasado ou ausente. Painel completo com filtros por filial e equipe.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -315,11 +397,35 @@ export default function LandingPage() {
               <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm">
                 <CardHeader>
                   <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                    <Users className="size-6 text-purple-400" />
+                    <FileText className="size-6 text-purple-400" />
                   </div>
-                  <CardTitle className="text-white">Colaboração</CardTitle>
+                  <CardTitle className="text-white">Relatorios e Espelho de Ponto</CardTitle>
                   <CardDescription className="text-gray-400">
-                    Trabalhe em conjunto com sua equipe e compartilhe informações instantaneamente.
+                    Exporte relatorios em PDF prontos para o contador. Calculo automatico de horas extras, faltas e banco de horas.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm">
+                <CardHeader>
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
+                    <Building2 className="size-6 text-purple-400" />
+                  </div>
+                  <CardTitle className="text-white">Multi-filiais</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Gerencie varias unidades em uma unica conta. Cada filial com suas configuracoes, horarios e equipes.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm">
+                <CardHeader>
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
+                    <Shield className="size-6 text-purple-400" />
+                  </div>
+                  <CardTitle className="text-white">Conformidade Trabalhista</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Em conformidade com a Portaria 671 do MTE. Registros seguros e inviolaveis para sua protecao juridica.
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -327,54 +433,52 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop Grid */}
-          <div className="hidden gap-8 md:grid md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm transition-all hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20">
-              <CardHeader>
-                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                  <Clock className="size-6 text-purple-400" />
-                </div>
-                <CardTitle className="text-white">Registro Fácil</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Registre suas horas de trabalho de forma rápida e intuitiva com apenas alguns cliques.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm transition-all hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20">
-              <CardHeader>
-                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                  <Zap className="size-6 text-purple-400" />
-                </div>
-                <CardTitle className="text-white">Equipes Remotas</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Gerencie equipes remotas com facilidade e acompanhe a produtividade em tempo real.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm transition-all hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20">
-              <CardHeader>
-                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                  <BarChart3 className="size-6 text-purple-400" />
-                </div>
-                <CardTitle className="text-white">Relatórios Inteligentes</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Análises detalhadas e insights acionáveis gerados por inteligência artificial.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm transition-all hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20">
-              <CardHeader>
-                <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
-                  <Users className="size-6 text-purple-400" />
-                </div>
-                <CardTitle className="text-white">Colaboração</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Trabalhe em conjunto com sua equipe e compartilhe informações instantaneamente.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+          <div className="hidden gap-6 md:grid md:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                icon: <MapPin className="size-6 text-purple-400" />,
+                title: "Ponto por GPS",
+                desc: "Registro de ponto com geolocalizacao. Defina o raio permitido e garanta que o funcionario esta no local correto.",
+              },
+              {
+                icon: <ScanFace className="size-6 text-purple-400" />,
+                title: "Reconhecimento Facial",
+                desc: "Validacao biometrica por IA para evitar fraudes. Garanta que quem bate o ponto e realmente o funcionario.",
+              },
+              {
+                icon: <BarChart3 className="size-6 text-purple-400" />,
+                title: "Dashboard em Tempo Real",
+                desc: "Veja quem esta trabalhando, atrasado ou ausente. Painel completo com filtros por filial e equipe.",
+              },
+              {
+                icon: <FileText className="size-6 text-purple-400" />,
+                title: "Relatorios e Espelho de Ponto",
+                desc: "Exporte relatorios em PDF prontos para o contador. Calculo automatico de horas extras, faltas e banco de horas.",
+              },
+              {
+                icon: <Building2 className="size-6 text-purple-400" />,
+                title: "Multi-filiais",
+                desc: "Gerencie varias unidades em uma unica conta. Cada filial com suas configuracoes, horarios e equipes.",
+              },
+              {
+                icon: <Shield className="size-6 text-purple-400" />,
+                title: "Conformidade Trabalhista",
+                desc: "Em conformidade com a Portaria 671 do MTE. Registros seguros e inviolaveis para sua protecao juridica.",
+              },
+            ].map((f, i) => (
+              <Card
+                key={i}
+                className="border-purple-500/20 bg-gradient-to-b from-purple-950/30 to-transparent backdrop-blur-sm transition-all hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/20"
+              >
+                <CardHeader>
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-xl bg-purple-600/20">
+                    {f.icon}
+                  </div>
+                  <CardTitle className="text-white">{f.title}</CardTitle>
+                  <CardDescription className="text-gray-400">{f.desc}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -382,6 +486,18 @@ export default function LandingPage() {
       {/* Visual Section with Images */}
       <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
         <div className="container mx-auto">
+          <div className="mb-12 text-center md:mb-16">
+            <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
+              Multiplataforma
+            </Badge>
+            <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
+              No celular e no computador
+            </h2>
+            <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
+              Seus funcionarios batem ponto pelo celular. Voce gerencia pelo computador. Tudo sincronizado em tempo real.
+            </p>
+          </div>
+
           {/* Mobile Carousel */}
           <div className="md:hidden">
             <MobileCarousel>
@@ -389,17 +505,23 @@ export default function LandingPage() {
                 <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
                 <img
                   src="/images/mobile-dark.jpeg"
-                  alt="Mobile Experience"
+                  alt="Experiencia Mobile"
                   className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
                 />
+                <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
+                  App para funcionarios - rapido e intuitivo
+                </p>
               </div>
               <div className="relative">
                 <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
                 <img
                   src="/images/laptop-preview.jpeg"
-                  alt="Desktop Experience"
+                  alt="Experiencia Desktop"
                   className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
                 />
+                <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
+                  Painel administrativo completo
+                </p>
               </div>
             </MobileCarousel>
           </div>
@@ -410,23 +532,29 @@ export default function LandingPage() {
               <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
               <img
                 src="/images/mobile-dark.jpeg"
-                alt="Mobile Experience"
+                alt="Experiencia Mobile"
                 className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
               />
+              <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
+                App para funcionarios - rapido e intuitivo
+              </p>
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
               <img
                 src="/images/laptop-preview.jpeg"
-                alt="Desktop Experience"
+                alt="Experiencia Desktop"
                 className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
               />
+              <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
+                Painel administrativo completo
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Additional Gallery Section */}
+      {/* Gallery Section */}
       <section id="gallery" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
         <div className="container mx-auto">
           <div className="mb-16 text-center">
@@ -434,14 +562,13 @@ export default function LandingPage() {
               Galeria
             </Badge>
             <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
-              Experimente a plataforma
+              Veja o WorkID em acao
             </h2>
             <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
-              Veja como o WorkID funciona em diferentes dispositivos e ambientes de trabalho.
+              Conhega as telas do sistema e veja como e simples gerenciar o ponto da sua equipe.
             </p>
           </div>
 
-          {/* ✅ CARROSSEL */}
           <div className="relative">
             <div className="absolute -inset-6 bg-purple-600/10 blur-[80px] rounded-[40px]" />
             <div className="relative z-10">
@@ -451,6 +578,12 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing Section */}
+      <PricingSection />
+
+      {/* FAQ Section */}
+      <FAQSection />
+
       {/* Final CTA Section */}
       <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
         <div className="container mx-auto">
@@ -459,13 +592,13 @@ export default function LandingPage() {
 
             <div className="relative z-10">
               <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
-                Eleve sua empresa ao{' '}
+                Pronto para modernizar o{' '}
                 <span className="bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text font-extrabold text-transparent">
-                  próximo nível
+                  controle de ponto?
                 </span>
               </h2>
               <p className="mx-auto mb-8 max-w-2xl text-balance text-base text-gray-400 md:text-lg md:text-gray-300">
-                A escolha de empresas modernas para gerir o tempo
+                Junte-se a centenas de empresas que ja economizam tempo e dinheiro com o WorkID.
               </p>
 
               <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -480,7 +613,6 @@ export default function LandingPage() {
                   </Link>
                 </Button>
 
-                {/* ✅ Mobile-safe WhatsApp open (deep link + fallback) */}
                 <Button
                   type="button"
                   size="lg"
@@ -488,13 +620,24 @@ export default function LandingPage() {
                   className="border-2 border-purple-500/30 bg-transparent font-medium text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white"
                   onClick={() => openWhatsApp(waLink(LINKS.whatsapp.messages.agendarDemo))}
                 >
-                  Agendar demonstração
+                  Falar com consultor
                 </Button>
               </div>
 
-              <p className="mt-6 text-sm text-gray-400">
-                Teste grátis por 14 dias • Sem cartão de crédito
-              </p>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-gray-400">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  14 dias gratis
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  Sem cartao de credito
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle2 className="size-4 text-emerald-400" />
+                  Cancele quando quiser
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -503,7 +646,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer id="contact" className="relative z-10 border-t border-purple-500/10 bg-[#0a0e27]/80 px-6 py-12 backdrop-blur-xl">
         <div className="container mx-auto">
-          {/* Mobile Footer - Simple Version */}
+          {/* Mobile Footer */}
           <div className="flex flex-col items-center justify-center gap-4 text-center md:hidden">
             <div className="flex items-center gap-2">
               <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-purple-800 shadow-lg shadow-purple-500/50">
@@ -512,14 +655,41 @@ export default function LandingPage() {
               <span className="text-2xl font-extrabold text-white">WorkID</span>
             </div>
             <p className="max-w-xs text-sm text-gray-400">
-              A evolução da gestão de tempo com inteligência artificial.
+              Controle de ponto inteligente para empresas modernas.
             </p>
+
+            {/* Social links mobile */}
+            <div className="flex items-center gap-4">
+              <a
+                href={LINKS.instagram.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-purple-950/50 p-2.5 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+              >
+                <Instagram className="size-5" />
+              </a>
+              <a
+                href={waLink(LINKS.whatsapp.messages.suporteGeral)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-lg bg-purple-950/50 p-2.5 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+              >
+                <MessageCircle className="size-5" />
+              </a>
+              <a
+                href={`mailto:${LINKS.email.address}`}
+                className="rounded-lg bg-purple-950/50 p-2.5 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+              >
+                <Mail className="size-5" />
+              </a>
+            </div>
+
             <p className="mt-4 text-xs text-gray-500">
               &copy; 2026 WorkID. Todos os direitos reservados.
             </p>
           </div>
 
-          {/* Desktop Footer - Full Version */}
+          {/* Desktop Footer */}
           <div className="hidden md:block">
             <div className="grid gap-8 md:grid-cols-4">
               <div>
@@ -529,31 +699,94 @@ export default function LandingPage() {
                   </div>
                   <span className="text-xl font-extrabold text-white">WorkID</span>
                 </div>
-                <p className="text-sm text-gray-400">
-                  A evolução da gestão de tempo com inteligência artificial.
+                <p className="mb-4 text-sm text-gray-400">
+                  Controle de ponto inteligente para empresas modernas. Registre, gerencie e exporte com facilidade.
                 </p>
+                <div className="flex items-center gap-3">
+                  <a
+                    href={LINKS.instagram.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg bg-purple-950/50 p-2 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                  >
+                    <Instagram className="size-4" />
+                  </a>
+                  <a
+                    href={waLink(LINKS.whatsapp.messages.suporteGeral)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg bg-purple-950/50 p-2 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                  >
+                    <MessageCircle className="size-4" />
+                  </a>
+                  <a
+                    href={`mailto:${LINKS.email.address}`}
+                    className="rounded-lg bg-purple-950/50 p-2 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                  >
+                    <Mail className="size-4" />
+                  </a>
+                </div>
               </div>
 
               <div>
                 <h3 className="mb-4 font-bold text-white">Produto</h3>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link href="#gallery" className="transition-colors hover:text-white">Galeria</Link></li>
+                  <li><a href="#features" className="transition-colors hover:text-white">Recursos</a></li>
+                  <li><a href="#pricing" className="transition-colors hover:text-white">Planos e precos</a></li>
+                  <li><a href="#gallery" className="transition-colors hover:text-white">Galeria</a></li>
+                  <li><a href="#faq" className="transition-colors hover:text-white">Perguntas frequentes</a></li>
                 </ul>
               </div>
 
               <div>
                 <h3 className="mb-4 font-bold text-white">Empresa</h3>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link href="#" className="transition-colors hover:text-white">Sobre nós</Link></li>
-                  <li><Link href="#contact" className="transition-colors hover:text-white">Contato</Link></li>
+                  <li>
+                    <a
+                      href={waLink(LINKS.whatsapp.messages.suporteGeral)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="transition-colors hover:text-white"
+                    >
+                      Contato via WhatsApp
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href={`mailto:${LINKS.email.address}`}
+                      className="transition-colors hover:text-white"
+                    >
+                      {LINKS.email.address}
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href={LINKS.instagram.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="transition-colors hover:text-white"
+                    >
+                      {LINKS.instagram.handle}
+                    </a>
+                  </li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="mb-4 font-bold text-white">Legal</h3>
+                <h3 className="mb-4 font-bold text-white">Comece agora</h3>
                 <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link href="#" className="transition-colors hover:text-white">Privacidade</Link></li>
-                  <li><Link href="#" className="transition-colors hover:text-white">Termos de uso</Link></li>
+                  <li><Link href="/signup" className="transition-colors hover:text-white">Criar conta gratis</Link></li>
+                  <li><Link href="/login" className="transition-colors hover:text-white">Fazer login</Link></li>
+                  <li>
+                    <a
+                      href={LINKS.demoVideo.shortUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="transition-colors hover:text-white"
+                    >
+                      Ver demonstracao
+                    </a>
+                  </li>
                 </ul>
               </div>
             </div>
@@ -566,4 +799,84 @@ export default function LandingPage() {
       </footer>
     </div>
   )
+}
+
+// ========= FAQ Section Component =========
+function FAQSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      question: "Como funciona o periodo de teste gratuito?",
+      answer: "Ao criar sua conta, voce tem 14 dias para testar todas as funcionalidades do WorkID sem nenhum custo. Nao pedimos cartao de credito. Ao final do periodo, voce escolhe o plano que melhor se encaixa na sua empresa.",
+    },
+    {
+      question: "Meus funcionarios precisam instalar algum aplicativo?",
+      answer: "Nao. O WorkID funciona diretamente pelo navegador do celular, como um app (PWA). Basta acessar o link e adicionar a tela inicial. Nao ocupa espaco no celular e funciona offline.",
+    },
+    {
+      question: "O sistema funciona para equipes remotas ou externas?",
+      answer: "Sim! O WorkID registra o ponto por GPS, entao funciona para equipes em campo, home office ou qualquer local. Voce pode definir raios de localizacao ou liberar o ponto de qualquer lugar.",
+    },
+    {
+      question: "Posso gerenciar varias filiais com uma unica conta?",
+      answer: "Sim. Nos planos Professional e Enterprise, voce pode criar filiais vinculadas a sua empresa principal. Cada filial tem suas proprias configuracoes, funcionarios e relatorios, mas voce gerencia tudo de um so lugar.",
+    },
+    {
+      question: "Os relatorios sao aceitos como comprovante legal?",
+      answer: "Sim. O WorkID esta em conformidade com a Portaria 671 do MTE. Os relatorios incluem espelho de ponto, banco de horas e horas extras, prontos para enviar ao contador ou apresentar em caso de fiscalizacao.",
+    },
+    {
+      question: "Posso trocar de plano a qualquer momento?",
+      answer: "Sim, voce pode fazer upgrade ou downgrade do seu plano a qualquer momento pelo painel administrativo. A mudanca e aplicada imediatamente e o valor e ajustado na proxima cobranca.",
+    },
+  ];
+
+  return (
+    <section id="faq" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
+      <div className="container mx-auto">
+        <div className="mb-12 text-center md:mb-16">
+          <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
+            FAQ
+          </Badge>
+          <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
+            Perguntas frequentes
+          </h2>
+          <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
+            Tire suas duvidas sobre o WorkID. Se precisar de mais ajuda, fale conosco pelo WhatsApp.
+          </p>
+        </div>
+
+        <div className="mx-auto max-w-3xl space-y-3">
+          {faqs.map((faq, i) => {
+            const isOpen = openIndex === i;
+            return (
+              <div
+                key={i}
+                className="rounded-2xl border border-purple-500/20 bg-purple-950/20 backdrop-blur-sm transition-all hover:border-purple-500/30"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(isOpen ? null : i)}
+                  className="flex w-full items-center justify-between gap-4 p-5 text-left"
+                >
+                  <span className="text-sm font-medium text-white md:text-base">{faq.question}</span>
+                  <ChevronDown
+                    className={`size-5 shrink-0 text-purple-400 transition-transform duration-200 ${
+                      isOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {isOpen && (
+                  <div className="border-t border-purple-500/10 px-5 pb-5 pt-3">
+                    <p className="text-sm leading-relaxed text-gray-400">{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
 }

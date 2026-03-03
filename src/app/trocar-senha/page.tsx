@@ -4,10 +4,11 @@ import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { Lock, CheckCircle } from 'lucide-react';
-import { signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 export default function TrocarSenhaPage() {
   const router = useRouter();
+  const { update } = useSession();
   const [senha, setSenha] = useState('');
   const [confirmar, setConfirmar] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,13 +26,19 @@ export default function TrocarSenhaPage() {
     setLoading(true);
 
     try {
-      await axios.post('/api/auth/trocar-senha', { novaSenha: senha });
+      const response = await axios.post('/api/auth/trocar-senha', { novaSenha: senha });
       setMsg('✅ Senha alterada! Redirecionando...');
-      
-      // Força o logout para ele logar com a senha nova (Segurança máxima)
+
+      // Atualiza a sessão sem logout
+      await update({ deveTrocarSenha: false });
+
       setTimeout(() => {
-        signOut({ callbackUrl: '/login' });
-      }, 2000);
+        if (response.data.deveCadastrarFoto) {
+          router.push('/cadastrar-foto');
+        } else {
+          router.push('/funcionario');
+        }
+      }, 1500);
 
     } catch (error: any) {
       setMsg('❌ ' + (error.response?.data?.erro || 'Erro ao salvar.'));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { driver, DriveStep, Driver } from "driver.js";
@@ -16,8 +16,7 @@ function makeAdminTourKey(empresaId: string | null, userId: string | null) {
 const BILLING_KEY = "ui:billing-modal-closed:v1";
 const BILLING_EVENT = "billing-modal-closed";
 
-// flag de sessão para impedir start duplicado
-const STARTED_SESSION_KEY = "ui:admin-tour-started:v1";
+export const ADMIN_TOUR_RESTART_EVENT = "admin-tour-restart";
 
 function getSteps(): DriveStep[] {
   const all: DriveStep[] = [
@@ -157,13 +156,42 @@ function getSteps(): DriveStep[] {
     },
   ];
 
-  // ✅ Só mantém steps cujo elemento existe no DOM
   return all.filter((step) => {
     const el = step.element;
-    if (!el) return true;
-    if (typeof el !== "string") return true;
+    if (!el || typeof el !== "string") return true;
     return !!document.querySelector(el);
   });
+}
+
+/** Verifica se o billing modal está aberto no DOM */
+function isBillingModalOpen() {
+  return !!document.querySelector('[data-billing-modal="open"]');
+}
+
+/** Verifica se o toast de notificação está visível */
+function isToastVisible() {
+  // O toast tem z-[100] e fica em fixed top-16 right-6
+  return !!document.querySelector('[data-tour="admin-ajustes"].fixed');
+}
+
+function createDriver(steps: DriveStep[], tourKey: string): Driver {
+  const d = driver({
+    showProgress: true,
+    allowClose: true,
+    nextBtnText: "Próximo",
+    prevBtnText: "Voltar",
+    doneBtnText: "Concluir",
+    popoverClass: "tour-popover",
+    steps,
+    onCloseClick: () => {
+      localStorage.setItem(tourKey, "1");
+      d.destroy();
+    },
+    onDestroyed: () => {
+      localStorage.setItem(tourKey, "1");
+    },
+  });
+  return d;
 }
 
 export default function AdminTour() {
@@ -171,28 +199,24 @@ export default function AdminTour() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  // evita dependência instável do objeto searchParams
-  const forced = useMemo(
-    () => searchParams?.get("tour") === "1",
-    [searchParams]
-  );
-
   const driverRef = useRef<Driver | null>(null);
-  const didStartRef = useRef(false);
-  const markingCompleteRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const destroyDriver = () => {
+    try { driverRef.current?.destroy(); } catch {}
+    driverRef.current = null;
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+  };
+
+  // ========== TOUR AUTOMÁTICO (primeiro acesso) ==========
   useEffect(() => {
-    // ✅ Rota: /admin ou /admin/
     const isAdminHome = pathname === "/admin" || pathname === "/admin/";
-    if (!isAdminHome) return;
+    if (!isAdminHome || status !== "authenticated") return;
 
-    // ✅ só roda quando a sessão estiver pronta
-    if (status !== "authenticated") return;
-
-    // opcional: não quer tutorial pro SUPER_ADMIN
     const cargo = (session?.user as any)?.cargo;
     if (cargo === "SUPER_ADMIN") return;
 
+    const forced = searchParams?.get("tour") === "1";
     const userId = (session?.user as any)?.id ?? null;
     const empresaId = (session?.user as any)?.empresaId ?? null;
     const TOUR_KEY = makeAdminTourKey(empresaId, userId);
@@ -200,97 +224,85 @@ export default function AdminTour() {
     const done = localStorage.getItem(TOUR_KEY) === "1";
     if (done && !forced) return;
 
-    // se já iniciou nessa sessão, não inicia de novo
-    if (!forced && sessionStorage.getItem(STARTED_SESSION_KEY) === "1") return;
-
-    const destroyDriverSilently = () => {
-      // destrói sem marcar como concluído
-      markingCompleteRef.current = false;
-      try {
-        driverRef.current?.destroy();
-      } catch {}
-      driverRef.current = null;
+    const launchTour = () => {
+      destroyDriver();
+      const steps = getSteps();
+      if (!steps.length) return;
+      const d = createDriver(steps, TOUR_KEY);
+      driverRef.current = d;
+      d.drive();
     };
 
-    const startTour = () => {
-      if (didStartRef.current && !forced) return;
-      didStartRef.current = true;
+    /**
+     * Tenta iniciar o tour. Se algo estiver bloqueando (billing modal ou toast),
+     * reagenda. Máximo de tentativas para não ficar em loop infinito.
+     */
+    let attempts = 0;
+    const tryStart = () => {
+      attempts++;
+      if (attempts > 30) return; // desiste após ~30s
 
-      if (!forced) sessionStorage.setItem(STARTED_SESSION_KEY, "1");
+      // Billing modal aberto? Espera evento ou re-poll
+      if (!forced && isBillingModalOpen()) {
+        timerRef.current = setTimeout(tryStart, 1000);
+        return;
+      }
+
+      // Toast de notificação visível? Espera sumir
+      const notifEl = document.querySelector('.fixed.top-16.right-6');
+      if (notifEl) {
+        timerRef.current = setTimeout(tryStart, 1000);
+        return;
+      }
+
+      launchTour();
+    };
+
+    // Delay inicial para o DOM estabilizar
+    timerRef.current = setTimeout(tryStart, forced ? 300 : 800);
+
+    // Também escuta o evento de billing fechar (caso esteja esperando)
+    const onBillingClosed = () => {
+      // Pequeno delay após billing fechar
+      timerRef.current = setTimeout(tryStart, 500);
+    };
+    window.addEventListener(BILLING_EVENT, onBillingClosed);
+
+    return () => {
+      window.removeEventListener(BILLING_EVENT, onBillingClosed);
+      destroyDriver();
+    };
+  }, [pathname, status, session, searchParams]);
+
+  // ========== RESTART MANUAL (botão "Ver Tutorial") ==========
+  useEffect(() => {
+    const isAdminHome = pathname === "/admin" || pathname === "/admin/";
+    if (!isAdminHome || status !== "authenticated") return;
+
+    const userId = (session?.user as any)?.id ?? null;
+    const empresaId = (session?.user as any)?.empresaId ?? null;
+    const TOUR_KEY = makeAdminTourKey(empresaId, userId);
+
+    const handleRestart = () => {
+      destroyDriver();
+      localStorage.removeItem(TOUR_KEY);
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          // ✅ NÃO inicia se o modal de billing ainda está aberto no DOM
-          if (!forced && document.querySelector('[data-billing-modal="open"]'))
-            return;
-
           const steps = getSteps();
           if (!steps.length) return;
-
-          destroyDriverSilently();
-
-          const d = driver({
-            showProgress: true,
-            allowClose: false,
-            nextBtnText: "Próximo",
-            prevBtnText: "Voltar",
-            doneBtnText: "Concluir",
-            steps,
-            onDestroyed: () => {
-              if (markingCompleteRef.current) {
-                localStorage.setItem(TOUR_KEY, "1");
-              }
-              markingCompleteRef.current = false;
-            },
-          });
-
+          const d = createDriver(steps, TOUR_KEY);
           driverRef.current = d;
-
-          // intenção de concluir (o fluxo normal termina com destroy)
-          markingCompleteRef.current = true;
-
           d.drive();
         });
       });
     };
 
-    // ✅ Se billing já foi fechado, inicia
-    const billingClosed = localStorage.getItem(BILLING_KEY) === "1";
-    if (billingClosed || forced) {
-      const t = window.setTimeout(startTour, 300);
-      return () => {
-        window.clearTimeout(t);
-        destroyDriverSilently();
-      };
-    }
-
-    // ✅ Listener do evento (inicia só quando o billing realmente fechou)
-    const handler = () => {
-      // não seta BILLING_KEY aqui: quem fecha o modal seta
-      startTour();
-    };
-    window.addEventListener(BILLING_EVENT, handler, { once: true });
-
-    // ✅ fallback (mantido): polling curto caso o evento falhe em alguns mobiles
-    const poll = window.setInterval(() => {
-      if (!forced && sessionStorage.getItem(STARTED_SESSION_KEY) === "1") return;
-
-      const closedNow = localStorage.getItem(BILLING_KEY) === "1";
-      if (closedNow) {
-        startTour();
-        window.clearInterval(poll);
-      }
-    }, 300);
-
-    const stop = window.setTimeout(() => window.clearInterval(poll), 8000);
-
+    window.addEventListener(ADMIN_TOUR_RESTART_EVENT, handleRestart);
     return () => {
-      window.removeEventListener(BILLING_EVENT, handler);
-      window.clearInterval(poll);
-      window.clearTimeout(stop);
-      destroyDriverSilently();
+      window.removeEventListener(ADMIN_TOUR_RESTART_EVENT, handleRestart);
     };
-  }, [pathname, status, session, forced]);
+  }, [pathname, status, session]);
 
   return null;
 }

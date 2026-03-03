@@ -160,7 +160,7 @@ export function getBillingStatus(
   if (trialAte) {
     if (now <= trialAte) {
       const diasRestantes = Math.max(0, diffDays(trialAte, now));
-      const code: BillingCode = diasRestantes <= 3 ? "TRIAL_ENDING" : "TRIAL_ACTIVE";
+      const code: BillingCode = diasRestantes <= 1 ? "TRIAL_ENDING" : "TRIAL_ACTIVE";
 
       return buildStatus({
         blocked: false,
@@ -260,7 +260,10 @@ export function getBillingStatus(
       showAlert: true,
       paidForCycle: false,
       code: "PAST_DUE",
-      message: `Assinatura vencida há ${diasAtrasado} dias. Você tem até ${TOLERANCE_DAYS} dias de tolerância para regularizar e evitar bloqueio.`,
+      message:
+        diasAtrasado >= TOLERANCE_DAYS
+          ? "Último dia! Amanhã seu acesso será bloqueado se o pagamento não for regularizado."
+          : `Assinatura vencida há ${diasAtrasado} dias. Você tem até ${TOLERANCE_DAYS} dias de tolerância para regularizar e evitar bloqueio.`,
       dueAtISO: dueAt.toISOString(),
       dueAt: dueAt.toISOString(),
       days: diasAtrasado,
@@ -271,7 +274,7 @@ export function getBillingStatus(
   // agora <= dueAt => não venceu
   const diasAteVenc = Math.max(0, diffDays(dueAt, now));
 
-  if (diasAteVenc <= 5) {
+  if (diasAteVenc <= 1) {
     return buildStatus({
       blocked: false,
       bloqueado: false,

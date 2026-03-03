@@ -5,12 +5,12 @@ import Webcam from 'react-webcam';
 import axios from 'axios';
 import {
   MapPin, Camera, LogOut, History, RefreshCcw,
-  FileText, PenTool, AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock,
-  PlusCircle, X, Save
+  AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock,
+  PlusCircle, X, Save, HelpCircle
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour';
 
 // ✅ TIPAGEM DOS TIPOS (para não errar string)
 type TipoSolicitacao =
@@ -127,6 +127,8 @@ export default function Home() {
     } else if (status === 'authenticated') {
       // @ts-ignore
       if (session?.user?.deveTrocarSenha) { router.push('/trocar-senha'); return; }
+      // @ts-ignore
+      if (session?.user?.deveCadastrarFoto) { router.push('/cadastrar-foto'); return; }
       // @ts-ignore
       if (session?.user?.cargo === 'ADMIN') { router.push('/admin'); return; }
 
@@ -379,7 +381,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+    <main className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 pb-24 relative overflow-hidden font-sans" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
 
       <div className="fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none" />
@@ -402,9 +404,18 @@ export default function Home() {
               <h1 className="font-mono text-xl font-bold text-white tracking-tight">{horaAtual || '--:--'}</h1>
             </div>
           </div>
-          <button data-tour="emp-logout" onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
-            <LogOut size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.dispatchEvent(new Event(FUNC_TOUR_RESTART_EVENT))}
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 rounded-2xl text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 transition-all active:scale-95 text-xs font-bold"
+            >
+              <HelpCircle size={16} />
+              Tutorial
+            </button>
+            <button data-tour="emp-logout" onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
+              <LogOut size={20} />
+            </button>
+          </div>
         </div>
 
         {/* CRONÔMETRO DE INTERVALO */}
@@ -502,28 +513,11 @@ export default function Home() {
 
         </div>
 
-        {/* MENU RÁPIDO */}
-        <div className="grid grid-cols-2 gap-3">
-          <button data-tour="emp-forgot" onClick={abrirModalInclusao} className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
-            <div className="bg-emerald-500/10 text-emerald-500 p-2.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors"><PlusCircle size={20} /></div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Esqueci de bater o Ponto</span>
-          </button>
-
-          <Link data-tour="emp-sign" href="/funcionario/assinatura" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
-            <div className="bg-purple-500/10 text-purple-400 p-2.5 rounded-xl group-hover:bg-purple-500 group-hover:text-white transition-colors"><PenTool size={20} /></div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Assinar</span>
-          </Link>
-
-          <Link data-tour="emp-justify" href="/funcionario/ausencias" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
-            <div className="bg-yellow-500/10 text-yellow-500 p-2.5 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors"><FileText size={20} /></div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Justificar Falta</span>
-          </Link>
-
-          <Link data-tour="emp-history" href="/funcionario/historico" className="flex flex-col items-center justify-center gap-2 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm">
-            <div className="bg-blue-500/10 text-blue-400 p-2.5 rounded-xl group-hover:bg-blue-500 group-hover:text-white transition-colors"><History size={20} /></div>
-            <span className="text-[10px] font-bold uppercase text-slate-400 group-hover:text-white">Histórico</span>
-          </Link>
-        </div>
+        {/* AÇÃO RÁPIDA */}
+        <button data-tour="emp-forgot" onClick={abrirModalInclusao} className="w-full flex items-center justify-center gap-3 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
+          <div className="bg-emerald-500/10 text-emerald-500 p-2.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors"><PlusCircle size={20} /></div>
+          <span className="text-sm font-bold text-slate-400 group-hover:text-white">Esqueci de bater o Ponto</span>
+        </button>
 
         {!configs.ocultarSaldoHoras && (
           <div className="text-center">

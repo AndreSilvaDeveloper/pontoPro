@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { base64UrlDecodeUtf8 } from "@/lib/base64url";
 import { useRouter } from "next/navigation";
+import PaymentModal, { type AsaasBundle } from "@/components/billing/PaymentModal";
 
 const STORAGE_KEY = "workid_billing_block";
 
@@ -14,6 +15,7 @@ type BlockPayload = {
   motivo?: string;
   empresaNome?: string;
   email?: string;
+  cargo?: string | null;
   pixKey?: string | null;
   whatsapp?: string | null;
   dueAt?: string;
@@ -21,11 +23,9 @@ type BlockPayload = {
   at?: string;
 };
 
-// helper: abre link em nova aba com fallback
 function openInNewTab(url: string) {
   const w = window.open(url, "_blank");
   if (w) return;
-
   const a = document.createElement("a");
   a.href = url;
   a.target = "_blank";
@@ -47,6 +47,11 @@ export default function BloqueadoPage() {
   const [checking, setChecking] = useState(false);
   const [autoMsg, setAutoMsg] = useState<string | null>(null);
 
+  // PaymentModal state
+  const [asaasBundle, setAsaasBundle] = useState<AsaasBundle | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
+  const [payMsg, setPayMsg] = useState<string | null>(null);
+
   const intervalRef = useRef<number | null>(null);
   const mountedRef = useRef(false);
 
@@ -59,7 +64,6 @@ export default function BloqueadoPage() {
       const j = r.ok ? await r.json() : { ok: false };
       setData(j);
 
-      // ✅ blocked vem dentro de billing (admin recebe completo, funcionário recebe { blocked })
       const isBlocked = Boolean(j?.billing?.blocked) || j?.ok === false;
 
       if (!isBlocked) {
@@ -73,82 +77,72 @@ export default function BloqueadoPage() {
     }
   };
 
+  const safeJson = async (r: Response) => {
+    const text = await r.text();
+    if (!text) return null;
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { ok: false, error: text.slice(0, 300) };
+    }
+  };
+
+  const carregarFatura = async (): Promise<AsaasBundle | null> => {
+    const r1 = await fetch("/api/admin/asaas/cobranca-atual", { cache: "no-store" });
+    const j1 = await safeJson(r1);
+    if (r1.ok && j1?.hasPayment) return j1.asaas ?? null;
+    return null;
+  };
+
+  const gerarCobranca = async (): Promise<AsaasBundle | null> => {
+    const r = await fetch("/api/admin/asaas/gerar-cobranca", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const j = await safeJson(r);
+    if (!r.ok || j?.ok === false) {
+      throw new Error(j?.error || "Falha ao gerar cobranca.");
+    }
+    return j?.asaas ?? null;
+  };
+
   const abrirPagamento = async () => {
     setPayLoading(true);
     setPayError(null);
 
-    const resolveUrlFromAsaas = (obj: any): string | null => {
-      if (!obj) return null;
-
-      const pixInvoice =
-        obj?.pix?.invoiceUrl ??
-        obj?.asaas?.pix?.invoiceUrl ??
-        obj?.pixInvoiceUrl ??
-        null;
-      if (pixInvoice) return pixInvoice;
-
-      const invoice = obj?.invoiceUrl ?? obj?.asaas?.invoiceUrl ?? null;
-      if (invoice) return invoice;
-
-      const boletoUrl =
-        obj?.boleto?.boletoUrl ??
-        obj?.boleto?.bankSlipUrl ??
-        obj?.bankSlipUrl ??
-        obj?.boletoUrl ??
-        null;
-      if (boletoUrl) return boletoUrl;
-
-      return null;
-    };
-
-    const safeJson = async (r: Response) => {
-      const text = await r.text();
-      if (!text) return null;
-      try {
-        return JSON.parse(text);
-      } catch {
-        return { ok: false, error: text.slice(0, 300) };
-      }
-    };
-
     try {
-      // 1) cobrança atual
-      let asaas: any = null;
-      const r1 = await fetch("/api/admin/asaas/cobranca-atual", { cache: "no-store" });
-      const j1 = await safeJson(r1);
+      let bundle = await carregarFatura();
+      if (!bundle) bundle = await gerarCobranca();
+      if (!bundle) throw new Error("Nao foi possivel carregar a fatura.");
 
-      if (r1.ok) {
-        if (j1?.hasPayment === true) asaas = j1?.asaas ?? null;
-        else if (j1?.ok === true) asaas = j1?.asaas ?? null;
-        else if (j1?.asaas) asaas = j1.asaas;
-      }
-
-      let url = resolveUrlFromAsaas(asaas);
-
-      // 2) se não tem link, gera cobrança
-      if (!url) {
-        const r2 = await fetch("/api/admin/asaas/gerar-cobranca", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-
-        const j2 = await safeJson(r2);
-
-        if (!r2.ok || j2?.ok === false) {
-          throw new Error(j2?.error || "Falha ao gerar cobrança no Asaas.");
-        }
-
-        asaas = j2?.asaas ?? j2;
-        url = resolveUrlFromAsaas(asaas);
-      }
-
-      if (!url) {
-        throw new Error("Não foi possível obter o link do BOLETO Pix (invoice) no Asaas.");
-      }
-
-      openInNewTab(url);
+      setAsaasBundle(bundle);
+      setShowPayment(true);
     } catch (e: any) {
-      setPayError(e?.message || "Erro ao abrir pagamento");
+      setPayError(e?.message || "Erro ao carregar fatura");
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  const refreshFatura = async () => {
+    setPayLoading(true);
+    try {
+      const bundle = await carregarFatura();
+      if (bundle) setAsaasBundle(bundle);
+    } catch {
+      // silent
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  const recriarCobranca = async () => {
+    setPayLoading(true);
+    try {
+      const bundle = await gerarCobranca();
+      if (bundle) setAsaasBundle(bundle);
+    } catch (e: any) {
+      setPayError(e?.message || "Erro ao gerar cobranca");
     } finally {
       setPayLoading(false);
     }
@@ -185,152 +179,163 @@ export default function BloqueadoPage() {
 
   const nomeEmpresa = empresa?.nome || payload?.empresaNome || "Empresa";
 
-  // ✅ Backend agora manda isAdmin e protege dados sensíveis
-  const isAdmin = data?.isAdmin === true;
+  const ADMIN_CARGOS = ["ADMIN", "SUPER_ADMIN", "DONO"];
+  const isAdmin =
+    data?.isAdmin === true ||
+    (payload?.cargo ? ADMIN_CARGOS.includes(payload.cargo.toUpperCase()) : false);
 
-  // ✅ Motivo só existe/é usado para ADMIN
   const motivoAdmin =
     (typeof billing?.message === "string" && billing.message.trim() ? billing.message : null) ||
     payload?.motivo ||
-    "Pendência detectada. Regularize para liberar o acesso.";
+    "Pendencia detectada. Regularize para liberar o acesso.";
 
-  // ✅ Pix/Whats só admin recebe (no backend já vem null para funcionário)
   const pixKey = empresa?.chavePix || payload?.pixKey || null;
-  const whatsappFinanceiro = (empresa?.cobrancaWhatsapp || payload?.whatsapp || "5532991473554")?.replace(
-    /\D/g,
-    ""
-  );
 
-  const whatsappMsgAdmin = useMemo(() => {
-    const base = `Olá! Preciso regularizar meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nMotivo: ${motivoAdmin}\nE-mail: ${
-      payload?.email || ""
-    }\n\nVou enviar o comprovante aqui.`;
-    return `https://wa.me/${whatsappFinanceiro}?text=${encodeURIComponent(base)}`;
-  }, [whatsappFinanceiro, nomeEmpresa, motivoAdmin, payload?.email]);
-
-  // ✅ Mensagem NEUTRA para funcionário (sem motivo/financeiro)
   const msgFuncionario = useMemo(() => {
-    return `Seu acesso está temporariamente indisponível.\n\nEntre em contato com o administrador da sua empresa (${nomeEmpresa}) para mais informações.`;
+    return `Seu acesso esta temporariamente indisponivel.\n\nEntre em contato com o administrador da sua empresa (${nomeEmpresa}) para mais informacoes.`;
   }, [nomeEmpresa]);
 
   const isBlocked = Boolean(data?.billing?.blocked) || data?.ok === false;
 
+  const whatsappSuporte = `https://wa.me/5532991473554?text=${encodeURIComponent(
+    `Olá! Preciso de suporte com meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nE-mail: ${payload?.email || ""}`
+  )}`;
+
   return (
-    <div className="min-h-screen bg-[#0a0e27] flex items-center justify-center px-6 py-12">
-      <Card className="w-full max-w-md border-purple-500/20 bg-gradient-to-b from-[#0f1535]/95 to-[#0a0e27]/95 shadow-2xl shadow-purple-500/20">
-        <CardHeader>
-          <CardTitle className="text-white text-2xl">Acesso temporariamente indisponível</CardTitle>
-          <CardDescription className="text-gray-400">Empresa: {nomeEmpresa}</CardDescription>
-        </CardHeader>
+    <>
+      <div className="min-h-screen bg-[#0a0e27] flex items-center justify-center px-4 py-8">
+        <Card className="w-full max-w-md border-purple-500/20 bg-gradient-to-b from-[#0f1535]/95 to-[#0a0e27]/95 shadow-2xl shadow-purple-500/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-white text-xl">Acesso temporariamente indisponivel</CardTitle>
+            <CardDescription className="text-gray-400">Empresa: {nomeEmpresa}</CardDescription>
+          </CardHeader>
 
-        <CardContent className="space-y-4 text-gray-300">
-          {/* ====== ADMIN: mostra motivo e dados de pagamento ====== */}
-          {isAdmin && (
-            <div className="rounded-lg border border-purple-500/20 bg-[#0a0e27]/50 p-4 text-sm">
-              <p className="font-semibold text-white">Motivo</p>
-              <p className="text-gray-300 mt-1">{motivoAdmin}</p>
-
-              {pixKey && (
-                <div className="mt-4 space-y-2">
-                  <p className="font-semibold text-white">Chave Pix</p>
-
-                  <div className="flex items-center gap-2">
-                    <p className="flex-1 text-xs break-all select-all">{pixKey}</p>
-
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="shrink-0"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(pixKey);
-                          setAutoMsg("Chave Pix copiada ✅");
-                          window.setTimeout(() => setAutoMsg(null), 2500);
-                        } catch {
-                          setAutoMsg("Não consegui copiar automaticamente. Copie manualmente.");
-                          window.setTimeout(() => setAutoMsg(null), 3000);
-                        }
-                      }}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
+          <CardContent className="space-y-4 text-gray-300">
+            {/* ====== ADMIN: mostra motivo ====== */}
+            {isAdmin && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm space-y-3">
+                <div>
+                  <p className="font-semibold text-white text-xs uppercase tracking-wider mb-1">Motivo do bloqueio</p>
+                  <p className="text-gray-300">{motivoAdmin}</p>
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* ====== FUNCIONÁRIO: mensagem neutra, sem motivo ====== */}
-          {!isAdmin && (
-            <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-sm text-gray-200">
-              <p className="text-gray-200 whitespace-pre-line">{msgFuncionario}</p>
-            </div>
-          )}
+                {pixKey && (
+                  <div className="pt-2 border-t border-white/10">
+                    <p className="font-semibold text-white text-xs uppercase tracking-wider mb-2">Chave Pix</p>
+                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2">
+                      <p className="flex-1 text-xs break-all select-all font-mono text-indigo-300">{pixKey}</p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="shrink-0 text-xs"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(pixKey);
+                            setAutoMsg("Chave Pix copiada!");
+                            window.setTimeout(() => setAutoMsg(null), 2500);
+                          } catch {
+                            setAutoMsg("Copie manualmente.");
+                            window.setTimeout(() => setAutoMsg(null), 3000);
+                          }
+                        }}
+                      >
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-          {/* ====== AÇÕES (somente admin vê pagamento/comprovante) ====== */}
-          {isBlocked && isAdmin && (
-            <div className="space-y-2">
-              <Button
-                type="button"
-                onClick={abrirPagamento}
-                disabled={payLoading}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
-              >
-                {payLoading ? "Abrindo BOLETO Pix..." : "Realizar pagamento"}
-              </Button>
+            {/* ====== FUNCIONARIO: mensagem neutra ====== */}
+            {!isAdmin && (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-200">
+                <p className="text-gray-200 whitespace-pre-line">{msgFuncionario}</p>
+              </div>
+            )}
 
-              <Button
-                type="button"
-                className="w-full bg-transparent text-white border border-white/15 hover:bg-white/10 hover:text-white"
-                onClick={() => openInNewTab(whatsappMsgAdmin)}
-              >
-                Enviar comprovante no WhatsApp
-              </Button>
+            {/* ====== ACOES ADMIN ====== */}
+            {isBlocked && isAdmin && (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  onClick={abrirPagamento}
+                  disabled={payLoading}
+                  className="w-full h-12 text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 rounded-xl transition-all"
+                >
+                  {payLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                      Carregando fatura...
+                    </span>
+                  ) : (
+                    "Pagar agora"
+                  )}
+                </Button>
 
-              {payError && <p className="text-center text-xs text-red-400">{payError}</p>}
-            </div>
-          )}
+                <Button
+                  type="button"
+                  className="w-full h-11 text-sm font-medium bg-green-600/10 text-green-400 border border-green-500/20 hover:bg-green-600/20 rounded-xl transition-all"
+                  onClick={() => openInNewTab(whatsappSuporte)}
+                >
+                  Falar com suporte via WhatsApp
+                </Button>
 
-          <p className="text-center text-xs text-gray-500">
-            {autoMsg
-              ? autoMsg
-              : checking
-              ? "Verificando acesso..."
-              : "Verificação automática a cada 10s. Quando o acesso for liberado, você será redirecionado automaticamente."}
-          </p>
+                {payError && (
+                  <p className="text-center text-xs text-red-400 bg-red-500/10 rounded-lg p-2">{payError}</p>
+                )}
+              </div>
+            )}
 
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button asChild className="w-full bg-purple-600 hover:bg-purple-700">
-              <Link href="/login">Voltar</Link>
+            {/* Status */}
+            <p className="text-center text-xs text-gray-500">
+              {autoMsg
+                ? autoMsg
+                : checking
+                ? "Verificando acesso..."
+                : "Verificacao automatica a cada 10s. Acesso liberado = redirecionamento automatico."}
+            </p>
+
+            <Button asChild className="w-full bg-purple-600 hover:bg-purple-700 rounded-xl">
+              <Link href="/login">Voltar ao login</Link>
             </Button>
 
-            {/* <Button type="button" variant="secondary" onClick={() => fetchStatus()} className="w-full">
-              Atualizar
-            </Button> */}
-          </div>
+            {/* Funcionario: copiar mensagem */}
+            {!isAdmin && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full rounded-xl"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(msgFuncionario);
+                    setAutoMsg("Mensagem copiada!");
+                    window.setTimeout(() => setAutoMsg(null), 2500);
+                  } catch {
+                    setAutoMsg("Nao consegui copiar automaticamente.");
+                    window.setTimeout(() => setAutoMsg(null), 2500);
+                  }
+                }}
+              >
+                Copiar mensagem
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* ✅ Só funcionário: opcional copiar mensagem neutra */}
-          {!isAdmin && (
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(msgFuncionario);
-                  setAutoMsg("Mensagem copiada ✅");
-                  window.setTimeout(() => setAutoMsg(null), 2500);
-                } catch {
-                  setAutoMsg("Não consegui copiar automaticamente.");
-                  window.setTimeout(() => setAutoMsg(null), 2500);
-                }
-              }}
-            >
-              Copiar mensagem
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+      {/* PaymentModal integrado */}
+      <PaymentModal
+        open={showPayment}
+        onClose={() => setShowPayment(false)}
+        asaas={asaasBundle}
+        loading={payLoading}
+        onRefresh={refreshFatura}
+        onGenerate={recriarCobranca}
+        msg={payMsg}
+        setMsg={setPayMsg}
+      />
+    </>
   );
 }

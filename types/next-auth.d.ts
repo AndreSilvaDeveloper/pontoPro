@@ -8,6 +8,7 @@ declare module "next-auth" {
       cargo: string
       empresaId: string | null
       deveTrocarSenha: boolean
+      deveCadastrarFoto: boolean
     } & DefaultSession["user"]
   }
 
@@ -17,8 +18,9 @@ declare module "next-auth" {
      cargo: string
      empresaId: string | null
      deveTrocarSenha: boolean
+     deveCadastrarFoto: boolean
      // Adicione outros campos se precisar
-     nome?: string 
+     nome?: string
      email?: string
   }
 }
@@ -30,5 +32,6 @@ declare module "next-auth/jwt" {
     cargo: string
     empresaId: string | null
     deveTrocarSenha: boolean
+    deveCadastrarFoto: boolean
   }
 }

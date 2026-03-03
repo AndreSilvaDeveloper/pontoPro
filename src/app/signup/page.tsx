@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
 
@@ -24,16 +24,31 @@ import {
   Share,
   PlusSquare,
   MoreVertical,
+  Check,
+  Phone,
 } from 'lucide-react'
 
-export default function SignupPage() {
+import { PLANOS, PLANO_DEFAULT, type PlanoId } from '@/config/planos'
+
+const PLANOS_ORDER: PlanoId[] = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE']
+
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Plano da URL ou default
+  const planoFromUrl = (searchParams.get('plano') ?? '').toUpperCase()
+  const initialPlano: PlanoId = (planoFromUrl in PLANOS ? planoFromUrl : PLANO_DEFAULT) as PlanoId
+
+  // Plano selecionado
+  const [plano, setPlano] = useState<PlanoId>(initialPlano)
 
   // Dados do SaaS
   const [empresaNome, setEmpresaNome] = useState('')
   const [cnpj, setCnpj] = useState('')
   const [adminNome, setAdminNome] = useState('')
   const [email, setEmail] = useState('')
+  const [telefone, setTelefone] = useState('')
   const [senha, setSenha] = useState('')
   const [senha2, setSenha2] = useState('')
   const [aceitar, setAceitar] = useState(false)
@@ -47,6 +62,14 @@ export default function SignupPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isIOS, setIsIOS] = useState(false)
   const [showTutorial, setShowTutorial] = useState<'IOS' | 'ANDROID' | null>(null)
+
+  const formatarTelefone = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 2) return digits
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
 
   const senhaOk = useMemo(() => senha.length >= 8 && senha === senha2, [senha, senha2])
 
@@ -100,8 +123,10 @@ export default function SignupPage() {
           cnpj,
           adminNome,
           email,
+          telefone,
           password: senha,
           aceitarTermos: aceitar,
+          plano,
         }),
       })
 
@@ -209,6 +234,42 @@ export default function SignupPage() {
 
             <CardContent className="space-y-4">
               <form onSubmit={onSubmit} className="space-y-4">
+                {/* Seletor de Plano */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-300">PLANO</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PLANOS_ORDER.map((pid) => {
+                      const p = PLANOS[pid]
+                      const selected = plano === pid
+                      return (
+                        <button
+                          key={pid}
+                          type="button"
+                          onClick={() => setPlano(pid)}
+                          className={`relative rounded-xl border p-3 text-center transition-all ${
+                            selected
+                              ? 'border-purple-500 bg-purple-950/50 ring-1 ring-purple-500/50'
+                              : 'border-purple-500/20 bg-[#0a0e27]/50 hover:border-purple-500/40'
+                          }`}
+                        >
+                          {selected && (
+                            <div className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-purple-600">
+                              <Check className="size-3 text-white" />
+                            </div>
+                          )}
+                          <div className="text-xs font-bold text-white">{p.nome}</div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            R$ {p.preco.toFixed(2).replace('.', ',')}
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-gray-500">
+                            até {p.maxFuncionarios} func.
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 {/* Empresa */}
                 <div className="space-y-2">
                   <Label htmlFor="empresa" className="text-sm font-medium text-gray-300">
@@ -275,6 +336,24 @@ export default function SignupPage() {
                       placeholder="exemplo@ontimeia.com"
                       className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
+                    />
+                  </div>
+                </div>
+
+                {/* Telefone / WhatsApp */}
+                <div className="space-y-2">
+                  <Label htmlFor="telefone" className="text-sm font-medium text-gray-300">
+                    CELULAR / WHATSAPP
+                  </Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
+                    <Input
+                      id="telefone"
+                      value={telefone}
+                      onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
                     />
                   </div>
                 </div>
@@ -414,5 +493,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   )
 }

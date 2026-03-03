@@ -12,7 +12,6 @@ import {
   getYear,
 } from 'date-fns';
 import {
-  ArrowLeft,
   History,
   Calendar,
   Search,
@@ -31,7 +30,6 @@ import {
   TrendingDown,
   AlertCircle,
 } from 'lucide-react';
-import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -467,7 +465,7 @@ export default function MeuHistorico() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 p-4 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 p-4 pb-24 font-sans relative overflow-hidden" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}>
       <div className="fixed top-[-10%] right-[-10%] w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[80px] pointer-events-none" />
       <div className="fixed bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none" />
 
@@ -483,9 +481,7 @@ export default function MeuHistorico() {
               <p className="text-xs text-slate-400 mt-1">{empresaNome}</p>
             </div>
           </div>
-          <Link href="/funcionario" className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all active:scale-95">
-            <ArrowLeft size={18} />
-          </Link>
+          <div className="w-9" />
         </div>
 
         {/* SELETOR DE ABAS */}

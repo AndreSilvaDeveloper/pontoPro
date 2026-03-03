@@ -94,10 +94,10 @@ export default function LogsAuditoria() {
   const PlaneIcon = ({size}: {size:number}) => <FileText size={size}/>;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 p-4 md:p-8 font-sans relative overflow-hidden">
-      
-      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-green-900/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[120px] pointer-events-none" />
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 p-4 md:p-8 pb-8 font-sans relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+
+      <div className="fixed top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
 
       <div className="max-w-6xl mx-auto space-y-6 relative z-10">
         

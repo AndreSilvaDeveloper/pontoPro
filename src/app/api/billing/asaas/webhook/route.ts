@@ -89,15 +89,15 @@ export async function POST(req: Request) {
     const event = body?.event as string | undefined;
     const payment = body?.payment as any | undefined;
 
-    if (!event || !payment) {
+    if (!event) {
       return NextResponse.json(
         { ok: false, error: "invalid_payload" },
         { status: 400 }
       );
     }
 
-    // ✅ Eventos comuns de "pagamento OK" no Asaas (inclui sandbox "recebida em dinheiro")
-    const accepted = new Set([
+    // Eventos de pagamento confirmado
+    const paymentAccepted = new Set([
       "PAYMENT_RECEIVED",
       "PAYMENT_CONFIRMED",
       "PAYMENT_APPROVED",
@@ -105,8 +105,32 @@ export async function POST(req: Request) {
       "PAYMENT_CREDIT_CARD_CAPTURED",
     ]);
 
-    if (!accepted.has(event)) {
-      // ✅ Loga pra você enxergar exatamente o evento que chegou
+    // Eventos de assinatura (apenas log por agora)
+    const subscriptionEvents = new Set([
+      "SUBSCRIPTION_CREATED",
+      "SUBSCRIPTION_RENEWED",
+      "SUBSCRIPTION_UPDATED",
+      "SUBSCRIPTION_DELETED",
+      "SUBSCRIPTION_INACTIVE",
+    ]);
+
+    if (subscriptionEvents.has(event)) {
+      console.log("[ASAAS_WEBHOOK] subscription event:", {
+        event,
+        subscriptionId: body?.subscription?.id ?? null,
+        externalReference: body?.subscription?.externalReference ?? null,
+      });
+      return NextResponse.json({ ok: true, handled: true, event });
+    }
+
+    if (!payment) {
+      return NextResponse.json(
+        { ok: false, error: "invalid_payload" },
+        { status: 400 }
+      );
+    }
+
+    if (!paymentAccepted.has(event)) {
       console.log("[ASAAS_WEBHOOK] ignored event:", {
         event,
         paymentId: payment?.id ?? null,
@@ -117,7 +141,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, ignored: true, event });
     }
 
-    const empresaId = extractEmpresaId(payment?.externalReference);
+    // externalReference pode vir do payment ou da subscription
+    const empresaId = extractEmpresaId(
+      payment?.externalReference || body?.subscription?.externalReference
+    );
     if (!empresaId) {
       return NextResponse.json(
         { ok: false, error: "missing_externalReference_empresa" },

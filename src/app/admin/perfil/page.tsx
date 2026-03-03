@@ -13,6 +13,13 @@ import {
   CheckCircle,
   Clock,
   Calendar,
+  Crown,
+  ChevronRight,
+  Mail,
+  Shield,
+  CreditCard,
+  Receipt,
+  Building2,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import jsPDF from "jspdf";
@@ -76,7 +83,7 @@ const gerarPayloadPix = (
   return payload + crc16ccitt(payload);
 };
 
-// === HELPERS DE DATA (sem bug UTC no Brasil) ===
+// === HELPERS DE DATA ===
 function parseDateOnlyToLocal(dateOrIso: any): Date | null {
   if (!dateOrIso) return null;
 
@@ -105,7 +112,7 @@ function parseDateOnlyToLocal(dateOrIso: any): Date | null {
 }
 
 function formatSafe(d: Date | null, fmt = "dd/MM/yyyy") {
-  if (!d || !isValid(d)) return "—";
+  if (!d || !isValid(d)) return "\u2014";
   return format(d, fmt);
 }
 
@@ -114,10 +121,8 @@ type FaturaState = {
   billing: BillingStatus;
   valor: number;
   vencimento: Date | null;
-
   trialEndsAt: Date | null;
   billingAnchorAt: Date | null;
-
   chavePix: string;
   pago: boolean;
   itens: {
@@ -231,16 +236,12 @@ export default function PerfilAdmin() {
 
   const abrirPagamento = async () => {
     setMsgAsaas(null);
-
-    // tenta trazer bundle existente; se não tiver, gera
     await carregarCobrancaAtual();
     if (!asaas) {
       await gerarCobrancaAsaas();
     } else {
-      // garante dados frescos (pix/boleto podem demorar)
       await carregarCobrancaAtual();
     }
-
     setOpenPay(true);
   };
 
@@ -269,7 +270,6 @@ export default function PerfilAdmin() {
     }
   };
 
-  // Mantido (fallback)
   const baixarBoleto = () => {
     if (!fatura) return;
 
@@ -392,68 +392,32 @@ export default function PerfilAdmin() {
     }
   };
 
-  const renderAlertasFinanceiros = () => {
+  // ==========================
+  // RENDER: Alerta financeiro
+  // ==========================
+  const renderBillingBadge = () => {
     if (!fatura) return null;
 
     if (fatura.billing.phase === "TRIAL") {
       return (
-        <div className="bg-amber-950/30 border border-amber-500/30 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-amber-900/50 p-2.5 rounded-full text-amber-300">
-              <Clock size={24} />
-            </div>
-            <div>
-              <h3 className="font-bold text-amber-300 text-lg">Período de teste ativo</h3>
-              <p className="text-amber-200/70 text-sm">
-                Restam <b>{fatura.billing.days ?? "—"}</b> dias (até <b>{formatSafe(fatura.trialEndsAt)}</b>).
-              </p>
-              <p className="text-amber-200/70 text-sm">
-                Sua 1ª fatura vence em <b>{formatSafe(fatura.billingAnchorAt)}</b>.
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 border border-amber-500/20">
+          <Clock size={14} />
+          Trial: {fatura.billing.days ?? 0} dias restantes
         </div>
       );
     }
 
     if (fatura.pago) {
       return (
-        <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-emerald-900/50 p-2.5 rounded-full text-emerald-400">
-              <CheckCircle size={24} />
-            </div>
-            <div>
-              <h3 className="font-bold text-emerald-400 text-lg">Fatura Paga</h3>
-              <p className="text-emerald-200/70 text-sm">Obrigado! Sua assinatura está em dia.</p>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400 border border-emerald-500/20">
+          <CheckCircle size={14} />
+          Em dia
         </div>
       );
     }
 
     const dataVenc = fatura.vencimento;
-    if (!dataVenc || !isValid(dataVenc)) {
-      return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-slate-800/50 p-2.5 rounded-full text-slate-300">
-              <Calendar size={24} />
-            </div>
-            <div>
-              <h3 className="font-bold text-white text-lg">Minha Assinatura</h3>
-              <p className="text-slate-400 text-sm">Aguardando data de vencimento…</p>
-            </div>
-          </div>
-          <button
-            onClick={abrirPagamento}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2"
-          >
-            <FileText size={16} /> PAGAR AGORA
-          </button>
-        </div>
-      );
-    }
+    if (!dataVenc || !isValid(dataVenc)) return null;
 
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -461,43 +425,90 @@ export default function PerfilAdmin() {
     vencZerado.setHours(0, 0, 0, 0);
     const diasParaVencimento = differenceInDays(vencZerado, hoje);
 
-    const btn =
-      diasParaVencimento < 0 ? (
-        <button
-          onClick={abrirPagamento}
-          className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/40 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
-        >
-          <FileText size={16} /> PAGAR AGORA
-        </button>
-      ) : (
-        <button
-          onClick={abrirPagamento}
-          className="bg-yellow-500 hover:bg-yellow-600 text-black px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2"
-        >
-          <FileText size={16} /> PAGAR AGORA
-        </button>
+    if (diasParaVencimento <= -10) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 border border-red-500/20 animate-pulse">
+          <Lock size={14} />
+          Bloqueio iminente
+        </div>
       );
+    }
+
+    if (diasParaVencimento < 0) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 border border-red-500/20">
+          <AlertTriangle size={14} />
+          Vencida h\u00e1 {Math.abs(diasParaVencimento)}d
+        </div>
+      );
+    }
+
+    if (diasParaVencimento <= 5) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 border border-yellow-500/20">
+          <Clock size={14} />
+          Vence em {diasParaVencimento}d
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const renderBillingAlert = () => {
+    if (!fatura) return null;
+
+    if (fatura.billing.phase === "TRIAL") {
+      return (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 rounded-xl bg-amber-500/10 p-3 text-amber-400">
+              <Clock size={22} />
+            </div>
+            <div>
+              <p className="font-bold text-amber-300">Per\u00edodo de teste ativo</p>
+              <p className="text-sm text-amber-200/60">
+                Restam <b>{fatura.billing.days ?? "\u2014"}</b> dias (at\u00e9{" "}
+                <b>{formatSafe(fatura.trialEndsAt)}</b>). 1\u00aa fatura em{" "}
+                <b>{formatSafe(fatura.billingAnchorAt)}</b>.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (fatura.pago) return null;
+
+    const dataVenc = fatura.vencimento;
+    if (!dataVenc || !isValid(dataVenc)) return null;
+
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const vencZerado = new Date(dataVenc);
+    vencZerado.setHours(0, 0, 0, 0);
+    const diasParaVencimento = differenceInDays(vencZerado, hoje);
 
     if (diasParaVencimento <= -10) {
       return (
-        <div className="bg-slate-900 border-l-4 border-red-600 rounded-r-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl shadow-red-900/20 relative overflow-hidden">
+        <div className="rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/40 to-slate-900/50 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-red-600/5 animate-pulse pointer-events-none" />
           <div className="flex items-center gap-4 z-10">
-            <div className="bg-red-600 p-3 rounded-full text-white">
-              <Lock size={28} />
+            <div className="shrink-0 rounded-xl bg-red-600 p-3 text-white">
+              <Lock size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-red-500 text-xl">BLOQUEIO DE ACESSO</h3>
-              <p className="text-slate-300 text-sm mt-1">
-                Sua fatura venceu há {Math.abs(diasParaVencimento)} dias. O sistema será bloqueado.
+              <p className="font-bold text-red-400 text-lg">Bloqueio de acesso</p>
+              <p className="text-sm text-slate-300">
+                Fatura vencida h\u00e1 {Math.abs(diasParaVencimento)} dias. Regularize para continuar.
               </p>
             </div>
           </div>
           <button
             onClick={abrirPagamento}
-            className="z-10 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold text-sm"
+            className="z-10 shrink-0 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"
           >
-            REGULARIZAR AGORA
+            REGULARIZAR
           </button>
         </div>
       );
@@ -505,187 +516,229 @@ export default function PerfilAdmin() {
 
     if (diasParaVencimento < 0) {
       return (
-        <div className="bg-red-950/30 border border-red-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="bg-red-900/50 p-2.5 rounded-full text-red-400">
-              <AlertTriangle size={24} />
+            <div className="shrink-0 rounded-xl bg-red-500/10 p-3 text-red-400">
+              <AlertTriangle size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-red-400 text-lg">Fatura Vencida</h3>
-              <p className="text-red-200/70 text-sm">
-                Venceu em {format(vencZerado, "dd/MM")}. Evite bloqueio.
+              <p className="font-bold text-red-400">Fatura vencida</p>
+              <p className="text-sm text-red-200/60">
+                Venceu em {format(vencZerado, "dd/MM")}. Evite bloqueio regularizando agora.
               </p>
             </div>
           </div>
-          {btn}
+          <button
+            onClick={abrirPagamento}
+            className="shrink-0 rounded-xl bg-red-500/10 border border-red-500/30 px-5 py-2.5 text-sm font-bold text-red-300 hover:bg-red-500/20 transition-colors"
+          >
+            PAGAR AGORA
+          </button>
         </div>
       );
     }
 
-    if (diasParaVencimento >= 0 && diasParaVencimento <= 5) {
+    if (diasParaVencimento <= 5) {
       return (
-        <div className="bg-yellow-950/30 border border-yellow-500/50 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="bg-yellow-900/50 p-2.5 rounded-full text-yellow-400">
-              <Clock size={24} />
+            <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
+              <Clock size={22} />
             </div>
             <div>
-              <h3 className="font-bold text-yellow-400 text-lg">Fatura em Aberto</h3>
-              <p className="text-yellow-200/70 text-sm">
+              <p className="font-bold text-yellow-400">Fatura em aberto</p>
+              <p className="text-sm text-yellow-200/60">
                 {diasParaVencimento === 0
                   ? "Vence HOJE!"
                   : `Vence em ${diasParaVencimento} dias (${format(vencZerado, "dd/MM")}).`}
               </p>
             </div>
           </div>
-          {btn}
+          <button
+            onClick={abrirPagamento}
+            className="shrink-0 rounded-xl bg-yellow-500 px-5 py-2.5 text-sm font-bold text-black hover:bg-yellow-400 transition-colors"
+          >
+            PAGAR AGORA
+          </button>
         </div>
       );
     }
 
-    return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-emerald-900/20 p-2.5 rounded-full text-emerald-500">
-            <Calendar size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-white text-lg">Minha Assinatura</h3>
-            <p className="text-slate-400 text-sm">
-              Próximo vencimento:{" "}
-              <span className="text-emerald-400 font-bold">{format(vencZerado, "dd/MM/yyyy")}</span>
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={abrirPagamento}
-          className="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2"
-        >
-          <FileText size={16} /> PAGAR AGORA
-        </button>
-      </div>
-    );
+    return null;
   };
 
+  const cargo = (session?.user as any)?.cargo ?? "";
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-slate-800 pb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-purple-400">Meu Perfil</h1>
-            <p className="text-slate-400 text-sm">Gerencie sua conta e assinatura</p>
+    <div className="min-h-screen bg-slate-950 text-white">
+      {/* MODAL */}
+      <PaymentModal
+        open={openPay}
+        onClose={() => setOpenPay(false)}
+        asaas={asaas}
+        loading={loadingAsaas}
+        onRefresh={carregarCobrancaAtual}
+        onGenerate={gerarCobrancaAsaas}
+        msg={msgAsaas}
+        setMsg={setMsgAsaas}
+      />
+
+      <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="shrink-0 rounded-xl bg-slate-800/80 p-2.5 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold tracking-tight">Minha Conta</h1>
+            <p className="text-xs text-slate-500">Perfil, assinatura e seguran\u00e7a</p>
           </div>
+          {!loadingFatura && renderBillingBadge()}
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/admin/perfil/historico"
-              className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-xl font-bold text-xs"
-            >
-              <FileText size={16} />
-              HISTÓRICO DE FATURAS
-            </Link>
-
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 text-slate-400 hover:text-white"
-            >
-              <ArrowLeft size={20} /> Voltar ao Painel
-            </Link>
+        {/* User Card */}
+        <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600/20 to-purple-800/20 ring-1 ring-purple-500/20">
+              <User size={28} className="text-purple-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-lg font-bold">{session?.user?.name}</h2>
+              <div className="mt-1 flex items-center gap-2 text-sm text-slate-400">
+                <Mail size={14} className="shrink-0" />
+                <span className="truncate">{session?.user?.email}</span>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-500/10 px-2.5 py-1 text-[11px] font-bold uppercase text-purple-300 border border-purple-500/20">
+                  <Shield size={12} />
+                  {cargo}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {!loadingFatura && renderAlertasFinanceiros()}
+        {/* Billing Alert */}
+        {!loadingFatura && renderBillingAlert()}
 
-        {/* MODAL */}
-        <PaymentModal
-          open={openPay}
-          onClose={() => setOpenPay(false)}
-          asaas={asaas}
-          loading={loadingAsaas}
-          onRefresh={carregarCobrancaAtual}
-          onGenerate={gerarCobrancaAsaas}
-          msg={msgAsaas}
-          setMsg={setMsgAsaas}
-        />
+        {/* Quick Links */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link
+            href="/admin/perfil/plano"
+            className="group flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition-all hover:border-purple-500/30 hover:bg-slate-900"
+          >
+            <div className="shrink-0 rounded-xl bg-purple-500/10 p-3 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+              <Crown size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">Meu Plano</p>
+              <p className="text-xs text-slate-500">Gerencie sua assinatura</p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-slate-600 group-hover:text-purple-400 transition-colors" />
+          </Link>
 
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex items-center gap-4">
-          <div className="w-16 h-16 bg-purple-900/30 rounded-full flex items-center justify-center text-purple-400">
-            <User size={32} />
-          </div>
-          <div>
-            <h2 className="font-bold text-lg">{session?.user?.name}</h2>
-            <p className="text-slate-400">{session?.user?.email}</p>
-            <span className="text-xs bg-purple-900 text-purple-200 px-2 py-0.5 rounded uppercase mt-1 inline-block">
-              {(session?.user as any)?.cargo}
-            </span>
-          </div>
+          <Link
+            href="/admin/perfil/historico"
+            className="group flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition-all hover:border-slate-700 hover:bg-slate-900"
+          >
+            <div className="shrink-0 rounded-xl bg-slate-800 p-3 text-slate-400 group-hover:bg-slate-700 transition-colors">
+              <Receipt size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">Hist\u00f3rico de Faturas</p>
+              <p className="text-xs text-slate-500">Veja pagamentos anteriores</p>
+            </div>
+            <ChevronRight size={18} className="shrink-0 text-slate-600 group-hover:text-slate-400 transition-colors" />
+          </Link>
+
+          {!fatura?.pago && fatura && fatura.billing.phase !== "TRIAL" && (
+            <button
+              onClick={abrirPagamento}
+              className="group flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-5 transition-all hover:border-emerald-500/30 hover:bg-emerald-950/30 sm:col-span-2"
+            >
+              <div className="shrink-0 rounded-xl bg-emerald-500/10 p-3 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                <CreditCard size={20} />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-bold text-sm text-emerald-300">Realizar Pagamento</p>
+                <p className="text-xs text-emerald-400/60">
+                  {fatura.vencimento && isValid(fatura.vencimento)
+                    ? `Vencimento: ${formatSafe(fatura.vencimento)} \u2022 R$ ${fatura.valor.toFixed(2).replace(".", ",")}`
+                    : "Gerar cobran\u00e7a via PIX ou Boleto"}
+                </p>
+              </div>
+              <ChevronRight size={18} className="shrink-0 text-emerald-600 group-hover:text-emerald-400 transition-colors" />
+            </button>
+          )}
         </div>
 
-        <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800">
-          <h2 className="font-bold mb-6 flex items-center gap-2 text-white">
-            <Lock size={20} className="text-yellow-500" /> Alterar Senha
-          </h2>
+        {/* Alterar Senha */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h3 className="mb-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-400">
+            <Lock size={16} className="text-yellow-500" />
+            Seguran\u00e7a
+          </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
-                Nova Senha
-              </label>
-              <input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                placeholder="Digite a nova senha"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
-                Confirme a Nova Senha
-              </label>
-              <input
-                type="password"
-                value={confirmar}
-                onChange={(e) => setConfirmar(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                placeholder="Digite novamente"
-                required
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  Nova senha
+                </label>
+                <input
+                  type="password"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
+                  placeholder="Digite a nova senha"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                  Confirmar senha
+                </label>
+                <input
+                  type="password"
+                  value={confirmar}
+                  onChange={(e) => setConfirmar(e.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
+                  placeholder="Digite novamente"
+                  required
+                />
+              </div>
             </div>
 
             {msg && (
               <div
-                className={`p-3 rounded-xl text-sm text-center font-bold ${
+                className={`rounded-xl p-3 text-center text-sm font-bold ${
                   msg.tipo === "erro"
-                    ? "bg-red-900/50 text-red-200"
-                    : "bg-green-900/50 text-green-200"
+                    ? "bg-red-500/10 text-red-300 border border-red-500/20"
+                    : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
                 }`}
               >
                 {msg.texto}
               </div>
             )}
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex items-center justify-center gap-2 w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-2xl disabled:opacity-50"
-              >
-                {loading ? (
-                  "Salvando..."
-                ) : (
-                  <>
-                    <Save size={20} /> ATUALIZAR SENHA
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+            >
+              {loading ? (
+                "Salvando..."
+              ) : (
+                <>
+                  <Save size={16} /> ATUALIZAR SENHA
+                </>
+              )}
+            </button>
           </form>
         </div>
-
-        {/* <button onClick={baixarBoleto}>DEV: Gerar PDF</button> */}
       </div>
     </div>
   );

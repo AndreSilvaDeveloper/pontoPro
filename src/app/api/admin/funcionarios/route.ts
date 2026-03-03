@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { put } from '@vercel/blob';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
+import { getPlanoConfig } from '@/config/planos';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
@@ -70,6 +71,9 @@ export async function POST(request: Request) {
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
+    const telefone = formData.get('telefone') as string || '';
+    const exigirFotoFuncionario = formData.get('exigirFotoFuncionario') === 'true';
+
     // === NOVOS CAMPOS (IP e MODO) ===
     const modoValidacaoPontoStr = formData.get('modoValidacaoPonto') as string || 'GPS';
     const ipsPermitidos = formData.get('ipsPermitidos') as string || '';
@@ -89,8 +93,11 @@ export async function POST(request: Request) {
       fotoPerfilUrl = blob.url;
     }
 
+    // Se admin enviou foto, não precisa exigir do funcionário
+    const deveCadastrarFoto = fotoPerfilUrl ? false : exigirFotoFuncionario;
+
     // 4. Senha e Hash
-    const senhaInicial = '1234'; 
+    const senhaInicial = '1234';
     const hashedPassword = await hash(senhaInicial, 10);
 
     // 5. JSON Parse (Jornada/Locais)
@@ -106,9 +113,9 @@ export async function POST(request: Request) {
     // 6. Criação no Banco
     const novoUsuario = await prisma.usuario.create({
       data: {
-        nome, 
-        email, 
-        senha: hashedPassword, 
+        nome,
+        email,
+        senha: hashedPassword,
         cargo: 'FUNCIONARIO',
         tituloCargo: tituloCargo || 'Colaborador',
         // @ts-ignore
@@ -116,13 +123,15 @@ export async function POST(request: Request) {
         latitudeBase: latitude ? parseFloat(latitude) : 0,
         longitudeBase: longitude ? parseFloat(longitude) : 0,
         raioPermitido: raio ? parseInt(raio) : 100,
-        fotoPerfilUrl, 
-        jornada: jornadaDados, 
-        pontoLivre, 
+        fotoPerfilUrl,
+        jornada: jornadaDados,
+        pontoLivre,
         locaisAdicionais: locaisAdicionaisDados,
         deveTrocarSenha: true,
+        deveCadastrarFoto,
         modoValidacaoPonto: modoValidacaoPontoStr as any,
-        ipsPermitidos
+        ipsPermitidos,
+        telefone: telefone || null,
       }
     });
 
@@ -179,7 +188,30 @@ export async function POST(request: Request) {
 
     await enviarEmailSeguro(email, `Bem-vindo à ${nomeEmpresa}! 🚀`, htmlEmail);
 
-    return NextResponse.json(novoUsuario);
+    // Verifica se excedeu limite do plano
+    // @ts-ignore
+    const empresaId = session.user.empresaId;
+    const empresa = await prisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: { plano: true, matrizId: true },
+    });
+
+    const planoConfig = getPlanoConfig(empresa?.plano);
+    const totalFunc = await prisma.usuario.count({
+      where: {
+        empresaId,
+        cargo: { notIn: ['ADMIN', 'SUPER_ADMIN', 'DONO'] },
+      },
+    });
+
+    let avisoPlano: string | null = null;
+    if (totalFunc > planoConfig.maxFuncionarios) {
+      const excedentes = totalFunc - planoConfig.maxFuncionarios;
+      const custoExtra = (excedentes * planoConfig.extraFuncionario).toFixed(2).replace('.', ',');
+      avisoPlano = `Você tem ${excedentes} funcionário(s) acima do limite do plano ${planoConfig.nome} (${planoConfig.maxFuncionarios}). Custo adicional de R$ ${custoExtra}/mês será aplicado na próxima cobrança.`;
+    }
+
+    return NextResponse.json({ ...novoUsuario, avisoPlano });
 
   } catch (error) {
     console.error("Erro detalhado no POST:", error);
@@ -213,12 +245,15 @@ export async function PUT(request: Request) {
     const jornadaTexto = formData.get('jornada') as string;
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
+    const telefone = formData.get('telefone') as string || '';
+    const exigirFotoFuncionarioStr = formData.get('exigirFotoFuncionario');
+
     // === NOVOS CAMPOS (IP e MODO) ===
     const modoValidacaoPontoStr = formData.get('modoValidacaoPonto') as string || 'GPS';
     const ipsPermitidos = formData.get('ipsPermitidos') as string || '';
 
     const dados: any = {
-      nome, 
+      nome,
       email,
       tituloCargo,
       latitudeBase: latitude ? parseFloat(latitude) : 0,
@@ -227,7 +262,8 @@ export async function PUT(request: Request) {
       pontoLivre,
       // === ATUALIZANDO NOVOS CAMPOS ===
       modoValidacaoPonto: modoValidacaoPontoStr as any,
-      ipsPermitidos
+      ipsPermitidos,
+      telefone: telefone || null,
     };
 
     if (jornadaTexto && jornadaTexto !== 'undefined') {
@@ -241,6 +277,11 @@ export async function PUT(request: Request) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
       const blob = await put(filename, fotoArquivo, { access: 'public' });
       dados.fotoPerfilUrl = blob.url;
+      // Se admin enviou foto nova, não precisa mais exigir do funcionário
+      dados.deveCadastrarFoto = false;
+    } else if (exigirFotoFuncionarioStr !== null) {
+      // Admin alterou o checkbox de exigir foto
+      dados.deveCadastrarFoto = exigirFotoFuncionarioStr === 'true';
     }
 
     const usuarioAtualizado = await prisma.usuario.update({

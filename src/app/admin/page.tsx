@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ShieldAlert,
   CalendarDays,
+  HelpCircle,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -33,6 +34,7 @@ import ModalLancarAusencia from '@/components/ModalLancarAusencia';
 import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
+import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
 
 export default function AdminDashboard() {
   const a = useAdminDashboard();
@@ -46,7 +48,7 @@ export default function AdminDashboard() {
     );
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-purple-500/30 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-purple-500/30 relative overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Efeitos de Fundo */}
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
@@ -77,7 +79,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className={`max-w-7xl mx-auto p-4 md:p-8 relative z-10 space-y-8 ${a.billingEmpresa ? 'mt-10' : ''}`}>
+      <div className={`max-w-7xl mx-auto p-4 md:p-8 pb-8 relative z-10 space-y-8 ${a.billingEmpresa ? 'mt-10' : ''}`}>
         {/* === CABEÇALHO === */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
           <div className="flex flex-col gap-2">
@@ -101,22 +103,32 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-900/50 backdrop-blur border border-white/5 p-1.5 rounded-xl">
-              <Link
-                data-tour="admin-profile"
-                href="/admin/perfil"
-                className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                title="Minha Conta"
-              >
-                <User size={18} />
-              </Link>
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => signOut({ callbackUrl: '/login' })}
-                className="p-2.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
-                title="Sair"
+                onClick={() => window.dispatchEvent(new Event(ADMIN_TOUR_RESTART_EVENT))}
+                className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 transition-all text-xs font-bold"
               >
-                <LogOut size={18} />
+                <HelpCircle size={14} />
+                <span className="hidden sm:inline">Tutorial</span>
               </button>
+
+              <div className="flex items-center gap-1 bg-slate-900/50 backdrop-blur border border-white/5 p-1.5 rounded-xl">
+                <Link
+                  data-tour="admin-profile"
+                  href="/admin/perfil"
+                  className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                  title="Minha Conta"
+                >
+                  <User size={18} />
+                </Link>
+                <button
+                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  className="p-2.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
+                  title="Sair"
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -228,6 +240,7 @@ export default function AdminDashboard() {
               </div>
               <span className="text-xs font-bold">Visão Geral</span>
             </Link>
+
           </div>
         </div>
 

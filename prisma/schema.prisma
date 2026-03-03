@@ -34,7 +34,10 @@ model Empresa {
   billingAnchorAt   DateTime?  // âncora real do vencimento (recomendado)
   cobrancaWhatsapp  String?    // ex: "5532935005492"
   
+  plano               String    @default("PROFESSIONAL")
+
   asaasCustomerId     String?
+  asaasSubscriptionId String?
   asaasCurrentPaymentId String?
   asaasCurrentDueDate DateTime?
 
@@ -56,6 +59,7 @@ model Usuario {
   assinaturaUrl      String?
   cargo              String              @default("FUNCIONARIO")
   deveTrocarSenha    Boolean             @default(false)
+  deveCadastrarFoto  Boolean             @default(false)
   empresaId          String?
   latitudeBase       Float               @default(0)
   longitudeBase      Float               @default(0)
@@ -66,6 +70,7 @@ model Usuario {
   resetToken         String?             @unique
   resetTokenExpiry   DateTime?
   ipsPermitidos      String?
+  telefone           String?
   modoValidacaoPonto String              @default("GPS")
   lojasPermitidas    AdminLoja[]
   ausencias          Ausencia[]

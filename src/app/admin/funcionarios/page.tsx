@@ -3,151 +3,232 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor } from 'lucide-react';
+import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X } from 'lucide-react';
+import { toast } from 'sonner';
 
-// IMPORTAÇÃO IMPORTANTE: Trazemos o componente e a Interface 'Funcionario' de lá
 import ModalFuncionario, { Funcionario } from '@/components/ModalFuncionario';
 
 export default function GestaoFuncionarios() {
-  // Agora 'funcionarios' usa a tipagem completa que vem do Modal
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [lojaAtual, setLojaAtual] = useState('Carregando...');
-  
-  // Controle do Modal
+  const [buscaNome, setBuscaNome] = useState('');
+
   const [showModal, setShowModal] = useState(false);
-  
-  // Pode ser 'null' (novo cadastro) ou um objeto 'Funcionario' (edição)
   const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<Funcionario | null>(null);
 
-  useEffect(() => { 
-      carregarLista(); 
-      axios.get('/api/admin/empresa')
-        .then(res => setLojaAtual(res.data.nome))
-        .catch(() => setLojaAtual('Minha Empresa'));
+  // Confirmação inline
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null);
+  const [confirmandoReset, setConfirmandoReset] = useState<string | null>(null);
+
+  useEffect(() => {
+    carregarLista();
+    axios.get('/api/admin/empresa')
+      .then(res => setLojaAtual(res.data.nome))
+      .catch(() => setLojaAtual('Minha Empresa'));
   }, []);
 
   const carregarLista = async () => {
     try {
-        const res = await axios.get('/api/admin/funcionarios');
-        // O TS não vai reclamar pois esperamos que a API devolva o objeto completo
-        setFuncionarios(res.data);
-    } catch (e) { 
-        console.error("Erro lista", e); 
+      const res = await axios.get('/api/admin/funcionarios');
+      setFuncionarios(res.data);
+    } catch (e) {
+      console.error("Erro lista", e);
     }
   };
 
   const handleNovo = () => {
-    setFuncionarioSelecionado(null); // Define como NULL para indicar que é NOVO
+    setFuncionarioSelecionado(null);
     setShowModal(true);
   };
 
   const handleEditar = (f: Funcionario) => {
-    setFuncionarioSelecionado(f); // Passa o objeto completo com Lat/Lng, etc.
+    setFuncionarioSelecionado(f);
     setShowModal(true);
   };
 
-  const excluirFuncionario = async (id: string, nome: string) => {
-    if (confirm(`Excluir ${nome}?`)) {
-      try {
-        await axios.delete(`/api/admin/funcionarios?id=${id}`);
-        carregarLista();
-      } catch (error) { alert('Erro ao excluir.'); }
+  const excluirFuncionario = async (id: string) => {
+    try {
+      await axios.delete(`/api/admin/funcionarios?id=${id}`);
+      carregarLista();
+      toast.success('Funcionário excluído com sucesso.');
+    } catch (error) {
+      toast.error('Erro ao excluir.');
+    } finally {
+      setConfirmandoExclusao(null);
     }
   };
 
-  const resetarSenha = async (id: string, nomeFunc: string) => {
-    if (!confirm(`Resetar senha de ${nomeFunc}?`)) return;
-    try { 
-        await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id }); 
-        alert('Senha resetada!\nSenha padrão: 1234'); 
-    } catch (error) { 
-        alert('Erro ao resetar.'); 
+  const resetarSenha = async (id: string) => {
+    try {
+      await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id });
+      toast.success('Senha resetada! Senha padrão: 1234');
+    } catch (error) {
+      toast.error('Erro ao resetar.');
+    } finally {
+      setConfirmandoReset(null);
     }
   };
+
+  // Filtro de busca
+  const listaFiltrada = funcionarios.filter((f) => {
+    if (!buscaNome.trim()) return true;
+    const termo = buscaNome.trim().toLowerCase();
+    return (
+      f.nome.toLowerCase().includes(termo) ||
+      f.email.toLowerCase().includes(termo) ||
+      (f.tituloCargo || '').toLowerCase().includes(termo) ||
+      (f.telefone || '').includes(termo)
+    );
+  });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6 pb-24">
-      <div className="max-w-6xl mx-auto space-y-6">
-        
+    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      {/* Orbs decorativos */}
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto p-4 md:p-8 pb-24 space-y-5 relative z-10">
+
         {/* TOPO */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-purple-400 flex items-center gap-2"><Users size={24}/> Gestão de Equipe</h1>
-            <p className="text-slate-400 text-sm">{lojaAtual}</p>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/admin" className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center transition-colors">
-                <ArrowLeft size={18} /> Voltar
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center gap-3">
+            <Link href="/admin" className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/5 transition-all active:scale-95" title="Voltar">
+              <ArrowLeft size={20} />
             </Link>
-            <button onClick={handleNovo} className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-green-900/20 transition-colors">
-                <UserPlus size={18} /> Novo
-            </button>
+            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+              <Users size={24} className="text-purple-400" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Gestão de Equipe</h1>
+              <p className="text-slate-400 text-sm">{lojaAtual} &middot; {funcionarios.length} funcionário(s)</p>
+            </div>
           </div>
+          <button onClick={handleNovo} className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-green-900/20 transition-colors active:scale-95">
+            <UserPlus size={18} /> Novo Funcionário
+          </button>
+        </div>
+
+        {/* BARRA DE BUSCA */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '50ms' }}>
+          <div className="relative">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={buscaNome}
+              onChange={(e) => setBuscaNome(e.target.value)}
+              placeholder="Buscar por nome, email, cargo ou telefone..."
+              className="w-full bg-slate-900/50 backdrop-blur-sm border border-white/10 hover:border-white/20 focus:border-purple-500/60 outline-none rounded-2xl py-3.5 pl-12 pr-12 text-sm text-slate-200 placeholder:text-slate-600 transition-colors"
+            />
+            {buscaNome.trim() && (
+              <button
+                onClick={() => setBuscaNome('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors"
+                title="Limpar busca"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          {buscaNome.trim() && (
+            <p className="text-xs text-slate-500 mt-2 ml-1">
+              {listaFiltrada.length} resultado(s) para &quot;{buscaNome}&quot;
+            </p>
+          )}
         </div>
 
         {/* LISTAGEM */}
-        <div className="grid gap-3">
-          {funcionarios.length === 0 && <p className="text-slate-500 text-center py-10">Nenhum funcionário cadastrado.</p>}
-          
-          {funcionarios.map(func => (
-            <div key={func.id} className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col gap-4 shadow-md hover:border-slate-700 transition-colors">
+        <div className="grid gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
+          {funcionarios.length === 0 && !buscaNome.trim() && (
+            <div className="text-center py-16 bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-white/5">
+              <Users size={40} className="mx-auto text-slate-700 mb-3" />
+              <p className="text-slate-500 font-semibold">Nenhum funcionário cadastrado.</p>
+              <p className="text-slate-600 text-xs mt-1">Clique em &quot;Novo Funcionário&quot; para começar.</p>
+            </div>
+          )}
+
+          {funcionarios.length > 0 && listaFiltrada.length === 0 && buscaNome.trim() && (
+            <div className="text-center py-10 bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-white/5">
+              <Search size={32} className="mx-auto text-slate-700 mb-3" />
+              <p className="text-slate-500 text-sm">Nenhum resultado para &quot;{buscaNome}&quot;</p>
+            </div>
+          )}
+
+          {listaFiltrada.map(func => (
+            <div key={func.id} className="bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-white/5 flex flex-col gap-4 shadow-md hover:border-white/10 transition-colors">
               <div className="flex items-center gap-4">
                 {func.fotoPerfilUrl ? (
-                  <img src={func.fotoPerfilUrl} alt={func.nome} className="w-12 h-12 rounded-full object-cover border-2 border-slate-700 flex-shrink-0" />
+                  <img src={func.fotoPerfilUrl} alt={func.nome} className="w-12 h-12 rounded-full object-cover border-2 border-white/10 flex-shrink-0" />
                 ) : (
-                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 flex-shrink-0">
+                  <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center border border-white/10 flex-shrink-0">
                     <User size={20} className="text-slate-500" />
                   </div>
                 )}
-                <div className="overflow-hidden">
+                <div className="overflow-hidden flex-1 min-w-0">
                   <h3 className="font-bold text-white text-base truncate">{func.nome}</h3>
                   <p className="text-xs text-slate-400 truncate">{func.email}</p>
+                  {func.telefone && (
+                    <p className="text-xs text-slate-500 truncate flex items-center gap-1"><Phone size={10} /> {func.telefone}</p>
+                  )}
                   <div className="flex flex-wrap gap-2 mt-1">
-                      {func.tituloCargo && <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-purple-400 font-bold uppercase">{func.tituloCargo}</span>}
-                      {func.pontoLivre && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">Livre</span>}
-                      {func.modoValidacaoPonto === 'PC_IP' && <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded flex items-center gap-1"><Monitor size={10}/> IP Fixo</span>}
+                    {func.tituloCargo && <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-purple-400 font-bold uppercase">{func.tituloCargo}</span>}
+                    {func.pontoLivre && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">Livre</span>}
+                    {func.modoValidacaoPonto === 'PC_IP' && <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded flex items-center gap-1"><Monitor size={10}/> IP Fixo</span>}
                   </div>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-3 gap-2 border-t border-slate-800 pt-3">
-                <button
-                  onClick={() => handleEditar(func)}
-                  className="flex items-center justify-center gap-2 py-2 px-2 bg-slate-800 text-blue-400 rounded-lg text-[11px] sm:text-xs font-bold hover:bg-slate-700 transition-colors whitespace-nowrap"
-                >
-                  <Pencil size={14} />
-                  <span className="hidden sm:inline">Editar</span>
-                  <span className="sm:hidden">Editar</span>
-                </button>
 
-                <button
-                  onClick={() => resetarSenha(func.id, func.nome)}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2 px-2 bg-slate-800 text-yellow-500 rounded-lg text-[11px] sm:text-xs font-bold hover:bg-slate-700 transition-colors leading-tight"
-                >
-                  <RefreshCw size={14} />
-                  <span className="sm:hidden text-center">
-                    Resetar<br />Senha
-                  </span>
-                  <span className="hidden sm:inline whitespace-nowrap">Resetar Senha</span>
-                </button>
+              {/* Confirmação inline de exclusão */}
+              {confirmandoExclusao === func.id ? (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in duration-200">
+                  <p className="text-sm text-red-300">Excluir <strong>{func.nome}</strong>?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => excluirFuncionario(func.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors">Sim</button>
+                    <button onClick={() => setConfirmandoExclusao(null)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-bold transition-colors">Não</button>
+                  </div>
+                </div>
+              ) : confirmandoReset === func.id ? (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in duration-200">
+                  <p className="text-sm text-yellow-300">Resetar senha de <strong>{func.nome}</strong>?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => resetarSenha(func.id)} className="px-3 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-xs font-bold transition-colors">Sim</button>
+                    <button onClick={() => setConfirmandoReset(null)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-bold transition-colors">Não</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2 border-t border-white/5 pt-3">
+                  <button
+                    onClick={() => handleEditar(func)}
+                    className="flex items-center justify-center gap-2 py-2.5 px-2 bg-white/5 text-blue-400 rounded-xl text-[11px] sm:text-xs font-bold hover:bg-white/10 transition-colors whitespace-nowrap active:scale-95"
+                  >
+                    <Pencil size={14} />
+                    Editar
+                  </button>
 
+                  <button
+                    onClick={() => setConfirmandoReset(func.id)}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 bg-white/5 text-yellow-500 rounded-xl text-[11px] sm:text-xs font-bold hover:bg-white/10 transition-colors leading-tight active:scale-95"
+                  >
+                    <RefreshCw size={14} />
+                    <span className="sm:hidden text-center">
+                      Resetar<br />Senha
+                    </span>
+                    <span className="hidden sm:inline whitespace-nowrap">Resetar Senha</span>
+                  </button>
 
-                <button
-                  onClick={() => excluirFuncionario(func.id, func.nome)}
-                  className="flex items-center justify-center gap-2 py-2 px-2 bg-slate-800 text-red-500 rounded-lg text-[11px] sm:text-xs font-bold hover:bg-slate-700 transition-colors whitespace-nowrap"
-                >
-                  <Trash2 size={14} />
-                  <span className="sm:hidden">Excluir</span>
-                  <span className="hidden sm:inline">Excluir</span>
-                </button>
-              </div>
-
+                  <button
+                    onClick={() => setConfirmandoExclusao(func.id)}
+                    className="flex items-center justify-center gap-2 py-2.5 px-2 bg-white/5 text-red-500 rounded-xl text-[11px] sm:text-xs font-bold hover:bg-white/10 transition-colors whitespace-nowrap active:scale-95"
+                  >
+                    <Trash2 size={14} />
+                    Excluir
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
         {/* COMPONENTE DO MODAL */}
-        <ModalFuncionario 
+        <ModalFuncionario
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           funcionarioEdicao={funcionarioSelecionado}
