@@ -1,0 +1,1902 @@
+openapi: 3.0.3
+info:
+  title: WorkID API
+  description: |
+    API do sistema WorkID — Gestão de Ponto Eletrônico com Biometria Facial, Geolocalização e controle multi-empresa.
+
+    ## Autenticação
+    Todas as rotas (exceto `/api/public/*` e `/api/utils/*`) requerem sessão autenticada via NextAuth.js (JWT cookie).
+
+    ## Papéis
+    - **FUNCIONARIO** — Bate ponto, solicita ajustes e ausências
+    - **ADMIN / DONO** — Gerencia funcionários, aprova solicitações, gera relatórios
+    - **SUPER_ADMIN** — Gestão multi-tenant (empresas, cobrança, impersonação)
+
+    ## Billing
+    - Trial de 14 dias → Cobrança via Asaas (PIX/Boleto)
+    - 10 dias de tolerância após vencimento → Bloqueio automático
+  version: 1.0.0
+  contact:
+    name: WorkID Suporte
+    email: contato@workid.com.br
+
+servers:
+  - url: https://app.workid.com.br
+    description: Produção
+  - url: http://localhost:3000
+    description: Desenvolvimento
+
+tags:
+  - name: Autenticação
+    description: Login, logout, troca e recuperação de senha
+  - name: Ponto
+    description: Registro e gestão de ponto eletrônico
+  - name: Ausências
+    description: Solicitação e aprovação de ausências (férias, atestados, folgas)
+  - name: Solicitações
+    description: Ajustes de ponto solicitados por funcionários
+  - name: Funcionários
+    description: CRUD de funcionários (Admin)
+  - name: Empresa
+    description: Configurações da empresa e filiais
+  - name: Dashboard
+    description: Dashboard em tempo real e histórico
+  - name: Feriados
+    description: Gerenciamento de feriados
+  - name: Billing
+    description: Plano, faturas, cobrança e pagamento
+  - name: SaaS
+    description: Gestão multi-tenant (Super Admin)
+  - name: Impersonação
+    description: Super Admin entra como outro usuário
+  - name: Webhooks
+    description: Webhooks de integração (Asaas)
+  - name: Utilitários
+    description: Endpoints auxiliares
+  - name: Tema
+    description: Preferência de tema (dark/light/system)
+
+paths:
+  # ============================================================
+  # AUTENTICAÇÃO
+  # ============================================================
+  /api/auth/callback/credentials:
+    post:
+      tags: [Autenticação]
+      summary: Login (NextAuth Credentials)
+      description: Autentica com email e senha. Retorna cookie de sessão JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@empresa.com
+                password:
+                  type: string
+                  example: "minhasenha123"
+      responses:
+        '200':
+          description: Login bem-sucedido (set-cookie com JWT)
+        '401':
+          description: Credenciais inválidas
+
+  /api/auth/trocar-senha:
+    post:
+      tags: [Autenticação]
+      summary: Trocar senha
+      description: Troca a senha do usuário autenticado. Usado no primeiro acesso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [novaSenha]
+              properties:
+                novaSenha:
+                  type: string
+                  minLength: 4
+                  example: "novaSenha456"
+      responses:
+        '200':
+          description: Senha alterada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  deveCadastrarFoto:
+                    type: boolean
+                  temAssinatura:
+                    type: boolean
+        '401':
+          description: Não autenticado
+
+  /api/auth/esqueci-senha:
+    post:
+      tags: [Autenticação]
+      summary: Solicitar recuperação de senha
+      description: Envia email com link de redefinição (token válido por 24h).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Email enviado (ou silencioso se email não existe)
+
+  /api/auth/redefinir-senha:
+    post:
+      tags: [Autenticação]
+      summary: Redefinir senha via token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, novaSenha]
+              properties:
+                token:
+                  type: string
+                novaSenha:
+                  type: string
+                  minLength: 4
+      responses:
+        '200':
+          description: Senha redefinida
+        '400':
+          description: Token inválido ou expirado
+
+  /api/auth/cadastrar-foto:
+    post:
+      tags: [Autenticação]
+      summary: Cadastrar foto de perfil
+      description: Upload de foto (base64) para Vercel Blob. Obrigatório no primeiro acesso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fotoBase64]
+              properties:
+                fotoBase64:
+                  type: string
+                  description: Imagem em base64 (data:image/jpeg;base64,...)
+      responses:
+        '200':
+          description: Foto salva
+        '401':
+          description: Não autenticado
+
+  # ============================================================
+  # TEMA
+  # ============================================================
+  /api/user/tema:
+    get:
+      tags: [Tema]
+      summary: Obter tema preferido
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tema:
+                    type: string
+                    enum: [dark, light, system]
+    put:
+      tags: [Tema]
+      summary: Salvar tema preferido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tema]
+              properties:
+                tema:
+                  type: string
+                  enum: [dark, light, system]
+      responses:
+        '200':
+          description: Tema salvo
+
+  # ============================================================
+  # PONTO
+  # ============================================================
+  /api/funcionario/ponto:
+    post:
+      tags: [Ponto]
+      summary: Registrar ponto
+      description: |
+        Registra entrada, saída ou intervalo. Valida GPS (raio), foto (Rekognition), IP e sequência do fluxo.
+
+        **Sequência estrita:** ENTRADA → SAIDA_INTERVALO → VOLTA_INTERVALO → SAIDA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId, latitude, longitude, tipo]
+              properties:
+                usuarioId:
+                  type: string
+                latitude:
+                  type: number
+                  example: -22.9068
+                longitude:
+                  type: number
+                  example: -43.1729
+                fotoBase64:
+                  type: string
+                  description: Foto capturada em base64
+                tipo:
+                  type: string
+                  enum: [ENTRADA, SAIDA_INTERVALO, VOLTA_INTERVALO, SAIDA]
+      responses:
+        '200':
+          description: Ponto registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ponto'
+        '400':
+          description: Validação falhou (fora do raio, face não reconhecida, etc.)
+        '409':
+          description: Ponto duplicado ou fora da sequência
+
+  /api/funcionario/ponto/status:
+    get:
+      tags: [Ponto]
+      summary: Status atual do funcionário
+      parameters:
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [TRABALHANDO, PAUSA_OU_SAIU, OFFLINE, ENCERRADO]
+                  ultimoTipo:
+                    type: string
+                  ultimoRegistro:
+                    type: string
+                    format: date-time
+                  jaAlmocou:
+                    type: boolean
+
+  /api/funcionario/ponto/excluir:
+    delete:
+      tags: [Ponto]
+      summary: Funcionário exclui próprio registro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Registro excluído
+
+  /api/admin/ponto/editar:
+    put:
+      tags: [Ponto]
+      summary: Admin edita horário de ponto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, novoHorario, motivo]
+              properties:
+                id:
+                  type: string
+                novoHorario:
+                  type: string
+                  format: date-time
+                motivo:
+                  type: string
+      responses:
+        '200':
+          description: Ponto editado (log de auditoria criado)
+
+  /api/admin/ponto/excluir:
+    delete:
+      tags: [Ponto]
+      summary: Admin exclui registro de ponto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, motivo]
+              properties:
+                id:
+                  type: string
+                motivo:
+                  type: string
+      responses:
+        '200':
+          description: Registro excluído (log de auditoria criado)
+
+  /api/admin/pontos-todos:
+    get:
+      tags: [Ponto]
+      summary: Listar todos os pontos da empresa
+      description: Retorna todos os registros de ponto com informações do funcionário.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PontoComUsuario'
+
+  # ============================================================
+  # AUSÊNCIAS
+  # ============================================================
+  /api/funcionario/solicitar-ausencia:
+    get:
+      tags: [Ausências]
+      summary: Listar minhas ausências
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ausencia'
+    post:
+      tags: [Ausências]
+      summary: Solicitar ausência
+      description: Cria solicitação de férias, atestado, folga ou falta. Suporta período parcial (com hora).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [dataInicio, dataFim, tipo, motivo]
+              properties:
+                dataInicio:
+                  type: string
+                  format: date
+                dataFim:
+                  type: string
+                  format: date
+                tipo:
+                  type: string
+                  enum: [FERIAS, ATESTADO, FOLGA, FALTA, LICENCA]
+                motivo:
+                  type: string
+                horaInicio:
+                  type: string
+                  description: "HH:mm (opcional, para ausência parcial)"
+                horaFim:
+                  type: string
+                  description: "HH:mm (opcional, para ausência parcial)"
+                comprovante:
+                  type: string
+                  format: binary
+                  description: Arquivo de comprovante (PDF, imagem)
+      responses:
+        '200':
+          description: Ausência solicitada
+        '400':
+          description: Dados inválidos
+
+  /api/admin/ausencias:
+    get:
+      tags: [Ausências]
+      summary: Listar ausências pendentes
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ausencia'
+    post:
+      tags: [Ausências]
+      summary: Aprovar ou rejeitar ausência
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, status]
+              properties:
+                id:
+                  type: string
+                status:
+                  type: string
+                  enum: [APROVADO, REJEITADO]
+      responses:
+        '200':
+          description: Ausência atualizada
+
+  /api/admin/ausencias/criar:
+    post:
+      tags: [Ausências]
+      summary: Admin cria ausência (auto-aprovada)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId, tipo, dataInicio, dataFim, motivo]
+              properties:
+                usuarioId:
+                  type: string
+                tipo:
+                  type: string
+                  enum: [FERIAS, ATESTADO, FOLGA, FALTA, LICENCA]
+                dataInicio:
+                  type: string
+                  format: date
+                dataFim:
+                  type: string
+                  format: date
+                motivo:
+                  type: string
+                horaInicio:
+                  type: string
+                horaFim:
+                  type: string
+      responses:
+        '200':
+          description: Ausência criada e aprovada
+
+  /api/admin/ausencias/excluir:
+    delete:
+      tags: [Ausências]
+      summary: Excluir ausência
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, motivo]
+              properties:
+                id:
+                  type: string
+                motivo:
+                  type: string
+      responses:
+        '200':
+          description: Ausência excluída
+
+  /api/admin/ausencias-aprovadas:
+    get:
+      tags: [Ausências]
+      summary: Listar ausências aprovadas
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ausencia'
+
+  # ============================================================
+  # SOLICITAÇÕES DE AJUSTE
+  # ============================================================
+  /api/funcionario/solicitar-ajuste:
+    post:
+      tags: [Solicitações]
+      summary: Solicitar ajuste de ponto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [novoHorario, motivo]
+              properties:
+                pontoId:
+                  type: string
+                  description: ID do ponto a ajustar (opcional para criação nova)
+                novoHorario:
+                  type: string
+                  format: date-time
+                motivo:
+                  type: string
+                tipo:
+                  type: string
+      responses:
+        '200':
+          description: Solicitação criada
+        '409':
+          description: Solicitação duplicada
+
+  /api/funcionario/minhas-solicitacoes:
+    get:
+      tags: [Solicitações]
+      summary: Listar minhas solicitações de ajuste
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitacaoAjuste'
+
+  /api/admin/solicitacoes:
+    get:
+      tags: [Solicitações]
+      summary: Listar solicitações pendentes
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitacaoAjuste'
+    post:
+      tags: [Solicitações]
+      summary: Aprovar ou rejeitar solicitação de ajuste
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, acao]
+              properties:
+                id:
+                  type: string
+                acao:
+                  type: string
+                  enum: [APROVADO, REJEITADO]
+                novoHorarioFinal:
+                  type: string
+                  format: date-time
+                  description: Horário final (admin pode ajustar)
+      responses:
+        '200':
+          description: Solicitação processada
+
+  # ============================================================
+  # FUNCIONÁRIOS
+  # ============================================================
+  /api/admin/funcionarios:
+    get:
+      tags: [Funcionários]
+      summary: Listar funcionários da empresa
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+    post:
+      tags: [Funcionários]
+      summary: Criar funcionário
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [nome, email]
+              properties:
+                nome:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                tituloCargo:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+                raio:
+                  type: integer
+                  description: Raio permitido em metros
+                telefone:
+                  type: string
+                modoValidacaoPonto:
+                  type: string
+                  enum: [GPS, PC_IP, GPS_E_IP]
+                ipsPermitidos:
+                  type: string
+                  description: IPs separados por vírgula
+                jornada:
+                  type: string
+                  description: JSON da jornada semanal
+                foto:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Funcionário criado (senha padrão "1234")
+        '409':
+          description: Email já em uso
+
+  /api/admin/funcionarios/resetar-senha:
+    post:
+      tags: [Funcionários]
+      summary: Resetar senha do funcionário para "1234"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId]
+              properties:
+                usuarioId:
+                  type: string
+      responses:
+        '200':
+          description: Senha resetada
+
+  /api/admin/usuario/jornada:
+    put:
+      tags: [Funcionários]
+      summary: Atualizar jornada de trabalho
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId, jornada]
+              properties:
+                usuarioId:
+                  type: string
+                jornada:
+                  type: object
+                  description: JSON com dias da semana e horários
+      responses:
+        '200':
+          description: Jornada atualizada
+
+  # ============================================================
+  # EMPRESA
+  # ============================================================
+  /api/admin/empresa:
+    get:
+      tags: [Empresa]
+      summary: Dados e configurações da empresa
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmpresaConfig'
+    put:
+      tags: [Empresa]
+      summary: Atualizar configurações da empresa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exigirFoto:
+                  type: boolean
+                bloquearForaDoRaio:
+                  type: boolean
+                exigirFotoFuncionario:
+                  type: boolean
+                fluxoEstrito:
+                  type: boolean
+                intervaloPago:
+                  type: boolean
+      responses:
+        '200':
+          description: Configurações atualizadas
+
+  /api/admin/nova-loja:
+    post:
+      tags: [Empresa]
+      summary: Criar filial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome]
+              properties:
+                nome:
+                  type: string
+                cnpj:
+                  type: string
+      responses:
+        '200':
+          description: Filial criada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loja:
+                    $ref: '#/components/schemas/Empresa'
+                  aviso:
+                    type: string
+                    description: Aviso sobre custo extra se ultrapassar limite do plano
+
+  /api/admin/excluir-loja:
+    delete:
+      tags: [Empresa]
+      summary: Excluir filial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Filial excluída
+
+  /api/admin/trocar-loja:
+    get:
+      tags: [Empresa]
+      summary: Listar lojas acessíveis para troca
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    nome:
+                      type: string
+
+  /api/funcionario/config:
+    get:
+      tags: [Empresa]
+      summary: Obter configurações para o funcionário
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exigirFoto:
+                    type: boolean
+                  bloquearRaio:
+                    type: boolean
+                  fluxoEstrito:
+                    type: boolean
+
+  # ============================================================
+  # DASHBOARD / HISTÓRICO
+  # ============================================================
+  /api/admin/dashboard/agora:
+    get:
+      tags: [Dashboard]
+      summary: Status em tempo real de todos os funcionários
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  funcionarios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        nome:
+                          type: string
+                        status:
+                          type: string
+                          enum: [TRABALHANDO, PAUSA_OU_SAIU, OFFLINE]
+                        ultimaAcao:
+                          type: string
+                          format: date-time
+
+  /api/funcionario/historico:
+    get:
+      tags: [Dashboard]
+      summary: Histórico unificado (pontos + ausências aprovadas)
+      parameters:
+        - name: inicio
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: fim
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registros:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RegistroUnificado'
+                  empresa:
+                    type: string
+                  jornada:
+                    type: object
+                  feriados:
+                    type: array
+                    items:
+                      type: string
+
+  /api/admin/logs:
+    get:
+      tags: [Dashboard]
+      summary: Logs de auditoria
+      parameters:
+        - name: inicio
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: fim
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: tipo
+          in: query
+          schema:
+            type: string
+            enum: [APROVACAO, EDICAO]
+        - name: busca
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LogAuditoria'
+
+  # ============================================================
+  # FERIADOS
+  # ============================================================
+  /api/admin/feriados:
+    get:
+      tags: [Feriados]
+      summary: Listar feriados da empresa
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feriado'
+    post:
+      tags: [Feriados]
+      summary: Criar feriado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data, nome]
+              properties:
+                data:
+                  type: string
+                  format: date
+                  example: "2026-12-25"
+                nome:
+                  type: string
+                  example: "Natal"
+      responses:
+        '200':
+          description: Feriado criado
+
+  /api/admin/feriados/importar:
+    post:
+      tags: [Feriados]
+      summary: Importar feriados nacionais (API Brasil)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ano]
+              properties:
+                ano:
+                  type: integer
+                  example: 2026
+      responses:
+        '200':
+          description: Feriados importados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  importados:
+                    type: integer
+
+  # ============================================================
+  # BILLING / PAGAMENTO
+  # ============================================================
+  /api/admin/plano:
+    get:
+      tags: [Billing]
+      summary: Detalhes do plano atual
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  planoAtual:
+                    $ref: '#/components/schemas/PlanoConfig'
+                  todosPlanos:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PlanoConfig'
+
+  /api/admin/faturas:
+    get:
+      tags: [Billing]
+      summary: Listar faturas da empresa
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fatura'
+
+  /api/admin/asaas/cobranca-atual:
+    get:
+      tags: [Billing]
+      summary: Dados da cobrança atual no Asaas
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  value:
+                    type: number
+                  dueDate:
+                    type: string
+                    format: date
+                  pixQrCode:
+                    type: string
+                  boletoUrl:
+                    type: string
+
+  /api/admin/asaas/gerar-cobranca:
+    post:
+      tags: [Billing]
+      summary: Gerar nova cobrança no Asaas
+      description: Calcula valor baseado no plano + extras (funcionários, admins, filiais).
+      responses:
+        '200':
+          description: Cobrança gerada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paymentId:
+                    type: string
+                  value:
+                    type: number
+                  dueDate:
+                    type: string
+                    format: date
+
+  /api/empresa/billing-status:
+    get:
+      tags: [Billing]
+      summary: Status de billing da empresa
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingStatus'
+
+  /api/admin/pagamento:
+    get:
+      tags: [Billing]
+      summary: Informações de pagamento
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  billingCycle:
+                    type: string
+                    enum: [MONTHLY, YEARLY]
+                  billingMethod:
+                    type: string
+                    enum: [UNDEFINED, PIX, BOLETO]
+                  nextDueDate:
+                    type: string
+                    format: date
+    post:
+      tags: [Billing]
+      summary: Criar/atualizar método de pagamento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                billingMethod:
+                  type: string
+                  enum: [PIX, BOLETO]
+                billingCycle:
+                  type: string
+                  enum: [MONTHLY, YEARLY]
+      responses:
+        '200':
+          description: Pagamento atualizado
+
+  # ============================================================
+  # SAAS (SUPER ADMIN)
+  # ============================================================
+  /api/saas/gestao:
+    post:
+      tags: [SaaS]
+      summary: Listar todas as empresas (multi-tenant)
+      description: Retorna árvore de empresas com filiais, billing e contagem de usuários.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EmpresaSaaS'
+        '403':
+          description: Não é SUPER_ADMIN
+
+  /api/saas/dashboard:
+    get:
+      tags: [SaaS]
+      summary: Estatísticas globais do SaaS
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalEmpresas:
+                    type: integer
+                  ativas:
+                    type: integer
+                  trial:
+                    type: integer
+                  bloqueadas:
+                    type: integer
+                  mrr:
+                    type: number
+                    description: Monthly Recurring Revenue
+                  empresasRecentes:
+                    type: array
+                    items:
+                      type: object
+
+  /api/saas/criar-empresa:
+    post:
+      tags: [SaaS]
+      summary: Criar nova empresa com trial
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nomeEmpresa, nomeDono, emailDono, senhaInicial]
+              properties:
+                nomeEmpresa:
+                  type: string
+                cnpj:
+                  type: string
+                nomeDono:
+                  type: string
+                emailDono:
+                  type: string
+                  format: email
+                senhaInicial:
+                  type: string
+                plano:
+                  type: string
+                  enum: [STARTER, PROFESSIONAL, ENTERPRISE]
+                  default: PROFESSIONAL
+      responses:
+        '200':
+          description: Empresa criada com trial de 14 dias
+
+  /api/saas/empresa/{id}:
+    get:
+      tags: [SaaS]
+      summary: Detalhes de uma empresa
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmpresaSaaS'
+    put:
+      tags: [SaaS]
+      summary: Atualizar empresa (plano, configs, billing)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plano:
+                  type: string
+                  enum: [STARTER, PROFESSIONAL, ENTERPRISE]
+                billingCycle:
+                  type: string
+                  enum: [MONTHLY, YEARLY]
+                intervaloPago:
+                  type: boolean
+                fluxoEstrito:
+                  type: boolean
+                novasConfigs:
+                  type: object
+      responses:
+        '200':
+          description: Empresa atualizada
+
+  /api/saas/toggle-bloqueio:
+    put:
+      tags: [SaaS]
+      summary: Bloquear ou desbloquear empresa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [empresaId, bloquear]
+              properties:
+                empresaId:
+                  type: string
+                bloquear:
+                  type: boolean
+      responses:
+        '200':
+          description: Status atualizado
+
+  /api/saas/excluir-empresa:
+    delete:
+      tags: [SaaS]
+      summary: Excluir empresa e todos os dados
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Empresa excluída
+
+  /api/saas/novo-admin:
+    post:
+      tags: [SaaS]
+      summary: Criar admin em uma empresa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [empresaId, nome, email, senha]
+              properties:
+                empresaId:
+                  type: string
+                nome:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                senha:
+                  type: string
+      responses:
+        '200':
+          description: Admin criado
+
+  /api/saas/usuarios:
+    post:
+      tags: [SaaS]
+      summary: Listar usuários de uma empresa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [empresaId]
+              properties:
+                empresaId:
+                  type: string
+                take:
+                  type: integer
+                  maximum: 500
+                q:
+                  type: string
+                  description: Busca por nome/email
+                cargo:
+                  type: string
+                  description: Filtrar por cargo
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Usuario'
+
+  /api/saas/confirmar-pagamento:
+    post:
+      tags: [SaaS]
+      summary: Confirmar pagamento manualmente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [empresaId]
+              properties:
+                empresaId:
+                  type: string
+                meses:
+                  type: integer
+                  description: Quantidade de meses a estender
+                  default: 1
+      responses:
+        '200':
+          description: Pagamento confirmado, pagoAte estendido
+
+  /api/saas/atualizar-financeiro:
+    put:
+      tags: [SaaS]
+      summary: Atualizar dados financeiros da empresa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [empresaId]
+              properties:
+                empresaId:
+                  type: string
+                diaVencimento:
+                  type: integer
+                chavePix:
+                  type: string
+                cobrancaAtiva:
+                  type: boolean
+                status:
+                  type: string
+                trialAteISO:
+                  type: string
+                  format: date-time
+                pagoAteISO:
+                  type: string
+                  format: date-time
+                billingAnchorAtISO:
+                  type: string
+                  format: date-time
+                cobrancaWhatsapp:
+                  type: string
+      responses:
+        '200':
+          description: Dados financeiros atualizados
+
+  /api/saas/resetar-senha:
+    post:
+      tags: [SaaS]
+      summary: Resetar senha de qualquer usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usuarioId]
+              properties:
+                usuarioId:
+                  type: string
+      responses:
+        '200':
+          description: Senha resetada para "1234"
+
+  /api/saas/excluir-usuario:
+    delete:
+      tags: [SaaS]
+      summary: Excluir usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Usuário excluído
+
+  # ============================================================
+  # IMPERSONAÇÃO
+  # ============================================================
+  /api/admin/impersonate:
+    post:
+      tags: [Impersonação]
+      summary: Entrar como outro usuário
+      description: Super Admin assume a sessão de outro usuário. A sessão original é salva em cookie seguro.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: string
+      responses:
+        '200':
+          description: Impersonação iniciada
+
+  /api/admin/impersonate/stop:
+    post:
+      tags: [Impersonação]
+      summary: Voltar à sessão original
+      responses:
+        '200':
+          description: Sessão restaurada
+
+  # ============================================================
+  # WEBHOOKS
+  # ============================================================
+  /api/webhooks/asaas:
+    post:
+      tags: [Webhooks]
+      summary: Webhook Asaas (notificação de pagamento)
+      description: |
+        Recebe eventos do Asaas:
+        - `PAYMENT_RECEIVED` — Pagamento recebido
+        - `PAYMENT_CONFIRMED` — Pagamento confirmado
+        - `PAYMENT_OVERDUE` — Pagamento vencido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                payment:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    status:
+                      type: string
+                    value:
+                      type: number
+      responses:
+        '200':
+          description: Evento processado
+
+  # ============================================================
+  # UTILITÁRIOS
+  # ============================================================
+  /api/utils/ip:
+    get:
+      tags: [Utilitários]
+      summary: Obter IP do cliente
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ip:
+                    type: string
+                    example: "189.100.50.25"
+                  tipo:
+                    type: string
+                    enum: [privado, publico, desconhecido]
+
+  /api/public/signup:
+    post:
+      tags: [Utilitários]
+      summary: Cadastro público de nova empresa
+      description: Cria empresa + admin com trial de 14 dias. Não requer autenticação.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [empresaNome, adminNome, email, password, aceitarTermos]
+              properties:
+                empresaNome:
+                  type: string
+                cnpj:
+                  type: string
+                adminNome:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 4
+                telefone:
+                  type: string
+                aceitarTermos:
+                  type: boolean
+                plano:
+                  type: string
+                  enum: [STARTER, PROFESSIONAL, ENTERPRISE]
+                  default: PROFESSIONAL
+      responses:
+        '200':
+          description: Empresa criada
+        '400':
+          description: Validação falhou
+        '409':
+          description: Email já cadastrado
+
+# ============================================================
+# SCHEMAS
+# ============================================================
+components:
+  schemas:
+    Ponto:
+      type: object
+      properties:
+        id:
+          type: string
+        dataHora:
+          type: string
+          format: date-time
+        latitude:
+          type: number
+        longitude:
+          type: number
+        endereco:
+          type: string
+        fotoUrl:
+          type: string
+        tipo:
+          type: string
+          example: NORMAL
+        subTipo:
+          type: string
+          enum: [ENTRADA, SAIDA_INTERVALO, VOLTA_INTERVALO, SAIDA]
+        descricao:
+          type: string
+        usuarioId:
+          type: string
+
+    PontoComUsuario:
+      allOf:
+        - $ref: '#/components/schemas/Ponto'
+        - type: object
+          properties:
+            usuario:
+              type: object
+              properties:
+                nome:
+                  type: string
+                email:
+                  type: string
+                fotoPerfilUrl:
+                  type: string
+
+    Ausencia:
+      type: object
+      properties:
+        id:
+          type: string
+        dataInicio:
+          type: string
+          format: date-time
+        dataFim:
+          type: string
+          format: date-time
+        tipo:
+          type: string
+          enum: [FERIAS, ATESTADO, FOLGA, FALTA, LICENCA]
+        motivo:
+          type: string
+        comprovanteUrl:
+          type: string
+        status:
+          type: string
+          enum: [PENDENTE, APROVADO, REJEITADO]
+        usuarioId:
+          type: string
+        criadoEm:
+          type: string
+          format: date-time
+        usuario:
+          type: object
+          properties:
+            nome:
+              type: string
+            email:
+              type: string
+
+    SolicitacaoAjuste:
+      type: object
+      properties:
+        id:
+          type: string
+        novoHorario:
+          type: string
+          format: date-time
+        motivo:
+          type: string
+        status:
+          type: string
+          enum: [PENDENTE, APROVADO, REJEITADO]
+        tipo:
+          type: string
+        usuarioId:
+          type: string
+        pontoId:
+          type: string
+        decididoPorNome:
+          type: string
+        decididoEm:
+          type: string
+          format: date-time
+        criadoEm:
+          type: string
+          format: date-time
+
+    Usuario:
+      type: object
+      properties:
+        id:
+          type: string
+        nome:
+          type: string
+        email:
+          type: string
+          format: email
+        cargo:
+          type: string
+          enum: [FUNCIONARIO, ADMIN, DONO, SUPER_ADMIN]
+        tituloCargo:
+          type: string
+        fotoPerfilUrl:
+          type: string
+        telefone:
+          type: string
+        pontoLivre:
+          type: boolean
+        modoValidacaoPonto:
+          type: string
+          enum: [GPS, PC_IP, GPS_E_IP]
+        latitudeBase:
+          type: number
+        longitudeBase:
+          type: number
+        raioPermitido:
+          type: integer
+        criadoEm:
+          type: string
+          format: date-time
+
+    Empresa:
+      type: object
+      properties:
+        id:
+          type: string
+        nome:
+          type: string
+        cnpj:
+          type: string
+        status:
+          type: string
+          enum: [ATIVO, BLOQUEADO]
+        plano:
+          type: string
+          enum: [STARTER, PROFESSIONAL, ENTERPRISE]
+
+    EmpresaConfig:
+      allOf:
+        - $ref: '#/components/schemas/Empresa'
+        - type: object
+          properties:
+            intervaloPago:
+              type: boolean
+            fluxoEstrito:
+              type: boolean
+            exigirFoto:
+              type: boolean
+            bloquearForaDoRaio:
+              type: boolean
+            totalFuncionarios:
+              type: integer
+            totalAdmins:
+              type: integer
+
+    EmpresaSaaS:
+      allOf:
+        - $ref: '#/components/schemas/Empresa'
+        - type: object
+          properties:
+            billingCycle:
+              type: string
+            billingMethod:
+              type: string
+            trialAte:
+              type: string
+              format: date-time
+            pagoAte:
+              type: string
+              format: date-time
+            billingAnchorAt:
+              type: string
+              format: date-time
+            diaVencimento:
+              type: integer
+            cobrancaAtiva:
+              type: boolean
+            filiais:
+              type: array
+              items:
+                $ref: '#/components/schemas/Empresa'
+            totalUsuarios:
+              type: integer
+
+    Feriado:
+      type: object
+      properties:
+        id:
+          type: string
+        data:
+          type: string
+          format: date
+        nome:
+          type: string
+
+    LogAuditoria:
+      type: object
+      properties:
+        id:
+          type: string
+        dataHora:
+          type: string
+          format: date-time
+        acao:
+          type: string
+        detalhes:
+          type: string
+        adminNome:
+          type: string
+        adminId:
+          type: string
+        empresaId:
+          type: string
+
+    RegistroUnificado:
+      type: object
+      description: Registro unificado de ponto ou ausência
+      properties:
+        id:
+          type: string
+        tipo:
+          type: string
+          enum: [PONTO, AUSENCIA]
+        subTipo:
+          type: string
+        dataHora:
+          type: string
+          format: date-time
+        descricao:
+          type: string
+        usuario:
+          type: object
+          properties:
+            nome:
+              type: string
+            email:
+              type: string
+            fotoPerfilUrl:
+              type: string
+        extra:
+          type: object
+          properties:
+            fotoUrl:
+              type: string
+            comprovanteUrl:
+              type: string
+            dataFim:
+              type: string
+              format: date-time
+
+    PlanoConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          enum: [STARTER, PROFESSIONAL, ENTERPRISE]
+        nome:
+          type: string
+        preco:
+          type: number
+          description: Preço mensal em R$
+        maxFuncionarios:
+          type: integer
+        maxAdmins:
+          type: integer
+        maxFiliais:
+          type: integer
+          description: "-1 para ilimitado"
+        extraFuncionario:
+          type: number
+        extraAdmin:
+          type: number
+        extraFilial:
+          type: number
+        reconhecimentoFacial:
+          type: boolean
+        relatoriosPdf:
+          type: string
+          enum: [BASICO, COMPLETO]
+        suporte:
+          type: string
+          enum: [EMAIL, WHATSAPP_EMAIL, PRIORITARIO]
+
+    Fatura:
+      type: object
+      properties:
+        valor:
+          type: number
+        vencimento:
+          type: string
+          format: date
+        status:
+          type: string
+        funcionarios:
+          type: integer
+        admins:
+          type: integer
+        filiais:
+          type: integer
+
+    BillingStatus:
+      type: object
+      properties:
+        blocked:
+          type: boolean
+        showAlert:
+          type: boolean
+        paidForCycle:
+          type: boolean
+        code:
+          type: string
+          enum: [OK, TRIAL_ACTIVE, TRIAL_ENDING, TRIAL_EXPIRED, DUE_SOON, PAST_DUE, BLOCKED, MANUAL_BLOCK, PENDING_FIRST_INVOICE]
+        message:
+          type: string
+        dueAtISO:
+          type: string
+          format: date-time
+        days:
+          type: integer
+          description: Dias restantes (trial) ou dias vencidos
+        phase:
+          type: string
+          enum: [TRIAL, BILLING]
