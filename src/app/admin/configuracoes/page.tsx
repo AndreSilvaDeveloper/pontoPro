@@ -6,6 +6,9 @@ import { ArrowLeft, Save, Camera, Lock, UserCog, EyeOff, Settings } from 'lucide
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+
+// Página de Configurações da Empresa para Admins
+
 export default function ConfiguracoesEmpresa() {
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);

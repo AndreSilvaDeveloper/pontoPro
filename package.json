@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "npx prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "swagger:push": "SWAGGERHUB_API_KEY=dfcb24d2-593c-428e-a06d-a230c9f7a43c npx swaggerhub-cli api:update ANDREADMFT/workid-api/1.0.0 --file openapi.yaml",
+    "swagger:pull": "SWAGGERHUB_API_KEY=dfcb24d2-593c-428e-a06d-a230c9f7a43c npx swaggerhub-cli api:get ANDREADMFT/workid-api > openapi.yaml"
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.943.0",
