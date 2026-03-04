@@ -26,7 +26,24 @@ export async function GET(_request: NextRequest, context: Ctx) {
 
   const empresa = await prisma.empresa.findUnique({
     where: { id },
-    include: { _count: { select: { usuarios: true } } },
+    include: {
+      filiais: {
+        select: {
+          id: true,
+          nome: true,
+          cnpj: true,
+          status: true,
+          _count: { select: { usuarios: true } },
+        },
+        orderBy: { criadoEm: "desc" },
+      },
+      usuarios: {
+        where: { cargo: { in: ["ADMIN", "SUPER_ADMIN", "DONO"] } },
+        select: { id: true, nome: true, email: true, cargo: true },
+        orderBy: { nome: "asc" },
+      },
+      _count: { select: { usuarios: true } },
+    },
   });
 
   if (!empresa) {
@@ -36,7 +53,6 @@ export async function GET(_request: NextRequest, context: Ctx) {
     );
   }
 
-  // Json do Prisma já vem ok — mas mantemos compatível com seu padrão
   const configs = empresa.configuracoes
     ? JSON.parse(JSON.stringify(empresa.configuracoes))
     : {};
@@ -54,21 +70,29 @@ export async function PUT(request: NextRequest, context: Ctx) {
 
   try {
     const body = await request.json();
+    const { novasConfigs, plano, billingCycle, intervaloPago, fluxoEstrito } = body;
 
-    // Mantém compatível com seu payload antigo: { novasConfigs }
-    const novasConfigs = body?.novasConfigs ?? body?.configuracoes;
+    const data: any = {};
 
-    if (typeof novasConfigs !== "object" || novasConfigs === null) {
+    // Configurações JSON (toggles + custom key-value)
+    if (novasConfigs && typeof novasConfigs === "object") {
+      data.configuracoes = novasConfigs;
+    }
+
+    // Campos diretos da empresa
+    if (plano !== undefined) data.plano = String(plano);
+    if (billingCycle !== undefined) data.billingCycle = String(billingCycle);
+    if (intervaloPago !== undefined) data.intervaloPago = Boolean(intervaloPago);
+    if (fluxoEstrito !== undefined) data.fluxoEstrito = Boolean(fluxoEstrito);
+
+    if (Object.keys(data).length === 0) {
       return NextResponse.json(
-        { ok: false, erro: "novasConfigs inválido" },
+        { ok: false, erro: "Nenhum dado para atualizar" },
         { status: 400 }
       );
     }
 
-    await prisma.empresa.update({
-      where: { id },
-      data: { configuracoes: novasConfigs },
-    });
+    await prisma.empresa.update({ where: { id }, data });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

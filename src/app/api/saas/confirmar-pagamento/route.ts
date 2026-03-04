@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { asaas } from "@/lib/asaas";
 
 export const runtime = "nodejs";
 
@@ -144,10 +145,34 @@ async function handler(req: Request) {
         pagoAte: true,
         dataUltimoPagamento: true,
         diaVencimento: true,
+        asaasCurrentPaymentId: true,
       },
     });
 
-    return NextResponse.json({ ok: true, empresa });
+    // === Confirmar pagamento no Asaas (receiveInCash) ===
+    let asaasConfirmado = false;
+    if (empresa.asaasCurrentPaymentId && process.env.ASAAS_BASE_URL && process.env.ASAAS_API_KEY) {
+      try {
+        const { data: payment } = await asaas.get(`/payments/${empresa.asaasCurrentPaymentId}`);
+        if (payment && (payment.status === "PENDING" || payment.status === "OVERDUE")) {
+          await asaas.post(`/payments/${empresa.asaasCurrentPaymentId}/receiveInCash`, {
+            paymentDate: now.toISOString().split("T")[0],
+            value: payment.value,
+          });
+          asaasConfirmado = true;
+          // Limpa o payment atual pois já foi recebido
+          await prisma.empresa.update({
+            where: { id: empresaId },
+            data: { asaasCurrentPaymentId: null, asaasCurrentDueDate: null },
+          });
+        }
+      } catch (asaasErr: any) {
+        // Log mas não falha — o pagamento local já foi confirmado
+        console.error("confirmar-pagamento: erro ao confirmar no Asaas:", asaasErr?.response?.data ?? asaasErr);
+      }
+    }
+
+    return NextResponse.json({ ok: true, empresa, asaasConfirmado });
   } catch (e) {
     console.error("confirmar-pagamento error:", e);
     return NextResponse.json({ ok: false, erro: "Erro interno" }, { status: 500 });

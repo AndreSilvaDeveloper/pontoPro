@@ -9,26 +9,6 @@ import { getBillingStatus, buildBillingBlockPayload } from "@/lib/billing";
 
 export const runtime = "nodejs";
 
-/**
- * (legado) usado só para bloquear DURANTE navegação via session callback
- */
-function isBillingBlockedLegacy(empresa: any) {
-  if (!empresa) return false;
-
-  // BLOQUEIO MANUAL
-  if (empresa.status === "BLOQUEADO") return true;
-
-  // Se cobrança não está ativa, não bloqueia por cobrança
-  if (!empresa.cobrancaAtiva) return false;
-
-  const now = new Date();
-  const trialOk = empresa.trialAte ? now <= new Date(empresa.trialAte) : false;
-  const paidOk = empresa.pagoAte ? now <= new Date(empresa.pagoAte) : false;
-
-  // Se não está no trial e não está pago => bloqueia
-  return !(trialOk || paidOk);
-}
-
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
@@ -67,6 +47,7 @@ export const authOptions: NextAuthOptions = {
             empresaId: true,
             deveTrocarSenha: true,
             deveCadastrarFoto: true,
+            assinaturaUrl: true,
           },
         });
 
@@ -109,6 +90,7 @@ export const authOptions: NextAuthOptions = {
             empresaId: user.empresaId ?? null,
             deveTrocarSenha: user.deveTrocarSenha,
             deveCadastrarFoto: user.deveCadastrarFoto,
+            temAssinatura: !!user.assinaturaUrl,
           } as any;
         }
 
@@ -216,6 +198,7 @@ export const authOptions: NextAuthOptions = {
           empresaId: user.empresaId,
           deveTrocarSenha: user.deveTrocarSenha,
           deveCadastrarFoto: user.deveCadastrarFoto,
+          temAssinatura: !!user.assinaturaUrl,
         } as any;
       },
     }),
@@ -229,6 +212,7 @@ export const authOptions: NextAuthOptions = {
         token.empresaId = (user as any).empresaId ?? null;
         token.deveTrocarSenha = (user as any).deveTrocarSenha;
         token.deveCadastrarFoto = (user as any).deveCadastrarFoto;
+        token.temAssinatura = (user as any).temAssinatura;
 
         // ✅ preserve se alguém (ex: endpoint de impersonação) já setou isso no user
         token.impersonatedBy = (user as any).impersonatedBy ?? (token as any).impersonatedBy ?? null;
@@ -254,6 +238,7 @@ export const authOptions: NextAuthOptions = {
 
         (session.user as any).deveTrocarSenha = (token as any).deveTrocarSenha;
         (session.user as any).deveCadastrarFoto = (token as any).deveCadastrarFoto;
+        (session.user as any).temAssinatura = (token as any).temAssinatura;
 
         // ✅ novo: expõe a marca de impersonação no session
         (session.user as any).impersonatedBy = (token as any).impersonatedBy ?? null;
@@ -273,11 +258,13 @@ export const authOptions: NextAuthOptions = {
                   id: true,
                   nome: true,
                   status: true,
+                  matrizId: true,
                   chavePix: true,
                   diaVencimento: true,
                   cobrancaAtiva: true,
                   trialAte: true,
                   pagoAte: true,
+                  billingAnchorAt: true,
                   cobrancaWhatsapp: true,
                 },
               },
@@ -289,26 +276,48 @@ export const authOptions: NextAuthOptions = {
             (session.user as any).nomeEmpresa =
               usuarioFresco.empresa?.nome ?? null;
 
-            // Se bloquear enquanto navega
-            if (isBillingBlockedLegacy(usuarioFresco.empresa)) {
+            // Resolve empresa de billing (se for filial, usa a matriz)
+            let billingEmpresa = usuarioFresco.empresa;
+            if (usuarioFresco.empresa?.matrizId) {
+              const matriz = await prisma.empresa.findUnique({
+                where: { id: usuarioFresco.empresa.matrizId },
+                select: {
+                  id: true,
+                  nome: true,
+                  status: true,
+                  matrizId: true,
+                  chavePix: true,
+                  diaVencimento: true,
+                  cobrancaAtiva: true,
+                  trialAte: true,
+                  pagoAte: true,
+                  billingAnchorAt: true,
+                  cobrancaWhatsapp: true,
+                },
+              });
+              if (matriz) billingEmpresa = matriz;
+            }
+
+            // Usa getBillingStatus() (com tolerância de 10 dias, anchor, etc.)
+            const st = getBillingStatus(billingEmpresa as any);
+
+            if (st.blocked) {
               const billingData = {
-                empresaNome: usuarioFresco.empresa?.nome,
-                chavePix: usuarioFresco.empresa?.chavePix,
-                diaVencimento: usuarioFresco.empresa?.diaVencimento,
-                trialAte: usuarioFresco.empresa?.trialAte,
-                pagoAte: usuarioFresco.empresa?.pagoAte,
-                status: usuarioFresco.empresa?.status,
-                cobrancaAtiva: usuarioFresco.empresa?.cobrancaAtiva,
-                cobrancaWhatsapp: usuarioFresco.empresa?.cobrancaWhatsapp,
+                empresaNome: billingEmpresa?.nome,
+                chavePix: billingEmpresa?.chavePix,
+                diaVencimento: billingEmpresa?.diaVencimento,
+                trialAte: billingEmpresa?.trialAte,
+                pagoAte: billingEmpresa?.pagoAte,
+                status: billingEmpresa?.status,
+                cobrancaAtiva: billingEmpresa?.cobrancaAtiva,
+                cobrancaWhatsapp: billingEmpresa?.cobrancaWhatsapp,
               };
 
               const isImpersonating = !!(session.user as any).impersonatedBy;
 
               if (isImpersonating) {
-                // ✅ Modo suporte: não trava o app, só avisa
                 (session as any).billingWarning = billingData;
               } else {
-                // ✅ Comportamento normal: trava
                 (session as any).error = "BILLING_BLOCK";
                 (session as any).billing = billingData;
               }

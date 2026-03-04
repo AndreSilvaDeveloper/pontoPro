@@ -6,7 +6,9 @@ import {
   PLANOS,
   getPlanoConfig,
   calcularValorAssinatura,
+  getPrecoAnual,
   type PlanoId,
+  type BillingCycle,
 } from "@/config/planos";
 
 export const runtime = "nodejs";
@@ -36,6 +38,7 @@ export async function GET() {
     const billingEmpresa = await prisma.empresa.findUnique({
       where: { id: billingEmpresaId },
       include: { filiais: true },
+      // billingCycle is included by default with include
     });
 
     if (!billingEmpresa)
@@ -57,24 +60,33 @@ export async function GET() {
     const totalFiliais = billingEmpresa.filiais?.length ?? 0;
 
     const planoAtual = getPlanoConfig(billingEmpresa.plano);
+    const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const calculo = calcularValorAssinatura(
       planoAtual,
       totalFuncionarios,
       totalAdmins,
-      totalFiliais
+      totalFiliais,
+      cycle
     );
+
+    // Adiciona preço anual para cada plano
+    const planosComAnual = Object.values(PLANOS).map((p) => ({
+      ...p,
+      precoAnual: getPrecoAnual(p),
+    }));
 
     return NextResponse.json({
       ok: true,
       planoAtual: planoAtual.id,
       planoConfig: planoAtual,
+      billingCycle: cycle,
       uso: {
         funcionarios: totalFuncionarios,
         admins: totalAdmins,
         filiais: totalFiliais,
       },
       calculo,
-      planos: Object.values(PLANOS),
+      planos: planosComAnual,
       isFilial: Boolean(empresa.matrizId),
     });
   } catch (err: any) {

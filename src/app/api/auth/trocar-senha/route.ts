@@ -34,10 +34,14 @@ export async function POST(request: Request) {
         senha: senhaCriptografada,
         deveTrocarSenha: false
       },
-      select: { deveCadastrarFoto: true }
+      select: { deveCadastrarFoto: true, assinaturaUrl: true }
     });
 
-    return NextResponse.json({ success: true, deveCadastrarFoto: usuarioAtualizado.deveCadastrarFoto });
+    return NextResponse.json({
+      success: true,
+      deveCadastrarFoto: usuarioAtualizado.deveCadastrarFoto,
+      temAssinatura: !!usuarioAtualizado.assinaturaUrl,
+    });
 
   } catch (error) {
     console.error("Erro ao trocar senha:", error);

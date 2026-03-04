@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import BottomNav from '@/components/funcionario/BottomNav';
+import NotificacaoSolicitacao from '@/components/funcionario/NotificacaoSolicitacao';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -23,15 +24,20 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
       return;
     }
 
-    // @ts-ignore
     if (session?.user?.deveCadastrarFoto) {
       router.push('/cadastrar-foto');
+      return;
+    }
+
+    if (!session?.user?.temAssinatura) {
+      router.push('/cadastrar-assinatura');
       return;
     }
   }, [status, session, router]);
 
   return (
     <>
+      <NotificacaoSolicitacao />
       {children}
       <BottomNav />
     </>

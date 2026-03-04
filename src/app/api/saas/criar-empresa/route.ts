@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial } = body;
+    const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial, plano } = body;
 
     const userExistente = await prisma.usuario.findUnique({
       where: { email: emailDono },
@@ -70,6 +70,9 @@ export async function POST(request: Request) {
 
         // mantém por compatibilidade (não é mais fonte principal)
         diaVencimento: 15,
+
+        // plano selecionado na venda
+        plano: plano || "PROFESSIONAL",
       } as any,
     });
 

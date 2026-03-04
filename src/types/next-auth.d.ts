@@ -7,6 +7,8 @@ declare module "next-auth" {
       cargo: string;
       empresaId: string;
       deveTrocarSenha: boolean;
+      deveCadastrarFoto: boolean;
+      temAssinatura: boolean;
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -18,6 +20,8 @@ declare module "next-auth" {
     cargo: string;
     empresaId: string;
     deveTrocarSenha: boolean;
+    deveCadastrarFoto: boolean;
+    temAssinatura: boolean;
   }
 }
 
@@ -27,5 +31,7 @@ declare module "next-auth/jwt" {
     cargo: string;
     empresaId: string;
     deveTrocarSenha: boolean;
+    deveCadastrarFoto: boolean;
+    temAssinatura: boolean;
   }
 }

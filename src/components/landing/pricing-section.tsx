@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Check, X, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PLANOS, type PlanoId } from "@/config/planos";
+import { PLANOS, getPrecoAnual, type PlanoId, type BillingCycle } from "@/config/planos";
 
 const PLANOS_ORDER: PlanoId[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
 
@@ -74,6 +75,9 @@ function FeatureValue({ value }: { value: string | boolean }) {
 }
 
 export function PricingSection() {
+  const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
+  const isYearly = cycle === "YEARLY";
+
   return (
     <section id="pricing" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
       <div className="container mx-auto">
@@ -87,6 +91,33 @@ export function PricingSection() {
           <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
             Comece com 14 dias grátis. Sem cartão de crédito. Cancele quando quiser.
           </p>
+
+          {/* Toggle Mensal / Anual */}
+          <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-950/40 p-1">
+            <button
+              onClick={() => setCycle("MONTHLY")}
+              className={`rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                !isYearly
+                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
+            >
+              Mensal
+            </button>
+            <button
+              onClick={() => setCycle("YEARLY")}
+              className={`relative rounded-full px-5 py-2 text-sm font-bold transition-all ${
+                isYearly
+                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
+            >
+              Anual
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                -10%
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Cards Grid */}
@@ -94,6 +125,11 @@ export function PricingSection() {
           {PLANOS_ORDER.map((planoId) => {
             const plano = PLANOS[planoId];
             const isPopular = planoId === "PROFESSIONAL";
+            const anual = getPrecoAnual(plano);
+
+            const displayPrice = isYearly ? anual.anual : plano.preco;
+            const displayPriceFormatted = displayPrice.toFixed(2).replace(".", ",");
+            const [intPart, decPart] = displayPriceFormatted.split(",");
 
             return (
               <div
@@ -124,13 +160,26 @@ export function PricingSection() {
                   <div className="flex items-baseline gap-1">
                     <span className="text-sm text-gray-400">R$</span>
                     <span className="text-4xl font-extrabold text-white">
-                      {plano.preco.toFixed(2).replace(".", ",").split(",")[0]}
+                      {intPart}
                     </span>
                     <span className="text-lg font-bold text-gray-300">
-                      ,{plano.preco.toFixed(2).split(".")[1]}
+                      ,{decPart}
                     </span>
-                    <span className="text-sm text-gray-500">/mês</span>
+                    <span className="text-sm text-gray-500">
+                      /{isYearly ? "ano" : "mês"}
+                    </span>
                   </div>
+                  {isYearly && (
+                    <p className="mt-1 text-sm text-emerald-400">
+                      R$ {anual.mensalEquivalente.toFixed(2).replace(".", ",")}/mês
+                      {" "}&mdash; economize R$ {anual.economia.toFixed(2).replace(".", ",")}
+                    </p>
+                  )}
+                  {!isYearly && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      ou R$ {anual.anual.toFixed(2).replace(".", ",")}/ano com 10% off
+                    </p>
+                  )}
                 </div>
 
                 {/* CTA */}

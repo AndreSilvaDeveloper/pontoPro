@@ -15,52 +15,11 @@ async function getPixSafe(paymentId: string) {
   }
 }
 
-function mapPix(payment: any, dueDate: string, pix: any) {
-  return {
-    paymentId: payment?.id ?? "",
-    dueDate,
-    invoiceUrl: payment?.invoiceUrl ?? null,
-    pix,
-  };
-}
-
-function mapBoleto(payment: any, dueDate: string) {
-  const bankSlipUrl = payment?.bankSlipUrl ?? null;
-  return {
-    paymentId: payment?.id ?? "",
-    dueDate,
-    invoiceUrl: payment?.invoiceUrl ?? null,
-    bankSlipUrl,
-    boletoUrl: bankSlipUrl,
-    identificationField: payment?.identificationField ?? payment?.digitableLine ?? null,
-  };
-}
-
-async function findExistingPayment(params: {
-  externalReference: string;
-  billingType: "PIX" | "BOLETO";
-  dueDate: string;
-}) {
-  try {
-    const { data } = await asaas.get("/payments", {
-      params: {
-        externalReference: params.externalReference,
-        billingType: params.billingType,
-        limit: 10,
-        offset: 0,
-      },
-    });
-
-    const list: any[] = Array.isArray(data?.data) ? data.data : [];
-    const match =
-      list.find((p) => String(p?.dueDate ?? "").slice(0, 10) === params.dueDate) ?? null;
-
-    return match;
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * GET — Somente leitura.
+ * Busca o pagamento atual (já existente no Asaas) e retorna PIX + Boleto.
+ * NÃO cria nenhum pagamento.
+ */
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -84,55 +43,56 @@ export async function GET() {
       select: {
         asaasCurrentPaymentId: true,
         asaasCurrentDueDate: true,
-        asaasCustomerId: true,
         nome: true,
       },
     });
 
-    if (!empresa?.asaasCurrentPaymentId || !empresa?.asaasCurrentDueDate) {
+    if (!empresa?.asaasCurrentPaymentId) {
       return NextResponse.json({ ok: true, hasPayment: false });
     }
 
-    const dueDate = empresa.asaasCurrentDueDate.toISOString().slice(0, 10);
-
-    // current = BOLETO (pela nossa regra)
-    const boletoPayment = (await asaas.get(`/payments/${empresa.asaasCurrentPaymentId}`)).data;
-
-    // tenta achar PIX do mesmo ciclo (sem criar toda hora)
-    let pixPayment = await findExistingPayment({
-      externalReference: billingEmpresaId,
-      billingType: "PIX",
-      dueDate,
-    });
-
-    // se não achou, cria PIX (aqui pode criar 1 por ciclo, no máximo)
-    if (!pixPayment) {
-      // tenta usar customer do payment do boleto (geralmente vem)
-      const customerId = boletoPayment?.customer ?? empresa.asaasCustomerId;
-
-      if (customerId) {
-        pixPayment = (
-          await asaas.post("/payments", {
-            customer: customerId,
-            billingType: "PIX",
-            value: boletoPayment?.value ?? 99.9,
-            dueDate,
-            description: boletoPayment?.description ?? `Assinatura Ontime - ${empresa.nome}`,
-            externalReference: billingEmpresaId,
-          })
-        ).data;
-      }
+    // Busca o pagamento no Asaas
+    let payment: any;
+    try {
+      payment = (await asaas.get(`/payments/${empresa.asaasCurrentPaymentId}`)).data;
+    } catch {
+      return NextResponse.json({ ok: true, hasPayment: false });
     }
 
-    const pix = pixPayment?.id ? await getPixSafe(pixPayment.id) : null;
+    if (!payment?.id) {
+      return NextResponse.json({ ok: true, hasPayment: false });
+    }
+
+    // Se já foi pago/cancelado, não há cobrança pendente
+    const inactiveStatuses = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH", "REFUNDED", "CANCELLED"];
+    if (inactiveStatuses.includes(payment.status)) {
+      return NextResponse.json({ ok: true, hasPayment: false });
+    }
+
+    const dueDate = String(payment.dueDate ?? "").slice(0, 10);
+
+    // Busca QR code PIX do mesmo pagamento (UNDEFINED suporta PIX + Boleto)
+    const pix = await getPixSafe(payment.id);
 
     return NextResponse.json({
       ok: true,
       hasPayment: true,
       asaas: {
         dueDate,
-        pix: pixPayment?.id ? mapPix(pixPayment, dueDate, pix) : null,
-        boleto: boletoPayment?.id ? mapBoleto(boletoPayment, dueDate) : null,
+        pix: {
+          paymentId: payment.id,
+          dueDate,
+          invoiceUrl: payment.invoiceUrl ?? null,
+          pix,
+        },
+        boleto: {
+          paymentId: payment.id,
+          dueDate,
+          invoiceUrl: payment.invoiceUrl ?? null,
+          bankSlipUrl: payment.bankSlipUrl ?? null,
+          boletoUrl: payment.bankSlipUrl ?? null,
+          identificationField: payment.identificationField ?? null,
+        },
       },
     });
   } catch (err: any) {

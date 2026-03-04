@@ -183,6 +183,7 @@ export async function POST(req: Request) {
         id: true,
         pagoAte: true,
         billingAnchorAt: true,
+        billingCycle: true,
         status: true,
       },
     });
@@ -195,13 +196,19 @@ export async function POST(req: Request) {
     }
 
     const now = new Date();
+    const isYearly = current.billingCycle === "YEARLY";
+    const advanceMonths = isYearly ? 12 : 1;
+
+    const paidUntilDate = isYearly
+      ? startOfDay(addMonthsCalendar(dueDate, 12))
+      : startOfDay(dueDate);
 
     const paidUntil = maxDate(
       current.pagoAte ? startOfDay(current.pagoAte) : null,
-      startOfDay(dueDate)
+      paidUntilDate
     );
 
-    const nextAnchor = startOfDay(addMonthsCalendar(dueDate, 1));
+    const nextAnchor = startOfDay(addMonthsCalendar(dueDate, advanceMonths));
     const anchor = maxDate(
       current.billingAnchorAt ? startOfDay(current.billingAnchorAt) : null,
       nextAnchor
