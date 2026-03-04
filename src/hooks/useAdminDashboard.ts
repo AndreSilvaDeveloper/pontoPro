@@ -23,7 +23,7 @@ function playNotificationSound() {
 
       // Envelope suave: fade-in rápido + fade-out longo
       gain.gain.setValueAtTime(0, startTime);
-      gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+      gain.gain.linearRampToValueAtTime(1.0, startTime + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
       osc.start(startTime);

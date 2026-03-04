@@ -20,7 +20,7 @@ function playNotifSound() {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, start);
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.12, start + 0.02);
+      gain.gain.linearRampToValueAtTime(1.0, start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
       osc.start(start);
       osc.stop(start + dur);
