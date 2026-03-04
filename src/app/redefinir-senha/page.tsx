@@ -67,11 +67,11 @@ function ResetPasswordForm() {
             <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle2 size={32} className="text-green-500" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Senha Atualizada!</h2>
-            <p className="text-slate-400 mb-6">Você será redirecionado para o login em instantes...</p>
+            <h2 className="text-2xl font-bold text-text-primary mb-2">Senha Atualizada!</h2>
+            <p className="text-text-muted mb-6">Você será redirecionado para o login em instantes...</p>
             <button 
                 onClick={() => router.push('/login')}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-lg transition-colors"
+                className="bg-elevated-solid hover:bg-elevated-solid text-text-primary px-6 py-2 rounded-lg transition-colors"
             >
                 Ir para Login agora
             </button>
@@ -85,29 +85,29 @@ function ResetPasswordForm() {
             <div className="inline-flex items-center justify-center p-3 mb-4 bg-purple-500/10 rounded-2xl border border-purple-500/20">
                 <KeyRound size={32} className="text-purple-400" />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Nova Senha</h1>
-            <p className="text-slate-400 text-sm mt-1">Digite sua nova senha abaixo.</p>
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">Nova Senha</h1>
+            <p className="text-text-muted text-sm mt-1">Digite sua nova senha abaixo.</p>
         </div>
 
         <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 ml-1 uppercase">Nova Senha</label>
+            <label className="text-xs font-bold text-text-muted ml-1 uppercase">Nova Senha</label>
             <input 
               type="password" 
               value={novaSenha}
               onChange={(e) => setNovaSenha(e.target.value)}
-              className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600"
+              className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim"
               placeholder="••••••••"
               required
             />
         </div>
 
         <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 ml-1 uppercase">Confirmar Senha</label>
+            <label className="text-xs font-bold text-text-muted ml-1 uppercase">Confirmar Senha</label>
             <input 
               type="password" 
               value={confirmar}
               onChange={(e) => setConfirmar(e.target.value)}
-              className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600"
+              className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim"
               placeholder="••••••••"
               required
             />
@@ -124,7 +124,7 @@ function ResetPasswordForm() {
         <button 
             type="button"
             onClick={() => router.push('/login')}
-            className="w-full text-slate-500 hover:text-white text-sm py-2 transition-colors flex items-center justify-center gap-2"
+            className="w-full text-text-faint hover:text-text-primary text-sm py-2 transition-colors flex items-center justify-center gap-2"
         >
             <ArrowLeft size={16}/> Cancelar
         </button>
@@ -135,15 +135,15 @@ function ResetPasswordForm() {
 // Componente Principal (Página)
 export default function RedefinirSenhaPage() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-slate-950 selection:bg-purple-500/30">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-page selection:bg-purple-500/30">
       
       {/* Efeitos de Fundo */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[120px] pointer-events-none" />
 
       {/* Card */}
-      <div className="w-full max-w-md p-8 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10">
-        <Suspense fallback={<div className="text-center text-white">Carregando formulário...</div>}>
+      <div className="w-full max-w-md p-8 bg-surface/60 backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10">
+        <Suspense fallback={<div className="text-center text-text-primary">Carregando formulário...</div>}>
             <ResetPasswordForm />
         </Suspense>
       </div>

@@ -11,8 +11,8 @@ import {
   getISOWeek,
   getYear,
 } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
-  ArrowLeft,
   History,
   Calendar,
   Search,
@@ -30,12 +30,16 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
+  Coffee,
+  UtensilsCrossed,
+  ChevronDown,
+  FileText,
+  Trash2,
+  ShieldAlert,
 } from 'lucide-react';
-import Link from 'next/link';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-// Função auxiliar de data
 const criarDataLocal = (dataString: string) => {
   if (!dataString) return new Date();
   const [ano, mes, dia] = dataString.split('-').map(Number);
@@ -47,25 +51,38 @@ type AvisoModal = {
   texto: string;
 };
 
+// === LABELS E CORES ===
+const TIPO_CONFIG: Record<string, { label: string; cor: string; bg: string; border: string; icon: any }> = {
+  ENTRADA: { label: 'Entrada', cor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: LogIn },
+  VOLTA_ALMOCO: { label: 'Volta Almoço', cor: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: LogIn },
+  VOLTA_INTERVALO: { label: 'Volta Café', cor: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', icon: LogIn },
+  SAIDA_ALMOCO: { label: 'Almoço', cor: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/20', icon: UtensilsCrossed },
+  SAIDA_INTERVALO: { label: 'Café', cor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: Coffee },
+  SAIDA: { label: 'Saída', cor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', icon: LogOut },
+  PONTO: { label: 'Ponto', cor: 'text-text-muted', bg: 'bg-slate-500/10', border: 'border-border-input/20', icon: Clock },
+  AUSENCIA: { label: 'Ausência', cor: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', icon: AlertTriangle },
+};
+
+const getTipoConfig = (tipo: string) => TIPO_CONFIG[tipo] || TIPO_CONFIG.PONTO;
+
+const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string; border: string; icon: any }> = {
+  PENDENTE: { label: 'Pendente', cor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: Clock },
+  APROVADO: { label: 'Aprovado', cor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', icon: CheckCircle2 },
+  REJEITADO: { label: 'Rejeitado', cor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30', icon: XCircle },
+};
+
 export default function MeuHistorico() {
   // === ESTADOS ===
   const [abaAtiva, setAbaAtiva] = useState<'PONTO' | 'SOLICITACOES'>('PONTO');
 
-  // Dados de Ponto
   const [pontos, setPontos] = useState<any[]>([]);
   const [empresaNome, setEmpresaNome] = useState('Carregando...');
   const [jornada, setJornada] = useState<any>(null);
   const [feriados, setFeriados] = useState<string[]>([]);
-
-  // Agora o resumo guarda mais dados (igual ao admin)
   const [resumo, setResumo] = useState<{ total: string; saldo: string; saldoPositivo: boolean } | null>(null);
-
-  // Dados de Solicitações
   const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
-
   const [loading, setLoading] = useState(false);
 
-  // Filtros
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -77,9 +94,14 @@ export default function MeuHistorico() {
   const [horaNova, setHoraNova] = useState('');
   const [tipoNovo, setTipoNovo] = useState('ENTRADA');
   const [motivo, setMotivo] = useState('');
-
-  // ✅ AVISO VISUAL (substitui alert no mobile)
   const [avisoModal, setAvisoModal] = useState<AvisoModal | null>(null);
+
+  // Exclusão de ponto
+  const [pontoParaExcluir, setPontoParaExcluir] = useState<any>(null);
+  const [excluindo, setExcluindo] = useState(false);
+
+  // Solicitação expandida
+  const [solicitacaoExpandida, setSolicitacaoExpandida] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -107,7 +129,7 @@ export default function MeuHistorico() {
     });
 
     Object.keys(pontosPorDia).forEach(dia => {
-      pontosPorDia[dia].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+      pontosPorDia[dia].sort((a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
     });
 
     const diasIsentos = new Set<string>();
@@ -117,7 +139,7 @@ export default function MeuHistorico() {
       const fim = aus.extra?.dataFim ? new Date(aus.extra.dataFim) : inicio;
       try {
         eachDayOfInterval({ start: inicio, end: fim }).forEach(d => diasIsentos.add(toDateStr(d)));
-      } catch (e) {}
+      } catch {}
     });
 
     const semanasComSabado = new Set<string>();
@@ -178,7 +200,6 @@ export default function MeuHistorico() {
     while (loopData <= fimData) {
       if (loopData <= agora) {
         const diaStr = toDateStr(loopData);
-
         const metaDia = getMetaDoDia(loopData);
 
         let trabalhadoDia = 0;
@@ -240,7 +261,7 @@ export default function MeuHistorico() {
     };
   };
 
-  // === CARREGAMENTO DE DADOS ===
+  // === CARREGAMENTO ===
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
@@ -251,7 +272,6 @@ export default function MeuHistorico() {
         setEmpresaNome(resHistorico.data.empresaNome);
         setJornada(resHistorico.data.jornada);
         setFeriados(resHistorico.data.feriados);
-
         setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados));
       } else {
         setPontos(resHistorico.data);
@@ -259,11 +279,12 @@ export default function MeuHistorico() {
 
       const resSolicitacoes = await axios.get('/api/funcionario/minhas-solicitacoes');
       setSolicitacoes(resSolicitacoes.data);
-    } catch (error) {
-      console.error('Erro');
+    } catch {
+      console.error('Erro ao carregar histórico');
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataInicio, dataFim]);
 
   useEffect(() => {
@@ -292,12 +313,9 @@ export default function MeuHistorico() {
     setModalAberto(true);
   }, []);
 
-  // Auto-open por querystring (?ajustar=ID)
+  // Auto-open por querystring
   useEffect(() => {
-    if (!ajustarId) return;
-    if (abriuAutoRef.current) return;
-    if (loading) return;
-    if (!pontos || pontos.length === 0) return;
+    if (!ajustarId || abriuAutoRef.current || loading || !pontos?.length) return;
 
     const pontoEncontrado = pontos.find(p => p.id === ajustarId);
     abriuAutoRef.current = true;
@@ -305,22 +323,16 @@ export default function MeuHistorico() {
     if (pontoEncontrado) {
       abrirEdicao(pontoEncontrado);
     } else {
-      // ✅ sem alert (mobile)
       setModoModal('EDICAO');
       setPontoSelecionado(null);
       setDataNova('');
       setHoraNova('');
       setMotivo('');
-      setAvisoModal({
-        tipo: 'info',
-        texto: 'Não encontramos o registro para ajuste. Verifique o período do filtro ou tente novamente.',
-      });
+      setAvisoModal({ tipo: 'info', texto: 'Registro não encontrado no período atual. Ajuste o filtro de datas.' });
       setModalAberto(true);
     }
 
-    setTimeout(() => {
-      router.replace('/funcionario/historico', { scroll: false });
-    }, 50);
+    setTimeout(() => router.replace('/funcionario/historico', { scroll: false }), 50);
   }, [ajustarId, loading, pontos, router, abrirEdicao]);
 
   const enviarSolicitacao = async () => {
@@ -332,14 +344,13 @@ export default function MeuHistorico() {
     }
 
     if (modoModal === 'EDICAO' && !pontoSelecionado?.id) {
-      setAvisoModal({ tipo: 'erro', texto: 'Registro inválido para ajuste. Feche e tente novamente.' });
+      setAvisoModal({ tipo: 'erro', texto: 'Registro inválido. Feche e tente novamente.' });
       return;
     }
 
-    const dataBase =
-      modoModal === 'EDICAO'
-        ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd')
-        : dataNova;
+    const dataBase = modoModal === 'EDICAO'
+      ? format(new Date(pontoSelecionado.dataHora), 'yyyy-MM-dd')
+      : dataNova;
 
     const dataHoraFinal = new Date(`${dataBase}T${horaNova}:00`);
 
@@ -351,39 +362,41 @@ export default function MeuHistorico() {
         motivo,
       });
 
-      setAvisoModal({
-        tipo: 'sucesso',
-        texto: 'Solicitação enviada! Acompanhe na aba "Minhas Solicitações".',
-      });
-
-      setTimeout(() => {
-        setModalAberto(false);
-        setAvisoModal(null);
-      }, 900);
-
+      setAvisoModal({ tipo: 'sucesso', texto: 'Solicitação enviada com sucesso!' });
+      setTimeout(() => { setModalAberto(false); setAvisoModal(null); }, 900);
       carregar();
     } catch (error: any) {
       const data = error?.response?.data ?? {};
       const msg = data?.erro || 'Erro ao enviar.';
       const code = data?.code;
 
-      // Mostra sempre no modal (sem alert)
       if (code === 'USE_AJUSTE') {
-        setAvisoModal({
-          tipo: 'info',
-          texto: msg || 'Você já registrou esse ponto hoje. Em vez de INCLUIR, solicite AJUSTE.',
-        });
+        setAvisoModal({ tipo: 'info', texto: msg || 'Você já registrou esse ponto. Solicite AJUSTE.' });
         return;
       }
 
-      setAvisoModal({
-        tipo: 'erro',
-        texto: msg,
-      });
+      setAvisoModal({ tipo: 'erro', texto: msg });
     }
   };
 
-  // === FILTROS DE PONTOS ===
+  // === EXCLUSÃO DE PONTO ===
+  const confirmarExclusao = async () => {
+    if (!pontoParaExcluir) return;
+    setExcluindo(true);
+    try {
+      await axios.delete('/api/funcionario/ponto/excluir', {
+        data: { id: pontoParaExcluir.id },
+      });
+      setPontoParaExcluir(null);
+      carregar();
+    } catch (error: any) {
+      alert(error.response?.data?.erro || 'Erro ao excluir registro.');
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  // === FILTROS ===
   const pontosFiltrados = pontos.filter(p => {
     if (p.tipo === 'AUSENCIA') {
       const ini = format(new Date(p.dataHora), 'yyyy-MM-dd');
@@ -402,260 +415,260 @@ export default function MeuHistorico() {
     descricao: p.descricao || (p.tipo === 'AUSENCIA' ? 'Atestado/Férias' : 'Registro Manual'),
   }));
 
-  const getIconePonto = (tipo: string) => {
-    if (tipo === 'AUSENCIA') return <AlertTriangle size={18} className="text-yellow-500" />;
-    if (['ENTRADA', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO'].includes(tipo)) return <LogIn size={18} className="text-emerald-400" />;
-    if (['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(tipo)) return <LogOut size={18} className="text-rose-400" />;
-    return <Clock size={18} className="text-slate-400" />;
-  };
+  // Agrupar pontos por data
+  const pontosPorData = pontosFiltrados.reduce((acc: Record<string, any[]>, ponto) => {
+    const dia = format(new Date(ponto.dataHora), 'yyyy-MM-dd');
+    if (!acc[dia]) acc[dia] = [];
+    acc[dia].push(ponto);
+    return acc;
+  }, {});
 
-  const getCorStatus = (tipo: string) => {
-    if (tipo === 'AUSENCIA') return 'border-yellow-500/50 bg-yellow-500/5';
-    if (['ENTRADA', 'VOLTA_ALMOCO'].includes(tipo)) return 'border-emerald-500/30 bg-emerald-500/5';
-    if (['SAIDA'].includes(tipo)) return 'border-rose-500/30 bg-rose-500/5';
-    return 'border-slate-700 bg-slate-800/30';
-  };
+  // Ordenar datas (mais recente primeiro)
+  const datasOrdenadas = Object.keys(pontosPorData).sort((a, b) => b.localeCompare(a));
 
-  const renderSolicitacoes = () => {
-    if (solicitacoes.length === 0)
-      return (
-        <div className="text-center py-10 opacity-50">
-          <p className="text-slate-500 text-sm">Nenhuma solicitação encontrada.</p>
-        </div>
-      );
-
-    return (
-      <div className="space-y-3">
-        {solicitacoes.map(sol => (
-          <div key={sol.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex justify-between items-center">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                    sol.status === 'APROVADO'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : sol.status === 'REJEITADO'
-                      ? 'bg-red-500/20 text-red-400'
-                      : 'bg-amber-500/20 text-amber-400'
-                  }`}
-                >
-                  {sol.status}
-                </span>
-                <span className="text-xs text-slate-500">{format(new Date(sol.criadoEm), 'dd/MM/yyyy HH:mm')}</span>
-              </div>
-              <p className="text-sm font-bold text-white mb-0.5">
-                {sol.novoHorario ? `Ajuste para: ${format(new Date(sol.novoHorario), 'dd/MM HH:mm')}` : 'Justificativa de Ausência'}
-              </p>
-              <p className="text-xs text-slate-400 italic">"{sol.motivo}"</p>
-              {sol.observacaoAdmin && (
-                <p className="text-xs text-slate-500 mt-1 border-t border-slate-800 pt-1">Admin: {sol.observacaoAdmin}</p>
-              )}
-            </div>
-            <div className="pl-3">
-              {sol.status === 'APROVADO' ? (
-                <CheckCircle2 className="text-emerald-500" size={20} />
-              ) : sol.status === 'REJEITADO' ? (
-                <XCircle className="text-red-500" size={20} />
-              ) : (
-                <Clock className="text-amber-500" size={20} />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  // Contadores de solicitações
+  const countPendentes = solicitacoes.filter(s => s.status === 'PENDENTE').length;
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 p-4 font-sans relative overflow-hidden">
-      <div className="fixed top-[-10%] right-[-10%] w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[80px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none" />
+    <div
+      className="min-h-screen bg-page text-text-secondary font-sans relative overflow-hidden"
+      style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+    >
+      {/* Background decorations */}
+      <div className="fixed top-[-10%] right-[-10%] w-[300px] h-[300px] bg-orb-purple rounded-full blur-[80px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-orb-indigo rounded-full blur-[80px] pointer-events-none" />
 
-      <div className="max-w-md mx-auto space-y-6 relative z-10">
-        {/* CABEÇALHO */}
-        <div className="flex items-center justify-between pt-2 pb-4">
+      <div className="max-w-2xl mx-auto px-4 pb-24 relative z-10">
+
+        {/* === HEADER === */}
+        <div className="flex items-center justify-between py-4">
           <div className="flex items-center gap-3">
-            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+            <div className="p-2.5 bg-purple-500/10 rounded-xl border border-purple-500/20">
               <History className="text-purple-400" size={20} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white leading-none">Minhas Atividades</h1>
-              <p className="text-xs text-slate-400 mt-1">{empresaNome}</p>
+              <h1 className="text-xl font-bold text-text-primary leading-tight">Meu Histórico</h1>
+              <p className="text-[11px] text-text-faint font-medium">{empresaNome}</p>
             </div>
           </div>
-          <Link href="/funcionario" className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-all active:scale-95">
-            <ArrowLeft size={18} />
-          </Link>
         </div>
 
-        {/* SELETOR DE ABAS */}
-        <div className="bg-slate-900/60 p-1 rounded-xl flex gap-1 border border-white/5">
+        {/* === TABS === */}
+        <div className="bg-surface/60 backdrop-blur p-1 rounded-2xl flex gap-1 border border-border-subtle mb-5">
           <button
             onClick={() => setAbaAtiva('PONTO')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
-              abaAtiva === 'PONTO' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+              abaAtiva === 'PONTO'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30'
+                : 'text-text-muted hover:text-text-primary hover:bg-hover-bg'
             }`}
           >
             <Calendar size={14} /> Espelho de Ponto
           </button>
           <button
             onClick={() => setAbaAtiva('SOLICITACOES')}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
-              abaAtiva === 'SOLICITACOES' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/5'
+            className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 relative ${
+              abaAtiva === 'SOLICITACOES'
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/30'
+                : 'text-text-muted hover:text-text-primary hover:bg-hover-bg'
             }`}
           >
-            <ListFilter size={14} /> Minhas Solicitações
+            <ListFilter size={14} /> Solicitações
+            {countPendentes > 0 && (
+              <span className="w-5 h-5 bg-amber-500 text-[10px] font-bold text-black rounded-full flex items-center justify-center">
+                {countPendentes}
+              </span>
+            )}
           </button>
         </div>
 
-        {/* CONTEÚDO DAS ABAS */}
+        {/* === ABA: ESPELHO DE PONTO === */}
         {abaAtiva === 'PONTO' ? (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+
+            {/* Resumo */}
             {resumo && (
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gradient-to-br from-purple-900/40 to-indigo-900/40 backdrop-blur-md border border-purple-500/20 p-4 rounded-2xl flex flex-col justify-between shadow-xl">
-                  <div className="flex justify-between items-start mb-2">
-                    <Clock size={20} className="text-purple-400" />
-                    <span className="text-[10px] text-purple-200 uppercase font-bold tracking-widest">Trabalhado</span>
+                <div className="bg-surface/60 backdrop-blur border border-purple-500/20 p-4 rounded-2xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock size={14} className="text-purple-400" />
+                    <span className="text-[10px] text-purple-300/70 uppercase font-bold tracking-widest">Trabalhado</span>
                   </div>
-                  <p className="text-2xl font-bold text-white tracking-tight">{resumo.total}</p>
+                  <p className="text-2xl font-bold text-text-primary tracking-tight">{resumo.total}</p>
                 </div>
 
-                <div
-                  className={`backdrop-blur-md border p-4 rounded-2xl flex flex-col justify-between shadow-xl ${
-                    resumo.saldoPositivo ? 'bg-emerald-900/20 border-emerald-500/20' : 'bg-rose-900/20 border-rose-500/20'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    {resumo.saldoPositivo ? (
-                      <TrendingUp size={20} className="text-emerald-400" />
-                    ) : (
-                      <TrendingDown size={20} className="text-rose-400" />
-                    )}
-                    <span
-                      className={`text-[10px] uppercase font-bold tracking-widest ${
-                        resumo.saldoPositivo ? 'text-emerald-200' : 'text-rose-200'
-                      }`}
-                    >
-                      Banco
-                    </span>
+                <div className={`backdrop-blur border p-4 rounded-2xl ${
+                  resumo.saldoPositivo
+                    ? 'bg-emerald-500/5 border-emerald-500/20'
+                    : 'bg-red-500/5 border-red-500/20'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {resumo.saldoPositivo
+                      ? <TrendingUp size={14} className="text-emerald-400" />
+                      : <TrendingDown size={14} className="text-red-400" />
+                    }
+                    <span className={`text-[10px] uppercase font-bold tracking-widest ${
+                      resumo.saldoPositivo ? 'text-emerald-300/70' : 'text-red-300/70'
+                    }`}>Banco</span>
                   </div>
-                  <p className={`text-2xl font-bold tracking-tight ${resumo.saldoPositivo ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {resumo.saldo}
-                  </p>
+                  <p className={`text-2xl font-bold tracking-tight ${
+                    resumo.saldoPositivo ? 'text-emerald-400' : 'text-red-400'
+                  }`}>{resumo.saldo}</p>
                 </div>
               </div>
             )}
 
-            {/* FILTROS E BOTÃO ESQUECI */}
-            <div className="space-y-4">
-              <button
-                onClick={abrirInclusao}
-                className="w-full bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 border-dashed py-4 rounded-xl font-bold text-sm text-slate-300 flex items-center justify-center gap-2 transition-all hover:text-white active:scale-95"
-              >
-                <PlusCircle size={18} className="text-purple-400" /> Esqueci de Bater o Ponto
-              </button>
+            {/* Botão Esqueci */}
+            <button
+              onClick={abrirInclusao}
+              className="w-full bg-surface/40 hover:bg-elevated/60 border border-dashed border-border-input hover:border-purple-500/30 py-4 rounded-2xl font-bold text-sm text-text-secondary flex items-center justify-center gap-2 transition-all hover:text-text-primary active:scale-[0.98]"
+            >
+              <PlusCircle size={18} className="text-purple-400" /> Esqueci de Bater o Ponto
+            </button>
 
-              <div className="bg-slate-900/60 backdrop-blur-md p-4 rounded-2xl border border-white/5 space-y-3 shadow-lg">
-                <div className="flex gap-3">
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[10px] text-slate-500 font-bold uppercase ml-1">De</label>
-                    <input
-                      type="date"
-                      value={dataInicio}
-                      onChange={e => setDataInicio(e.target.value)}
-                      className="w-full bg-slate-950/50 border border-white/10 p-2.5 rounded-xl text-white text-sm outline-none focus:border-purple-500 transition-colors text-center"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <label className="text-[10px] text-slate-500 font-bold uppercase ml-1">Até</label>
-                    <input
-                      type="date"
-                      value={dataFim}
-                      onChange={e => setDataFim(e.target.value)}
-                      className="w-full bg-slate-950/50 border border-white/10 p-2.5 rounded-xl text-white text-sm outline-none focus:border-purple-500 transition-colors text-center"
-                    />
-                  </div>
+            {/* Filtros */}
+            <div className="bg-surface/60 backdrop-blur-md p-4 rounded-2xl border border-border-subtle space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">De</label>
+                  <input
+                    type="date"
+                    value={dataInicio}
+                    onChange={e => setDataInicio(e.target.value)}
+                    className="w-full bg-input-solid/60 border border-border-default p-2.5 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 transition-colors text-center"
+                  />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Até</label>
+                  <input
+                    type="date"
+                    value={dataFim}
+                    onChange={e => setDataFim(e.target.value)}
+                    className="w-full bg-input-solid/60 border border-border-default p-2.5 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 transition-colors text-center"
+                  />
+                </div>
+              </div>
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={carregar}
-                    disabled={loading}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <Search size={16} /> Filtrar
-                      </>
-                    )}
-                  </button>
-
-                  {pontosFiltrados.length > 0 && (
-                    <div className="flex-1">
-                      <BotaoRelatorio
-                        pontos={pontosParaRelatorio}
-                        filtro={{
-                          inicio: criarDataLocal(dataInicio),
-                          fim: criarDataLocal(dataFim),
-                          usuario: 'Eu',
-                        }}
-                        resumoHoras={resumo}
-                        nomeEmpresa={empresaNome}
-                      />
-                    </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={carregar}
+                  disabled={loading}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {loading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><Search size={16} /> Buscar</>
                   )}
-                </div>
+                </button>
+
+                {pontosFiltrados.length > 0 && (
+                  <div className="flex-1">
+                    <BotaoRelatorio
+                      pontos={pontosParaRelatorio}
+                      filtro={{
+                        inicio: criarDataLocal(dataInicio),
+                        fim: criarDataLocal(dataFim),
+                        usuario: 'Eu',
+                      }}
+                      resumoHoras={resumo}
+                      nomeEmpresa={empresaNome}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* LISTA DE PONTOS */}
-            <div className="space-y-3 pb-8">
-              {pontosFiltrados.length === 0 && (
-                <div className="text-center py-10 opacity-50">
-                  <History size={48} className="mx-auto mb-3 text-slate-600" />
-                  <p className="text-slate-500 text-sm">Nenhum registro encontrado.</p>
+            {/* Lista de Pontos Agrupados por Data */}
+            <div className="space-y-4">
+              {pontosFiltrados.length === 0 && !loading && (
+                <div className="text-center py-16">
+                  <div className="bg-elevated/30 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <FileText size={28} className="text-text-dim" />
+                  </div>
+                  <p className="text-text-faint text-sm font-medium">Nenhum registro neste período</p>
+                  <p className="text-text-dim text-xs mt-1">Ajuste as datas e tente novamente</p>
                 </div>
               )}
 
-              {pontosFiltrados.map(ponto => {
-                const tipo = ponto.subTipo || ponto.tipo;
-                return (
-                  <div
-                    key={ponto.id}
-                    className={`group relative p-4 rounded-2xl border backdrop-blur-sm transition-all hover:bg-white/[0.03] ${getCorStatus(
-                      ponto.tipo === 'AUSENCIA' ? 'AUSENCIA' : tipo
-                    )}`}
-                  >
-                    <div className="flex justify-between items-center relative z-10">
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2.5 rounded-xl bg-slate-950/30 border border-white/5`}>
-                          {getIconePonto(ponto.tipo === 'AUSENCIA' ? 'AUSENCIA' : tipo)}
-                        </div>
-                        <div>
-                          <p className="font-bold text-lg text-white font-mono tracking-tight">{format(new Date(ponto.dataHora), 'HH:mm')}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5">
-                            <Calendar size={10} />
-                            {format(new Date(ponto.dataHora), 'dd/MM/yyyy')}
-                            <span className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider ml-1">
-                              {String(tipo).replace('_', ' ')}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+              {datasOrdenadas.map(dia => {
+                const pontosDoDia = pontosPorData[dia].sort(
+                  (a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime()
+                );
+                const dataObj = criarDataLocal(dia);
+                const diaSemana = format(dataObj, 'EEEE', { locale: ptBR });
+                const diaFormatado = format(dataObj, "dd 'de' MMMM", { locale: ptBR });
 
-                      {ponto.tipo !== 'AUSENCIA' && (
-                        <button
-                          onClick={() => abrirEdicao(ponto)}
-                          className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all active:scale-95 flex items-center gap-2 shadow-lg"
-                          title="Solicitar Ajuste"
-                        >
-                          <Edit3 size={16} />
-                          Ajustar Ponto
-                        </button>
-                      )}
+                return (
+                  <div key={dia}>
+                    {/* Cabeçalho do dia */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-text-primary capitalize">{diaSemana}</span>
+                        <span className="text-xs text-text-faint">{diaFormatado}</span>
+                      </div>
+                      <div className="flex-1 h-px bg-elevated-solid" />
+                      <span className="text-[10px] text-text-dim font-mono">
+                        {pontosDoDia.length} reg.
+                      </span>
+                    </div>
+
+                    {/* Registros do dia - timeline */}
+                    <div className="relative ml-3 pl-5 border-l-2 border-border-input space-y-2 mb-4">
+                      {pontosDoDia.map((ponto: any) => {
+                        const tipo = ponto.tipo === 'AUSENCIA' ? 'AUSENCIA' : (ponto.subTipo || ponto.tipo);
+                        const cfg = getTipoConfig(tipo);
+                        const Icon = cfg.icon;
+
+                        return (
+                          <div
+                            key={ponto.id}
+                            className="relative group"
+                          >
+                            {/* Dot na timeline */}
+                            <div className={`absolute -left-[1.625rem] top-3 w-3 h-3 rounded-full border-2 border-page ${cfg.bg} ${cfg.border}`}>
+                              <div className={`w-full h-full rounded-full ${cfg.bg}`} />
+                            </div>
+
+                            <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:bg-white/[0.02] ${cfg.border} ${cfg.bg}`}>
+                              {/* Ícone */}
+                              <div className={`p-2 rounded-lg bg-input-solid/40 shrink-0`}>
+                                <Icon size={16} className={cfg.cor} />
+                              </div>
+
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg font-bold text-text-primary font-mono tracking-tight">
+                                    {format(new Date(ponto.dataHora), 'HH:mm')}
+                                  </span>
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${cfg.cor}`}>
+                                    {cfg.label}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Ações */}
+                              {ponto.tipo !== 'AUSENCIA' && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => abrirEdicao(ponto)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-text-faint hover:text-purple-400 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all active:scale-95"
+                                  >
+                                    <Edit3 size={14} /> Editar
+                                  </button>
+                                  <button
+                                    onClick={() => setPontoParaExcluir(ponto)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-text-dim hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all active:scale-95"
+                                  >
+                                    <Trash2 size={14} /> Excluir
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -663,133 +676,314 @@ export default function MeuHistorico() {
             </div>
           </div>
         ) : (
-          <div className="animate-in fade-in slide-in-from-bottom-2 pb-8">
-            <div className="bg-slate-900/60 backdrop-blur-md p-4 rounded-2xl border border-white/5 shadow-lg mb-4">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-1">
-                <ListFilter size={16} className="text-purple-400" /> Acompanhamento
-              </h3>
-              <p className="text-xs text-slate-400">Aqui você vê o status de todas as suas justificativas e ajustes manuais.</p>
+          /* === ABA: SOLICITAÇÕES === */
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+
+            {/* Info */}
+            <div className="bg-surface/40 backdrop-blur border border-border-subtle rounded-2xl p-4 flex items-start gap-3">
+              <div className="p-2 bg-purple-500/10 rounded-xl shrink-0">
+                <ListFilter size={16} className="text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-text-primary">Acompanhamento</p>
+                <p className="text-xs text-text-faint mt-0.5">Status das suas solicitações de ajuste e inclusão de ponto</p>
+              </div>
             </div>
-            {renderSolicitacoes()}
+
+            {/* Filtros rápidos */}
+            {solicitacoes.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {(['TODOS', 'PENDENTE', 'APROVADO', 'REJEITADO'] as const).map(filtro => {
+                  const count = filtro === 'TODOS'
+                    ? solicitacoes.length
+                    : solicitacoes.filter(s => s.status === filtro).length;
+
+                  return (
+                    <button
+                      key={filtro}
+                      onClick={() => setSolicitacaoExpandida(filtro === 'TODOS' ? null : filtro)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all border ${
+                        (solicitacaoExpandida === null && filtro === 'TODOS') || solicitacaoExpandida === filtro
+                          ? 'bg-purple-600 text-white border-purple-500'
+                          : 'bg-surface text-text-muted border-border-subtle hover:border-border-default'
+                      }`}
+                    >
+                      {filtro === 'TODOS' ? 'Todas' : STATUS_CONFIG[filtro]?.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Lista */}
+            {solicitacoes.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="bg-elevated/30 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle2 size={28} className="text-text-dim" />
+                </div>
+                <p className="text-text-faint text-sm font-medium">Nenhuma solicitação</p>
+                <p className="text-text-dim text-xs mt-1">Suas solicitações de ajuste aparecerão aqui</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {solicitacoes
+                  .filter(s => !solicitacaoExpandida || solicitacaoExpandida === 'TODOS' || s.status === solicitacaoExpandida)
+                  .map(sol => {
+                    const stCfg = STATUS_CONFIG[sol.status] || STATUS_CONFIG.PENDENTE;
+                    const StIcon = stCfg.icon;
+                    const isInclusao = !sol.pontoId;
+
+                    return (
+                      <div
+                        key={sol.id}
+                        className={`rounded-2xl border overflow-hidden transition-all ${stCfg.bg} ${stCfg.border}`}
+                      >
+                        <div className="p-4">
+                          {/* Header da solicitação */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div className={`p-2 rounded-xl ${stCfg.bg} border ${stCfg.border} shrink-0`}>
+                                <StIcon size={16} className={stCfg.cor} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase ${stCfg.bg} ${stCfg.cor} border ${stCfg.border}`}>
+                                    {stCfg.label}
+                                  </span>
+                                  <span className="text-[10px] text-text-dim bg-elevated px-2 py-0.5 rounded-lg font-medium">
+                                    {isInclusao ? 'Inclusão' : 'Ajuste'}
+                                  </span>
+                                </div>
+                                <p className="text-sm font-bold text-text-primary mt-1.5">
+                                  {sol.novoHorario
+                                    ? format(new Date(sol.novoHorario), "dd/MM/yyyy 'às' HH:mm")
+                                    : 'Justificativa'
+                                  }
+                                </p>
+                                {sol.tipo && (
+                                  <span className={`text-[10px] font-bold uppercase ${getTipoConfig(sol.tipo).cor}`}>
+                                    {getTipoConfig(sol.tipo).label}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <span className="text-[10px] text-text-dim whitespace-nowrap font-mono shrink-0">
+                              {format(new Date(sol.criadoEm), 'dd/MM HH:mm')}
+                            </span>
+                          </div>
+
+                          {/* Justificativa */}
+                          <div className="mt-3 bg-input-solid/30 rounded-xl p-3 border border-border-subtle">
+                            <p className="text-xs text-text-muted leading-relaxed">
+                              <span className="text-text-dim font-medium">Motivo: </span>
+                              {sol.motivo}
+                            </p>
+                          </div>
+
+                          {/* Decisão do admin */}
+                          {sol.decididoPorNome && (
+                            <div className="mt-2 flex items-center gap-2 text-[11px] text-text-faint">
+                              <span className="font-medium">
+                                {sol.status === 'APROVADO' ? 'Aprovado' : 'Rejeitado'} por {sol.decididoPorNome}
+                              </span>
+                              {sol.decididoEm && (
+                                <span className="text-text-dim">
+                                  em {format(new Date(sol.decididoEm), 'dd/MM HH:mm')}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* MODAL DE AJUSTE */}
+        {/* === MODAL DE AJUSTE === */}
         {modalAberto && (
-          <div
-            className="
-              fixed inset-0 z-50 flex items-center justify-center
-              px-4
-              pt-[calc(1rem+env(safe-area-inset-top))]
-              pb-[calc(1rem+env(safe-area-inset-bottom))]
-            "
-          >
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalAberto(false)} />
 
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setModalAberto(false)} />
-
-            <div className="bg-[#0f172a] border border-slate-700 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-5 relative z-10 animate-in slide-in-from-bottom-10 fade-in duration-300">
-              <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <div className="relative z-10 w-full max-w-sm bg-page border border-border-input rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+              {/* Header do modal */}
+              <div className="bg-surface/60 border-b border-border-subtle px-6 py-4 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   {modoModal === 'EDICAO' ? (
-                    <>
-                      <Edit3 size={20} className="text-purple-400" /> Ajustar Horário
-                    </>
+                    <><Edit3 size={18} className="text-purple-400" /> Ajustar Horário</>
                   ) : (
-                    <>
-                      <PlusCircle size={20} className="text-emerald-400" /> Incluir Registro
-                    </>
+                    <><PlusCircle size={18} className="text-emerald-400" /> Incluir Registro</>
                   )}
                 </h3>
-                <button onClick={() => setModalAberto(false)} className="text-slate-500 hover:text-white">
-                  <X size={20} />
+                <button onClick={() => setModalAberto(false)} className="p-1.5 text-text-faint hover:text-text-primary rounded-lg hover:bg-hover-bg transition-colors">
+                  <X size={18} />
                 </button>
               </div>
 
-              {/* ✅ AVISO VISUAL NO MODAL (substitui alert no mobile) */}
-              {avisoModal && (
-                <div
-                  className={`p-4 rounded-2xl text-sm font-bold flex items-center gap-3 shadow-lg
-                  ${
+              <div className="px-6 py-5 space-y-4 max-h-[70dvh] overflow-y-auto">
+                {/* Aviso visual */}
+                {avisoModal && (
+                  <div className={`p-3 rounded-xl text-sm font-medium flex items-center gap-2.5 ${
                     avisoModal.tipo === 'erro'
-                      ? 'bg-red-500/20 text-red-200 border border-red-500/30'
+                      ? 'bg-red-500/10 text-red-300 border border-red-500/20'
                       : avisoModal.tipo === 'sucesso'
-                      ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30'
-                      : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'
-                  }`}
+                      ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
+                      : 'bg-blue-500/10 text-blue-300 border border-blue-500/20'
+                  }`}>
+                    {avisoModal.tipo === 'erro' ? <AlertCircle size={16} /> : avisoModal.tipo === 'sucesso' ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                    <span className="leading-snug text-xs">{avisoModal.texto}</span>
+                  </div>
+                )}
+
+                {modoModal === 'INCLUSAO' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Data</label>
+                      <input
+                        type="date"
+                        value={dataNova}
+                        onChange={e => setDataNova(e.target.value)}
+                        className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-sm text-center outline-none focus:border-purple-500 transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Tipo</label>
+                      <select
+                        value={tipoNovo}
+                        onChange={e => setTipoNovo(e.target.value)}
+                        className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
+                      >
+                        <option value="ENTRADA">Entrada</option>
+                        <option value="SAIDA_INTERVALO">Saída Café</option>
+                        <option value="VOLTA_INTERVALO">Volta Café</option>
+                        <option value="SAIDA_ALMOCO">Saída Almoço</option>
+                        <option value="VOLTA_ALMOCO">Volta Almoço</option>
+                        <option value="SAIDA">Saída</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {modoModal === 'EDICAO' && (
+                  <div className="bg-surface p-3 rounded-xl border border-border-subtle text-center">
+                    <p className="text-[10px] text-text-faint uppercase tracking-widest font-bold">Data Original</p>
+                    <p className="text-text-primary font-bold mt-0.5">
+                      {pontoSelecionado?.dataHora ? format(new Date(pontoSelecionado.dataHora), 'dd/MM/yyyy') : '--/--/----'}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Novo Horário</label>
+                  <input
+                    type="time"
+                    value={horaNova}
+                    onChange={e => setHoraNova(e.target.value)}
+                    className="w-full bg-input-solid/60 border border-border-default p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
+                  <textarea
+                    value={motivo}
+                    onChange={e => setMotivo(e.target.value)}
+                    placeholder="Ex: Esqueci de bater, estava em reunião..."
+                    className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-sm h-20 resize-none outline-none focus:border-purple-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Footer do modal */}
+              <div className="px-6 pb-6 pt-2">
+                <button
+                  onClick={enviarSolicitacao}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
-                  {avisoModal.tipo === 'erro' ? (
-                    <AlertCircle size={18} />
-                  ) : avisoModal.tipo === 'sucesso' ? (
-                    <CheckCircle2 size={18} />
-                  ) : (
-                    <Clock size={18} />
-                  )}
-                  <span className="leading-snug">{avisoModal.texto}</span>
-                </div>
-              )}
+                  <Save size={18} /> Enviar Solicitação
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
-              {modoModal === 'INCLUSAO' && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data</label>
-                    <input
-                      type="date"
-                      value={dataNova}
-                      onChange={e => setDataNova(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm text-center outline-none focus:border-purple-500 transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Tipo</label>
-                    <select
-                      value={tipoNovo}
-                      onChange={e => setTipoNovo(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none"
-                    >
-                      <option value="ENTRADA">ENTRADA</option>
-                      <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
-                      <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
-                      <option value="SAIDA">SAÍDA</option>
-                    </select>
+        {/* === MODAL DE CONFIRMAÇÃO DE EXCLUSÃO === */}
+        {pontoParaExcluir && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => !excluindo && setPontoParaExcluir(null)} />
+
+            <div className="relative z-10 w-full max-w-sm bg-page border border-red-500/20 rounded-3xl shadow-2xl shadow-red-500/10 overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
+              {/* Header */}
+              <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-5 flex items-center gap-4">
+                <div className="p-3 bg-red-500/20 rounded-2xl">
+                  <ShieldAlert size={28} className="text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-text-primary font-bold text-lg">Excluir Registro</h3>
+                  <p className="text-red-400/70 text-xs mt-0.5">Esta ação não pode ser desfeita</p>
+                </div>
+              </div>
+
+              {/* Detalhes do ponto */}
+              <div className="px-6 py-5 space-y-4">
+                <div className="bg-surface/60 border border-border-subtle rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    {(() => {
+                      const tipo = pontoParaExcluir.subTipo || pontoParaExcluir.tipo;
+                      const cfg = getTipoConfig(tipo);
+                      const Icon = cfg.icon;
+                      return (
+                        <>
+                          <div className={`p-2 rounded-lg ${cfg.bg}`}>
+                            <Icon size={18} className={cfg.cor} />
+                          </div>
+                          <div>
+                            <p className="text-text-primary font-bold font-mono text-lg">
+                              {format(new Date(pontoParaExcluir.dataHora), 'HH:mm')}
+                            </p>
+                            <p className="text-xs text-text-muted">
+                              {format(new Date(pontoParaExcluir.dataHora), 'dd/MM/yyyy')}
+                              <span className={`ml-2 font-bold uppercase ${cfg.cor}`}>{cfg.label}</span>
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
-              )}
 
-              {modoModal === 'EDICAO' && (
-                <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 text-center">
-                  <p className="text-xs text-slate-400 uppercase tracking-widest">Data Original</p>
-                  <p className="text-white font-bold">
-                    {pontoSelecionado?.dataHora ? format(new Date(pontoSelecionado.dataHora), 'dd/MM/yyyy') : '--/--/----'}
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-amber-200 text-sm leading-relaxed">
+                    Esse registro será <strong>removido permanentemente</strong> do seu espelho de ponto. Tem certeza que deseja continuar?
                   </p>
                 </div>
-              )}
-
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Digite aqui o Novo Horário</label>
-                <input
-                  type="time"
-                  value={horaNova}
-                  onChange={e => setHoraNova(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"
-                />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
-                <textarea
-                  value={motivo}
-                  onChange={e => setMotivo(e.target.value)}
-                  placeholder="Ex: Esqueci de bater, estava em reunião..."
-                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors"
-                />
+              {/* Botões */}
+              <div className="px-6 pb-6 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setPontoParaExcluir(null)}
+                  disabled={excluindo}
+                  className="py-4 rounded-xl font-bold text-sm bg-elevated-solid hover:bg-elevated-solid text-text-secondary border border-border-input transition-all active:scale-95 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarExclusao}
+                  disabled={excluindo}
+                  className="py-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {excluindo ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><Trash2 size={16} /> Excluir</>
+                  )}
+                </button>
               </div>
-
-              <button
-                onClick={enviarSolicitacao}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <Save size={18} /> Enviar Solicitação
-              </button>
             </div>
           </div>
         )}

@@ -1,10 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { toast } from 'sonner'
+import ThemeToggle from '@/components/ThemeToggle'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,16 +25,31 @@ import {
   Share,
   PlusSquare,
   MoreVertical,
+  Check,
+  Phone,
 } from 'lucide-react'
 
-export default function SignupPage() {
+import { PLANOS, PLANO_DEFAULT, getPrecoAnual, type PlanoId } from '@/config/planos'
+
+const PLANOS_ORDER: PlanoId[] = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE']
+
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // Plano da URL ou default
+  const planoFromUrl = (searchParams.get('plano') ?? '').toUpperCase()
+  const initialPlano: PlanoId = (planoFromUrl in PLANOS ? planoFromUrl : PLANO_DEFAULT) as PlanoId
+
+  // Plano selecionado
+  const [plano, setPlano] = useState<PlanoId>(initialPlano)
 
   // Dados do SaaS
   const [empresaNome, setEmpresaNome] = useState('')
   const [cnpj, setCnpj] = useState('')
   const [adminNome, setAdminNome] = useState('')
   const [email, setEmail] = useState('')
+  const [telefone, setTelefone] = useState('')
   const [senha, setSenha] = useState('')
   const [senha2, setSenha2] = useState('')
   const [aceitar, setAceitar] = useState(false)
@@ -47,6 +63,14 @@ export default function SignupPage() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isIOS, setIsIOS] = useState(false)
   const [showTutorial, setShowTutorial] = useState<'IOS' | 'ANDROID' | null>(null)
+
+  const formatarTelefone = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, 11)
+    if (digits.length <= 2) return digits
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+  }
 
   const senhaOk = useMemo(() => senha.length >= 8 && senha === senha2, [senha, senha2])
 
@@ -100,8 +124,10 @@ export default function SignupPage() {
           cnpj,
           adminNome,
           email,
+          telefone,
           password: senha,
           aceitarTermos: aceitar,
+          plano,
         }),
       })
 
@@ -136,14 +162,19 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e27]">
+    <div className="min-h-screen bg-page">
+      {/* Theme Toggle */}
+      <div className="fixed top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Animated Grid Background */}
       <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none" />
 
       {/* Modal tutorial PWA */}
       {showTutorial && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
           onClick={() => setShowTutorial(null)}
         >
           <div
@@ -151,28 +182,28 @@ export default function SignupPage() {
             onClick={(ev) => ev.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white">Instalar aplicativo</h3>
-              <button className="text-gray-400 hover:text-white" onClick={() => setShowTutorial(null)}>
+              <h3 className="text-lg font-bold text-text-primary">Instalar aplicativo</h3>
+              <button className="text-text-muted hover:text-text-primary" onClick={() => setShowTutorial(null)}>
                 ×
               </button>
             </div>
 
             {showTutorial === 'IOS' ? (
-              <div className="mt-4 space-y-3 rounded-xl border border-purple-500/20 bg-[#0a0e27]/50 p-4 text-sm text-gray-300">
+              <div className="mt-4 space-y-3 rounded-xl border border-purple-500/20 bg-page/50 p-4 text-sm text-text-secondary">
                 <p className="flex items-center gap-3">
                   <Share className="size-5 text-blue-400" /> 1. Toque em <b>Compartilhar</b>
                 </p>
                 <p className="flex items-center gap-3">
-                  <PlusSquare className="size-5 text-white" /> 2. <b>Adicionar à Tela de Início</b>
+                  <PlusSquare className="size-5 text-text-primary" /> 2. <b>Adicionar à Tela de Início</b>
                 </p>
                 <p className="flex items-center gap-3">
                   <CheckCircle2 className="size-5 text-emerald-400" /> 3. Confirme em <b>Adicionar</b>
                 </p>
               </div>
             ) : (
-              <div className="mt-4 space-y-3 rounded-xl border border-purple-500/20 bg-[#0a0e27]/50 p-4 text-sm text-gray-300">
+              <div className="mt-4 space-y-3 rounded-xl border border-purple-500/20 bg-page/50 p-4 text-sm text-text-secondary">
                 <p className="flex items-center gap-3">
-                  <MoreVertical className="size-5 text-white" /> 1. Abra o <b>Menu</b> do navegador
+                  <MoreVertical className="size-5 text-text-primary" /> 1. Abra o <b>Menu</b> do navegador
                 </p>
                 <p className="flex items-center gap-3">
                   <Smartphone className="size-5 text-blue-400" /> 2. Toque em <b>Instalar aplicativo</b>
@@ -195,33 +226,72 @@ export default function SignupPage() {
                 <Rocket className="size-7 text-white" />
               </div>
             </Link>
-            <h1 className="mt-4 text-3xl font-extrabold text-white">WorkID</h1>
-            <p className="mt-2 text-sm text-gray-400">Gestão Inteligente de Ponto</p>
+            <h1 className="mt-4 text-3xl font-extrabold text-text-primary">WorkID</h1>
+            <p className="mt-2 text-sm text-text-muted">Gestão Inteligente de Ponto</p>
           </div>
 
           <Card className="border-purple-500/20 bg-gradient-to-b from-[#0f1535]/95 to-[#0a0e27]/95 shadow-2xl shadow-purple-500/20 backdrop-blur-xl">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl text-white">Criar conta</CardTitle>
-              <CardDescription className="text-gray-400">
+              <CardTitle className="text-2xl text-text-primary">Criar conta</CardTitle>
+              <CardDescription className="text-text-muted">
                 Crie sua empresa e o primeiro acesso de administrador
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
               <form onSubmit={onSubmit} className="space-y-4">
+                {/* Seletor de Plano */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-text-secondary">PLANO</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PLANOS_ORDER.map((pid) => {
+                      const p = PLANOS[pid]
+                      const selected = plano === pid
+                      return (
+                        <button
+                          key={pid}
+                          type="button"
+                          onClick={() => setPlano(pid)}
+                          className={`relative rounded-xl border p-3 text-center transition-all ${
+                            selected
+                              ? 'border-purple-500 bg-purple-950/50 ring-1 ring-purple-500/50'
+                              : 'border-purple-500/20 bg-page/50 hover:border-purple-500/40'
+                          }`}
+                        >
+                          {selected && (
+                            <div className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-purple-600">
+                              <Check className="size-3 text-white" />
+                            </div>
+                          )}
+                          <div className="text-xs font-bold text-text-primary">{p.nome}</div>
+                          <div className="mt-1 text-xs text-text-muted">
+                            R$ {p.preco.toFixed(2).replace('.', ',')}/mês
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-emerald-400/70">
+                            R$ {getPrecoAnual(p).mensalEquivalente.toFixed(2).replace('.', ',')}/mês no anual
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-text-faint">
+                            até {p.maxFuncionarios} func.
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 {/* Empresa */}
                 <div className="space-y-2">
-                  <Label htmlFor="empresa" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="empresa" className="text-sm font-medium text-text-secondary">
                     EMPRESA
                   </Label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
                     <Input
                       id="empresa"
                       value={empresaNome}
                       onChange={(e) => setEmpresaNome(e.target.value)}
                       placeholder="Ex: WorkID Tecnologia"
-                      className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
+                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
                     />
                   </div>
@@ -229,7 +299,7 @@ export default function SignupPage() {
 
                 {/* CNPJ opcional */}
                 <div className="space-y-2">
-                  <Label htmlFor="cnpj" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="cnpj" className="text-sm font-medium text-text-secondary">
                     CNPJ (OPCIONAL)
                   </Label>
                   <Input
@@ -237,24 +307,24 @@ export default function SignupPage() {
                     value={cnpj}
                     onChange={(e) => setCnpj(e.target.value)}
                     placeholder="00.000.000/0000-00"
-                    className="border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
+                    className="border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                   />
                 </div>
 
                 {/* Nome */}
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="name" className="text-sm font-medium text-text-secondary">
                     NOME COMPLETO
                   </Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
                     <Input
                       id="name"
                       value={adminNome}
                       onChange={(e) => setAdminNome(e.target.value)}
                       type="text"
                       placeholder="Seu nome completo"
-                      className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
+                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
                     />
                   </div>
@@ -262,64 +332,82 @@ export default function SignupPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="email" className="text-sm font-medium text-text-secondary">
                     EMAIL
                   </Label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
                     <Input
                       id="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
                       placeholder="exemplo@ontimeia.com"
-                      className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
+                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
+                    />
+                  </div>
+                </div>
+
+                {/* Telefone / WhatsApp */}
+                <div className="space-y-2">
+                  <Label htmlFor="telefone" className="text-sm font-medium text-text-secondary">
+                    CELULAR / WHATSAPP
+                  </Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
+                    <Input
+                      id="telefone"
+                      value={telefone}
+                      onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                     />
                   </div>
                 </div>
 
                 {/* Senha */}
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="password" className="text-sm font-medium text-text-secondary">
                     SENHA
                   </Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
                     <Input
                       id="password"
                       value={senha}
                       onChange={(e) => setSenha(e.target.value)}
                       type={showSenha ? 'text' : 'password'}
                       placeholder="••••••••"
-                      className="pl-10 border-purple-500/20 bg-[#0a0e27]/50 pr-10 text-white placeholder:text-gray-500 focus:border-purple-500/50 focus:ring-purple-500/50"
+                      className="pl-10 border-purple-500/20 bg-page/50 pr-10 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowSenha((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
                     >
                       {showSenha ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">Mínimo de 8 caracteres.</p>
+                  <p className="text-xs text-text-faint">Mínimo de 8 caracteres.</p>
                 </div>
 
                 {/* Confirmar senha */}
                 <div className="space-y-2">
-                  <Label htmlFor="password2" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="password2" className="text-sm font-medium text-text-secondary">
                     CONFIRMAR SENHA
                   </Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-gray-500" />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
                     <Input
                       id="password2"
                       value={senha2}
                       onChange={(e) => setSenha2(e.target.value)}
                       type={showSenha2 ? 'text' : 'password'}
                       placeholder="••••••••"
-                      className={`pl-10 pr-10 bg-[#0a0e27]/50 text-white placeholder:text-gray-500 focus:ring-purple-500/50 ${
+                      className={`pl-10 pr-10 bg-page/50 text-text-primary placeholder:text-text-faint focus:ring-purple-500/50 ${
                         !senha2
                           ? 'border-purple-500/20 focus:border-purple-500/50'
                           : senhaOk
@@ -331,7 +419,7 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setShowSenha2((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
                     >
                       {showSenha2 ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                     </button>
@@ -343,7 +431,7 @@ export default function SignupPage() {
                 </div>
 
                 {/* Termos */}
-                <label className="flex items-start gap-3 rounded-lg border border-purple-500/20 bg-[#0a0e27]/50 p-3 text-sm text-gray-300">
+                <label className="flex items-start gap-3 rounded-lg border border-purple-500/20 bg-page/50 p-3 text-sm text-text-secondary">
                   <input
                     type="checkbox"
                     checked={aceitar}
@@ -384,29 +472,29 @@ export default function SignupPage() {
               </form>
 
               {/* Opções do App */}
-              <div className="relative mt-6 rounded-lg border border-purple-500/20 bg-[#0a0e27]/50 p-4">
-                <p className="mb-2 text-center text-xs font-medium uppercase text-gray-400">
+              <div className="relative mt-6 rounded-lg border border-purple-500/20 bg-page/50 p-4">
+                <p className="mb-2 text-center text-xs font-medium uppercase text-text-muted">
                   Opções do App
                 </p>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleInstallClick}
-                  className="w-full border-purple-500/20 bg-transparent text-gray-300 hover:border-purple-500/40 hover:bg-purple-950/30"
+                  className="w-full border-purple-500/20 bg-transparent text-text-secondary hover:border-purple-500/40 hover:bg-purple-950/30"
                 >
                   <Smartphone className="mr-2 size-5" />
                   Instalar Aplicativo
                 </Button>
               </div>
 
-              <p className="text-center text-xs text-gray-500">
+              <p className="text-center text-xs text-text-faint">
                 Já tem uma conta?{' '}
                 <Link href="/login" className="text-purple-400 hover:text-purple-300">
                   Fazer login
                 </Link>
               </p>
 
-              <p className="text-center text-xs text-gray-600">
+              <p className="text-center text-xs text-text-dim">
                 © 2026 WorkID • Tecnologia em Gestão
               </p>
             </CardContent>
@@ -414,5 +502,13 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   )
 }

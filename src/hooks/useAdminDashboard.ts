@@ -5,8 +5,43 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { calcularEstatisticas } from '@/lib/admin/calcularEstatisticas';
 import type { BillingStatus } from '@/lib/billing';
+import type { RegistroUnificado } from '@/types/registro';
 
-const SOM_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+/** Som de notificação sutil via Web Audio API (duplo "ding" elegante) */
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+    const playTone = (freq: number, startTime: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      // Envelope suave: fade-in rápido + fade-out longo
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(1.0, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration);
+    };
+
+    const now = ctx.currentTime;
+    // Primeiro toque (C6 = 1047 Hz)
+    playTone(1047, now, 0.25);
+    // Segundo toque mais agudo (E6 = 1319 Hz), leve delay
+    playTone(1319, now + 0.15, 0.3);
+
+    // Fechar contexto depois do som terminar
+    setTimeout(() => ctx.close().catch(() => {}), 1000);
+  } catch {
+    // Fallback silencioso se Web Audio não estiver disponível
+  }
+}
 
 const PARCIAL_MARK = '__PARCIAL__:';
 
@@ -32,7 +67,7 @@ function parseParcialFromNome(nome: string): { horaInicio?: string; horaFim?: st
 }
 
 export function useAdminDashboard() {
-  const [registros, setRegistros] = useState<any[]>([]);
+  const [registros, setRegistros] = useState<RegistroUnificado[]>([]);
   const [usuarios, setUsuarios] = useState<any[]>([]);
   const [feriados, setFeriados] = useState<string[]>([]);
   const [feriadosParciais, setFeriadosParciais] = useState<Record<string, { inicio: string; fim: string }>>({});
@@ -51,7 +86,7 @@ export function useAdminDashboard() {
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [billingEmpresa, setBillingEmpresa] = useState<any>(null);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const somTocadoRef = useRef(false);
 
   const [filtroUsuario, setFiltroUsuario] = useState('');
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -134,7 +169,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         setBillingEmpresa(null);
       }
 
-      const listaUnificada: any[] = [];
+      const listaUnificada: RegistroUnificado[] = [];
 
       resPontos.data.forEach((p: any) => {
         listaUnificada.push({
@@ -171,15 +206,16 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
 
   useEffect(() => {
     carregarDados();
-    audioRef.current = new Audio(SOM_URL);
-    audioRef.current.volume = 0.6;
   }, [carregarDados]);
 
   useEffect(() => {
     const total = pendenciasAjuste + pendenciasAusencia;
     if (total > 0) {
       setNotificacaoVisivel(true);
-      if (audioRef.current) audioRef.current.play().catch(() => {});
+      if (!somTocadoRef.current) {
+        somTocadoRef.current = true;
+        playNotificationSound();
+      }
       const timer = setTimeout(() => setNotificacaoVisivel(false), 8000);
       return () => clearTimeout(timer);
     }
@@ -355,6 +391,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     billingEmpresa,
 
     notificacaoVisivel,
+    setNotificacaoVisivel,
     pendenciasAjuste,
     pendenciasAusencia,
 

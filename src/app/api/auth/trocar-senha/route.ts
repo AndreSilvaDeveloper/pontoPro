@@ -28,15 +28,20 @@ export async function POST(request: Request) {
     const senhaCriptografada = await bcrypt.hash(novaSenha, 10);
 
     // Atualiza a senha e remove a obrigação de trocar
-    await prisma.usuario.update({
+    const usuarioAtualizado = await prisma.usuario.update({
       where: { id: session.user.id },
       data: {
         senha: senhaCriptografada,
-        deveTrocarSenha: false 
-      }
+        deveTrocarSenha: false
+      },
+      select: { deveCadastrarFoto: true, assinaturaUrl: true }
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      deveCadastrarFoto: usuarioAtualizado.deveCadastrarFoto,
+      temAssinatura: !!usuarioAtualizado.assinaturaUrl,
+    });
 
   } catch (error) {
     console.error("Erro ao trocar senha:", error);

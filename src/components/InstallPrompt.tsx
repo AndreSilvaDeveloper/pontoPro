@@ -63,7 +63,7 @@ export default function InstallPrompt() {
       {/* Botão Principal */}
       <button 
         onClick={handleInstallClick}
-        className="w-full mt-4 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/50 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all animate-pulse"
+        className="w-full mt-4 bg-orb-purple hover:bg-purple-600/30 text-purple-300 border border-purple-500/50 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all animate-pulse"
       >
         <Download size={20} />
         Instalar Aplicativo
@@ -71,11 +71,11 @@ export default function InstallPrompt() {
 
       {/* Modal de Instruções para iOS */}
       {showIOSModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 relative shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-overlay backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-solid border border-border-input w-full max-w-sm rounded-2xl p-6 relative shadow-2xl">
             <button 
               onClick={() => setShowIOSModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              className="absolute top-4 right-4 text-text-muted hover:text-text-primary"
             >
               <X size={24} />
             </button>
@@ -85,21 +85,21 @@ export default function InstallPrompt() {
                 <Download size={24} />
               </div>
               
-              <h3 className="text-xl font-bold text-white">Instalar no iPhone</h3>
-              <p className="text-slate-400 text-sm">O iOS não permite instalação automática. Siga os passos abaixo:</p>
+              <h3 className="text-xl font-bold text-text-primary">Instalar no iPhone</h3>
+              <p className="text-text-muted text-sm">O iOS não permite instalação automática. Siga os passos abaixo:</p>
 
-              <div className="bg-slate-800/50 rounded-xl p-4 space-y-3 text-left">
-                <div className="flex items-center gap-3 text-sm text-slate-200">
-                  <span className="bg-slate-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">1</span>
+              <div className="bg-elevated rounded-xl p-4 space-y-3 text-left">
+                <div className="flex items-center gap-3 text-sm text-text-secondary">
+                  <span className="bg-border-input w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">1</span>
                   <span>Toque no botão <span className="font-bold text-blue-400 flex items-center gap-1 inline-flex"><Share size={14}/> Compartilhar</span> abaixo na barra do navegador.</span>
                 </div>
-                <div className="w-full h-px bg-slate-700/50"></div>
-                <div className="flex items-center gap-3 text-sm text-slate-200">
-                  <span className="bg-slate-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">2</span>
-                  <span>Role para cima e selecione <span className="font-bold text-white inline-flex items-center gap-1"><PlusSquare size={14}/> Adicionar à Tela de Início</span>.</span>
+                <div className="w-full h-px bg-border-input/50"></div>
+                <div className="flex items-center gap-3 text-sm text-text-secondary">
+                  <span className="bg-border-input w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">2</span>
+                  <span>Role para cima e selecione <span className="font-bold text-text-primary inline-flex items-center gap-1"><PlusSquare size={14}/> Adicionar à Tela de Início</span>.</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-slate-200">
-                  <span className="bg-slate-700 w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">3</span>
+                <div className="flex items-center gap-3 text-sm text-text-secondary">
+                  <span className="bg-border-input w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold">3</span>
                   <span>Antes de Adicionar autorize a Camera.</span>
                 </div>
               </div>
@@ -113,7 +113,7 @@ export default function InstallPrompt() {
             </div>
             
             {/* Seta decorativa apontando para baixo (para o botão share do Safari) */}
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 translate-y-full text-white animate-bounce sm:hidden">
+            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 translate-y-full text-text-primary animate-bounce sm:hidden">
               👇
             </div>
           </div>

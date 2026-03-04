@@ -3,131 +3,34 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  Building2,
-  Lock,
-  Ban,
-  PlayCircle,
-  RefreshCw,
   LogOut,
-  Settings,
-  Trash2,
-  UserPlus,
-  X,
-  Loader2,
-  Users,
-  Link as LinkIcon,
   FileText,
-  DollarSign,
-  CheckCircle,
-  LogIn,
+  Loader2,
+  X,
+  UserPlus,
+  Link as LinkIcon,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
 import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
+import { gerarRelatorioGeral } from "@/lib/saas-pdf";
 
-// === FUNÇÕES AUXILIARES PARA GERAR PIX (EMV) ===
-
-const normalizeText = (text: string) => {
-  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-};
-
-const emv = (id: string, value: string) => {
-  const size = value.length.toString().padStart(2, "0");
-  return `${id}${size}${value}`;
-};
-
-const crc16ccitt = (payload: string) => {
-  let crc = 0xffff;
-  for (let i = 0; i < payload.length; i++) {
-    crc ^= payload.charCodeAt(i) << 8;
-    for (let j = 0; j < 8; j++) {
-      if ((crc & 0x8000) > 0) crc = (crc << 1) ^ 0x1021;
-      else crc = crc << 1;
-    }
-  }
-  return (crc & 0xffff).toString(16).toUpperCase().padStart(4, "0");
-};
-
-// === CORREÇÃO DA SANITIZAÇÃO DA CHAVE ===
-const formatarChaveParaPayload = (chave: string) => {
-  const limpa = chave.trim();
-
-  // 1. Chave Aleatória (EVP) - Mantém os hífens
-  if (
-    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
-      limpa
-    )
-  ) {
-    return limpa;
-  }
-
-  // 2. Email - Mantém tudo
-  if (limpa.includes("@")) {
-    return limpa;
-  }
-
-  // 3. Telefone Internacional - Mantém o +
-  if (limpa.startsWith("+")) {
-    return limpa;
-  }
-
-  // 4. CPF/CNPJ ou Telefone sem formato - Remove tudo que não é número
-  return limpa.replace(/[^0-9]/g, "");
-};
-
-const gerarPayloadPix = (
-  chave: string,
-  nome: string,
-  cidade: string,
-  valor?: string,
-  txid: string = "***"
-) => {
-  const chaveFormatada = formatarChaveParaPayload(chave);
-
-  const nomeLimpo = normalizeText(nome).substring(0, 25);
-  const cidadeLimpa = normalizeText(cidade).substring(0, 15);
-
-  let payload =
-    emv("00", "01") +
-    emv("26", emv("00", "BR.GOV.BCB.PIX") + emv("01", chaveFormatada)) +
-    emv("52", "0000") +
-    emv("53", "986");
-
-  if (valor) {
-    const valorStr = parseFloat(valor).toFixed(2);
-    payload += emv("54", valorStr);
-  }
-
-  payload +=
-    emv("58", "BR") +
-    emv("59", nomeLimpo) +
-    emv("60", cidadeLimpa) +
-    emv("62", emv("05", txid)) +
-    "6304";
-
-  const crc = crc16ccitt(payload);
-  return payload + crc;
-};
+import StatsCards, { type DashboardStats } from "./components/StatsCards";
+import ClientTable from "./components/ClientTable";
+import ModalEquipe from "./components/ModalEquipe";
+import ModalFatura from "./components/ModalFatura";
+import AlertNovaEmpresa from "./components/AlertNovaEmpresa";
 
 export default function SuperAdminPage() {
   const router = useRouter();
 
-  // === ESTADOS GERAIS ===
+  // === DADOS ===
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loadingListar, setLoadingListar] = useState(false);
-
-  // === CADASTRO EMPRESA ===
-  const [nomeEmpresa, setNomeEmpresa] = useState("");
-  const [cnpj, setCnpj] = useState("");
-  const [nomeDono, setNomeDono] = useState("");
-  const [emailDono, setEmailDono] = useState("");
-  const [senhaInicial, setSenhaInicial] = useState("1234"); // mantido
-  const [loadingCriar, setLoadingCriar] = useState(false);
-  const [resultado, setResultado] = useState<any>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
 
   // === MODAIS ===
   const [modalAdminOpen, setModalAdminOpen] = useState(false);
@@ -135,39 +38,18 @@ export default function SuperAdminPage() {
   const [modalVincularOpen, setModalVincularOpen] = useState(false);
   const [modalFaturaOpen, setModalFaturaOpen] = useState(false);
 
-  // === NOVO MODAL CONFIG FINANCEIRO ===
-  const [modalConfigFin, setModalConfigFin] = useState(false);
-  const [configData, setConfigData] = useState<{
-    diaVencimento: number;
-    chavePix: string;
-  }>({ diaVencimento: 15, chavePix: "" });
-
   const [empresaSelecionada, setEmpresaSelecionada] = useState<any>(null);
   const [matrizAlvoId, setMatrizAlvoId] = useState("");
   const [loadingVinculo, setLoadingVinculo] = useState(false);
-
-  const [adminData, setAdminData] = useState({
-    nome: "",
-    email: "",
-    senha: "123",
-  });
-  const [loadingAdmin, setLoadingAdmin] = useState(false);
-
-  // === DADOS PARA FATURA ===
-  const [chavePixManual, setChavePixManual] = useState("118.544.546-33");
-  const [loadingFatura, setLoadingFatura] = useState(false);
   const [loadingPagamento, setLoadingPagamento] = useState<string | null>(null);
 
-  // === EQUIPE (INCLUI FUNCIONÁRIO) PARA MODAL GESTÃO DE ACESSOS ===
-  const [equipeUsers, setEquipeUsers] = useState<any[]>([]);
-  const [loadingEquipeUsers, setLoadingEquipeUsers] = useState(false);
+  const [adminData, setAdminData] = useState({ nome: "", email: "", senha: "123" });
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
 
-  // ✅ Busca inteligente (server-side)
-  const [qEquipe, setQEquipe] = useState("");
-  const [cargoEquipe, setCargoEquipe] = useState("TODOS");
-
+  // === CARREGAMENTO INICIAL ===
   useEffect(() => {
     listarEmpresas();
+    carregarStats();
   }, []);
 
   const listarEmpresas = async () => {
@@ -183,80 +65,69 @@ export default function SuperAdminPage() {
     }
   };
 
-  const carregarUsuariosDaEmpresa = async (
-    empresaId: string,
-    opts?: { q?: string; cargo?: string }
-  ) => {
-    setLoadingEquipeUsers(true);
+  const carregarStats = async () => {
+    setLoadingStats(true);
     try {
-      const res = await axios.post("/api/saas/usuarios", {
-        empresaId,
-        q: opts?.q || "",
-        cargo: opts?.cargo || "TODOS",
-        take: 200,
-      });
-      setEquipeUsers(res.data?.usuarios || []);
-    } catch (err) {
-      console.error("Erro ao carregar usuários da empresa", err);
-      setEquipeUsers([]);
+      const res = await axios.get("/api/saas/dashboard");
+      setStats(res.data);
+    } catch {
+      console.error("Erro ao carregar stats");
     } finally {
-      setLoadingEquipeUsers(false);
+      setLoadingStats(false);
     }
   };
 
-  // ✅ debounce da busca: quando digitar/mudar filtro com modal aberto, busca no backend
-  useEffect(() => {
-    if (!modalEquipeOpen) return;
-    if (!empresaSelecionada?.id) return;
-
-    const t = setTimeout(() => {
-      carregarUsuariosDaEmpresa(empresaSelecionada.id, {
-        q: qEquipe,
-        cargo: cargoEquipe,
-      });
-    }, 300);
-
-    return () => clearTimeout(t);
-  }, [qEquipe, cargoEquipe, modalEquipeOpen, empresaSelecionada?.id]);
-
+  // === AÇÕES ===
   const entrarComo = async (user: any) => {
     try {
       await axios.post("/api/admin/impersonate", { userId: user.id });
-
-      // fecha modal pra não ficar aberto
       setModalEquipeOpen(false);
-
-      // redireciona conforme cargo
       if (user.cargo === "FUNCIONARIO") router.push("/funcionario");
       else router.push("/admin");
-    } catch (err) {
-      console.error("Erro ao impersonar", err);
+    } catch {
       alert("Não foi possível entrar como este usuário.");
     }
   };
 
-  const criarCliente = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoadingCriar(true);
-    setResultado(null);
+  const alternarStatus = async (id: string, nome: string, status: string) => {
+    const acao = status === "ATIVO" ? "BLOQUEAR" : "ATIVAR";
+    if (!confirm(`Deseja ${acao} a empresa ${nome}?`)) return;
     try {
-      const res = await axios.post("/api/saas/criar-empresa", {
-        nomeEmpresa,
-        cnpj,
-        nomeDono,
-        emailDono,
-        senhaInicial,
-      });
-      setResultado(res.data);
-      setNomeEmpresa("");
-      setCnpj("");
-      setNomeDono("");
-      setEmailDono("");
+      await axios.put("/api/saas/gestao", { empresaId: id, acao: "ALTERAR_STATUS" });
       listarEmpresas();
-    } catch (error: any) {
-      alert(error.response?.data?.erro || "Erro ao criar.");
+      carregarStats();
+    } catch {
+      alert("Erro ao alterar status");
+    }
+  };
+
+  const excluirEmpresa = async (id: string, nome: string) => {
+    const confirmacao = window.prompt(
+      `PERIGO: Isso apagará TODOS os dados de "${nome}".\nDigite "DELETAR" para confirmar:`
+    );
+    if (confirmacao !== "DELETAR") return;
+    try {
+      await axios.delete("/api/saas/excluir-empresa", { data: { id } });
+      alert("Empresa excluída!");
+      listarEmpresas();
+      carregarStats();
+    } catch (e: any) {
+      alert(e.response?.data?.erro || "Erro ao excluir");
+    }
+  };
+
+  const confirmarPagamentoManual = async (empresaId: string) => {
+    if (!confirm("Deseja marcar a fatura deste mês como PAGA para este cliente?")) return;
+    setLoadingPagamento(empresaId);
+    try {
+      await axios.post("/api/saas/confirmar-pagamento", { empresaId });
+      alert("Pagamento confirmado com sucesso!");
+      listarEmpresas();
+      carregarStats();
+    } catch {
+      alert("Erro ao confirmar pagamento.");
     } finally {
-      setLoadingCriar(false);
+      setLoadingPagamento(null);
     }
   };
 
@@ -272,35 +143,10 @@ export default function SuperAdminPage() {
       alert("Empresa vinculada com sucesso!");
       setModalVincularOpen(false);
       listarEmpresas();
-    } catch (error) {
+    } catch {
       alert("Erro ao vincular");
     } finally {
       setLoadingVinculo(false);
-    }
-  };
-
-  const excluirUsuario = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja remover este acesso?")) return;
-    try {
-      await axios.delete("/api/saas/excluir-usuario", { data: { id: userId } });
-
-      // ✅ recarrega lista com filtro atual (server-side)
-      if (empresaSelecionada?.id) {
-        await carregarUsuariosDaEmpresa(empresaSelecionada.id, {
-          q: qEquipe,
-          cargo: cargoEquipe,
-        });
-      }
-
-      // Mantém compatibilidade com lista “antiga” da empresaSelecionada (se existir em res)
-      const novaLista = (empresaSelecionada?.usuarios || []).filter(
-        (u: any) => u.id !== userId
-      );
-      setEmpresaSelecionada({ ...empresaSelecionada, usuarios: novaLista });
-
-      listarEmpresas();
-    } catch (e: any) {
-      alert(e.response?.data?.erro || "Erro ao excluir usuário");
     }
   };
 
@@ -316,15 +162,6 @@ export default function SuperAdminPage() {
       });
       alert(`Acesso criado para ${adminData.nome}!`);
       setModalAdminOpen(false);
-
-      // ✅ Recarrega equipe com filtros atuais
-      if (empresaSelecionada?.id) {
-        await carregarUsuariosDaEmpresa(empresaSelecionada.id, {
-          q: qEquipe,
-          cargo: cargoEquipe,
-        });
-      }
-
       listarEmpresas();
     } catch (error: any) {
       alert(error.response?.data?.erro || "Erro ao criar admin");
@@ -333,745 +170,133 @@ export default function SuperAdminPage() {
     }
   };
 
-  const alternarStatus = async (id: string, nome: string, status: string) => {
-    const acao = status === "ATIVO" ? "BLOQUEAR" : "ATIVAR";
-    if (!confirm(`Deseja ${acao} a empresa ${nome}?`)) return;
-    try {
-      await axios.put("/api/saas/gestao", {
-        empresaId: id,
-        acao: "ALTERAR_STATUS",
-      });
-      listarEmpresas();
-    } catch (e) {
-      alert("Erro ao alterar status");
-    }
+  const handleRelatorioGeral = () => {
+    const url = gerarRelatorioGeral(empresas);
+    window.open(url, "_blank");
   };
 
-  const excluirEmpresa = async (id: string, nome: string) => {
-    const confirmacao = window.prompt(
-      `PERIGO: Isso apagará TODOS os dados de "${nome}".\nDigite "DELETAR" para confirmar:`
-    );
-    if (confirmacao !== "DELETAR") return;
-    try {
-      await axios.delete("/api/saas/excluir-empresa", { data: { id } });
-      alert("Empresa excluída!");
-      listarEmpresas();
-    } catch (e: any) {
-      alert(e.response?.data?.erro || "Erro ao excluir");
-    }
+  // === CALLBACKS PARA COMPONENTES ===
+  const openEquipe = (emp: any) => {
+    setEmpresaSelecionada(emp);
+    setModalEquipeOpen(true);
   };
 
-  const confirmarPagamentoManual = async (empresaId: string) => {
-    if (!confirm("Deseja marcar a fatura deste mês como PAGA para este cliente?"))
-      return;
-
-    setLoadingPagamento(empresaId);
-    try {
-      await axios.post("/api/saas/confirmar-pagamento", { empresaId });
-      alert("Pagamento confirmado com sucesso!");
-      listarEmpresas();
-    } catch (e) {
-      alert("Erro ao confirmar pagamento.");
-    } finally {
-      setLoadingPagamento(null);
-    }
-  };
-
-  const calcularFinanceiro = (matriz: any) => {
-    let totalVidas = matriz._count?.usuarios || 0;
-    const adminsUnicos = new Set<string>();
-    const ehAdmin = (u: any) => ["ADMIN", "SUPER_ADMIN", "DONO"].includes(u.cargo);
-
-    if (matriz.usuarios) {
-      matriz.usuarios.forEach((u: any) => {
-        if (ehAdmin(u)) adminsUnicos.add(u.id);
-      });
-    }
-
-    if (matriz.filiais && matriz.filiais.length > 0) {
-      matriz.filiais.forEach((f: any) => {
-        totalVidas += f._count?.usuarios || 0;
-        if (f.usuarios) {
-          f.usuarios.forEach((u: any) => {
-            if (ehAdmin(u)) adminsUnicos.add(u.id);
-          });
-        }
-      });
-    }
-
-    const totalAdmins = adminsUnicos.size;
-    const VALOR_BASE = 99.9;
-    const FRANQUIA_VIDAS = 20;
-    const FRANQUIA_ADMINS = 1;
-    const PRECO_VIDA_EXTRA = 7.9;
-    const PRECO_ADMIN_EXTRA = 49.9;
-
-    const vidasExcedentes = Math.max(0, totalVidas - FRANQUIA_VIDAS);
-    const adminsExcedentes = Math.max(0, totalAdmins - FRANQUIA_ADMINS);
-
-    const custoVidas = vidasExcedentes * PRECO_VIDA_EXTRA;
-    const custoAdmins = adminsExcedentes * PRECO_ADMIN_EXTRA;
-    const valorFinal = VALOR_BASE + custoVidas + custoAdmins;
-
-    return {
-      totalVidas,
-      totalAdmins,
-      vidasExcedentes,
-      adminsExcedentes,
-      custoVidas,
-      custoAdmins,
-      valorFinal,
-    };
-  };
-
-  const abrirModalFatura = (empresa: any) => {
-    setEmpresaSelecionada(empresa);
-    setChavePixManual(empresa?.chavePix || "118.544.546-33");
+  const openFatura = (emp: any) => {
+    setEmpresaSelecionada(emp);
     setModalFaturaOpen(true);
   };
 
-  const salvarConfigFinanceira = async () => {
-    try {
-      if (!empresaSelecionada?.id) return;
-
-      await axios.put("/api/saas/atualizar-financeiro", {
-        empresaId: empresaSelecionada.id,
-        diaVencimento: configData.diaVencimento,
-        chavePix: configData.chavePix,
-      });
-
-      alert("Configurações salvas!");
-      setModalConfigFin(false);
-      listarEmpresas();
-    } catch (e) {
-      alert("Erro ao salvar.");
-    }
-  };
-
-  const gerarFaturaIndividual = async () => {
-    setLoadingFatura(true);
-
-    const janela = window.open("", "_blank");
-    if (janela) {
-      janela.document.write(
-        '<html><head><title>Gerando Fatura...</title></head><body style="background:#f0f2f5;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;"><h3>Gerando Fatura... Aguarde.</h3></body></html>'
-      );
-    }
-
-    try {
-      const empresa = empresaSelecionada;
-      const fin = calcularFinanceiro(empresa);
-      const doc = new jsPDF();
-
-      const hoje = new Date();
-      const vencimento = new Date();
-
-      const diaVenc = Number(empresa?.diaVencimento || 15);
-
-      vencimento.setDate(diaVenc);
-      if (hoje.getDate() > diaVenc) vencimento.setMonth(vencimento.getMonth() + 1);
-
-      const payloadPix = gerarPayloadPix(
-        chavePixManual,
-        "Ontime Sistemas",
-        "Juiz de Fora",
-        fin.valorFinal.toFixed(2),
-        `FAT${format(new Date(), "MMyy")}`
-      );
-
-      doc.setFillColor(88, 28, 135);
-      doc.rect(0, 0, 210, 40, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont("helvetica", "bold");
-      doc.text("ONTIME SISTEMAS", 14, 20);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("Demonstrativo de Serviços e Cobrança", 14, 30);
-
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(`VENCIMENTO: ${format(vencimento, "dd/MM/yyyy")}`, 195, 20, {
-        align: "right",
-      });
-      doc.setFontSize(14);
-      doc.text(
-        `TOTAL: ${fin.valorFinal.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        })}`,
-        195,
-        30,
-        { align: "right" }
-      );
-
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("CLIENTE:", 14, 55);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${empresa.nome.toUpperCase()}`, 14, 62);
-      doc.text(`CNPJ: ${empresa.cnpj || "Não Informado"}`, 14, 68);
-      doc.text(`Responsável: ${empresa.usuarios?.[0]?.nome || "Admin"}`, 14, 74);
-
-      const dadosTabela: any[] = [
-        ["Assinatura Mensal (Pacote Base)", "1", "R$ 99,90", "R$ 99,90"],
-      ];
-      if (fin.vidasExcedentes > 0)
-        dadosTabela.push([
-          `Funcionários Excedentes (${fin.vidasExcedentes} x R$ 7,90)`,
-          `${fin.vidasExcedentes}`,
-          "R$ 7,90",
-          fin.custoVidas.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
-        ]);
-      if (fin.adminsExcedentes > 0)
-        dadosTabela.push([
-          `Administradores Adicionais (${fin.adminsExcedentes} x R$ 49,90)`,
-          `${fin.adminsExcedentes}`,
-          "R$ 49,90",
-          fin.custoAdmins.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
-        ]);
-
-      autoTable(doc, {
-        head: [["Descrição", "Qtd", "Valor Unit.", "Total"]],
-        body: dadosTabela,
-        startY: 85,
-        theme: "striped",
-        headStyles: { fillColor: [55, 65, 81] },
-        columnStyles: { 3: { halign: "right", fontStyle: "bold" } },
-        foot: [
-          [
-            "",
-            "",
-            "TOTAL A PAGAR",
-            fin.valorFinal.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }),
-          ],
-        ],
-        footStyles: {
-          fillColor: [240, 253, 244],
-          textColor: [22, 101, 52],
-          fontStyle: "bold",
-          halign: "right",
-        },
-      });
-
-      const finalY = (doc as any).lastAutoTable.finalY + 20;
-
-      doc.setDrawColor(200, 200, 200);
-      doc.setFillColor(250, 250, 250);
-      doc.roundedRect(14, finalY, 182, 75, 3, 3, "FD");
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(88, 28, 135);
-      doc.text("PAGAMENTO VIA PIX", 20, finalY + 12);
-
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      doc.text("Chave Pix:", 20, finalY + 25);
-      doc.setFontSize(12);
-      doc.text(chavePixManual, 20, finalY + 32);
-
-      try {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-          payloadPix
-        )}`;
-        doc.addImage(qrUrl, "PNG", 135, finalY + 5, 50, 50);
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Escaneie no App do Banco", 142, finalY + 60);
-      } catch (e) {
-        doc.rect(135, finalY + 5, 50, 50);
-        doc.text("Erro QR", 145, finalY + 30);
-      }
-
-      doc.setFontSize(7);
-      doc.setTextColor(150, 150, 150);
-      doc.text("Copia e Cola:", 20, finalY + 45);
-      const splitPayload = doc.splitTextToSize(payloadPix, 110);
-      doc.text(splitPayload, 20, finalY + 52);
-
-      doc.setFontSize(8);
-      doc.text("Este documento não possui valor fiscal de Nota Fiscal.", 105, 285, {
-        align: "center",
-      });
-
-      const blobUrl = doc.output("bloburl");
-      if (janela) janela.location.href = String(blobUrl);
-      else window.open(String(blobUrl), "_blank");
-
-      setModalFaturaOpen(false);
-    } catch (e) {
-      if (janela) janela.close();
-      alert("Erro ao gerar fatura.");
-    } finally {
-      setLoadingFatura(false);
-    }
-  };
-
-  const gerarRelatorioGeral = () => {
-    const doc = new jsPDF();
-    doc.setFillColor(30, 41, 59);
-    doc.rect(0, 0, 210, 40, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("Relatório Geral de Faturamento", 14, 20);
-
-    const dadosTabela = empresas.map((emp) => {
-      const fin = calcularFinanceiro(emp);
-      return [
-        emp.nome,
-        emp.cnpj || "N/A",
-        fin.totalVidas,
-        fin.totalAdmins,
-        fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
-      ];
-    });
-
-    autoTable(doc, {
-      head: [["Empresa", "CNPJ", "Funcionários", "Admins", "Valor"]],
-      body: dadosTabela,
-      startY: 50,
-    });
-
-    window.open(doc.output("bloburl"), "_blank");
+  const openVincular = (emp: any) => {
+    setEmpresaSelecionada(emp);
+    setMatrizAlvoId("");
+    setModalVincularOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-black text-white px-3 sm:px-6 py-4">
-      {/* ✅ Banner de impersonação (modo suporte) */}
+    <div className="min-h-screen bg-page text-text-primary">
       <ImpersonationBanner />
 
-      {/* HEADER RESPONSIVO (corrige mobile) */}
-      <div className="max-w-6xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-center sm:text-left">
-          <h1 className="text-2xl sm:text-3xl font-bold text-purple-500 flex justify-center sm:justify-start items-center gap-2">
-            🛡️ Super Admin
-          </h1>
-          <p className="text-gray-400 text-sm sm:text-base">Painel de Controle Geral</p>
-        </div>
+      {/* Alerta de novos cadastros */}
+      <AlertNovaEmpresa empresasRecentes={stats?.empresasRecentes || []} />
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <button
-            onClick={gerarRelatorioGeral}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-bold shadow-lg shadow-emerald-900/20"
-          >
-            <FileText size={16} /> Relatório Geral
-          </button>
-
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 px-4 py-2 rounded-lg border border-red-900 transition-colors text-sm font-bold"
-          >
-            <LogOut size={16} /> Sair
-          </button>
-        </div>
+      {/* Decorative blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]" />
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-6 mt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* NOVA VENDA */}
-          <div className="bg-gray-900 p-4 sm:p-6 rounded-2xl border border-gray-800 shadow-xl h-fit lg:sticky lg:top-8">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-green-400">
-              <Building2 /> Nova Venda
-            </h2>
-
-            {resultado && (
-              <div className="bg-green-900/30 border border-green-500 p-4 rounded-xl mb-4 animate-pulse">
-                <p className="font-bold text-green-400 mb-2">✅ Cliente Criado!</p>
-                <div className="text-xs font-mono space-y-1 text-gray-300">
-                  <p>Empresa: {resultado.dados.empresa}</p>
-                  <p>
-                    Login:{" "}
-                    <span className="text-white select-all">{resultado.dados.login}</span>
-                  </p>
-                  <p>
-                    Senha:{" "}
-                    <span className="text-white select-all">{resultado.dados.senha}</span>
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={criarCliente} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  className="bg-gray-800 p-3 rounded w-full outline-none focus:border-purple-500 border border-gray-700 text-sm"
-                  placeholder="Empresa"
-                  value={nomeEmpresa}
-                  onChange={(e) => setNomeEmpresa(e.target.value)}
-                  required
-                />
-                <input
-                  className="bg-gray-800 p-3 rounded w-full outline-none focus:border-purple-500 border border-gray-700 text-sm"
-                  placeholder="CNPJ"
-                  value={cnpj}
-                  onChange={(e) => setCnpj(e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <input
-                  className="bg-gray-800 p-3 rounded w-full outline-none focus:border-purple-500 border border-gray-700 text-sm"
-                  placeholder="Nome Dono"
-                  value={nomeDono}
-                  onChange={(e) => setNomeDono(e.target.value)}
-                  required
-                />
-                <input
-                  className="bg-gray-800 p-3 rounded w-full outline-none focus:border-purple-500 border border-gray-700 text-sm"
-                  placeholder="Email Login"
-                  value={emailDono}
-                  onChange={(e) => setEmailDono(e.target.value)}
-                  required
-                />
-              </div>
-
-              <button
-                disabled={loadingCriar}
-                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold transition-all disabled:opacity-50"
-              >
-                {loadingCriar ? "Criando..." : "CRIAR CLIENTE"}
-              </button>
-            </form>
-          </div>
-
-          {/* CARTEIRA */}
-          <div className="bg-gray-900 p-4 sm:p-6 rounded-2xl border border-gray-800 flex flex-col shadow-xl lg:h-[650px]">
-            <div className="flex justify-between mb-4 items-center">
-              <h2 className="text-xl font-bold text-blue-400 flex items-center gap-2">
-                <Lock /> Carteira de Clientes
-              </h2>
-              <button
-                onClick={listarEmpresas}
-                className="text-blue-400 hover:bg-blue-900/30 p-2 rounded transition-colors"
-                title="Atualizar"
-              >
-                <RefreshCw size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4 pr-1 sm:pr-2 custom-scrollbar overflow-y-auto max-h-[70vh] lg:max-h-none lg:flex-1">
-              {loadingListar ? (
-                <p className="text-center text-gray-500 py-10">Carregando...</p>
-              ) : (
-                empresas.map((matriz) => {
-                  const dadosFin = calcularFinanceiro(matriz);
-                  const hoje = new Date();
-                  const pagoAte = matriz.pagoAte ? new Date(matriz.pagoAte) : null;
-                  const estaPago = !!pagoAte && hoje <= pagoAte;
-
-                  return (
-                    <div
-                      key={matriz.id}
-                      className="rounded-xl overflow-hidden border border-gray-700 bg-gray-800/50"
-                    >
-                      <div
-                        className={`p-3 sm:p-4 flex justify-between items-start sm:items-center gap-3 ${
-                          matriz.status === "BLOQUEADO"
-                            ? "bg-red-900/20"
-                            : "bg-gray-800"
-                        }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Building2 size={16} className="text-purple-500 shrink-0" />
-
-                            <p
-                              className={`font-bold text-base text-white w-full sm:w-auto break-words sm:truncate-0 sm:max-w-none ${
-                                matriz.status === "BLOQUEADO" ? "text-red-400" : "text-white"
-                              }`}
-                              title={matriz.nome}
-                            >
-                              {matriz.nome}
-                            </p>
-
-                            <div className="flex flex-wrap gap-1 sm:ml-2">
-                              <span
-                                className="text-[9px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-bold flex items-center gap-1"
-                                title="Funcionários"
-                              >
-                                <Users size={10} /> {dadosFin.totalVidas}
-                              </span>
-
-                              <span
-                                className="text-[9px] bg-indigo-900/30 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold flex items-center gap-1"
-                                title="Admins"
-                              >
-                                <Lock size={10} /> {dadosFin.totalAdmins}
-                              </span>
-
-                              {estaPago && (
-                                <span className="text-[9px] bg-green-500 text-black px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
-                                  <CheckCircle size={8} /> PAGO
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <p className="text-[10px] text-gray-400 mt-1">
-                            MATRIZ • {matriz.cnpj || "Sem CNPJ"}
-                          </p>
-                        </div>
-
-                        <div className="shrink-0 grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:justify-end sm:gap-1">
-                          <button
-                            onClick={() => abrirModalFatura(matriz)}
-                            className="h-9 w-9 sm:h-auto sm:w-auto sm:p-2 flex items-center justify-center bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600 hover:text-white rounded"
-                            title="Gerar Fatura"
-                          >
-                            <DollarSign size={14} />
-                          </button>
-
-                          {!estaPago && (
-                            <button
-                              onClick={() => confirmarPagamentoManual(matriz.id)}
-                              disabled={loadingPagamento === matriz.id}
-                              className="p-2 bg-gray-700 text-gray-400 hover:bg-green-600 hover:text-white rounded border border-gray-600"
-                              title="Confirmar Pagamento (Baixa Manual)"
-                            >
-                              {loadingPagamento === matriz.id ? (
-                                <Loader2 className="animate-spin" size={14} />
-                              ) : (
-                                <CheckCircle size={14} />
-                              )}
-                            </button>
-                          )}
-
-                          <button
-                            onClick={() => {
-                              setEmpresaSelecionada(matriz);
-                              setConfigData({
-                                diaVencimento: Number(matriz.diaVencimento || 15),
-                                chavePix: matriz.chavePix || "118.544.546-33",
-                              });
-                              setModalConfigFin(true);
-                            }}
-                            className="p-2 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white rounded"
-                            title="Configurar Cobrança"
-                          >
-                            <Settings size={14} />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setEmpresaSelecionada(matriz);
-                              setMatrizAlvoId("");
-                              setModalVincularOpen(true);
-                            }}
-                            className="p-2 bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600 hover:text-white rounded"
-                            title="Transformar em Filial"
-                          >
-                            <LinkIcon size={14} />
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              setEmpresaSelecionada(matriz);
-                              setModalEquipeOpen(true);
-                              // ✅ reset de filtros ao abrir (opcional, mas recomendado)
-                              setQEquipe("");
-                              setCargoEquipe("TODOS");
-                              carregarUsuariosDaEmpresa(matriz.id, { q: "", cargo: "TODOS" });
-                            }}
-                            className="p-2 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded"
-                            title="Equipe Matriz"
-                          >
-                            <Users size={14} />
-                          </button>
-
-                          <Link
-                            href={`/saas/${matriz.id}`}
-                            title="Config. Empresa"
-                            className="h-9 w-9 sm:h-auto sm:w-auto sm:p-2 flex items-center justify-center bg-purple-900/30 text-purple-400 hover:bg-purple-600 hover:text-white rounded"
-                          >
-                            <Settings size={14} />
-                          </Link>
-
-                          <button
-                            onClick={() => alternarStatus(matriz.id, matriz.nome, matriz.status)}
-                            className={`p-2 rounded ${
-                              matriz.status === "ATIVO"
-                                ? "text-orange-400 hover:bg-orange-600 hover:text-white"
-                                : "text-green-400 hover:bg-green-600 hover:text-white"
-                            }`}
-                            title={matriz.status === "ATIVO" ? "Bloquear" : "Ativar"}
-                          >
-                            {matriz.status === "ATIVO" ? (
-                              <Ban size={14} />
-                            ) : (
-                              <PlayCircle size={14} />
-                            )}
-                          </button>
-
-                          <button
-                            onClick={() => excluirEmpresa(matriz.id, matriz.nome)}
-                            className="p-2 bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white rounded"
-                            title="Excluir Empresa"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {matriz.filiais && matriz.filiais.length > 0 && (
-                        <div className="bg-black/20 p-2 space-y-1 border-t border-gray-700">
-                          <p className="text-[10px] uppercase font-bold text-gray-500 pl-2 mb-2 mt-1">
-                            Filiais Vinculadas ({matriz.filiais.length})
-                          </p>
-
-                          {matriz.filiais.map((filial: any) => (
-                            <div
-                              key={filial.id}
-                              className="flex justify-between items-center p-2 pl-6 hover:bg-white/5 rounded-lg group"
-                            >
-                              <div className="flex items-center gap-3 border-l-2 border-gray-600 pl-3">
-                                <div>
-                                  <p className="text-sm text-gray-300 font-medium">
-                                    {filial.nome}
-                                  </p>
-                                  <div className="flex gap-2 text-[10px] text-gray-600">
-                                    <span>{filial._count?.usuarios || 0} funcs</span>
-                                    <span>•</span>
-                                    <span>{filial.usuarios?.length || 0} admins</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => {
-                                    setEmpresaSelecionada(filial);
-                                    setModalEquipeOpen(true);
-                                    setQEquipe("");
-                                    setCargoEquipe("TODOS");
-                                    carregarUsuariosDaEmpresa(filial.id, { q: "", cargo: "TODOS" });
-                                  }}
-                                  className="p-1.5 hover:bg-blue-600 hover:text-white text-gray-500 rounded"
-                                  title="Equipe Filial"
-                                >
-                                  <Users size={12} />
-                                </button>
-                                <button
-                                  onClick={() => excluirEmpresa(filial.id, filial.nome)}
-                                  className="p-1.5 hover:bg-red-600 hover:text-white text-gray-500 rounded"
-                                  title="Excluir Filial"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="px-3 sm:px-4 py-2 bg-gray-900 border-t border-gray-800 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
-                        <span className="text-[10px] text-gray-500">
-                          Excedentes: {dadosFin.vidasExcedentes} vidas / {dadosFin.adminsExcedentes} admins
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {estaPago ? (
-                            <span className="text-green-500 font-bold uppercase">
-                              Fatura Mês Atual: PAGO
-                            </span>
-                          ) : (
-                            <>
-                              Estimado:{" "}
-                              <strong className="text-emerald-400">
-                                {dadosFin.valorFinal.toLocaleString("pt-BR", {
-                                  style: "currency",
-                                  currency: "BRL",
-                                })}
-                              </strong>
-                            </>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
+      {/* Header */}
+      <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="WorkID" className="w-8 h-8 rounded-lg object-cover" />
+            <div>
+              <h1 className="text-lg font-bold text-text-primary">WorkID</h1>
+              <p className="text-[10px] text-text-muted uppercase tracking-widest">Painel Super Admin</p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* MODAL FATURA */}
-      {modalFaturaOpen && empresaSelecionada && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setModalFaturaOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white"
+              onClick={handleRelatorioGeral}
+              className="flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
             >
-              <X size={20} />
+              <FileText size={16} /> <span className="hidden sm:inline">Relatório PDF</span>
             </button>
 
-            <h3 className="text-lg font-bold mb-1 text-white flex items-center gap-2">
-              <DollarSign size={20} className="text-emerald-500" /> Gerar Fatura
-            </h3>
+            <Link
+              href="/saas/venda"
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            >
+              <Plus size={16} /> <span className="hidden sm:inline">Nova Venda</span>
+            </Link>
 
-            <p className="text-sm text-gray-400 mb-6">
-              Fatura para{" "}
-              <span className="text-white font-bold">{empresaSelecionada.nome}</span>
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs uppercase font-bold text-gray-500 mb-1 block">
-                  Chave Pix (CPF/Email/Tel/Aleatória)
-                </label>
-                <input
-                  className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none focus:border-emerald-500"
-                  value={chavePixManual}
-                  onChange={(e) => setChavePixManual(e.target.value)}
-                  placeholder="Digite sua chave Pix..."
-                />
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Dica: Se for telefone, use formato internacional (ex: +55...)
-                </p>
-              </div>
-
-              <button
-                onClick={gerarFaturaIndividual}
-                disabled={loadingFatura || !chavePixManual}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 py-3 rounded-lg font-bold flex justify-center items-center gap-2 transition-colors disabled:opacity-50 text-white"
-              >
-                {loadingFatura ? <Loader2 className="animate-spin" size={18} /> : "VISUALIZAR PDF"}
-              </button>
-            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex items-center gap-2 text-text-muted hover:text-red-400 px-3 py-2 rounded-xl text-sm transition-colors"
+              title="Sair"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
-      )}
+      </header>
 
-      {/* MODAL VINCULAR */}
+      {/* Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 relative z-10">
+        <StatsCards stats={stats} loading={loadingStats} />
+
+        <ClientTable
+          empresas={empresas}
+          loading={loadingListar}
+          loadingPagamento={loadingPagamento}
+          onRefresh={() => { listarEmpresas(); carregarStats(); }}
+          onOpenEquipe={openEquipe}
+          onOpenFatura={openFatura}
+          onAlternarStatus={alternarStatus}
+          onExcluir={excluirEmpresa}
+          onConfirmarPagamento={confirmarPagamentoManual}
+          onVincular={openVincular}
+        />
+      </main>
+
+      {/* === MODAIS === */}
+
+      {/* Modal Equipe */}
+      <ModalEquipe
+        open={modalEquipeOpen}
+        onOpenChange={setModalEquipeOpen}
+        empresa={empresaSelecionada}
+        onEntrarComo={entrarComo}
+        onAbrirModalAdmin={() => setModalAdminOpen(true)}
+        onRecarregarEmpresas={listarEmpresas}
+      />
+
+      {/* Modal Fatura */}
+      <ModalFatura
+        open={modalFaturaOpen}
+        onOpenChange={setModalFaturaOpen}
+        empresa={empresaSelecionada}
+      />
+
+      {/* Modal Vincular */}
       {modalVincularOpen && empresaSelecionada && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
             <button
               onClick={() => setModalVincularOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white"
+              className="absolute top-4 right-4 text-gray-500 hover:text-text-primary"
             >
               <X size={20} />
             </button>
 
-            <h3 className="text-lg font-bold mb-1 text-white flex items-center gap-2">
+            <h3 className="text-lg font-bold mb-1 text-text-primary flex items-center gap-2">
               <LinkIcon size={20} className="text-yellow-500" /> Vincular Matriz
             </h3>
 
             <div className="space-y-4 mt-4">
               <select
-                className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none focus:border-yellow-500"
+                className="w-full bg-gray-800 p-3 rounded-lg text-text-primary border border-gray-700 outline-none focus:border-yellow-500"
                 value={matrizAlvoId}
                 onChange={(e) => setMatrizAlvoId(e.target.value)}
               >
@@ -1088,44 +313,44 @@ export default function SuperAdminPage() {
               <button
                 onClick={salvarVinculo}
                 disabled={loadingVinculo || !matrizAlvoId}
-                className="w-full bg-yellow-600 hover:bg-yellow-700 py-3 rounded-lg font-bold text-black"
+                className="w-full bg-yellow-600 hover:bg-yellow-700 py-3 rounded-lg font-bold text-black disabled:opacity-50"
               >
-                {loadingVinculo ? <Loader2 className="animate-spin" /> : "CONFIRMAR"}
+                {loadingVinculo ? <Loader2 className="animate-spin mx-auto" size={18} /> : "CONFIRMAR"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL ADMIN */}
+      {/* Modal Admin */}
       {modalAdminOpen && empresaSelecionada && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative">
             <button
               onClick={() => setModalAdminOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white"
+              className="absolute top-4 right-4 text-gray-500 hover:text-text-primary"
             >
               <X size={20} />
             </button>
 
-            <h3 className="text-lg font-bold mb-4 text-white">Novo Acesso</h3>
+            <h3 className="text-lg font-bold mb-4 text-text-primary">Novo Acesso</h3>
 
             <form onSubmit={salvarNovoAdmin} className="space-y-3">
               <input
-                className="w-full bg-gray-800 p-2.5 rounded text-white border border-gray-700"
+                className="w-full bg-gray-800 p-2.5 rounded text-text-primary border border-gray-700"
                 placeholder="Nome"
                 onChange={(e) => setAdminData({ ...adminData, nome: e.target.value })}
                 required
               />
               <input
-                className="w-full bg-gray-800 p-2.5 rounded text-white border border-gray-700"
+                className="w-full bg-gray-800 p-2.5 rounded text-text-primary border border-gray-700"
                 placeholder="Email"
                 type="email"
                 onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
                 required
               />
               <input
-                className="w-full bg-gray-800 p-2.5 rounded text-white border border-gray-700"
+                className="w-full bg-gray-800 p-2.5 rounded text-text-primary border border-gray-700"
                 placeholder="Senha"
                 value={adminData.senha}
                 onChange={(e) => setAdminData({ ...adminData, senha: e.target.value })}
@@ -1133,171 +358,15 @@ export default function SuperAdminPage() {
               />
               <button
                 disabled={loadingAdmin}
-                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold mt-2"
+                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold mt-2 disabled:opacity-50"
               >
-                {loadingAdmin ? <Loader2 className="animate-spin" /> : "CRIAR"}
+                {loadingAdmin ? <Loader2 className="animate-spin mx-auto" size={18} /> : "CRIAR"}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* MODAL EQUIPE */}
-      {modalEquipeOpen && empresaSelecionada && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-md relative">
-            <button
-              onClick={() => setModalEquipeOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-xl font-bold mb-3 text-white flex items-center gap-2">
-              <Users className="text-purple-500" /> Gestão de Acessos
-            </h3>
-
-            {/* ✅ BUSCA INTELIGENTE (SERVER-SIDE) */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-3">
-              <input
-                value={qEquipe}
-                onChange={(e) => setQEquipe(e.target.value)}
-                placeholder="Buscar por nome ou email..."
-                className="w-full bg-gray-800 p-2.5 rounded-lg text-white border border-gray-700 outline-none focus:border-purple-500 text-sm"
-              />
-              <select
-                value={cargoEquipe}
-                onChange={(e) => setCargoEquipe(e.target.value)}
-                className="w-full sm:w-[180px] bg-gray-800 p-2.5 rounded-lg text-white border border-gray-700 outline-none focus:border-purple-500 text-sm"
-              >
-                <option value="TODOS">Todos</option>
-                <option value="ADMIN">Admins</option>
-                <option value="FUNCIONARIO">Funcionários</option>
-                <option value="SUPER_ADMIN">Super Admin</option>
-              </select>
-            </div>
-
-            {loadingEquipeUsers && (
-              <p className="text-center text-gray-400 text-sm mb-3">Carregando usuários...</p>
-            )}
-
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              {(!equipeUsers || equipeUsers.length === 0) && !loadingEquipeUsers ? (
-                <p className="text-center text-gray-500">Nenhum usuário encontrado.</p>
-              ) : (
-                (equipeUsers || []).map((user: any) => (
-                  <div
-                    key={user.id}
-                    className="bg-gray-800 p-3 rounded flex justify-between items-center border border-gray-700 gap-2"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-bold text-sm text-white truncate">{user.nome}</p>
-                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                      {user.cargo && (
-                        <p className="text-[11px] text-gray-500 mt-1">{user.cargo}</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => entrarComo(user)}
-                        className="p-2 bg-blue-900/20 text-blue-400 hover:bg-blue-600 hover:text-white rounded"
-                        title="Entrar como"
-                      >
-                        <LogIn size={16} />
-                      </button>
-
-                      <button
-                        onClick={() => excluirUsuario(user.id)}
-                        className="p-2 bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white rounded"
-                        title="Excluir usuário"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-gray-800">
-              <button
-                onClick={() => {
-                  setModalEquipeOpen(false);
-                  setModalAdminOpen(true);
-                }}
-                className="w-full py-2 border border-dashed border-gray-600 text-gray-400 hover:text-white rounded text-sm flex justify-center gap-2"
-              >
-                <UserPlus size={16} /> Adicionar Novo Acesso
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* NOVO MODAL: CONFIGURAÇÃO FINANCEIRA */}
-      {modalConfigFin && empresaSelecionada && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
-            <button
-              onClick={() => setModalConfigFin(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-lg font-bold mb-4 text-white flex gap-2 items-center">
-              <DollarSign className="text-emerald-500" /> Configuração Financeira
-            </h3>
-
-            <p className="text-xs text-gray-400 mb-4">
-              Cliente: <strong className="text-white">{empresaSelecionada.nome}</strong>
-            </p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs uppercase font-bold text-gray-500 mb-1 block">
-                  Dia do Vencimento
-                </label>
-                <select
-                  className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none"
-                  value={configData.diaVencimento}
-                  onChange={(e) =>
-                    setConfigData({
-                      ...configData,
-                      diaVencimento: Number(e.target.value),
-                    })
-                  }
-                >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                    <option key={d} value={d}>
-                      Dia {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs uppercase font-bold text-gray-500 mb-1 block">
-                  Chave Pix Recebedora
-                </label>
-                <input
-                  className="w-full bg-gray-800 p-3 rounded-lg text-white border border-gray-700 outline-none"
-                  value={configData.chavePix}
-                  onChange={(e) => setConfigData({ ...configData, chavePix: e.target.value })}
-                />
-              </div>
-
-              <button
-                onClick={salvarConfigFinanceira}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg"
-              >
-                SALVAR CONFIGURAÇÃO
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

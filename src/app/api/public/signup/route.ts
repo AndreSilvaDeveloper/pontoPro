@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { PLANOS, PLANO_DEFAULT, type PlanoId } from "@/config/planos";
 
 export const runtime = "nodejs";
 
@@ -28,7 +29,11 @@ export async function POST(req: Request) {
     const adminNome = String(body?.adminNome || "").trim();
     const email = String(body?.email || "").trim().toLowerCase();
     const password = String(body?.password || "");
+    const telefoneRaw = String(body?.telefone || "").trim();
+    const telefone = telefoneRaw ? onlyDigits(telefoneRaw) : "";
     const aceitarTermos = Boolean(body?.aceitarTermos);
+    const planoRaw = String(body?.plano || "").trim().toUpperCase();
+    const plano: PlanoId = (planoRaw in PLANOS ? planoRaw : PLANO_DEFAULT) as PlanoId;
 
     if (!empresaNome || empresaNome.length < 2) {
       return NextResponse.json(
@@ -69,13 +74,19 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    if (telefone && (telefone.length < 10 || telefone.length > 11)) {
+      return NextResponse.json(
+        { ok: false, erro: "Telefone inválido. Informe 10 ou 11 dígitos." },
+        { status: 400 }
+      );
+    }
 
     const senhaHash = await bcrypt.hash(password, 10);
 
-    // ✅ Trial de 14 dias + 1ª fatura 30 dias depois do fim do trial (44 dias após criação)
+    // ✅ Trial de 14 dias + 1ª fatura vence 1 dia após o fim do trial (15 dias após criação)
     const agora = new Date();
     const trialAte = addDays(agora, 14);
-    const primeiraFaturaVenceEm = addDays(trialAte, 30);
+    const primeiraFaturaVenceEm = addDays(trialAte, 1);
 
     const result = await prisma.$transaction(async (tx) => {
       const empresa = await tx.empresa.create({
@@ -92,6 +103,9 @@ export async function POST(req: Request) {
           intervaloPago: false,
           fluxoEstrito: true,
 
+          // ✅ plano escolhido no signup
+          plano,
+
           // ✅ cobrança
           cobrancaAtiva: true,
           trialAte,
@@ -102,6 +116,7 @@ export async function POST(req: Request) {
 
           // mantém default, mas não vamos depender dele para o primeiro ciclo
           diaVencimento: 15,
+          cobrancaWhatsapp: telefone || null,
         } as any,
       });
 
@@ -113,6 +128,7 @@ export async function POST(req: Request) {
           cargo: "ADMIN",
           empresaId: empresa.id,
           deveTrocarSenha: false,
+          telefone: telefone || null,
         } as any,
       });
 

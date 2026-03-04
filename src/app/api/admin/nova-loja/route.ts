@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { getPlanoConfig } from '@/config/planos';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -38,6 +39,25 @@ export async function POST(request: Request) {
     }
 
     const idEmpresaAtual = usuarioAtual.empresaId;
+
+    // Verifica limite de filiais do plano
+    const matrizEmpresa = await prisma.empresa.findUnique({
+      where: { id: idEmpresaAtual },
+      select: { plano: true },
+    });
+    const planoConfig = getPlanoConfig(matrizEmpresa?.plano);
+
+    let avisoPlano: string | undefined;
+
+    if (planoConfig.maxFiliais >= 0) {
+      const totalFiliais = await prisma.empresa.count({
+        where: { matrizId: idEmpresaAtual },
+      });
+
+      if (totalFiliais >= planoConfig.maxFiliais) {
+        avisoPlano = `Sua nova filial excede o limite do plano ${planoConfig.nome} (${planoConfig.maxFiliais} inclusa(s)). Será cobrado R$ ${planoConfig.extraFilial.toFixed(2).replace(".", ",")}/mês por filial extra.`;
+      }
+    }
 
     const novaEmpresa = await prisma.$transaction(async (tx) => {
       // 1) Lista de admins que terão acesso à nova filial
@@ -101,7 +121,7 @@ export async function POST(request: Request) {
       return emp;
     });
 
-    return NextResponse.json({ success: true, empresa: novaEmpresa });
+    return NextResponse.json({ success: true, empresa: novaEmpresa, avisoPlano });
   } catch (error) {
     console.error('Erro ao criar loja:', error);
     return NextResponse.json({ erro: 'Erro ao criar loja.' }, { status: 500 });

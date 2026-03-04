@@ -34,6 +34,9 @@ export async function POST() {
         billingAnchorAt: true,
         chavePix: true,
         cobrancaWhatsapp: true,
+        plano: true,
+        billingCycle: true,
+        billingMethod: true,
 
         _count: { select: { usuarios: true } },
 
@@ -61,6 +64,9 @@ export async function POST() {
             billingAnchorAt: true,
             chavePix: true,
             cobrancaWhatsapp: true,
+            plano: true,
+            billingCycle: true,
+            billingMethod: true,
 
             _count: { select: { usuarios: true } },
             usuarios: {

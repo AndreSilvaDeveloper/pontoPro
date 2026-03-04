@@ -29,6 +29,12 @@ export function DesktopMenu() {
         >
           Nossos Pilares
         </Button>
+        <a
+          href="#pricing"
+          className="cursor-pointer text-sm font-medium text-gray-300 transition-colors hover:text-white"
+        >
+          Planos
+        </a>
         <Button
           variant="ghost"
           className="cursor-pointer text-sm font-medium text-gray-300 transition-colors hover:bg-transparent hover:text-white"

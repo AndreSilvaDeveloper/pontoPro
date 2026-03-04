@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
 import { asaas } from "@/lib/asaas";
+import { getPlanoConfig, calcularValorAssinatura, type BillingCycle } from "@/config/planos";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,6 @@ function maxISODate(a: string, b: string) {
 }
 
 function safeDateSP(dateISO: string) {
-  // 03:00Z evita “voltar um dia” em timezone BR
   return new Date(dateISO + "T03:00:00.000Z");
 }
 
@@ -37,7 +37,6 @@ function onlyDigits(v: string) {
   return v.replace(/\D/g, "");
 }
 
-// Validação de CPF/CNPJ (aceita apenas se passar DV)
 function isValidCPF(cpfRaw?: string | null) {
   const cpf = onlyDigits(String(cpfRaw ?? ""));
   if (cpf.length !== 11) return false;
@@ -130,41 +129,70 @@ async function getPixSafe(paymentId: string) {
   }
 }
 
-function mapPix(payment: any, dueDate: string, pix: any) {
-  return {
-    paymentId: payment?.id ?? "",
-    dueDate,
-    invoiceUrl: payment?.invoiceUrl ?? null,
-    pix,
-  };
-}
-
-// tenta achar pagamento existente por externalReference + tipo + dueDate
-async function findExistingPayment(params: {
-  externalReference: string;
-  billingType: "PIX";
-  dueDate: string;
-}) {
+/**
+ * Busca o pagamento pendente mais recente de uma assinatura.
+ */
+async function findPendingPaymentFromSubscription(subscriptionId: string) {
   try {
-    const { data } = await asaas.get("/payments", {
-      params: {
-        externalReference: params.externalReference,
-        billingType: params.billingType,
-        limit: 10,
-        offset: 0,
-      },
+    const { data } = await asaas.get(`/subscriptions/${subscriptionId}/payments`, {
+      params: { limit: 5, offset: 0 },
     });
 
     const list: any[] = Array.isArray(data?.data) ? data.data : [];
-    const match =
-      list.find((p) => String(p?.dueDate ?? "").slice(0, 10) === params.dueDate) ?? null;
 
-    return match;
+    // Prioriza pagamento PENDING ou OVERDUE
+    const pending = list.find(
+      (p) => p?.status === "PENDING" || p?.status === "OVERDUE"
+    );
+    if (pending) return pending;
+
+    // Se não há pendente, retorna o mais recente
+    return list[0] ?? null;
   } catch {
     return null;
   }
 }
 
+async function getSubscriptionSafe(subscriptionId: string) {
+  try {
+    const { data } = await asaas.get(`/subscriptions/${subscriptionId}`);
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verifica se já existe um pagamento pendente (PENDING/OVERDUE) no DB
+ * e se ele ainda é válido no Asaas. Se sim, retorna para evitar duplicação.
+ */
+async function getExistingPendingPayment(empresaId: string) {
+  const empresa = await prisma.empresa.findUnique({
+    where: { id: empresaId },
+    select: { asaasCurrentPaymentId: true },
+  });
+
+  if (!empresa?.asaasCurrentPaymentId) return null;
+
+  try {
+    const { data: payment } = await asaas.get(`/payments/${empresa.asaasCurrentPaymentId}`);
+    if (payment && (payment.status === "PENDING" || payment.status === "OVERDUE")) {
+      return payment;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * POST — Gera ou atualiza a cobrança do ciclo atual.
+ *
+ * Fluxo:
+ * 1. Se já existe pagamento pendente com valor correto → retorna ele
+ * 2. Se existe mas valor mudou → atualiza
+ * 3. Se não existe → cria via assinatura recorrente
+ */
 export async function POST() {
   try {
     if (!process.env.ASAAS_BASE_URL || !process.env.ASAAS_API_KEY) {
@@ -204,7 +232,7 @@ export async function POST() {
     const rawDueDate = dueDateFromAnchor || dueDateFromBilling || todayISO;
     const dueDate = maxISODate(rawDueDate, todayISO);
 
-    // calcula valor
+    // Calcula valor baseado no plano
     const ids = [
       billingEmpresa.id,
       ...(billingEmpresa.filiais?.map((f: any) => f.id) ?? []),
@@ -218,14 +246,44 @@ export async function POST() {
       where: { empresaId: { in: ids }, cargo: { in: ADMIN_CARGOS as any } },
     });
 
-    const VALOR_BASE = 99.9;
-    const vidasExcedentes = Math.max(0, totalFuncionarios - 20);
-    const adminsExcedentes = Math.max(0, totalAdmins - 1);
+    const totalFiliais = billingEmpresa.filiais?.length ?? 0;
 
-    const valorFinal = Number(
-      (VALOR_BASE + vidasExcedentes * 7.9 + adminsExcedentes * 49.9).toFixed(2)
+    const planoConfig = getPlanoConfig(billingEmpresa.plano);
+    const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
+    const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
+    const { total: valorFinal } = calcularValorAssinatura(
+      planoConfig,
+      totalFuncionarios,
+      totalAdmins,
+      totalFiliais,
+      cycle
     );
 
+    const description = `WorkID ${planoConfig.nome} - ${billingEmpresa.nome}`;
+
+    // ====== 1) Já existe pagamento pendente? Reutiliza. ======
+    let currentPayment = await getExistingPendingPayment(billingEmpresa.id);
+
+    if (currentPayment) {
+      // Atualiza valor se mudou (troca de plano, funcionários extras)
+      if (Number(currentPayment.value) !== valorFinal) {
+        try {
+          await asaas.put(`/payments/${currentPayment.id}`, {
+            value: valorFinal,
+            description,
+          });
+          const { data: updated } = await asaas.get(`/payments/${currentPayment.id}`);
+          if (updated) currentPayment = updated;
+        } catch (e: any) {
+          console.error("[GERAR_COBRANCA] Erro ao atualizar valor:", e?.response?.data ?? e);
+        }
+      }
+
+      // Retorna o pagamento existente (sem criar nada novo)
+      return respondWithPayment(currentPayment, billingEmpresa.id);
+    }
+
+    // ====== 2) Sem pagamento pendente. Verifica assinatura. ======
     const customerId = await ensureCustomer({
       empresaId: billingEmpresa.id,
       nome: billingEmpresa.nome,
@@ -234,50 +292,140 @@ export async function POST() {
       phone: billingEmpresa.cobrancaWhatsapp,
     });
 
-    // ✅ SOMENTE PIX: tenta achar PIX do ciclo, senão cria
-    let pixPayment =
-      (await findExistingPayment({
-        externalReference: billingEmpresa.id,
-        billingType: "PIX",
-        dueDate,
-      })) ?? null;
+    // Map billingCycle to Asaas cycle value
+    const asaasCycle = cycle === "YEARLY" ? "YEARLY" : "MONTHLY";
+    const asaasBillingType = billingMethod === "CREDIT_CARD" ? "CREDIT_CARD" : "UNDEFINED";
 
-    if (!pixPayment) {
-      pixPayment = (
-        await asaas.post("/payments", {
-          customer: customerId,
-          billingType: "PIX",
-          value: valorFinal,
-          dueDate,
-          description: `Assinatura Ontime - ${billingEmpresa.nome}`,
-          externalReference: billingEmpresa.id,
-        })
-      ).data;
+    if (billingEmpresa.asaasSubscriptionId) {
+      const sub = await getSubscriptionSafe(billingEmpresa.asaasSubscriptionId);
+
+      if (sub && sub.status === "ACTIVE") {
+        // Se cycle ou billingType mudou → cancela e recria
+        const needsRecreate =
+          sub.cycle !== asaasCycle || sub.billingType !== asaasBillingType;
+
+        if (needsRecreate) {
+          try {
+            await asaas.delete(`/subscriptions/${sub.id}`);
+          } catch {
+            // ignora erro ao cancelar
+          }
+          await prisma.empresa.update({
+            where: { id: billingEmpresa.id },
+            data: { asaasSubscriptionId: null, asaasCurrentPaymentId: null },
+          });
+          billingEmpresa.asaasSubscriptionId = null;
+        } else {
+          // Atualiza valor da assinatura se mudou
+          if (Number(sub.value) !== valorFinal) {
+            await asaas.put(`/subscriptions/${sub.id}`, { value: valorFinal, description });
+          }
+
+          // Busca pagamento pendente da assinatura
+          currentPayment = await findPendingPaymentFromSubscription(sub.id);
+
+          if (currentPayment && Number(currentPayment.value) !== valorFinal) {
+            if (currentPayment.status === "PENDING" || currentPayment.status === "OVERDUE") {
+              try {
+                await asaas.put(`/payments/${currentPayment.id}`, { value: valorFinal, description });
+                const { data: updated } = await asaas.get(`/payments/${currentPayment.id}`);
+                if (updated) currentPayment = updated;
+              } catch (e: any) {
+                console.error("[GERAR_COBRANCA] Erro ao atualizar valor:", e?.response?.data ?? e);
+              }
+            }
+          }
+
+          if (currentPayment) {
+            return respondWithPayment(currentPayment, billingEmpresa.id);
+          }
+
+          // Assinatura ativa mas sem pagamento pendente (deletados/pagos):
+          // cancela a assinatura para criar uma nova limpa
+          try {
+            await asaas.delete(`/subscriptions/${sub.id}`);
+          } catch {
+            // ignora erro ao cancelar
+          }
+        }
+      }
+
+      if (billingEmpresa.asaasSubscriptionId) {
+        // Assinatura inativa/cancelada/sem pagamentos: limpa para criar nova
+        await prisma.empresa.update({
+          where: { id: billingEmpresa.id },
+          data: { asaasSubscriptionId: null },
+        });
+        billingEmpresa.asaasSubscriptionId = null;
+      }
     }
 
-    // ✅ salva o PIX como current
-    if (pixPayment?.id) {
-      await prisma.empresa.update({
-        where: { id: billingEmpresa.id },
-        data: {
-          asaasCurrentPaymentId: pixPayment.id,
-          asaasCurrentDueDate: safeDateSP(dueDate),
-        },
-      });
-    }
-
-    const pix = pixPayment?.id ? await getPixSafe(pixPayment.id) : null;
-
-    return NextResponse.json({
-      ok: true,
-      asaas: {
-        dueDate,
-        pix: pixPayment?.id ? mapPix(pixPayment, dueDate, pix) : null,
-        boleto: null, // ✅ não tem boleto
-      },
+    // ====== 3) Cria nova assinatura (gera 1 pagamento automaticamente) ======
+    const { data: newSub } = await asaas.post("/subscriptions", {
+      customer: customerId,
+      billingType: asaasBillingType,
+      value: valorFinal,
+      nextDueDate: dueDate,
+      cycle: asaasCycle,
+      description,
+      externalReference: billingEmpresa.id,
     });
+
+    if (!newSub?.id) {
+      throw new Error("ASAAS não retornou subscriptionId");
+    }
+
+    await prisma.empresa.update({
+      where: { id: billingEmpresa.id },
+      data: { asaasSubscriptionId: newSub.id },
+    });
+
+    currentPayment = await findPendingPaymentFromSubscription(newSub.id);
+
+    if (currentPayment) {
+      return respondWithPayment(currentPayment, billingEmpresa.id);
+    }
+
+    return NextResponse.json({ ok: true, asaas: { dueDate, pix: null, boleto: null } });
   } catch (err: any) {
-    console.error("[GERAR_COBRANCA_ASAAS_PIX]", err?.response?.data ?? err);
+    console.error("[GERAR_COBRANCA_ASAAS]", err?.response?.data ?? err);
     return NextResponse.json({ ok: false, error: "Erro ao gerar cobrança" }, { status: 500 });
   }
+}
+
+/**
+ * Salva o payment no DB e retorna resposta padronizada com PIX + Boleto.
+ */
+async function respondWithPayment(payment: any, empresaId: string) {
+  const paymentDueDate = String(payment.dueDate ?? "").slice(0, 10);
+
+  // Salva como pagamento atual no DB
+  await prisma.empresa.update({
+    where: { id: empresaId },
+    data: {
+      asaasCurrentPaymentId: payment.id,
+      asaasCurrentDueDate: safeDateSP(paymentDueDate),
+    },
+  });
+
+  const pix = await getPixSafe(payment.id);
+
+  return NextResponse.json({
+    ok: true,
+    asaas: {
+      dueDate: paymentDueDate,
+      pix: {
+        paymentId: payment.id,
+        dueDate: paymentDueDate,
+        invoiceUrl: payment.invoiceUrl ?? null,
+        pix,
+      },
+      boleto: {
+        paymentId: payment.id,
+        invoiceUrl: payment.invoiceUrl ?? null,
+        bankSlipUrl: payment.bankSlipUrl ?? null,
+        identificationField: payment.identificationField ?? null,
+      },
+    },
+  });
 }

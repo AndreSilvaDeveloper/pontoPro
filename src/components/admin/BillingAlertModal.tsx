@@ -106,7 +106,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
 
       <div className={`relative w-full max-w-md rounded-2xl border ${bg} p-5 shadow-2xl`}>
         <button
-          className="absolute right-3 top-3 text-white/60 hover:text-white"
+          className="absolute right-3 top-3 text-text-primary/60 hover:text-text-primary"
           onClick={closeModal}
           aria-label="Fechar"
         >
@@ -119,10 +119,10 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
           </div>
 
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-white">{ui.title}</h3>
-            <p className="mt-1 text-sm text-white/80">{billing.message}</p>
+            <h3 className="text-lg font-bold text-text-primary">{ui.title}</h3>
+            <p className="mt-1 text-sm text-text-primary/80">{billing.message}</p>
 
-            <div className="mt-3 text-xs text-white/70 space-y-1">
+            <div className="mt-3 text-xs text-text-primary/70 space-y-1">
               <div>
                 <span className="font-semibold">Empresa:</span> {empresa?.nome ?? "—"}
               </div>
@@ -156,7 +156,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
               </Link>
 
               <button
-                className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/15"
+                className="rounded-xl bg-hover-bg-strong px-4 py-2 text-sm font-bold text-text-primary hover:bg-white/15"
                 onClick={() => {
                   sessionStorage.setItem(OK_KEY, "1");
                   closeModal();

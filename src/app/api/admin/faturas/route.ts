@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
+import { getPlanoConfig, calcularValorAssinatura, type BillingCycle } from "@/config/planos";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,9 @@ export async function GET() {
       pagoAte: true,
       diaVencimento: true,
       billingAnchorAt: true,
+      billingCycle: true,
+      billingMethod: true,
+      plano: true,
 
       chavePix: true,
       cobrancaWhatsapp: true,
@@ -65,6 +69,9 @@ export async function GET() {
         pagoAte: true,
         diaVencimento: true,
         billingAnchorAt: true,
+        billingCycle: true,
+        billingMethod: true,
+        plano: true,
 
         chavePix: true,
         cobrancaWhatsapp: true,
@@ -99,17 +106,23 @@ export async function GET() {
     },
   });
 
-  const VALOR_BASE = 99.9;
-  const FRANQUIA_VIDAS = 20;
-  const FRANQUIA_ADMINS = 1;
+  const planoConfig = getPlanoConfig(billingEmpresa.plano);
+  const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
+  const calculo = calcularValorAssinatura(
+    planoConfig,
+    totalFuncionarios,
+    totalAdmins,
+    billingEmpresa.filiais?.length ?? 0,
+    cycle
+  );
 
-  const vidasExcedentes = Math.max(0, totalFuncionarios - FRANQUIA_VIDAS);
-  const adminsExcedentes = Math.max(0, totalAdmins - FRANQUIA_ADMINS);
+  const vidasExcedentes = Math.max(0, totalFuncionarios - planoConfig.maxFuncionarios);
+  const adminsExcedentes = Math.max(0, totalAdmins - planoConfig.maxAdmins);
 
-  const custoVidas = vidasExcedentes * 7.9;
-  const custoAdmins = adminsExcedentes * 49.9;
+  const custoVidas = Number((vidasExcedentes * planoConfig.extraFuncionario).toFixed(2));
+  const custoAdmins = Number((adminsExcedentes * planoConfig.extraAdmin).toFixed(2));
 
-  const valorFinal = Number((VALOR_BASE + custoVidas + custoAdmins).toFixed(2));
+  const valorFinal = calculo.total;
 
   return NextResponse.json({
     ok: true,
@@ -128,11 +141,14 @@ export async function GET() {
       chavePix: billingEmpresa.chavePix ?? null,
       cobrancaWhatsapp: billingEmpresa.cobrancaWhatsapp ?? null,
       diaVencimento: billingEmpresa.diaVencimento ?? 15,
+      billingMethod: (billingEmpresa as any).billingMethod ?? "UNDEFINED",
       isFilial: Boolean(empUser.matrizId),
     },
     billing,
     fatura: {
       valor: valorFinal,
+      billingCycle: cycle,
+      totalMensal: calculo.totalMensal,
 
       // billing.dueAtISO em TRIAL = trialAte, em BILLING = dueAt (anchor/fallback)
       vencimentoISO: billing.dueAtISO,

@@ -21,7 +21,9 @@ import {
   Upload,
   AlertTriangle,
   Image as ImageIcon,
+  Phone,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { obterEndereco } from '@/utils/geocoding';
 
@@ -29,7 +31,7 @@ import { obterEndereco } from '@/utils/geocoding';
 const MapaCaptura = dynamic(() => import('@/components/MapaCaptura'), {
   ssr: false,
   loading: () => (
-    <div className="h-64 w-full bg-slate-800 animate-pulse rounded-xl flex items-center justify-center text-slate-500">
+    <div className="h-64 w-full bg-elevated-solid animate-pulse rounded-xl flex items-center justify-center text-text-faint">
       Carregando Mapa...
     </div>
   ),
@@ -40,6 +42,7 @@ export interface Funcionario {
   id: string;
   nome: string;
   email: string;
+  telefone?: string;
   tituloCargo?: string;
   latitudeBase: number;
   longitudeBase: number;
@@ -50,6 +53,7 @@ export interface Funcionario {
   locaisAdicionais?: any[];
   ipsPermitidos?: string;
   modoValidacaoPonto?: string;
+  deveCadastrarFoto?: boolean;
 }
 
 interface ModalFuncionarioProps {
@@ -75,6 +79,21 @@ function validarBloco(e: string, s: string) {
   return null;
 }
 
+const DOMINIOS_SUSPEITOS = [
+  'teste.com', 'fake.com', 'example.com', 'test.com',
+  'aaa.com', 'xxx.com', 'naotem.com', 'semmail.com', 'email.com',
+];
+const LOCAIS_SUSPEITOS = ['aaa', '111', 'abc', 'xxx'];
+
+function isEmailSuspect(email: string): boolean {
+  if (!email || !email.includes('@')) return false;
+  const [local, dominio] = email.toLowerCase().split('@');
+  if (DOMINIOS_SUSPEITOS.includes(dominio)) return true;
+  if (LOCAIS_SUSPEITOS.includes(local)) return true;
+  if (dominio && !dominio.includes('.')) return true;
+  return false;
+}
+
 function uniqSortedNumbers(arr: any[]) {
   const out = Array.from(new Set(arr.map((n) => Number(n)).filter((n) => Number.isFinite(n))));
   out.sort((a, b) => a - b);
@@ -94,11 +113,13 @@ export default function ModalFuncionario({
   // Form Fields
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
   const [tituloCargo, setTituloCargo] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('100');
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
+  const [exigirFotoFuncionario, setExigirFotoFuncionario] = useState(false);
 
   // Upload UX
   const [fotoErro, setFotoErro] = useState<string>('');
@@ -128,6 +149,16 @@ export default function ModalFuncionario({
   // evita spam de requests de reverse
   const lastPrincipalKey = useRef<string>('');
 
+  const emailSuspeito = useMemo(() => isEmailSuspect(email), [email]);
+
+  const formatarTelefone = (v: string) => {
+    const digits = v.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  };
+
   const jornadaPadrao = {
     seg: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
     ter: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
@@ -154,6 +185,7 @@ export default function ModalFuncionario({
     if (funcionarioEdicao) {
       setNome(funcionarioEdicao.nome);
       setEmail(funcionarioEdicao.email);
+      setTelefone(funcionarioEdicao.telefone ? formatarTelefone(funcionarioEdicao.telefone) : '');
       setTituloCargo(funcionarioEdicao.tituloCargo || '');
       setLat(funcionarioEdicao.latitudeBase?.toString() || '');
       setLng(funcionarioEdicao.longitudeBase?.toString() || '');
@@ -164,6 +196,7 @@ export default function ModalFuncionario({
       setModoValidacao(funcionarioEdicao.modoValidacaoPonto || 'GPS');
       setIpsPermitidos(funcionarioEdicao.ipsPermitidos || '');
       setFotoArquivo(null);
+      setExigirFotoFuncionario(funcionarioEdicao.deveCadastrarFoto || false);
 
       setEnderecoPrincipal((funcionarioEdicao as any)?.enderecoPrincipal || '');
 
@@ -172,6 +205,7 @@ export default function ModalFuncionario({
     } else {
       setNome('');
       setEmail('');
+      setTelefone('');
       setTituloCargo('');
       setLat('');
       setLng('');
@@ -180,6 +214,7 @@ export default function ModalFuncionario({
       setPontoLivre(false);
       setLocaisExtras([]);
       setFotoArquivo(null);
+      setExigirFotoFuncionario(false);
       setModoValidacao('GPS');
       setIpsPermitidos('');
       setEnderecoPrincipal('');
@@ -250,7 +285,7 @@ export default function ModalFuncionario({
       novaJornada[dia] = { ...base };
     });
     setJornada(novaJornada);
-    alert('Horário de Segunda replicado até Sexta!');
+    toast.success('Horário de Segunda replicado até Sexta!');
   };
 
   const errosJornada = useMemo(() => {
@@ -287,21 +322,22 @@ export default function ModalFuncionario({
         if (!ipsAtuais.includes(ipFinal)) {
           const novoValor = ipsAtuais.length > 0 ? `${ipsPermitidos}, ${ipFinal}` : ipFinal;
           setIpsPermitidos(novoValor);
+          toast.success(`IP ${ipFinal} adicionado.`);
         } else {
-          alert(`IP ${ipFinal} já está na lista.`);
+          toast.info(`IP ${ipFinal} já está na lista.`);
         }
       } else {
-        alert('Não foi possível detectar IP.');
+        toast.error('Não foi possível detectar IP.');
       }
     } catch {
-      alert('Erro ao buscar IP.');
+      toast.error('Erro ao buscar IP.');
     } finally {
       setCapturandoIp(false);
     }
   };
 
   const pegarLocalizacaoAtual = (destino: 'PRINCIPAL' | 'EXTRA') => {
-    if (!navigator.geolocation) return alert('Geolocalização não suportada');
+    if (!navigator.geolocation) return toast.error('Geolocalização não suportada.');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (destino === 'PRINCIPAL') {
@@ -316,7 +352,7 @@ export default function ModalFuncionario({
           });
         }
       },
-      () => alert('Erro ao pegar GPS.'),
+      () => toast.error('Erro ao pegar GPS.'),
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
@@ -436,15 +472,21 @@ export default function ModalFuncionario({
     e.preventDefault();
 
     if (modoValidacao === 'GPS' && !pontoLivre && (!lat || !lng))
-      return alert('Modo GPS exige localização!');
+      return toast.error('Modo GPS exige localização!');
 
     if (modoValidacao === 'PC_IP' && !ipsPermitidos)
-      return alert('Modo IP exige IPs cadastrados!');
+      return toast.error('Modo IP exige IPs cadastrados!');
 
     const temErroJornada = Object.keys(errosJornada).length > 0;
     if (temErroJornada) {
-      const ok = confirm('Existem horários inválidos em alguns dias. Quer salvar mesmo assim?');
-      if (!ok) return;
+      toast.warning('Existem horários inválidos em alguns dias. Verifique antes de salvar.');
+    }
+
+    if (!funcionarioEdicao && emailSuspeito) {
+      const confirma = window.confirm(
+        'Este email parece não ser real. O funcionário não receberá emails do sistema. Deseja continuar?'
+      );
+      if (!confirma) return;
     }
 
     setLoading(true);
@@ -452,6 +494,7 @@ export default function ModalFuncionario({
       const formData = new FormData();
       formData.append('nome', nome);
       formData.append('email', email);
+      formData.append('telefone', telefone.replace(/\D/g, ''));
       formData.append('tituloCargo', tituloCargo);
       formData.append('latitude', lat || '0');
       formData.append('longitude', lng || '0');
@@ -463,21 +506,22 @@ export default function ModalFuncionario({
       formData.append('ipsPermitidos', ipsPermitidos);
 
       if (fotoArquivo) formData.append('foto', fotoArquivo);
+      formData.append('exigirFotoFuncionario', String(exigirFotoFuncionario));
 
       if (funcionarioEdicao?.id) {
         formData.append('id', funcionarioEdicao.id);
         await axios.put('/api/admin/funcionarios', formData);
-        alert('Atualizado com sucesso!');
+        toast.success('Atualizado com sucesso!');
       } else {
         await axios.post('/api/admin/funcionarios', formData);
-        alert('Cadastrado com sucesso\nSenha inicial: 1234!');
+        toast.success('Cadastrado com sucesso! Senha inicial: 1234');
       }
 
       onSuccess();
       onClose();
     } catch (error: any) {
       const msg = error.response?.data?.erro || 'Erro ao salvar.';
-      alert(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -496,26 +540,25 @@ export default function ModalFuncionario({
   
 
   return (
-    <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center bg-slate-950 md:bg-black/80 md:backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
-      <div className="bg-slate-950 md:bg-slate-900 w-full min-h-full md:min-h-0 md:h-auto md:max-h-[90vh] md:max-w-4xl md:rounded-2xl md:border md:border-slate-700 shadow-2xl flex flex-col relative">
+    <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center bg-page md:bg-overlay md:backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
+      <div className="bg-page md:bg-surface-solid w-full min-h-full md:min-h-0 md:h-auto md:max-h-[90vh] md:max-w-4xl md:rounded-2xl md:border md:border-border-default shadow-2xl flex flex-col relative">
         {/* Header */}
-        <div className="p-4 md:p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900 md:rounded-t-2xl sticky top-0 z-10 flex-shrink-0">
-          <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
-            {funcionarioEdicao ? (
-              <>
-                <Pencil size={20} className="text-blue-400" /> Editar Funcionario
-              </>
-            ) : (
-              <>
-                <UserPlus size={20} className="text-green-400" /> Novo Cadastro
-              </>
-            )}
+        <div className="p-4 md:p-6 border-b border-border-subtle flex justify-between items-center bg-surface-solid/80 backdrop-blur-sm md:rounded-t-2xl sticky top-0 z-10 flex-shrink-0" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}>
+          <h2 className="text-lg md:text-xl font-bold text-text-primary flex items-center gap-3">
+            <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
+              {funcionarioEdicao ? (
+                <Pencil size={18} className="text-blue-400" />
+              ) : (
+                <UserPlus size={18} className="text-green-400" />
+              )}
+            </div>
+            {funcionarioEdicao ? 'Editar Funcionário' : 'Novo Cadastro'}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+            className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong rounded-xl text-text-muted hover:text-text-primary transition-colors border border-border-subtle active:scale-95"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
@@ -524,17 +567,17 @@ export default function ModalFuncionario({
           <form id="formFuncionario" onSubmit={salvar} className="space-y-6">
             {/* 1. DADOS PESSOAIS */}
             <section className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2">
+              <h3 className="text-sm font-bold text-text-faint uppercase tracking-wider border-b border-border-subtle pb-2">
                 Dados Pessoais
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 mb-1.5 block">
+                  <label className="text-xs font-bold text-text-muted mb-1.5 block">
                     Nome Completo
                   </label>
                   <input
-                    className="w-full bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-white outline-none focus:border-purple-500"
+                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
@@ -543,45 +586,68 @@ export default function ModalFuncionario({
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-400 mb-1.5 block">
+                  <label className="text-xs font-bold text-text-muted mb-1.5 block">
                     Email (Login)
                   </label>
                   <input
                     type="email"
-                    className="w-full bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-white outline-none focus:border-purple-500"
+                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="email@exemplo.com"
                   />
+                  {emailSuspeito && (
+                    <div className="mt-2 flex items-start gap-2 bg-yellow-900/30 border border-yellow-600/40 rounded-lg p-3 text-yellow-300 text-xs leading-relaxed">
+                      <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                      <span>
+                        Se este email não for real, o funcionário <strong>não receberá</strong> o email de boas-vindas e <strong>não conseguirá</strong> recuperar a senha sozinho. O admin terá que resetar a senha manualmente.
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block flex items-center gap-2">
-                  <Briefcase size={12} /> Cargo
-                </label>
-                <input
-                  placeholder="Ex: Vendedor"
-                  className="w-full bg-slate-900 border border-slate-700 p-3.5 rounded-xl text-white outline-none focus:border-purple-500"
-                  value={tituloCargo}
-                  onChange={(e) => setTituloCargo(e.target.value)}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-text-muted mb-1.5 block flex items-center gap-2">
+                    <Phone size={12} /> Celular / WhatsApp
+                  </label>
+                  <input
+                    type="tel"
+                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
+                    value={telefone}
+                    onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-text-muted mb-1.5 block flex items-center gap-2">
+                    <Briefcase size={12} /> Cargo
+                  </label>
+                  <input
+                    placeholder="Ex: Vendedor"
+                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
+                    value={tituloCargo}
+                    onChange={(e) => setTituloCargo(e.target.value)}
+                  />
+                </div>
               </div>
             </section>
 
             {/* 2. JORNADA */}
             <section className="space-y-4">
-              <div className="flex justify-between items-end border-b border-slate-800 pb-2">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <div className="flex justify-between items-end border-b border-border-subtle pb-2">
+                <h3 className="text-sm font-bold text-text-faint uppercase tracking-wider flex items-center gap-2">
                   <Clock size={16} /> Horários
                 </h3>
                 <button
                   type="button"
                   onClick={replicarHorarioSegunda}
-                  className="text-[10px] bg-purple-900/30 text-purple-400 border border-purple-900/50 px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-purple-600 hover:text-white transition-colors"
+                  className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-colors active:scale-95"
                 >
-                  <Copy size={12} /> Copiar Seg para Semana
+                  <Copy size={12} /> Copiar Seg → Sexta
                 </button>
               </div>
 
@@ -597,22 +663,26 @@ export default function ModalFuncionario({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {(['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as string[]).map((dia) => {
                   const diaErros = errosJornada[dia] || [];
+                  const diaLabel: Record<string, string> = {
+                    seg: 'Segunda', ter: 'Terça', qua: 'Quarta',
+                    qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
+                  };
                   return (
                     <div
                       key={dia}
-                      className={`relative rounded-xl border transition-all overflow-hidden ${
+                      className={`relative rounded-2xl border transition-all overflow-hidden ${
                         jornada[dia]?.ativo
-                          ? 'bg-slate-900 border-slate-700'
-                          : 'bg-slate-950/50 border-slate-800 opacity-60'
+                          ? 'bg-surface border-border-default'
+                          : 'bg-input-solid/30 border-border-subtle opacity-60'
                       }`}
                     >
                       <div
-                        className={`flex items-center justify-between p-3 ${
-                          jornada[dia]?.ativo ? 'bg-slate-800/50' : 'bg-transparent'
+                        className={`flex items-center justify-between p-3.5 ${
+                          jornada[dia]?.ativo ? 'bg-white/[0.02]' : 'bg-transparent'
                         }`}
                       >
-                        <span className="font-bold uppercase text-sm text-slate-300 flex items-center gap-2">
-                          {dia}
+                        <span className="font-bold text-sm text-text-secondary flex items-center gap-2">
+                          {diaLabel[dia] || dia.toUpperCase()}
                           {jornada[dia]?.ativo && <CheckCircle2 size={12} className="text-green-500" />}
                         </span>
 
@@ -623,60 +693,60 @@ export default function ModalFuncionario({
                             onChange={(e) => updateJornada(dia, 'ativo', e.target.checked)}
                             className="sr-only peer"
                           />
-                          <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:bg-purple-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+                          <div className="w-11 h-6 bg-border-input peer-focus:outline-none rounded-full peer peer-checked:bg-purple-600 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
                         </label>
                       </div>
 
                       {jornada[dia]?.ativo && (
-                        <div className="p-3 space-y-2">
+                        <div className="p-3.5 pt-0 space-y-2">
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <p className="text-[10px] text-slate-500 font-bold uppercase text-center">Manhã</p>
-                              <div className="flex items-center gap-1 bg-slate-950 rounded-lg p-1 border border-slate-800">
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Manhã</p>
+                              <div className="flex items-center gap-1.5 bg-input-solid/50 rounded-xl p-1.5 border border-border-default">
                                 <input
                                   type="time"
                                   value={jornada[dia].e1}
                                   onChange={(e) => updateJornada(dia, 'e1', e.target.value)}
-                                  className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1"
+                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
                                 />
-                                <span className="text-slate-600">-</span>
+                                <span className="text-text-dim text-xs">às</span>
                                 <input
                                   type="time"
                                   value={jornada[dia].s1}
                                   onChange={(e) => updateJornada(dia, 's1', e.target.value)}
-                                  className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1"
+                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
                                 />
                               </div>
                             </div>
 
-                            <div className="space-y-1">
-                              <p className="text-[10px] text-slate-500 font-bold uppercase text-center">Tarde</p>
-                              <div className="flex items-center gap-1 bg-slate-950 rounded-lg p-1 border border-slate-800">
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Tarde</p>
+                              <div className="flex items-center gap-1.5 bg-input-solid/50 rounded-xl p-1.5 border border-border-default">
                                 <input
                                   type="time"
                                   value={jornada[dia].e2}
                                   onChange={(e) => updateJornada(dia, 'e2', e.target.value)}
-                                  className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1"
+                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
                                 />
-                                <span className="text-slate-600">-</span>
+                                <span className="text-text-dim text-xs">às</span>
                                 <input
                                   type="time"
                                   value={jornada[dia].s2}
                                   onChange={(e) => updateJornada(dia, 's2', e.target.value)}
-                                  className="bg-transparent text-white text-xs font-mono w-full text-center outline-none p-1"
+                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
                                 />
                               </div>
                             </div>
                           </div>
 
-                          {/* ✅ NOVO: Regra do sábado (sábados do mês) */}
+                          {/* Regra do sábado (sábados do mês) */}
                           {dia === 'sab' && (
-                            <div className="mt-3 bg-slate-950 border border-slate-800 rounded-lg p-3 space-y-2">
+                            <div className="mt-2 bg-input-solid/50 border border-border-default rounded-xl p-3 space-y-2">
                               <div className="flex items-center justify-between">
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">
+                                <p className="text-[10px] text-text-faint font-bold uppercase">
                                   Sábados do mês que trabalha
                                 </p>
-                                <span className="text-[10px] text-slate-500">
+                                <span className="text-[10px] text-text-faint">
                                   (marque 1-5)
                                 </span>
                               </div>
@@ -689,10 +759,10 @@ export default function ModalFuncionario({
                                       key={n}
                                       type="button"
                                       onClick={() => toggleSabadoDoMes(n)}
-                                      className={`py-2 rounded-lg border text-xs font-bold transition-all ${
+                                      className={`py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
                                         active
-                                          ? 'bg-purple-600 border-purple-500 text-white'
-                                          : 'bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500'
+                                          ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/30'
+                                          : 'bg-hover-bg border-border-default text-text-secondary hover:border-white/20'
                                       }`}
                                       title={`${n}º sábado do mês`}
                                     >
@@ -702,7 +772,7 @@ export default function ModalFuncionario({
                                 })}
                               </div>
 
-                              <div className="text-[10px] text-slate-400 leading-relaxed">
+                              <div className="text-[10px] text-text-muted leading-relaxed">
                                 • Se não marcar nenhum, o sistema considera folga e <b>não cobra meta</b> no sábado. <br />
                                 • Ex.: 1º e 3º sábado → marque <b>1º</b> e <b>3º</b>.
                               </div>
@@ -710,7 +780,7 @@ export default function ModalFuncionario({
                           )}
 
                           {diaErros.length > 0 && (
-                            <div className="text-[10px] text-yellow-200 bg-yellow-900/10 border border-yellow-500/20 rounded-lg p-2">
+                            <div className="text-[10px] text-yellow-200 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-2">
                               {diaErros.map((m, i) => (
                                 <div key={i}>• {m}</div>
                               ))}
@@ -726,37 +796,37 @@ export default function ModalFuncionario({
 
             {/* 3. LOCALIZAÇÃO */}
             <section className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-text-faint uppercase tracking-wider border-b border-border-subtle pb-2 flex items-center gap-2">
                 <MapPin size={16} /> Validação de Ponto
               </h3>
 
-              <div className="bg-slate-900 p-4 rounded-xl border border-slate-800">
-                <label className="text-xs font-bold text-slate-400 mb-3 block">Modo de Validação</label>
+              <div className="bg-surface p-4 rounded-2xl border border-border-subtle">
+                <label className="text-xs font-bold text-text-muted mb-3 block">Modo de Validação</label>
 
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setModoValidacao('GPS')}
-                    className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all w-full ${
+                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all w-full active:scale-95 ${
                       modoValidacao === 'GPS'
-                        ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'
+                        ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/30'
+                        : 'bg-hover-bg border-border-default text-text-muted hover:border-white/20'
                     }`}
                   >
-                    <MapPin size={20} />
+                    <MapPin size={22} />
                     <span className="text-xs font-bold">GPS</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setModoValidacao('PC_IP')}
-                    className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all w-full ${
+                    className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all w-full active:scale-95 ${
                       modoValidacao === 'PC_IP'
-                        ? 'bg-emerald-600 border-emerald-500 text-white'
-                        : 'bg-slate-950 border-slate-700 text-slate-400 hover:border-slate-500'
+                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30'
+                        : 'bg-hover-bg border-border-default text-text-muted hover:border-white/20'
                     }`}
                   >
-                    <Monitor size={20} />
+                    <Monitor size={22} />
                     <span className="text-xs font-bold">IP (Wifi/Cabo)</span>
                   </button>
                 </div>
@@ -764,13 +834,13 @@ export default function ModalFuncionario({
 
               {modoValidacao === 'GPS' && (
                 <div className="space-y-4 animate-in fade-in">
-                  <label className="flex items-center gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800 cursor-pointer">
+                  <label className="flex items-center gap-3 bg-surface p-4 rounded-2xl border border-border-subtle cursor-pointer hover:border-border-default transition-colors">
                     <div
-                      className={`w-5 h-5 rounded border flex items-center justify-center ${
-                        pontoLivre ? 'bg-purple-600 border-purple-600' : 'border-slate-500'
+                      className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-colors ${
+                        pontoLivre ? 'bg-purple-600 border-purple-600' : 'border-border-input'
                       }`}
                     >
-                      {pontoLivre && <User size={12} className="text-white" />}
+                      {pontoLivre && <User size={12} className="text-text-primary" />}
                     </div>
                     <input
                       type="checkbox"
@@ -779,16 +849,16 @@ export default function ModalFuncionario({
                       className="hidden"
                     />
                     <div>
-                      <span className="font-bold block text-sm text-white">Trabalho Externo (Livre)</span>
-                      <span className="text-xs text-slate-400">Pode bater ponto em qualquer lugar.</span>
+                      <span className="font-bold block text-sm text-text-primary">Trabalho Externo (Livre)</span>
+                      <span className="text-xs text-text-muted">Pode bater ponto em qualquer lugar.</span>
                     </div>
                   </label>
 
                   {!pontoLivre && (
                     <div className="space-y-4">
                       {/* Sede Principal */}
-                      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-                        <div className="flex justify-between items-center">
+                      <div className="bg-surface p-4 rounded-2xl border border-border-subtle space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                           <span className="text-xs font-bold text-purple-400 uppercase">Sede Principal</span>
 
                           <div className="flex gap-2">
@@ -798,7 +868,7 @@ export default function ModalFuncionario({
                                 setModoMapaExtra('NONE');
                                 setMostrarMapaPrincipal((v) => !v);
                               }}
-                              className="text-xs bg-slate-800 text-slate-200 px-2 py-1 rounded flex items-center gap-1 border border-slate-700"
+                              className="text-xs bg-hover-bg text-text-secondary px-3 py-2 rounded-xl flex items-center gap-1.5 border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
                             >
                               <MapPin size={12} /> {mostrarMapaPrincipal ? 'Ocultar mapa' : 'Editar no mapa'}
                             </button>
@@ -806,7 +876,7 @@ export default function ModalFuncionario({
                             <button
                               type="button"
                               onClick={() => pegarLocalizacaoAtual('PRINCIPAL')}
-                              className="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded flex items-center gap-1"
+                              className="text-xs bg-blue-500/10 text-blue-400 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-blue-500/20 hover:bg-blue-500/20 transition-colors active:scale-95"
                             >
                               <MapPin size={12} /> Pegar GPS
                             </button>
@@ -815,21 +885,21 @@ export default function ModalFuncionario({
 
                         {/* Endereço referência */}
                         <div className="space-y-1">
-                          <label className="text-[10px] text-slate-500 font-bold uppercase">
+                          <label className="text-[10px] text-text-faint font-bold uppercase">
                             Endereço / Referência (opcional)
                           </label>
                           <input
                             placeholder="Ex: Av. Brasil, 123 - Centro"
                             value={enderecoPrincipal}
                             onChange={(e) => setEnderecoPrincipal(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white"
+                            className="w-full bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
                         </div>
 
                         {!!enderecoConferidoPrincipal && (
-                          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3">
-                            <p className="text-[10px] text-slate-500 font-bold uppercase">Endereço conferido</p>
-                            <p className="text-xs text-slate-200 mt-1">{enderecoConferidoPrincipal}</p>
+                          <div className="bg-input-solid/50 border border-border-default rounded-xl p-3">
+                            <p className="text-[10px] text-text-faint font-bold uppercase">Endereço conferido</p>
+                            <p className="text-xs text-text-secondary mt-1">{enderecoConferidoPrincipal}</p>
                           </div>
                         )}
 
@@ -838,29 +908,29 @@ export default function ModalFuncionario({
                             placeholder="Lat"
                             value={lat}
                             onChange={(e) => setLat(e.target.value)}
-                            className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white"
+                            className="bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
                           <input
                             placeholder="Lng"
                             value={lng}
                             onChange={(e) => setLng(e.target.value)}
-                            className="bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white"
+                            className="bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
                           <div className="relative">
                             <input
                               type="number"
                               value={raio}
                               onChange={(e) => setRaio(e.target.value)}
-                              className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white pl-12"
+                              className="w-full bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary pl-12 focus:border-purple-500 outline-none transition-colors"
                             />
-                            <span className="absolute left-3 top-3 text-xs text-slate-500">Raio:</span>
+                            <span className="absolute left-3 top-3.5 text-xs text-text-faint">Raio:</span>
                           </div>
                         </div>
 
                         {mostrarMapaPrincipal && (
                           <div className="pt-2">
                             <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} />
-                            <p className="text-[10px] text-slate-500 mt-2">
+                            <p className="text-[10px] text-text-faint mt-2">
                               Use CEP + número para máxima precisão, e ajuste clicando no mapa se necessário.
                             </p>
                           </div>
@@ -868,13 +938,13 @@ export default function ModalFuncionario({
                       </div>
 
                       {/* Locais Extras */}
-                      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
-                        <p className="text-xs font-bold text-slate-400 uppercase">Locais Extras</p>
+                      <div className="bg-surface p-4 rounded-2xl border border-border-subtle space-y-3">
+                        <p className="text-xs font-bold text-text-muted uppercase">Locais Extras</p>
 
                         {locaisExtras.map((loc, idx) => (
-                          <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-slate-700 space-y-2">
+                          <div key={idx} className="bg-input-solid/50 p-3 rounded-xl border border-border-default space-y-2">
                             <div className="flex justify-between items-center">
-                              <span className="text-xs font-bold text-white">{loc.nome}</span>
+                              <span className="text-xs font-bold text-text-primary">{loc.nome}</span>
                               <div className="flex gap-2">
                                 <button
                                   type="button"
@@ -882,14 +952,14 @@ export default function ModalFuncionario({
                                     setModoMapaExtra(idx);
                                     setMostrarMapaPrincipal(false);
                                   }}
-                                  className="text-xs bg-slate-800 text-blue-300 px-2 py-1 rounded border border-slate-700"
+                                  className="text-xs bg-hover-bg text-blue-300 px-2.5 py-1.5 rounded-xl border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
                                 >
                                   Editar no mapa
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => removeLocalExtra(idx)}
-                                  className="text-red-400 p-1"
+                                  className="text-red-400 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors"
                                   title="Remover local"
                                 >
                                   <Trash2 size={14} />
@@ -898,9 +968,9 @@ export default function ModalFuncionario({
                             </div>
 
                             {!!enderecosConferidosExtras[idx] && (
-                              <div className="bg-slate-900 border border-slate-800 rounded-lg p-2">
-                                <p className="text-[10px] text-slate-500 font-bold uppercase">Endereço conferido</p>
-                                <p className="text-xs text-slate-200 mt-1">{enderecosConferidosExtras[idx]}</p>
+                              <div className="bg-white/[0.02] border border-border-default rounded-xl p-2">
+                                <p className="text-[10px] text-text-faint font-bold uppercase">Endereço conferido</p>
+                                <p className="text-xs text-text-secondary mt-1">{enderecosConferidosExtras[idx]}</p>
                               </div>
                             )}
 
@@ -913,7 +983,7 @@ export default function ModalFuncionario({
                                   nova[idx] = { ...nova[idx], lat: e.target.value };
                                   setLocaisExtras(nova);
                                 }}
-                                className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                                className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                               />
                               <input
                                 placeholder="Lng"
@@ -923,7 +993,7 @@ export default function ModalFuncionario({
                                   nova[idx] = { ...nova[idx], lng: e.target.value };
                                   setLocaisExtras(nova);
                                 }}
-                                className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                                className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                               />
                               <input
                                 placeholder="Raio (m)"
@@ -934,28 +1004,28 @@ export default function ModalFuncionario({
                                   nova[idx] = { ...nova[idx], raio: e.target.value };
                                   setLocaisExtras(nova);
                                 }}
-                                className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                                className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                               />
                             </div>
                           </div>
                         ))}
 
                         {/* Novo Local Extra */}
-                        <div className="mt-3 p-3 rounded-lg border border-slate-700 bg-slate-950 space-y-2">
-                          <p className="text-[10px] text-slate-500 font-bold uppercase">Adicionar novo local</p>
+                        <div className="mt-3 p-3 rounded-xl border border-border-default bg-input-solid/50 space-y-2">
+                          <p className="text-[10px] text-text-faint font-bold uppercase">Adicionar novo local</p>
 
                           <input
                             placeholder="Nome do Local (Ex: Filial Centro)"
                             value={novoLocal.nome}
                             onChange={(e) => setNovoLocal({ ...novoLocal, nome: e.target.value })}
-                            className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                            className="w-full bg-hover-bg border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
 
                           <input
                             placeholder="Endereço / Referência (opcional)"
                             value={novoLocalEndereco}
                             onChange={(e) => setNovoLocalEndereco(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                            className="w-full bg-hover-bg border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -963,20 +1033,20 @@ export default function ModalFuncionario({
                               placeholder="Lat"
                               value={novoLocal.lat}
                               onChange={(e) => setNovoLocal({ ...novoLocal, lat: e.target.value })}
-                              className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                              className="bg-hover-bg border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                             />
                             <input
                               placeholder="Lng"
                               value={novoLocal.lng}
                               onChange={(e) => setNovoLocal({ ...novoLocal, lng: e.target.value })}
-                              className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                              className="bg-hover-bg border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                             />
                             <input
                               placeholder="Raio (m)"
                               type="number"
                               value={novoLocal.raio}
                               onChange={(e) => setNovoLocal({ ...novoLocal, raio: e.target.value })}
-                              className="bg-slate-900 border border-slate-700 p-2.5 rounded-lg text-xs text-white"
+                              className="bg-hover-bg border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                             />
                           </div>
 
@@ -984,7 +1054,7 @@ export default function ModalFuncionario({
                             <button
                               type="button"
                               onClick={() => pegarLocalizacaoAtual('EXTRA')}
-                              className="flex-1 bg-slate-800 text-blue-400 p-2.5 rounded-lg border border-slate-700 text-xs font-bold flex items-center justify-center gap-2"
+                              className="flex-1 bg-hover-bg text-blue-400 p-2.5 rounded-xl border border-border-default text-xs font-bold flex items-center justify-center gap-2 hover:bg-hover-bg-strong transition-colors active:scale-95"
                             >
                               <MapPin size={16} /> Pegar GPS
                             </button>
@@ -992,7 +1062,7 @@ export default function ModalFuncionario({
                             <button
                               type="button"
                               onClick={() => setModoMapaExtra('NOVO')}
-                              className="flex-1 bg-slate-800 text-purple-300 p-2.5 rounded-lg border border-slate-700 text-xs font-bold"
+                              className="flex-1 bg-hover-bg text-purple-300 p-2.5 rounded-xl border border-border-default text-xs font-bold hover:bg-hover-bg-strong transition-colors active:scale-95"
                             >
                               Selecionar no mapa
                             </button>
@@ -1001,7 +1071,7 @@ export default function ModalFuncionario({
                               type="button"
                               onClick={() => {
                                 if (!novoLocal.nome || !novoLocal.lat || !novoLocal.lng)
-                                  return alert('Defina nome e localização (lat/lng).');
+                                  return toast.error('Defina nome e localização (lat/lng).');
 
                                 setLocaisExtras([
                                   ...locaisExtras,
@@ -1012,7 +1082,7 @@ export default function ModalFuncionario({
                                 setNovoLocalEndereco('');
                                 setModoMapaExtra('NONE');
                               }}
-                              className="bg-slate-800 text-green-400 p-2.5 rounded-lg border border-slate-700 font-bold text-xs"
+                              className="bg-green-600/20 text-green-400 p-2.5 rounded-xl border border-green-500/20 font-bold text-xs hover:bg-green-600/30 transition-colors active:scale-95"
                             >
                               ADD
                             </button>
@@ -1029,7 +1099,7 @@ export default function ModalFuncionario({
                                 <button
                                   type="button"
                                   onClick={() => setModoMapaExtra('NONE')}
-                                  className="text-xs bg-slate-800 text-slate-200 px-3 py-1.5 rounded border border-slate-700"
+                                  className="text-xs bg-hover-bg text-text-secondary px-3 py-1.5 rounded-xl border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
                                 >
                                   Fechar mapa
                                 </button>
@@ -1049,7 +1119,7 @@ export default function ModalFuncionario({
                               <button
                                 type="button"
                                 onClick={() => setModoMapaExtra('NONE')}
-                                className="text-xs bg-slate-800 text-slate-200 px-3 py-1.5 rounded border border-slate-700"
+                                className="text-xs bg-elevated-solid text-text-secondary px-3 py-1.5 rounded border border-border-input"
                               >
                                 Fechar mapa
                               </button>
@@ -1063,8 +1133,8 @@ export default function ModalFuncionario({
               )}
 
               {modoValidacao === 'PC_IP' && (
-                <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-4 animate-in fade-in">
-                  <div className="flex items-center gap-3 bg-emerald-900/20 p-3 rounded-lg border border-emerald-500/30">
+                <div className="bg-surface p-4 rounded-2xl border border-border-subtle space-y-4 animate-in fade-in">
+                  <div className="flex items-center gap-3 bg-emerald-500/10 p-3.5 rounded-xl border border-emerald-500/20">
                     <Monitor className="text-emerald-400" size={20} />
                     <div>
                       <p className="text-sm font-bold text-emerald-100">Controle por IP</p>
@@ -1075,25 +1145,25 @@ export default function ModalFuncionario({
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-slate-400 mb-1.5 block">IPs Permitidos</label>
+                    <label className="text-xs font-bold text-text-muted mb-1.5 block">IPs Permitidos</label>
                     <div className="flex gap-2">
                       <input
                         placeholder="Ex: 191.23.45.67"
                         value={ipsPermitidos}
                         onChange={(e) => setIpsPermitidos(e.target.value)}
-                        className="flex-1 bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-white font-mono"
+                        className="flex-1 bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary font-mono focus:border-purple-500 outline-none transition-colors"
                       />
                       <button
                         type="button"
                         onClick={capturarIpAtual}
                         disabled={capturandoIp}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 rounded-lg font-bold text-xs flex items-center gap-2"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 rounded-xl font-bold text-xs flex items-center gap-2 active:scale-95 transition-all"
                       >
                         {capturandoIp ? <RefreshCw className="animate-spin" size={16} /> : <Globe size={16} />}{' '}
                         Capturar
                       </button>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2 flex items-center gap-1">
+                    <p className="text-[10px] text-text-faint mt-2 flex items-center gap-1">
                       <Network size={10} /> Use IPs fixos ou públicos.
                     </p>
                   </div>
@@ -1103,13 +1173,13 @@ export default function ModalFuncionario({
 
             {/* 4. FOTO */}
             <section className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-text-faint uppercase tracking-wider border-b border-border-subtle pb-2 flex items-center gap-2">
                 <Upload size={16} /> Biometria (Foto)
               </h3>
 
               <div
-                className={`bg-slate-900 p-6 rounded-xl border border-slate-800 border-dashed flex flex-col items-center justify-center text-center gap-3 transition-colors ${
-                  dragOver ? 'bg-slate-800/60' : 'hover:bg-slate-800/30'
+                className={`bg-surface p-6 rounded-2xl border border-border-default border-dashed flex flex-col items-center justify-center text-center gap-3 transition-colors ${
+                  dragOver ? 'bg-hover-bg' : 'hover:bg-white/[0.02]'
                 }`}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -1143,8 +1213,8 @@ export default function ModalFuncionario({
                     </button>
                   </div>
                 ) : (
-                  <div className="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center">
-                    <ImageIcon size={28} className="text-slate-500" />
+                  <div className="w-20 h-20 bg-elevated-solid rounded-full flex items-center justify-center">
+                    <ImageIcon size={28} className="text-text-faint" />
                   </div>
                 )}
 
@@ -1155,7 +1225,7 @@ export default function ModalFuncionario({
                   >
                     {funcionarioEdicao ? 'Alterar Foto Atual' : 'Enviar Foto'}
                   </label>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-text-faint">
                     Dica: foto frontal, boa luz, sem óculos/boné. (JPG/PNG até 5MB)
                   </p>
                 </div>
@@ -1174,17 +1244,42 @@ export default function ModalFuncionario({
                   className="hidden"
                 />
               </div>
+
+              {/* Checkbox: exigir foto do funcionário no primeiro acesso */}
+              {!fotoArquivo && !funcionarioEdicao?.fotoPerfilUrl ? (
+                <label className="flex items-start gap-3 bg-elevated p-4 rounded-xl border border-border-subtle cursor-pointer hover:bg-elevated-solid/70 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={exigirFotoFuncionario}
+                    onChange={(e) => setExigirFotoFuncionario(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-purple-500 rounded"
+                  />
+                  <div>
+                    <span className="text-sm text-text-secondary font-medium">
+                      Exigir que o funcionário envie sua foto no primeiro acesso
+                    </span>
+                    <p className="text-[11px] text-text-faint mt-1">
+                      Após trocar a senha, o funcionário será obrigado a tirar uma selfie antes de acessar o sistema.
+                    </p>
+                  </div>
+                </label>
+              ) : (
+                <div className="flex items-center gap-2 bg-green-900/20 border border-green-500/20 p-3 rounded-xl">
+                  <CheckCircle2 size={16} className="text-green-400 flex-shrink-0" />
+                  <span className="text-sm text-green-300">Foto de referência cadastrada</span>
+                </div>
+              )}
             </section>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="p-4 md:p-6 border-t border-slate-800 bg-slate-900 md:rounded-b-2xl sticky bottom-0 z-10 flex-shrink-0">
+        <div className="p-4 md:p-6 border-t border-border-subtle bg-surface-solid/80 backdrop-blur-sm md:rounded-b-2xl sticky bottom-0 z-10 flex-shrink-0" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)' }}>
           <button
             onClick={salvar}
             disabled={loading}
-            className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base ${
-              funcionarioEdicao ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'
+            className={`w-full py-4 rounded-2xl font-bold text-text-primary shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base active:scale-[0.98] ${
+              funcionarioEdicao ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/30' : 'bg-green-600 hover:bg-green-700 shadow-green-900/30'
             }`}
           >
             {loading ? (

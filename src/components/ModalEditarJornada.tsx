@@ -190,19 +190,19 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-slate-900 w-full max-w-2xl rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm">
+      <div className="bg-surface-solid w-full max-w-2xl rounded-2xl border border-border-input shadow-2xl flex flex-col max-h-[90vh]">
         {/* Cabeçalho */}
-        <div className="flex justify-between items-center p-6 border-b border-slate-800">
+        <div className="flex justify-between items-center p-6 border-b border-border-input">
           <div>
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
               <Clock className="text-purple-400" /> Configurar Escala
             </h3>
-            <p className="text-slate-400 text-sm">
-              Funcionário: <span className="text-white font-bold">{usuario.nome}</span>
+            <p className="text-text-muted text-sm">
+              Funcionário: <span className="text-text-primary font-bold">{usuario.nome}</span>
             </p>
           </div>
-          <button onClick={aoFechar} className="text-slate-500 hover:text-white">
+          <button onClick={aoFechar} className="text-text-faint hover:text-text-primary">
             <X size={24} />
           </button>
         </div>
@@ -210,15 +210,15 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
         {/* Corpo com Scroll */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
           {/* Modelos + Copiar */}
-          <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 space-y-3">
+          <div className="bg-elevated p-4 rounded-xl border border-border-input space-y-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-slate-400 font-bold uppercase flex items-center gap-2">
+              <p className="text-xs text-text-muted font-bold uppercase flex items-center gap-2">
                 <Copy size={12} /> Modelos Rápidos
               </p>
 
               <button
                 onClick={() => copiarSegundaParaSemana('MANTER_ATIVO')}
-                className="bg-slate-900/40 hover:bg-slate-900/70 border border-slate-700 text-slate-200 px-3 py-2 rounded text-xs font-bold transition-all flex items-center gap-2"
+                className="bg-surface/40 hover:bg-surface-solid/70 border border-border-input text-text-secondary px-3 py-2 rounded text-xs font-bold transition-all flex items-center gap-2"
                 title="Copia os horários da Segunda para os demais dias, mantendo o 'ativo' de cada dia"
               >
                 <Copy size={14} /> Copiar Segunda → Semana
@@ -244,16 +244,16 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
             {/* 12x36 */}
             <div className="grid grid-cols-12 gap-3 items-center pt-2">
               <div className="col-span-12 sm:col-span-4">
-                <p className="text-[11px] text-slate-400 font-bold uppercase">12x36</p>
-                <p className="text-[11px] text-slate-500">Alterna dias ativos/inativos</p>
+                <p className="text-[11px] text-text-muted font-bold uppercase">12x36</p>
+                <p className="text-[11px] text-text-faint">Alterna dias ativos/inativos</p>
               </div>
 
               <div className="col-span-12 sm:col-span-5">
-                <label className="text-[10px] text-slate-500 block mb-1">Dia base (trabalha)</label>
+                <label className="text-[10px] text-text-faint block mb-1">Dia base (trabalha)</label>
                 <select
                   value={diaBase12x36}
                   onChange={(e) => setDiaBase12x36(e.target.value as DiaChave)}
-                  className="w-full bg-slate-950 border border-slate-600 rounded p-2 text-white text-xs"
+                  className="w-full bg-page border border-border-input rounded p-2 text-text-primary text-xs"
                 >
                   {DIAS.map((d) => (
                     <option key={d.chave} value={d.chave}>
@@ -273,8 +273,8 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
               </div>
 
               <div className="col-span-12">
-                <p className="text-[11px] text-slate-500">
-                  Padrão aplicado: <span className="text-slate-300 font-bold">07:00 → 19:00</span> (intervalo vazio; edite se quiser).
+                <p className="text-[11px] text-text-faint">
+                  Padrão aplicado: <span className="text-text-secondary font-bold">07:00 → 19:00</span> (intervalo vazio; edite se quiser).
                 </p>
               </div>
             </div>
@@ -283,7 +283,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
             <div className="flex justify-end">
               <button
                 onClick={() => copiarSegundaParaSemana('COPIAR_TUDO')}
-                className="text-[11px] text-slate-400 hover:text-white underline underline-offset-4"
+                className="text-[11px] text-text-muted hover:text-text-primary underline underline-offset-4"
                 title="Copia inclusive o 'ativo' da Segunda para todos os dias (deixa todos iguais)"
               >
                 Copiar Segunda (incluindo ativo)
@@ -298,8 +298,8 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                 key={dia.chave}
                 className={`grid grid-cols-12 gap-2 items-center p-3 rounded-lg border ${
                   jornada[dia.chave]?.ativo
-                    ? 'bg-slate-800 border-slate-700'
-                    : 'bg-slate-900/50 border-slate-800 opacity-60'
+                    ? 'bg-elevated-solid border-border-input'
+                    : 'bg-surface border-border-input opacity-60'
                 }`}
               >
                 <div className="col-span-3 flex items-center gap-2">
@@ -307,52 +307,52 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                     type="checkbox"
                     checked={jornada[dia.chave]?.ativo}
                     onChange={() => toggleDia(dia.chave)}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-purple-600"
+                    className="w-4 h-4 rounded border-border-input bg-border-input text-purple-600"
                   />
-                  <span className="text-sm font-bold text-slate-300">{dia.label}</span>
+                  <span className="text-sm font-bold text-text-secondary">{dia.label}</span>
                 </div>
 
                 {jornada[dia.chave]?.ativo ? (
                   <div className="col-span-9 grid grid-cols-4 gap-2">
                     <div>
-                      <label className="text-[10px] text-slate-500 block">Entrada</label>
+                      <label className="text-[10px] text-text-faint block">Entrada</label>
                       <input
                         type="time"
                         value={jornada[dia.chave].e1}
                         onChange={(e) => handleChange(dia.chave, 'e1', e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-600 rounded p-1 text-white text-xs text-center"
+                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 block">Saída Almoço</label>
+                      <label className="text-[10px] text-text-faint block">Saída Almoço</label>
                       <input
                         type="time"
                         value={jornada[dia.chave].s1}
                         onChange={(e) => handleChange(dia.chave, 's1', e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-600 rounded p-1 text-white text-xs text-center"
+                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 block">Volta Almoço</label>
+                      <label className="text-[10px] text-text-faint block">Volta Almoço</label>
                       <input
                         type="time"
                         value={jornada[dia.chave].e2}
                         onChange={(e) => handleChange(dia.chave, 'e2', e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-600 rounded p-1 text-white text-xs text-center"
+                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 block">Saída</label>
+                      <label className="text-[10px] text-text-faint block">Saída</label>
                       <input
                         type="time"
                         value={jornada[dia.chave].s2}
                         onChange={(e) => handleChange(dia.chave, 's2', e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-600 rounded p-1 text-white text-xs text-center"
+                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
                       />
                     </div>
                   </div>
                 ) : (
-                  <div className="col-span-9 text-xs text-slate-600 italic text-center py-2">
+                  <div className="col-span-9 text-xs text-text-dim italic text-center py-2">
                     Dia de folga / Livre
                   </div>
                 )}
@@ -362,10 +362,10 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
         </div>
 
         {/* Rodapé */}
-        <div className="p-4 border-t border-slate-800 flex justify-end gap-3">
+        <div className="p-4 border-t border-border-input flex justify-end gap-3">
           <button
             onClick={aoFechar}
-            className="px-4 py-2 text-slate-400 hover:text-white text-sm font-bold transition-colors"
+            className="px-4 py-2 text-text-muted hover:text-text-primary text-sm font-bold transition-colors"
           >
             Cancelar
           </button>

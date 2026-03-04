@@ -404,13 +404,13 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
             </button>
 
             {menuAberto && (
-                <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-2 w-56 bg-elevated-solid border border-border-input rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="p-2 space-y-1">
-                        <button onClick={baixarPDF} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileText size={16} className="text-red-400"/> PDF (Baixar)</button>
-                        <button onClick={gerarExcel} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileJson size={16} className="text-green-400"/> Excel (.xlsx)</button>
-                        <div className="h-px bg-slate-700 my-1"></div>
-                        <button onClick={baixarAFD} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-blue-400"/> Arquivo AFD (.txt)</button>
-                        <button onClick={baixarAFDT} className="w-full flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-yellow-400"/> Arquivo AFDT (.txt)</button>
+                        <button onClick={baixarPDF} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileText size={16} className="text-red-400"/> PDF (Baixar)</button>
+                        <button onClick={gerarExcel} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileJson size={16} className="text-green-400"/> Excel (.xlsx)</button>
+                        <div className="h-px bg-border-input my-1"></div>
+                        <button onClick={baixarAFD} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-blue-400"/> Arquivo AFD (.txt)</button>
+                        <button onClick={baixarAFDT} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-yellow-400"/> Arquivo AFDT (.txt)</button>
                     </div>
                 </div>
             )}

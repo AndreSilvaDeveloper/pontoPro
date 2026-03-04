@@ -1,13 +1,15 @@
 'use client';
 
 import { format } from 'date-fns';
+import Image from 'next/image';
 import { Calendar, FileText, Filter, Trash2, User, Edit2 } from 'lucide-react';
+import type { RegistroUnificado } from '@/types/registro';
 
 export default function AdminRegistrosTable(props: {
-  registrosFiltrados: any[];
-  abrirModalEdicao: (reg: any) => void;
-  excluirPonto: (reg: any) => void;
-  excluirAusencia: (reg: any) => void;
+  registrosFiltrados: RegistroUnificado[];
+  abrirModalEdicao: (reg: RegistroUnificado) => void;
+  excluirPonto: (reg: RegistroUnificado) => void;
+  excluirAusencia: (reg: RegistroUnificado) => void;
 }) {
   const { registrosFiltrados, abrirModalEdicao, excluirPonto, excluirAusencia } = props;
 
@@ -32,8 +34,8 @@ export default function AdminRegistrosTable(props: {
   };
 
   return (
-    <div className="bg-slate-900/40 backdrop-blur-xl rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
-      <div className="hidden md:grid grid-cols-5 bg-slate-950/50 p-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5">
+    <div className="bg-surface/40 backdrop-blur-xl rounded-3xl border border-border-subtle overflow-hidden shadow-2xl">
+      <div className="hidden md:grid grid-cols-5 bg-input-solid/50 p-4 text-[10px] font-bold text-text-faint uppercase tracking-widest border-b border-border-subtle">
         <div className="pl-2">Funcionário</div>
         <div>Data</div>
         <div>Hora / Tipo</div>
@@ -52,29 +54,39 @@ export default function AdminRegistrosTable(props: {
             >
               {/* User */}
               <div className="flex items-center gap-3 pl-2">
-                <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
-                    reg.tipo === 'AUSENCIA'
-                      ? 'bg-yellow-500/20 text-yellow-500'
-                      : 'bg-purple-500/20 text-purple-300'
-                  }`}
-                >
-                  {reg.tipo === 'AUSENCIA' ? <FileText size={16} /> : <User size={16} />}
-                </div>
+                {reg.usuario.fotoPerfilUrl ? (
+                  <Image
+                    src={reg.usuario.fotoPerfilUrl}
+                    alt={reg.usuario.nome}
+                    width={36}
+                    height={36}
+                    className="w-9 h-9 rounded-xl object-cover shrink-0 shadow-lg border border-border-default"
+                  />
+                ) : (
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
+                      reg.tipo === 'AUSENCIA'
+                        ? 'bg-yellow-500/20 text-yellow-500'
+                        : 'bg-purple-500/20 text-purple-300'
+                    }`}
+                  >
+                    {reg.tipo === 'AUSENCIA' ? <FileText size={16} /> : <User size={16} />}
+                  </div>
+                )}
                 <div>
-                  <p className="font-bold text-slate-200 text-sm">{reg.usuario.nome}</p>
-                  <p className="text-[10px] text-slate-500 truncate max-w-[120px]">{reg.usuario.email}</p>
+                  <p className="font-bold text-text-secondary text-sm">{reg.usuario.nome}</p>
+                  <p className="text-[10px] text-text-faint truncate max-w-[120px]">{reg.usuario.email}</p>
                 </div>
               </div>
 
               {/* Data */}
-              <div className="flex items-center gap-2 text-slate-300">
-                <Calendar size={14} className="md:hidden text-slate-500" />
+              <div className="flex items-center gap-2 text-text-secondary">
+                <Calendar size={14} className="md:hidden text-text-faint" />
                 <span className="text-sm font-semibold tracking-tight">
                   {format(new Date(reg.dataHora), 'dd/MM/yyyy')}
                 </span>
                 {reg.tipo === 'AUSENCIA' && reg.extra?.dataFim && reg.extra.dataFim !== reg.dataHora && (
-                  <span className="text-[10px] px-1.5 py-0.5 bg-slate-800 rounded text-slate-400">
+                  <span className="text-[10px] px-1.5 py-0.5 bg-elevated-solid rounded text-text-muted">
                     até {format(new Date(reg.extra.dataFim), 'dd/MM')}
                   </span>
                 )}
@@ -89,7 +101,7 @@ export default function AdminRegistrosTable(props: {
                     </span>
 
                     <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">
+                      <span className="text-[9px] font-bold text-text-faint uppercase tracking-wide">
                         {reg.subTipo?.replace('_', ' ')}
                       </span>
 
@@ -117,7 +129,7 @@ export default function AdminRegistrosTable(props: {
                     {/* ✅ NOVO: mostrar HH:mm–HH:mm quando for FOLGA parcial */}
                     {isFolgaParcial(reg) && (
                       <span className="text-sm font-bold text-yellow-300 font-mono bg-yellow-900/20 px-2 py-0.5 rounded border border-yellow-600/20">
-                        {format(new Date(reg.dataHora), 'HH:mm')}–{format(new Date(reg.extra.dataFim), 'HH:mm')}
+                        {format(new Date(reg.dataHora), 'HH:mm')}–{format(new Date(reg.extra.dataFim!), 'HH:mm')}
                       </span>
                     )}
 
@@ -139,7 +151,7 @@ export default function AdminRegistrosTable(props: {
               </div>
 
               {/* Local */}
-              <div className="flex items-center gap-2 text-slate-400 text-xs truncate pr-4">
+              <div className="flex items-center gap-2 text-text-muted text-xs truncate pr-4">
                 {reg.descricao ? (
                   <span className="truncate" title={reg.descricao}>
                     {reg.descricao}
@@ -157,7 +169,7 @@ export default function AdminRegistrosTable(props: {
                   <a
                     href={reg.extra.comprovanteUrl}
                     target="_blank"
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition-all border border-white/5"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-elevated-solid hover:bg-elevated-solid text-text-secondary rounded-lg text-xs font-medium transition-all border border-border-subtle"
                   >
                     <FileText size={12} /> Ver Anexo
                   </a>
@@ -167,10 +179,10 @@ export default function AdminRegistrosTable(props: {
           ))
         ) : (
           <div className="p-12 text-center flex flex-col items-center gap-3">
-            <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center text-slate-600">
+            <div className="w-16 h-16 bg-elevated rounded-full flex items-center justify-center text-text-dim">
               <Filter size={32} />
             </div>
-            <p className="text-slate-500 text-sm">Nenhum registro encontrado para este período.</p>
+            <p className="text-text-faint text-sm">Nenhum registro encontrado para este período.</p>
           </div>
         )}
       </div>

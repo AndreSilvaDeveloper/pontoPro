@@ -1,14 +1,20 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Provider from "@/providers/SessionProvider"; 
+import Provider from "@/providers/SessionProvider";
+import ThemeProvider from "@/providers/ThemeProvider";
 import { Suspense } from "react";
-import { Toaster } from "sonner";
+import ThemedToaster from "@/components/ThemedToaster";
+import ThemeSyncer from "@/components/ThemeSyncer";
 import OnboardingMount from "@/components/onboarding/OnboardingMount";
 import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot";
 
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const viewport: Viewport = {
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: "WorkID - Gestão Inteligente",
@@ -23,21 +29,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
-        {/* Envolvemos tudo com o Provider */}
-        <Provider>
-          <Suspense fallback={null}>
-            <OnboardingMount />
-          </Suspense>
+        <ThemeProvider>
+          <Provider>
+            <ThemeSyncer />
+            <Suspense fallback={null}>
+              <OnboardingMount />
+            </Suspense>
 
-          {children}
+            {children}
 
-          <Toaster position="top-right" richColors theme="dark" closeButton />
-           <ImpersonationRoot />
- 
-        </Provider>
+            <ThemedToaster />
+             <ImpersonationRoot />
 
+          </Provider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -71,8 +71,8 @@ export default function DashboardGraficos({ registros }: { registros: any[] }) {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       
       {/* GRÁFICO 1: BARRAS (Ocupa 2 colunas) */}
-      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 col-span-1 md:col-span-2 shadow-lg">
-        <h3 className="text-slate-400 text-xs font-bold uppercase mb-4 tracking-wider">Produtividade (Últimos 7 dias)</h3>
+      <div className="bg-surface-solid p-4 rounded-xl border border-border-input col-span-1 md:col-span-2 shadow-lg">
+        <h3 className="text-text-muted text-xs font-bold uppercase mb-4 tracking-wider">Produtividade (Últimos 7 dias)</h3>
         <div className="h-[250px] w-full text-xs">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dadosBarras}>
@@ -91,8 +91,8 @@ export default function DashboardGraficos({ registros }: { registros: any[] }) {
       </div>
 
       {/* GRÁFICO 2: PIZZA (Ocupa 1 coluna) */}
-      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-lg flex flex-col">
-        <h3 className="text-slate-400 text-xs font-bold uppercase mb-4 tracking-wider">Motivos de Ausência</h3>
+      <div className="bg-surface-solid p-4 rounded-xl border border-border-input shadow-lg flex flex-col">
+        <h3 className="text-text-muted text-xs font-bold uppercase mb-4 tracking-wider">Motivos de Ausência</h3>
         <div className="h-[250px] w-full text-xs flex-1">
             {dadosPizza.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -115,7 +115,7 @@ export default function DashboardGraficos({ registros }: { registros: any[] }) {
                     </PieChart>
                 </ResponsiveContainer>
             ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500">
+                <div className="h-full flex flex-col items-center justify-center text-text-faint">
                     <p>Sem ausências no período.</p>
                     <p className="text-[10px] mt-1">Equipe 100% presente! 🚀</p>
                 </div>
