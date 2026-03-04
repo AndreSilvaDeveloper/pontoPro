@@ -12,14 +12,13 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  Calendar,
   Crown,
   ChevronRight,
   Mail,
   Shield,
   CreditCard,
   Receipt,
-  Building2,
+  QrCode,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import jsPDF from "jspdf";
@@ -27,7 +26,7 @@ import autoTable from "jspdf-autotable";
 import { format, differenceInDays, isValid, addDays } from "date-fns";
 import type { BillingStatus } from "@/lib/billing";
 
-import PaymentModal, { AsaasBundle } from "@/components/billing/PaymentModal";
+import PaymentModal, { AsaasBundle, type PayMode } from "@/components/billing/PaymentModal";
 
 // === FUNÇÕES AUXILIARES DE PIX (mantidas) ===
 const normalizeText = (text: string) =>
@@ -120,6 +119,8 @@ type FaturaState = {
   empresa: any;
   billing: BillingStatus;
   valor: number;
+  billingCycle: "MONTHLY" | "YEARLY";
+  billingMethod: "UNDEFINED" | "CREDIT_CARD";
   vencimento: Date | null;
   trialEndsAt: Date | null;
   billingAnchorAt: Date | null;
@@ -152,6 +153,7 @@ export default function PerfilAdmin() {
   const [msgAsaas, setMsgAsaas] = useState<string | null>(null);
 
   const [openPay, setOpenPay] = useState(false);
+  const [payMode, setPayMode] = useState<PayMode>("PIX");
 
   useEffect(() => {
     carregarDadosFinanceiros();
@@ -184,6 +186,8 @@ export default function PerfilAdmin() {
         empresa,
         billing,
         valor: Number(res.data.fatura?.valor ?? 0),
+        billingCycle: res.data.fatura?.billingCycle ?? "MONTHLY",
+        billingMethod: empresa?.billingMethod ?? "UNDEFINED",
         vencimento,
         trialEndsAt,
         billingAnchorAt,
@@ -234,7 +238,8 @@ export default function PerfilAdmin() {
     }
   };
 
-  const abrirPagamento = async () => {
+  const abrirPagamento = async (mode: PayMode = "PIX") => {
+    setPayMode(mode);
     setMsgAsaas(null);
     await carregarCobrancaAtual();
     if (!asaas) {
@@ -489,34 +494,58 @@ export default function PerfilAdmin() {
     vencZerado.setHours(0, 0, 0, 0);
     const diasParaVencimento = differenceInDays(vencZerado, hoje);
 
+    const payButtons = (variant: "red" | "yellow") => (
+      <div className="flex gap-2 shrink-0">
+        <button
+          onClick={() => abrirPagamento("PIX")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
+            variant === "red"
+              ? "bg-red-600 text-white hover:bg-red-700"
+              : "bg-yellow-500 text-black hover:bg-yellow-400"
+          }`}
+        >
+          <QrCode size={16} />
+          Pix
+        </button>
+        <button
+          onClick={() => abrirPagamento("BOLETO")}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
+            variant === "red"
+              ? "bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20"
+              : "bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/20"
+          }`}
+        >
+          <FileText size={16} />
+          Boleto
+        </button>
+      </div>
+    );
+
+    const isCartao = fatura.billingMethod === "CREDIT_CARD";
+
     if (diasParaVencimento <= -10) {
       return (
-        <div className="rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/40 to-slate-900/50 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden">
+        <div className="rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/40 to-slate-900/50 p-5 space-y-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-red-600/5 animate-pulse pointer-events-none" />
-          <div className="flex items-center gap-4 z-10">
+          <div className="flex items-center gap-4 z-10 relative">
             <div className="shrink-0 rounded-xl bg-red-600 p-3 text-white">
               <Lock size={22} />
             </div>
             <div>
               <p className="font-bold text-red-400 text-lg">Bloqueio de acesso</p>
-              <p className="text-sm text-slate-300">
+              <p className="text-sm text-text-secondary">
                 Fatura vencida h\u00e1 {Math.abs(diasParaVencimento)} dias. Regularize para continuar.
               </p>
             </div>
           </div>
-          <button
-            onClick={abrirPagamento}
-            className="z-10 shrink-0 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-red-700 transition-colors"
-          >
-            REGULARIZAR
-          </button>
+          {!isCartao && <div className="z-10 relative">{payButtons("red")}</div>}
         </div>
       );
     }
 
     if (diasParaVencimento < 0) {
       return (
-        <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-5 space-y-4">
           <div className="flex items-center gap-4">
             <div className="shrink-0 rounded-xl bg-red-500/10 p-3 text-red-400">
               <AlertTriangle size={22} />
@@ -528,19 +557,14 @@ export default function PerfilAdmin() {
               </p>
             </div>
           </div>
-          <button
-            onClick={abrirPagamento}
-            className="shrink-0 rounded-xl bg-red-500/10 border border-red-500/30 px-5 py-2.5 text-sm font-bold text-red-300 hover:bg-red-500/20 transition-colors"
-          >
-            PAGAR AGORA
-          </button>
+          {!isCartao && payButtons("red")}
         </div>
       );
     }
 
     if (diasParaVencimento <= 5) {
       return (
-        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 space-y-4">
           <div className="flex items-center gap-4">
             <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
               <Clock size={22} />
@@ -554,12 +578,7 @@ export default function PerfilAdmin() {
               </p>
             </div>
           </div>
-          <button
-            onClick={abrirPagamento}
-            className="shrink-0 rounded-xl bg-yellow-500 px-5 py-2.5 text-sm font-bold text-black hover:bg-yellow-400 transition-colors"
-          >
-            PAGAR AGORA
-          </button>
+          {!isCartao && payButtons("yellow")}
         </div>
       );
     }
@@ -570,7 +589,7 @@ export default function PerfilAdmin() {
   const cargo = (session?.user as any)?.cargo ?? "";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-page text-text-primary">
       {/* MODAL */}
       <PaymentModal
         open={openPay}
@@ -581,6 +600,7 @@ export default function PerfilAdmin() {
         onGenerate={gerarCobrancaAsaas}
         msg={msgAsaas}
         setMsg={setMsgAsaas}
+        mode={payMode}
       />
 
       <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8 space-y-6">
@@ -588,26 +608,26 @@ export default function PerfilAdmin() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin"
-            className="shrink-0 rounded-xl bg-slate-800/80 p-2.5 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+            className="shrink-0 rounded-xl bg-elevated/80 p-2.5 text-text-muted hover:bg-elevated-solid hover:text-text-primary transition-colors"
           >
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold tracking-tight">Minha Conta</h1>
-            <p className="text-xs text-slate-500">Perfil, assinatura e seguran\u00e7a</p>
+            <p className="text-xs text-text-faint">Perfil, assinatura e segurança</p>
           </div>
           {!loadingFatura && renderBillingBadge()}
         </div>
 
         {/* User Card */}
-        <div className="rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
+        <div className="rounded-2xl border border-border-input bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
           <div className="flex items-center gap-4">
             <div className="shrink-0 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600/20 to-purple-800/20 ring-1 ring-purple-500/20">
               <User size={28} className="text-purple-400" />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-lg font-bold">{session?.user?.name}</h2>
-              <div className="mt-1 flex items-center gap-2 text-sm text-slate-400">
+              <div className="mt-1 flex items-center gap-2 text-sm text-text-muted">
                 <Mail size={14} className="shrink-0" />
                 <span className="truncate">{session?.user?.email}</span>
               </div>
@@ -624,88 +644,150 @@ export default function PerfilAdmin() {
         {/* Billing Alert */}
         {!loadingFatura && renderBillingAlert()}
 
+        {/* Realizar Pagamento — só mostra para PIX/Boleto (não cartão recorrente) */}
+        {!loadingFatura && !fatura?.pago && fatura && fatura.billing.phase !== "TRIAL" && fatura.billingMethod !== "CREDIT_CARD" && (
+          <div className="rounded-2xl border border-border-input bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
+                <CreditCard size={16} className="text-emerald-400" />
+                Realizar Pagamento
+              </h3>
+              {fatura.vencimento && isValid(fatura.vencimento) && (
+                <p className="text-xs text-text-faint">
+                  Vencimento: <span className="text-text-primary font-medium">{formatSafe(fatura.vencimento)}</span>
+                  {" "}&middot;{" "}
+                  <span className="text-emerald-400 font-bold">
+                    R$ {fatura.valor.toFixed(2).replace(".", ",")}
+                    {fatura.billingCycle === "YEARLY" ? "/ano" : "/mês"}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => abrirPagamento("PIX")}
+                className="group flex flex-col items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-5 transition-all hover:border-emerald-500/40 hover:bg-emerald-950/30"
+              >
+                <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                  <QrCode size={24} />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-emerald-300">Pix</p>
+                  <p className="text-[11px] text-emerald-400/50 mt-0.5">QR Code e copia e cola</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => abrirPagamento("BOLETO")}
+                className="group flex flex-col items-center gap-3 rounded-xl border border-border-input bg-surface p-5 transition-all hover:border-border-input hover:bg-elevated"
+              >
+                <div className="rounded-xl bg-elevated-solid p-3 text-text-muted group-hover:bg-elevated-solid transition-colors">
+                  <FileText size={24} />
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-sm text-text-secondary">Boleto</p>
+                  <p className="text-[11px] text-text-faint mt-0.5">Linha digitável e PDF</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pagamento automático via cartão */}
+        {!loadingFatura && fatura && fatura.billingMethod === "CREDIT_CARD" && fatura.billing.phase !== "TRIAL" && (
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-5 flex items-center gap-4">
+            <div className="shrink-0 rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
+              <CheckCircle size={22} />
+            </div>
+            <div>
+              <p className="font-bold text-emerald-300">Pagamento automático ativo</p>
+              <p className="text-sm text-emerald-400/60">
+                Cobrança recorrente via cartão de crédito.{" "}
+                <Link href="/admin/perfil/pagamento" className="underline hover:text-emerald-300 transition-colors">
+                  Gerenciar
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Quick Links */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-3">
           <Link
             href="/admin/perfil/plano"
-            className="group flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition-all hover:border-purple-500/30 hover:bg-slate-900"
+            className="group flex items-center gap-3 rounded-2xl border border-border-input bg-surface p-4 transition-all hover:border-purple-500/30 hover:bg-surface-solid"
           >
-            <div className="shrink-0 rounded-xl bg-purple-500/10 p-3 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
-              <Crown size={20} />
+            <div className="shrink-0 rounded-xl bg-purple-500/10 p-2.5 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+              <Crown size={18} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm">Meu Plano</p>
-              <p className="text-xs text-slate-500">Gerencie sua assinatura</p>
+              <p className="text-[11px] text-text-faint">Assinatura</p>
             </div>
-            <ChevronRight size={18} className="shrink-0 text-slate-600 group-hover:text-purple-400 transition-colors" />
+            <ChevronRight size={16} className="shrink-0 text-text-dim group-hover:text-purple-400 transition-colors" />
+          </Link>
+
+          <Link
+            href="/admin/perfil/pagamento"
+            className="group flex items-center gap-3 rounded-2xl border border-border-input bg-surface p-4 transition-all hover:border-emerald-500/30 hover:bg-surface-solid"
+          >
+            <div className="shrink-0 rounded-xl bg-emerald-500/10 p-2.5 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+              <CreditCard size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm">Pagamento</p>
+              <p className="text-[15px] text-text-faint">Ciclo e método</p>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-text-dim group-hover:text-emerald-400 transition-colors" />
           </Link>
 
           <Link
             href="/admin/perfil/historico"
-            className="group flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-5 transition-all hover:border-slate-700 hover:bg-slate-900"
+            className="group flex items-center gap-3 rounded-2xl border border-border-input bg-surface p-4 transition-all hover:border-border-input hover:bg-surface-solid"
           >
-            <div className="shrink-0 rounded-xl bg-slate-800 p-3 text-slate-400 group-hover:bg-slate-700 transition-colors">
-              <Receipt size={20} />
+            <div className="shrink-0 rounded-xl bg-elevated-solid p-2.5 text-text-muted group-hover:bg-elevated-solid transition-colors">
+              <Receipt size={18} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm">Hist\u00f3rico de Faturas</p>
-              <p className="text-xs text-slate-500">Veja pagamentos anteriores</p>
+              <p className="font-bold text-sm">Histórico</p>
+              <p className="text-[11px] text-text-faint">Faturas anteriores</p>
             </div>
-            <ChevronRight size={18} className="shrink-0 text-slate-600 group-hover:text-slate-400 transition-colors" />
+            <ChevronRight size={16} className="shrink-0 text-text-dim group-hover:text-text-muted transition-colors" />
           </Link>
-
-          {!fatura?.pago && fatura && fatura.billing.phase !== "TRIAL" && (
-            <button
-              onClick={abrirPagamento}
-              className="group flex items-center gap-4 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-5 transition-all hover:border-emerald-500/30 hover:bg-emerald-950/30 sm:col-span-2"
-            >
-              <div className="shrink-0 rounded-xl bg-emerald-500/10 p-3 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
-                <CreditCard size={20} />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="font-bold text-sm text-emerald-300">Realizar Pagamento</p>
-                <p className="text-xs text-emerald-400/60">
-                  {fatura.vencimento && isValid(fatura.vencimento)
-                    ? `Vencimento: ${formatSafe(fatura.vencimento)} \u2022 R$ ${fatura.valor.toFixed(2).replace(".", ",")}`
-                    : "Gerar cobran\u00e7a via PIX ou Boleto"}
-                </p>
-              </div>
-              <ChevronRight size={18} className="shrink-0 text-emerald-600 group-hover:text-emerald-400 transition-colors" />
-            </button>
-          )}
         </div>
 
         {/* Alterar Senha */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-          <h3 className="mb-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-slate-400">
+        <div className="rounded-2xl border border-border-input bg-surface p-6">
+          <h3 className="mb-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
             <Lock size={16} className="text-yellow-500" />
-            Seguran\u00e7a
+            Segurança da Conta
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                <label className="mb-1.5 block text-xs font-medium text-text-faint">
                   Nova senha
                 </label>
                 <input
                   type="password"
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
+                  className="w-full rounded-xl border border-border-input bg-page px-4 py-3 text-sm text-text-primary outline-none transition-colors focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
                   placeholder="Digite a nova senha"
                   required
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-slate-500">
+                <label className="mb-1.5 block text-xs font-medium text-text-faint">
                   Confirmar senha
                 </label>
                 <input
                   type="password"
                   value={confirmar}
                   onChange={(e) => setConfirmar(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition-colors focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
+                  className="w-full rounded-xl border border-border-input bg-page px-4 py-3 text-sm text-text-primary outline-none transition-colors focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30"
                   placeholder="Digite novamente"
                   required
                 />

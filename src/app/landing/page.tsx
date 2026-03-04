@@ -157,9 +157,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-purple-500/10 bg-[#0a0e27]/80 backdrop-blur-xl">
         <nav className="container mx-auto flex items-center justify-center px-4 py-3 md:justify-between md:px-6 md:py-4">
           <Link href="/" className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-80">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-purple-800 shadow-lg shadow-purple-500/50">
-              <Rocket className="size-6 text-white" />
-            </div>
+            <img src="/logo.png" alt="WorkID" className="size-10 rounded-xl object-contain" />
             <span className="text-xl font-extrabold text-white md:text-2xl">WorkID</span>
           </Link>
 

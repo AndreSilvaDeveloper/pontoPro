@@ -140,23 +140,23 @@ export default function GestaoFeriados() {
   const anoAtual = new Date().getFullYear();
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Orbs decorativos */}
-      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-2xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
 
         {/* CABEÇALHO */}
         <div className="flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/5 transition-all active:scale-95" title="Voltar">
+            <Link href="/admin" className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95" title="Voltar">
               <ArrowLeft size={20} />
             </Link>
-            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+            <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
               <Calendar size={24} className="text-purple-400" />
             </div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Gestão de Feriados</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Gestão de Feriados</h1>
           </div>
         </div>
 
@@ -171,7 +171,7 @@ export default function GestaoFeriados() {
                 <button onClick={importarAutomatico} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                   <DownloadCloud size={18} /> Sim, importar
                 </button>
-                <button onClick={() => setConfirmandoImportacao(false)} className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl font-bold text-sm transition-colors">
+                <button onClick={() => setConfirmandoImportacao(false)} className="px-4 py-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-xl font-bold text-sm transition-colors">
                   Cancelar
                 </button>
               </div>
@@ -189,28 +189,28 @@ export default function GestaoFeriados() {
         </div>
 
         {/* Formulário Manual */}
-        <div className="bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-white/5 space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
-          <p className="text-xs text-slate-500 uppercase font-bold">Adicionar Feriado Local (Manual)</p>
+        <div className="bg-surface backdrop-blur-sm p-4 rounded-2xl border border-border-subtle space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
+          <p className="text-xs text-text-faint uppercase font-bold">Adicionar Feriado Local (Manual)</p>
 
           <form onSubmit={salvar} className="space-y-3">
             <div className="flex gap-3 items-end">
               <div className="flex-1">
-                <label className="text-xs text-slate-500 mb-1 block">Nome (ex: Aniversário da Cidade)</label>
+                <label className="text-xs text-text-faint mb-1 block">Nome (ex: Aniversário da Cidade)</label>
                 <input
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-white/10 p-2.5 rounded-xl text-white focus:border-purple-500 outline-none transition-colors"
+                  className="w-full bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                   required
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-500 mb-1 block">Data</label>
+                <label className="text-xs text-text-faint mb-1 block">Data</label>
                 <input
                   type="date"
                   value={data}
                   onChange={(e) => setData(e.target.value)}
-                  className="bg-slate-950/50 border border-white/10 p-2.5 rounded-xl text-white focus:border-purple-500 outline-none transition-colors"
+                  className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                   required
                 />
               </div>
@@ -226,7 +226,7 @@ export default function GestaoFeriados() {
 
             {/* Parcial */}
             <div className="flex flex-col gap-2">
-              <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+              <label className="inline-flex items-center gap-2 text-xs text-text-secondary">
                 <input
                   type="checkbox"
                   checked={parcial}
@@ -239,28 +239,28 @@ export default function GestaoFeriados() {
               {parcial && (
                 <div className="flex gap-3 items-end">
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Hora início</label>
+                    <label className="text-xs text-text-faint mb-1 block">Hora início</label>
                     <input
                       type="time"
                       value={horaInicio}
                       onChange={(e) => setHoraInicio(e.target.value)}
-                      className="bg-slate-950/50 border border-white/10 p-2.5 rounded-xl text-white focus:border-purple-500 outline-none transition-colors"
+                      className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-500 mb-1 block">Hora fim</label>
+                    <label className="text-xs text-text-faint mb-1 block">Hora fim</label>
                     <input
                       type="time"
                       value={horaFim}
                       onChange={(e) => setHoraFim(e.target.value)}
-                      className="bg-slate-950/50 border border-white/10 p-2.5 rounded-xl text-white focus:border-purple-500 outline-none transition-colors"
+                      className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                       required
                     />
                   </div>
 
-                  <div className="text-[11px] text-slate-500 pb-2">Ex: Quarta-feira de Cinzas (08:00–12:00)</div>
+                  <div className="text-[11px] text-text-faint pb-2">Ex: Quarta-feira de Cinzas (08:00–12:00)</div>
                 </div>
               )}
             </div>
@@ -280,11 +280,11 @@ export default function GestaoFeriados() {
                     <p className="text-sm text-red-300">Excluir este feriado?</p>
                     <div className="flex gap-2">
                       <button onClick={() => excluir(f.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors">Sim</button>
-                      <button onClick={() => setConfirmandoExclusao(null)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs font-bold transition-colors">Não</button>
+                      <button onClick={() => setConfirmandoExclusao(null)} className="px-3 py-1.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-xl text-xs font-bold transition-colors">Não</button>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-white/5 flex justify-between items-center group hover:border-white/10 transition-colors">
+                  <div className="bg-surface backdrop-blur-sm p-4 rounded-2xl border border-border-subtle flex justify-between items-center group hover:border-border-default transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="bg-purple-900/50 text-purple-300 p-2 rounded-xl font-bold text-sm text-center min-w-[60px] flex flex-col">
                         <span className="text-lg">{format(d, 'dd', { locale: ptBR })}</span>
@@ -292,7 +292,7 @@ export default function GestaoFeriados() {
                       </div>
 
                       <div>
-                        <span className="font-bold text-lg block text-white">
+                        <span className="font-bold text-lg block text-text-primary">
                           {parsed.baseNome || f.nome}
                           {parsed.horaInicio && parsed.horaFim && (
                             <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-yellow-600/20 text-yellow-300 border border-yellow-600/30">
@@ -300,13 +300,13 @@ export default function GestaoFeriados() {
                             </span>
                           )}
                         </span>
-                        <span className="text-xs text-slate-500">{format(d, 'yyyy', { locale: ptBR })}</span>
+                        <span className="text-xs text-text-faint">{format(d, 'yyyy', { locale: ptBR })}</span>
                       </div>
                     </div>
 
                     <button
                       onClick={() => setConfirmandoExclusao(f.id)}
-                      className="text-slate-500 hover:text-red-400 p-2 transition-colors"
+                      className="text-text-faint hover:text-red-400 p-2 transition-colors"
                       title="Excluir"
                     >
                       <Trash2 size={18} />
@@ -317,7 +317,7 @@ export default function GestaoFeriados() {
             );
           })}
 
-          {feriados.length === 0 && <p className="text-center text-slate-500 py-4">Nenhum feriado cadastrado.</p>}
+          {feriados.length === 0 && <p className="text-center text-text-faint py-4">Nenhum feriado cadastrado.</p>}
         </div>
       </div>
     </div>

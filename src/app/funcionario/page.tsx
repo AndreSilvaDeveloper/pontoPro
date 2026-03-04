@@ -6,11 +6,12 @@ import axios from 'axios';
 import {
   MapPin, Camera, LogOut, History, RefreshCcw,
   AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock,
-  PlusCircle, X, Save, HelpCircle
+  PlusCircle, X, Save, HelpCircle, ShieldAlert, Briefcase, UtensilsCrossed, Pause
 } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour';
+import ThemeToggle from '@/components/ThemeToggle';
 
 // ✅ TIPAGEM DOS TIPOS (para não errar string)
 type TipoSolicitacao =
@@ -61,6 +62,12 @@ export default function Home() {
     tipo: 'sucesso' | 'erro' | 'info';
     texto: string;
     pontoIdSugerido?: string | null;
+  } | null>(null);
+
+  // === CONFIRMAÇÃO DE AÇÃO CRÍTICA ===
+  const [modalConfirmacao, setModalConfirmacao] = useState<{
+    tipo: TipoSolicitacao;
+    avisos: string[];
   } | null>(null);
 
   // === RELÓGIO E CRONÔMETRO ===
@@ -125,10 +132,9 @@ export default function Home() {
     if (status === 'unauthenticated') {
       router.push('/login');
     } else if (status === 'authenticated') {
-      // @ts-ignore
       if (session?.user?.deveTrocarSenha) { router.push('/trocar-senha'); return; }
-      // @ts-ignore
       if (session?.user?.deveCadastrarFoto) { router.push('/cadastrar-foto'); return; }
+      if (!session?.user?.temAssinatura) { router.push('/cadastrar-assinatura'); return; }
       // @ts-ignore
       if (session?.user?.cargo === 'ADMIN') { router.push('/admin'); return; }
 
@@ -164,6 +170,32 @@ export default function Home() {
       },
       (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message })
     );
+  };
+
+  // === VERIFICAÇÃO ANTES DE AÇÕES CRÍTICAS ===
+  const tentarBaterPonto = (tipoAcao: TipoSolicitacao) => {
+    // Para SAIDA, verificar se houve almoço/intervalo
+    if (tipoAcao === 'SAIDA') {
+      const avisos: string[] = [];
+
+      if (!jaAlmocou && statusPonto !== 'SAIDA_ALMOCO') {
+        avisos.push('Você não registrou almoço hoje');
+      }
+
+      if (avisos.length > 0) {
+        setModalConfirmacao({ tipo: tipoAcao, avisos });
+        return;
+      }
+    }
+
+    baterPonto(tipoAcao);
+  };
+
+  const confirmarAcaoCritica = () => {
+    if (!modalConfirmacao) return;
+    const tipo = modalConfirmacao.tipo;
+    setModalConfirmacao(null);
+    baterPonto(tipo);
   };
 
   const baterPonto = async (tipoAcao?: TipoSolicitacao) => {
@@ -279,11 +311,35 @@ export default function Home() {
   };
 
   if (status === 'loading') return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-slate-400 gap-3">
+    <div className="min-h-screen bg-page flex items-center justify-center text-text-muted gap-3">
       <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
       Carregando...
     </div>
   );
+
+  // === STATUS VISUAL DO EXPEDIENTE ===
+  const getStatusInfo = () => {
+    if (!statusPonto || statusPonto === 'SAIDA') {
+      return { label: 'Fora do expediente', icon: Briefcase, color: 'slate', pulse: false };
+    }
+    if (statusPonto === 'ENTRADA' || statusPonto === 'VOLTA_ALMOCO' || statusPonto === 'VOLTA_INTERVALO' || statusPonto === 'PONTO') {
+      return { label: 'Trabalhando', icon: Briefcase, color: 'emerald', pulse: true };
+    }
+    if (statusPonto === 'SAIDA_ALMOCO') {
+      return { label: 'Em Almoço', icon: UtensilsCrossed, color: 'orange', pulse: true };
+    }
+    if (statusPonto === 'SAIDA_INTERVALO') {
+      return { label: 'Em Pausa', icon: Pause, color: 'amber', pulse: true };
+    }
+    return { label: 'Indefinido', icon: Briefcase, color: 'slate', pulse: false };
+  };
+
+  const statusColorMap: Record<string, { bg: string; text: string; border: string; dot: string }> = {
+    slate: { bg: 'bg-slate-500/10', text: 'text-text-muted', border: 'border-border-input/20', dot: 'bg-slate-400' },
+    emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', dot: 'bg-emerald-400' },
+    orange: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/20', dot: 'bg-orange-400' },
+    amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', dot: 'bg-amber-400' },
+  };
 
   // Componente Visual do Timer
   const IntervalDisplay = ({ label, tempo }: { label: string, tempo: string }) => (
@@ -294,15 +350,15 @@ export default function Home() {
         </div>
         <div>
           <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Status Atual</p>
-          <p className="text-sm font-bold uppercase tracking-wide text-white">{label}</p>
+          <p className="text-sm font-bold uppercase tracking-wide text-text-primary">{label}</p>
         </div>
       </div>
-      <span className="text-2xl font-mono font-bold text-white tracking-widest tabular-nums">{tempo}</span>
+      <span className="text-2xl font-mono font-bold text-text-primary tracking-widest tabular-nums">{tempo}</span>
     </div>
   );
 
   const renderizarBotoesInteligentes = () => {
-    const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-white relative overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed";
+    const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-text-primary relative overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed";
 
     if (!statusPonto || statusPonto === 'SAIDA') {
       return (
@@ -321,7 +377,7 @@ export default function Home() {
             </button>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-amber-400 shadow-lg active:scale-95 transition-all disabled:opacity-50">
+              <button onClick={() => baterPonto('SAIDA_INTERVALO')} disabled={loading} className="py-6 rounded-2xl font-bold flex flex-col items-center justify-center gap-2 bg-elevated/80 border border-border-input hover:bg-elevated-solid text-amber-400 shadow-lg active:scale-95 transition-all disabled:opacity-50">
                 {acaoEmProcesso === 'SAIDA_INTERVALO' ? <Loader2 className="animate-spin" size={32} /> : <Coffee size={32} />}
                 <span className="text-xs uppercase tracking-wider">{acaoEmProcesso === 'SAIDA_INTERVALO' ? 'Registrando...' : 'Pausa Café'}</span>
               </button>
@@ -332,7 +388,7 @@ export default function Home() {
             </div>
           )}
 
-          <button onClick={() => baterPonto('SAIDA')} disabled={loading} className="w-full py-4 rounded-xl font-medium border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center justify-center gap-2 text-sm transition-colors mt-2 disabled:opacity-50">
+          <button onClick={() => tentarBaterPonto('SAIDA')} disabled={loading} className="w-full py-4 rounded-xl font-medium border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center justify-center gap-2 text-sm transition-colors mt-2 disabled:opacity-50">
             {acaoEmProcesso === 'SAIDA' ? <Loader2 className="animate-spin" size={18} /> : <><LogOut size={18} /> Encerrar Expediente</>}
           </button>
         </div>
@@ -365,12 +421,12 @@ export default function Home() {
     return (
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-2">
-          <button onClick={() => setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual === 'ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><LogIn size={16} /> Entrada</button>
-          <button onClick={() => setTipoManual('SAIDA_ALMOCO')} className={`${btnFlex} ${tipoManual === 'SAIDA_ALMOCO' ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><CupSoda size={16} /> Almoço</button>
-          <button onClick={() => setTipoManual('VOLTA_ALMOCO')} className={`${btnFlex} ${tipoManual === 'VOLTA_ALMOCO' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><ArrowRightCircle size={16} /> Volta</button>
-          <button onClick={() => setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'SAIDA_INTERVALO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><Coffee size={16} /> Café</button>
-          <button onClick={() => setTipoManual('VOLTA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'VOLTA_INTERVALO' ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><ArrowRightCircle size={16} /> Volta</button>
-          <button onClick={() => setTipoManual('SAIDA')} className={`${btnFlex} ${tipoManual === 'SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}><LogOut size={16} /> Saída</button>
+          <button onClick={() => setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual === 'ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><LogIn size={16} /> Entrada</button>
+          <button onClick={() => setTipoManual('SAIDA_ALMOCO')} className={`${btnFlex} ${tipoManual === 'SAIDA_ALMOCO' ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><CupSoda size={16} /> Almoço</button>
+          <button onClick={() => setTipoManual('VOLTA_ALMOCO')} className={`${btnFlex} ${tipoManual === 'VOLTA_ALMOCO' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><ArrowRightCircle size={16} /> Volta</button>
+          <button onClick={() => setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'SAIDA_INTERVALO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><Coffee size={16} /> Café</button>
+          <button onClick={() => setTipoManual('VOLTA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'VOLTA_INTERVALO' ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><ArrowRightCircle size={16} /> Volta</button>
+          <button onClick={() => setTipoManual('SAIDA')} className={`${btnFlex} ${tipoManual === 'SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><LogOut size={16} /> Saída</button>
         </div>
 
         <button onClick={() => baterPonto()} disabled={loading || (configs.exigirFoto && cameraErro)} className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-lg shadow-xl transition-all active:scale-95 disabled:opacity-70 ${loading ? 'bg-slate-600' : 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white'}`}>
@@ -381,27 +437,27 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0f172a] text-slate-100 flex flex-col items-center justify-center p-4 pb-24 relative overflow-hidden font-sans" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <main className="min-h-screen bg-page text-text-secondary flex flex-col items-center justify-center p-4 pb-24 relative overflow-hidden font-sans" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
 
-      <div className="fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[-10%] right-[-10%] w-[400px] h-[400px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-md space-y-6 relative z-10">
 
         {/* CABEÇALHO */}
         <div
           data-tour="emp-header"
-          className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
+          className="flex justify-between items-center bg-surface/60 backdrop-blur-xl p-5 rounded-3xl border border-border-default shadow-2xl">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
                 {session?.user?.name?.charAt(0) || <User />}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-slate-900 rounded-full"></div>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-page rounded-full"></div>
             </div>
             <div>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-0.5">Olá, {session?.user?.name?.split(' ')[0]}</p>
-              <h1 className="font-mono text-xl font-bold text-white tracking-tight">{horaAtual || '--:--'}</h1>
+              <p className="text-xs text-text-muted font-bold uppercase tracking-widest mb-0.5">Olá, {session?.user?.name?.split(' ')[0]}</p>
+              <h1 className="font-mono text-xl font-bold text-text-primary tracking-tight">{horaAtual || '--:--'}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -412,11 +468,33 @@ export default function Home() {
               <HelpCircle size={16} />
               Tutorial
             </button>
-            <button data-tour="emp-logout" onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-white/5 hover:bg-red-500/20 rounded-2xl text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all active:scale-95">
+            <ThemeToggle className="p-3 rounded-2xl border border-border-subtle active:scale-95" />
+            <button data-tour="emp-logout" onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-hover-bg hover:bg-red-500/20 rounded-2xl text-text-muted hover:text-red-400 border border-border-subtle hover:border-red-500/30 transition-all active:scale-95">
               <LogOut size={20} />
             </button>
           </div>
         </div>
+
+        {/* STATUS DO EXPEDIENTE */}
+        {location && !carregandoStatus && (() => {
+          const info = getStatusInfo();
+          const colors = statusColorMap[info.color];
+          const Icon = info.icon;
+          return (
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${colors.bg} ${colors.border} animate-in fade-in slide-in-from-top-2`}>
+              <div className="relative">
+                <div className={`w-2.5 h-2.5 rounded-full ${colors.dot} ${info.pulse ? 'animate-pulse' : ''}`} />
+              </div>
+              <Icon size={16} className={colors.text} />
+              <span className={`text-sm font-bold ${colors.text} uppercase tracking-wider`}>{info.label}</span>
+              {jaAlmocou && statusPonto !== 'SAIDA' && statusPonto && (
+                <span className="ml-auto text-[10px] text-emerald-500/70 font-medium flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Almoço registrado
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* CRONÔMETRO DE INTERVALO */}
         {(statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO') && (
@@ -427,7 +505,7 @@ export default function Home() {
         )}
 
         {/* ÁREA PRINCIPAL (CÂMERA E AÇÃO) */}
-        <div data-tour="emp-main" className="bg-slate-900/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-white/5 p-5 space-y-5">
+        <div data-tour="emp-main" className="bg-surface/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-border-subtle p-5 space-y-5">
 
           {statusMsg && (
             <div className={`p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top-2 ${statusMsg.tipo === 'erro' ? 'bg-red-500/20 text-red-200 border border-red-500/30' : statusMsg.tipo === 'sucesso' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
@@ -444,7 +522,7 @@ export default function Home() {
           >
 
             {!configs.exigirFoto || !location ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-slate-950/40 text-slate-400 text-sm px-6 text-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-input-solid/40 text-text-muted text-sm px-6 text-center">
                 A câmera aparece após permitir o GPS (se a empresa exigir foto).
               </div>
             ) : !cameraErro ? (
@@ -462,15 +540,15 @@ export default function Home() {
                 </div>
               </>
             ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-center p-6">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-solid text-center p-6">
                 <div className="bg-red-500/10 p-4 rounded-full mb-3">
                   <AlertCircle size={32} className="text-red-500" />
                 </div>
                 <p className="text-red-400 font-bold mb-1">Câmera Indisponível</p>
-                <p className="text-slate-500 text-xs mb-4">Verifique as permissões do navegador</p>
+                <p className="text-text-faint text-xs mb-4">Verifique as permissões do navegador</p>
                 <button
                   onClick={tentarRecuperarCamera}
-                  className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold border border-slate-700 transition-colors"
+                  className="bg-elevated-solid hover:bg-elevated-solid text-text-primary px-4 py-2 rounded-xl text-xs font-bold border border-border-input transition-colors"
                 >
                   Tentar Novamente
                 </button>
@@ -484,8 +562,8 @@ export default function Home() {
                 <div className="bg-purple-500/10 p-6 rounded-full mb-4 animate-bounce">
                   <MapPin size={40} className="text-purple-500" />
                 </div>
-                <h3 className="text-white font-bold text-lg mb-2">Ativar Localização</h3>
-                <p className="text-slate-400 text-sm mb-6 max-w-[200px]">
+                <h3 className="text-text-primary font-bold text-lg mb-2">Ativar Localização</h3>
+                <p className="text-text-muted text-sm mb-6 max-w-[200px]">
                   Precisamos do seu GPS para validar o ponto.
                 </p>
 
@@ -501,8 +579,8 @@ export default function Home() {
               <>
                 {carregandoStatus ? (
                   <div className="py-10 text-center">
-                    <div className="inline-block w-8 h-8 border-4 border-slate-600 border-t-purple-500 rounded-full animate-spin mb-3"></div>
-                    <p className="text-slate-500 text-sm font-medium">Sincronizando...</p>
+                    <div className="inline-block w-8 h-8 border-4 border-border-input border-t-purple-500 rounded-full animate-spin mb-3"></div>
+                    <p className="text-text-faint text-sm font-medium">Sincronizando...</p>
                   </div>
                 ) : (
                   configs.fluxoEstrito ? renderizarBotoesInteligentes() : renderizarBotoesFlexiveis()
@@ -514,20 +592,69 @@ export default function Home() {
         </div>
 
         {/* AÇÃO RÁPIDA */}
-        <button data-tour="emp-forgot" onClick={abrirModalInclusao} className="w-full flex items-center justify-center gap-3 bg-slate-900/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-white/5 transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
+        <button data-tour="emp-forgot" onClick={abrirModalInclusao} className="w-full flex items-center justify-center gap-3 bg-surface/40 hover:bg-elevated/60 p-4 rounded-2xl border border-border-subtle transition-all active:scale-95 group backdrop-blur-sm cursor-pointer">
           <div className="bg-emerald-500/10 text-emerald-500 p-2.5 rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-colors"><PlusCircle size={20} /></div>
-          <span className="text-sm font-bold text-slate-400 group-hover:text-white">Esqueci de bater o Ponto</span>
+          <span className="text-sm font-bold text-text-muted group-hover:text-text-primary">Esqueci de bater o Ponto</span>
         </button>
 
         {!configs.ocultarSaldoHoras && (
           <div className="text-center">
-            <p className="text-[10px] text-slate-600 font-medium bg-slate-900/30 inline-block px-3 py-1 rounded-full border border-white/5">
+            <p className="text-[10px] text-text-dim font-medium bg-surface/30 inline-block px-3 py-1 rounded-full border border-border-subtle">
               Geolocalização Ativa &bull; WorkID
             </p>
           </div>
         )}
 
       </div>
+
+      {/* MODAL DE CONFIRMAÇÃO DE AÇÃO CRÍTICA */}
+      {modalConfirmacao && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalConfirmacao(null)} />
+          <div className="relative z-10 w-full max-w-sm bg-page border border-red-500/20 shadow-2xl shadow-red-500/10 rounded-3xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-5 flex items-center gap-4">
+              <div className="p-3 bg-red-500/20 rounded-2xl">
+                <ShieldAlert size={28} className="text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-text-primary font-bold text-lg">Tem certeza?</h3>
+                <p className="text-red-400/70 text-xs mt-0.5">Ação requer confirmação</p>
+              </div>
+            </div>
+
+            {/* Avisos */}
+            <div className="px-6 py-5 space-y-3">
+              {modalConfirmacao.avisos.map((aviso, i) => (
+                <div key={i} className="flex items-start gap-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                  <AlertCircle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-amber-200 text-sm font-medium">{aviso}</p>
+                </div>
+              ))}
+
+              <p className="text-text-muted text-sm text-center pt-2">
+                Deseja encerrar o expediente mesmo assim?
+              </p>
+            </div>
+
+            {/* Botões */}
+            <div className="px-6 pb-6 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setModalConfirmacao(null)}
+                className="py-4 rounded-xl font-bold text-sm bg-elevated-solid hover:bg-elevated-solid text-text-secondary border border-border-input transition-all active:scale-95"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={confirmarAcaoCritica}
+                className="py-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30 transition-all active:scale-95"
+              >
+                Sim, encerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE INCLUSÃO */}
       {modalInclusaoAberto && (
@@ -541,14 +668,14 @@ export default function Home() {
         >
 
           <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-overlay backdrop-blur-sm transition-opacity"
             onClick={() => setModalInclusaoAberto(false)}
           />
           <div
               data-tour="emp-modal-incluir"
               className="
                 relative z-10 w-full md:max-w-sm
-                bg-[#0f172a] border border-slate-700 shadow-2xl
+                bg-page border border-border-input shadow-2xl
                 rounded-3xl
                 px-6 pt-6
                 pb-[calc(1.5rem+env(safe-area-inset-bottom))]
@@ -558,11 +685,11 @@ export default function Home() {
               "
             >
 
-            <div data-tour="emp-header" className="flex justify-between items-center bg-slate-900/60 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-2xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <div data-tour="emp-header" className="flex justify-between items-center bg-surface/60 backdrop-blur-xl p-5 rounded-3xl border border-border-default shadow-2xl">
+              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <PlusCircle size={20} className="text-emerald-400" /> Incluir Registro
               </h3>
-              <button onClick={() => setModalInclusaoAberto(false)} className="text-slate-500 hover:text-white"><X size={20} /></button>
+              <button onClick={() => setModalInclusaoAberto(false)} className="text-text-faint hover:text-text-primary"><X size={20} /></button>
             </div>
 
             {/* ✅ AVISO VISUAL (FUNCIONA NO MOBILE) */}
@@ -601,17 +728,17 @@ export default function Home() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Data</label>
-                <input type="date" value={dataNova} onChange={e => setDataNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm text-center outline-none focus:border-purple-500 transition-colors" />
+                <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Data</label>
+                <input type="date" value={dataNova} onChange={e => setDataNova(e.target.value)} className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm text-center outline-none focus:border-purple-500 transition-colors" />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Tipo</label>
+                <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Tipo</label>
 
                 {/* ✅ agora com Saída Café / Volta Café (valores técnicos continuam) */}
                 <select
                   value={tipoNovo}
                   onChange={(e) => setTipoNovo(e.target.value as TipoSolicitacao)}
-                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-xs outline-none focus:border-purple-500 appearance-none"
+                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
                 >
                   <option value="ENTRADA">ENTRADA</option>
 
@@ -627,12 +754,12 @@ export default function Home() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Novo Horário</label>
-              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-4 rounded-2xl text-white text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20" />
+              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Novo Horário</label>
+              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20" />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
-              <textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater, estava em reunião..." className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors" />
+              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
+              <textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater, estava em reunião..." className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors" />
             </div>
             <button data-tour="emp-send-request" onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
               <Save size={18} /> Enviar Solicitação

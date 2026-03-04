@@ -14,21 +14,34 @@ import {
   TrendingUp,
   AlertTriangle,
 } from "lucide-react";
-import type { PlanoConfig, PlanoId } from "@/config/planos";
+import type { PlanoConfig, PlanoId, BillingCycle } from "@/config/planos";
+
+type PrecoAnual = {
+  mensal: number;
+  anual: number;
+  mensalEquivalente: number;
+  economia: number;
+};
+
+type PlanoComAnual = PlanoConfig & { precoAnual: PrecoAnual };
 
 type PlanoData = {
   ok: boolean;
   planoAtual: PlanoId;
   planoConfig: PlanoConfig;
+  billingCycle: BillingCycle;
   uso: { funcionarios: number; admins: number; filiais: number };
   calculo: {
     valorBase: number;
     extraFunc: number;
     extraAdm: number;
     extraFil: number;
+    totalMensal: number;
+    desconto: number;
+    cycle: BillingCycle;
     total: number;
   };
-  planos: PlanoConfig[];
+  planos: PlanoComAnual[];
   isFilial: boolean;
 };
 
@@ -77,7 +90,7 @@ export default function PlanoPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-page text-text-primary">
         Carregando...
       </div>
     );
@@ -85,29 +98,30 @@ export default function PlanoPage() {
 
   if (!data?.ok) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-page text-text-primary">
         Erro ao carregar dados do plano.
       </div>
     );
   }
 
-  const { planoAtual, planoConfig, uso, calculo, planos, isFilial } = data;
+  const { planoAtual, planoConfig, billingCycle, uso, calculo, planos, isFilial } = data;
+  const isYearly = billingCycle === "YEARLY";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
+    <div className="min-h-screen bg-page text-text-primary p-4 md:p-6">
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-input pb-4">
           <div className="flex items-center gap-3">
             <Link
               href="/admin/perfil"
-              className="rounded-lg bg-slate-800 p-2 text-slate-400 hover:bg-slate-700 hover:text-white"
+              className="rounded-lg bg-elevated-solid p-2 text-text-muted hover:bg-elevated-solid hover:text-text-primary"
             >
               <ArrowLeft size={20} />
             </Link>
             <div>
               <h1 className="text-xl font-bold">Meu Plano</h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-text-muted">
                 Gerencie sua assinatura e veja seu consumo
               </p>
             </div>
@@ -130,36 +144,43 @@ export default function PlanoPage() {
                 <Crown className="size-5 text-purple-400" />
                 <span className="text-sm font-medium text-purple-300">Plano atual</span>
               </div>
-              <span className="rounded-full bg-purple-600/20 px-3 py-1 text-xs font-bold text-purple-300">
+              <span className="rounded-full bg-orb-purple px-3 py-1 text-xs font-bold text-purple-300">
                 {planoConfig.nome}
               </span>
             </div>
 
             <div className="mb-4">
               <div className="flex items-baseline gap-1">
-                <span className="text-sm text-slate-400">R$</span>
+                <span className="text-sm text-text-muted">R$</span>
                 <span className="text-3xl font-extrabold">
                   {fmt(calculo.total).split(",")[0]}
                 </span>
-                <span className="text-lg font-bold text-slate-300">
+                <span className="text-lg font-bold text-text-secondary">
                   ,{fmt(calculo.total).split(",")[1]}
                 </span>
-                <span className="text-sm text-slate-500">/mês</span>
+                <span className="text-sm text-text-faint">
+                  /{isYearly ? "ano" : "mês"}
+                </span>
               </div>
-              {calculo.total !== calculo.valorBase && (
-                <p className="mt-1 text-xs text-slate-500">
+              {isYearly && (
+                <p className="mt-1 text-xs text-emerald-400">
+                  Equivale a R$ {fmt(calculo.totalMensal * 0.9)}/mês (10% de desconto)
+                </p>
+              )}
+              {calculo.total !== calculo.valorBase && !isYearly && (
+                <p className="mt-1 text-xs text-text-faint">
                   Base R$ {fmt(calculo.valorBase)} + excedentes R${" "}
                   {fmt(calculo.extraFunc + calculo.extraAdm + calculo.extraFil)}
                 </p>
               )}
             </div>
 
-            <p className="text-xs text-slate-500">{planoConfig.descricao}</p>
+            <p className="text-xs text-text-faint">{planoConfig.descricao}</p>
           </div>
 
           {/* Card consumo */}
-          <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-            <h3 className="text-sm font-medium text-slate-400">Consumo atual</h3>
+          <div className="space-y-3 rounded-2xl border border-border-input bg-surface p-6">
+            <h3 className="text-sm font-medium text-text-muted">Consumo atual</h3>
 
             <div className="space-y-3">
               <ConsumoBar
@@ -200,7 +221,7 @@ export default function PlanoPage() {
                   className={`relative rounded-2xl border p-5 transition-all ${
                     isCurrent
                       ? "border-purple-500/50 bg-purple-950/30 ring-1 ring-purple-500/30"
-                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                      : "border-border-input bg-surface hover:border-border-input"
                   }`}
                 >
                   {isCurrent && (
@@ -212,16 +233,25 @@ export default function PlanoPage() {
                   )}
 
                   <h3 className="text-lg font-bold">{p.nome}</h3>
-                  <p className="mt-1 text-xs text-slate-500">{p.descricao}</p>
+                  <p className="mt-1 text-xs text-text-faint">{p.descricao}</p>
 
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className="text-2xl font-extrabold">
                       R$ {fmt(p.preco)}
                     </span>
-                    <span className="text-xs text-slate-500">/mês</span>
+                    <span className="text-xs text-text-faint">/mês</span>
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-1">
+                    <span className="text-sm text-emerald-400 font-semibold">
+                      R$ {fmt(p.precoAnual.anual)}
+                    </span>
+                    <span className="text-xs text-emerald-400/60">/ano</span>
+                    <span className="text-[10px] text-emerald-400/80 ml-1">
+                      (R$ {fmt(p.precoAnual.mensalEquivalente)}/mês)
+                    </span>
                   </div>
 
-                  <ul className="mt-4 space-y-2 text-sm text-slate-400">
+                  <ul className="mt-4 space-y-2 text-sm text-text-muted">
                     <li className="flex items-center gap-2">
                       <Check size={14} className="text-emerald-400" />
                       Até {p.maxFuncionarios} funcionários
@@ -258,7 +288,7 @@ export default function PlanoPage() {
                     className={`mt-4 w-full rounded-xl py-2.5 text-sm font-bold transition-all ${
                       isCurrent
                         ? "cursor-default border border-purple-500/30 bg-transparent text-purple-300"
-                        : "border border-slate-700 bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50"
+                        : "border border-border-input bg-elevated-solid text-text-primary hover:bg-elevated-solid disabled:opacity-50"
                     }`}
                   >
                     {isCurrent
@@ -297,15 +327,15 @@ function ConsumoBar({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="flex items-center gap-1.5 text-slate-400">
+        <span className="flex items-center gap-1.5 text-text-muted">
           {icon}
           {label}
         </span>
-        <span className={exceeded ? "font-bold text-amber-400" : "text-slate-300"}>
+        <span className={exceeded ? "font-bold text-amber-400" : "text-text-secondary"}>
           {atual} / {isUnlimited ? "Ilim." : limite}
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+      <div className="h-1.5 overflow-hidden rounded-full bg-elevated-solid">
         <div
           className={`h-full rounded-full transition-all ${
             exceeded

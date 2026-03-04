@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import {
   X,
   QrCode,
@@ -36,7 +36,7 @@ export type AsaasBundle = {
   } | null;
 };
 
-type PayTab = "PIX" | "BOLETO";
+export type PayMode = "PIX" | "BOLETO";
 
 type Props = {
   open: boolean;
@@ -48,11 +48,8 @@ type Props = {
   msg?: string | null;
   setMsg?: (v: string | null) => void;
   boletoPdfUrl?: string | null;
+  mode?: PayMode;
 };
-
-function clsx(...v: Array<string | false | null | undefined>) {
-  return v.filter(Boolean).join(" ");
-}
 
 function formatDueDate(raw: string | null) {
   if (!raw) return "---";
@@ -71,9 +68,8 @@ export default function PaymentModal({
   msg,
   setMsg,
   boletoPdfUrl: boletoPdfUrlProp,
+  mode,
 }: Props) {
-  const [tab, setTab] = useState<PayTab>("PIX");
-
   const boletoPdfUrl = useMemo(() => {
     const b = asaas?.boleto;
     return boletoPdfUrlProp ?? b?.bankSlipUrl ?? b?.boletoUrl ?? null;
@@ -85,6 +81,11 @@ export default function PaymentModal({
 
   const faturaUrl = asaas?.pix?.invoiceUrl ?? asaas?.boleto?.invoiceUrl ?? null;
   const hasBoleto = Boolean(boletoPdfUrl || asaas?.boleto?.identificationField);
+
+  const showPix = hasPix && mode !== "BOLETO";
+  const showBoleto = hasBoleto && mode !== "PIX";
+
+  const headerTitle = mode === "PIX" ? "Pagar via Pix" : mode === "BOLETO" ? "Pagar via Boleto" : "Pagamento";
 
   useEffect(() => {
     if (!open) return;
@@ -101,12 +102,6 @@ export default function PaymentModal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (hasPix) setTab("PIX");
-    else if (hasBoleto) setTab("BOLETO");
-  }, [open, hasPix, hasBoleto]);
 
   const copiar = async (texto: string, okMsg: string) => {
     try {
@@ -125,71 +120,27 @@ export default function PaymentModal({
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700/50 shadow-2xl sm:rounded-2xl flex flex-col max-h-[100dvh] sm:max-h-[90dvh] overflow-hidden min-h-0">
+      <div className="relative w-full max-w-lg bg-surface-solid border border-border-input/50 shadow-2xl sm:rounded-2xl flex flex-col max-h-[100dvh] sm:max-h-[90dvh] overflow-hidden min-h-0">
         {/* Header */}
-        <div className="px-5 pt-5 pb-3 flex items-center justify-between border-b border-slate-800">
+        <div className="px-5 pt-5 pb-3 flex items-center justify-between border-b border-border-input">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400">
               <Receipt size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-white">Pagamento</h3>
-              <p className="text-xs text-slate-400">
-                Vencimento: <span className="text-white font-medium">{formatDueDate(asaas?.dueDate ?? null)}</span>
+              <h3 className="font-bold text-lg text-text-primary">{headerTitle}</h3>
+              <p className="text-xs text-text-muted">
+                Vencimento: <span className="text-text-primary font-medium">{formatDueDate(asaas?.dueDate ?? null)}</span>
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+            className="p-2 hover:bg-elevated-solid rounded-full text-text-muted transition-colors"
             aria-label="Fechar"
           >
             <X size={20} />
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="px-5 py-2 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between gap-4">
-          <div className="flex gap-1 bg-slate-800/50 rounded-lg p-1">
-            {hasPix && (
-              <button
-                onClick={() => setTab("PIX")}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                  tab === "PIX"
-                    ? "bg-emerald-600 text-white shadow-lg"
-                    : "text-slate-400 hover:text-white"
-                )}
-              >
-                <QrCode size={16} />
-                Pix
-              </button>
-            )}
-
-            {hasBoleto && (
-              <button
-                onClick={() => setTab("BOLETO")}
-                className={clsx(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                  tab === "BOLETO"
-                    ? "bg-emerald-600 text-white shadow-lg"
-                    : "text-slate-400 hover:text-white"
-                )}
-              >
-                <FileText size={16} />
-                Boleto
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="p-2 text-slate-400 hover:text-emerald-400 disabled:opacity-50 transition-colors"
-            title="Atualizar"
-          >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
 
@@ -200,12 +151,18 @@ export default function PaymentModal({
           </div>
         )}
 
-        {/* Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-5">
-          {tab === "PIX" && (
+        {/* Content — PIX e Boleto juntos */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
+          {/* PIX */}
+          {showPix && (
             <div className="flex flex-col items-center">
+              <div className="flex items-center gap-2 mb-4 self-start">
+                <QrCode size={16} className="text-emerald-400" />
+                <h4 className="text-sm font-bold text-text-primary">Pix</h4>
+              </div>
+
               {/* QR Code */}
-              <div className="bg-white p-3 rounded-2xl mb-5 shadow-xl">
+              <div className="bg-white p-3 rounded-2xl mb-4 shadow-xl">
                 {pixQr ? (
                   <img
                     src={`data:image/png;base64,${pixQr}`}
@@ -213,7 +170,7 @@ export default function PaymentModal({
                     className="w-48 h-48 sm:w-56 sm:h-56"
                   />
                 ) : (
-                  <div className="w-56 h-56 flex items-center justify-center text-slate-400 text-center text-sm p-4">
+                  <div className="w-56 h-56 flex items-center justify-center text-text-muted text-center text-sm p-4">
                     Gerando QR Code...
                   </div>
                 )}
@@ -231,12 +188,12 @@ export default function PaymentModal({
 
               {/* Pix copia e cola */}
               <div className="w-full">
-                <p className="text-xs text-slate-500 mb-2 text-center">Ou copie o codigo abaixo:</p>
+                <p className="text-xs text-text-faint mb-2 text-center">Ou copie o codigo abaixo:</p>
                 <button
                   onClick={() => pixPayload && copiar(pixPayload, "Codigo PIX copiado!")}
-                  className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 p-3 rounded-xl flex items-center justify-between transition-all group"
+                  className="w-full bg-elevated-solid hover:bg-elevated-solid border border-border-input p-3 rounded-xl flex items-center justify-between transition-all group"
                 >
-                  <code className="text-[10px] text-slate-400 font-mono truncate mr-3 max-w-[75%] text-left">
+                  <code className="text-[10px] text-text-muted font-mono truncate mr-3 max-w-[75%] text-left">
                     {pixPayload || "Carregando..."}
                   </code>
                   <span className="text-emerald-400 text-xs font-bold shrink-0 flex items-center gap-1">
@@ -244,28 +201,30 @@ export default function PaymentModal({
                   </span>
                 </button>
               </div>
-
-              {/* Ver fatura link */}
-              {faturaUrl && (
-                <a
-                  href={faturaUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-4 text-xs text-slate-500 hover:text-emerald-400 flex items-center gap-1 transition-colors"
-                >
-                  Ver fatura completa <ExternalLink size={12} />
-                </a>
-              )}
             </div>
           )}
 
-          {tab === "BOLETO" && (
-            <div className="space-y-4">
+          {/* Divisor */}
+          {showPix && showBoleto && (
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border-t border-border-input/50" />
+              <span className="text-xs text-text-faint font-medium">ou</span>
+              <div className="flex-1 border-t border-border-input/50" />
+            </div>
+          )}
+
+          {/* Boleto */}
+          {showBoleto && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-emerald-400" />
+                <h4 className="text-sm font-bold text-text-primary">Boleto</h4>
+              </div>
+
               {/* Linha digitavel */}
               {asaas?.boleto?.identificationField && (
-                <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
-                  <h4 className="text-white font-semibold mb-3 text-sm">Linha digitavel</h4>
-                  <div className="bg-black/30 p-3 rounded-lg border border-slate-700/50 mb-3">
+                <div className="bg-elevated rounded-xl p-4 border border-border-input">
+                  <div className="bg-black/30 p-3 rounded-lg border border-border-input/50 mb-3">
                     <code className="text-sm text-emerald-300 font-mono break-all">
                       {asaas.boleto.identificationField}
                     </code>
@@ -285,45 +244,44 @@ export default function PaymentModal({
                   href={boletoPdfUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-between p-4 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-all group"
+                  className="flex items-center justify-between p-4 bg-elevated-solid hover:bg-elevated-solid rounded-xl border border-border-input transition-all group"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
                       <FileText size={20} />
                     </div>
                     <div className="text-left">
-                      <span className="block text-white font-medium text-sm">Baixar boleto PDF</span>
-                      <span className="text-xs text-slate-500">Abrir em nova aba</span>
+                      <span className="block text-text-primary font-medium text-sm">Baixar boleto PDF</span>
+                      <span className="text-xs text-text-faint">Abrir em nova aba</span>
                     </div>
                   </div>
-                  <ExternalLink size={18} className="text-slate-500 group-hover:text-white" />
-                </a>
-              )}
-
-              {/* Ver fatura link */}
-              {faturaUrl && (
-                <a
-                  href={faturaUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-center gap-1 text-xs text-slate-500 hover:text-emerald-400 transition-colors pt-2"
-                >
-                  Ver fatura completa <ExternalLink size={12} />
+                  <ExternalLink size={18} className="text-text-faint group-hover:text-text-primary" />
                 </a>
               )}
             </div>
           )}
+
+          {/* Ver fatura link (discreto, no final) */}
+          {faturaUrl && (
+            <a
+              href={faturaUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-1 text-xs text-text-faint hover:text-emerald-400 transition-colors"
+            >
+              Ver fatura completa <ExternalLink size={12} />
+            </a>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 bg-slate-950/50 border-t border-slate-800 flex gap-3">
+        <div className="px-5 py-4 bg-input-solid/50 border-t border-border-input flex gap-3">
           <button
-            onClick={onGenerate}
+            onClick={onRefresh}
             disabled={loading}
-            className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-400 border border-slate-700 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="py-3 px-4 rounded-xl text-xs font-bold text-text-muted border border-border-input hover:bg-elevated-solid hover:text-text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Atualizar cobranca
           </button>
           <button
             onClick={onClose}

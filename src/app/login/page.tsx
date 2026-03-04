@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import {
-  User,
   Loader2,
   ShieldCheck,
   Smartphone,
@@ -18,6 +17,7 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const STORAGE_KEY = 'workid_billing_block';
 const FIN_ALERT_DISMISS_KEY = 'workid_admin_finance_alert_dismissed_v1';
@@ -161,60 +161,130 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-slate-950 selection:bg-purple-500/30">
+    <div className="min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-4 relative overflow-hidden bg-page selection:bg-purple-500/30" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      {/* Theme Toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+
       {/* Efeitos de Fundo */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse delay-1000" />
+      <div className="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       {/* MODAL DE TUTORIAL PWA */}
       {showTutorial && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-300"
+          className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm flex items-end sm:items-center justify-center animate-in fade-in duration-300"
           onClick={() => setShowTutorial(null)}
         >
           <div
-            className="bg-slate-900/90 border border-white/10 rounded-3xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl relative"
+            className="bg-surface-solid border border-border-default rounded-t-3xl sm:rounded-3xl p-6 pb-8 sm:pb-6 w-full sm:max-w-sm sm:mx-4 space-y-5 shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setShowTutorial(null)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+              className="absolute top-4 right-4 text-text-muted hover:text-text-primary transition-colors text-xl leading-none"
             >
               &times;
             </button>
 
             {showTutorial === 'IOS' ? (
               <>
-                <h3 className="text-xl font-bold text-white">Instalar no iPhone</h3>
-                <div className="space-y-3 bg-white/5 p-4 rounded-xl text-left text-sm text-slate-300 border border-white/5">
-                  <p className="flex items-center gap-3">
-                    <Share size={18} className="text-blue-400" /> 1. Toque em <strong>Compartilhar</strong>.
-                  </p>
-                  <p className="flex items-center gap-3">
-                    <PlusSquare size={18} className="text-white" /> 2. Toque em <strong>Adicionar à Tela de Início</strong>.
-                  </p>
-                  <p className="flex items-center gap-3">
-                    <span className="font-bold text-purple-400">WorkID</span> 3. Confirme em <strong>Adicionar</strong>.
-                  </p>
+                <div className="text-center space-y-1 pt-1">
+                  <div className="inline-flex items-center justify-center p-2.5 mb-2 bg-blue-500/10 rounded-2xl border border-blue-500/20">
+                    <Smartphone size={24} className="text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-text-primary">Instalar no iPhone</h3>
+                  <p className="text-xs text-text-muted">Use o <strong className="text-blue-400">Safari</strong> para instalar</p>
+                </div>
+
+                <div className="space-y-0">
+                  {/* Passo 1 */}
+                  <div className="flex gap-3 p-3">
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold">1</div>
+                      <div className="w-px flex-1 bg-border-input/50 mt-1" />
+                    </div>
+                    <div className="flex-1 pb-4">
+                      <p className="text-sm font-medium text-text-primary">Toque no botão <strong className="text-blue-400">Compartilhar</strong></p>
+                      <p className="text-xs text-text-faint mt-0.5">O ícone fica na barra inferior do Safari</p>
+                      <div className="mt-2 flex items-center justify-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-xl py-2.5 px-4">
+                        <Share size={20} className="text-blue-400" />
+                        <span className="text-xs text-blue-300 font-medium">Botão de compartilhar</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Passo 2 */}
+                  <div className="flex gap-3 p-3">
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold">2</div>
+                      <div className="w-px flex-1 bg-border-input/50 mt-1" />
+                    </div>
+                    <div className="flex-1 pb-4">
+                      <p className="text-sm font-medium text-text-primary">Role e toque em <strong className="text-blue-400">Adicionar à Tela de Início</strong></p>
+                      <p className="text-xs text-text-faint mt-0.5">Role a lista de opções para baixo</p>
+                      <div className="mt-2 flex items-center gap-2.5 bg-hover-bg border border-border-default rounded-xl py-2.5 px-4">
+                        <PlusSquare size={18} className="text-text-primary" />
+                        <span className="text-xs text-text-secondary font-medium">Tela de Início</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Passo 3 */}
+                  <div className="flex gap-3 p-3">
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">3</div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-text-primary">Toque em <strong className="text-emerald-400">Adicionar</strong></p>
+                      <p className="text-xs text-text-faint mt-0.5">O app WorkID aparecerá na sua tela inicial</p>
+                    </div>
+                  </div>
                 </div>
               </>
             ) : (
               <>
-                <h3 className="text-xl font-bold text-white">Instalar Aplicativo</h3>
-                <div className="space-y-3 bg-white/5 p-4 rounded-xl text-left text-sm text-slate-300 border border-white/5">
-                  <p className="flex items-center gap-3">
-                    <MoreVertical size={18} className="text-white" /> 1. Toque no <strong>Menu</strong> do navegador.
-                  </p>
-                  <p className="flex items-center gap-3">
-                    <Smartphone size={18} className="text-blue-400" /> 2. Selecione <strong>Instalar aplicativo</strong>.
-                  </p>
+                <div className="text-center space-y-1 pt-1">
+                  <div className="inline-flex items-center justify-center p-2.5 mb-2 bg-purple-500/10 rounded-2xl border border-purple-500/20">
+                    <Smartphone size={24} className="text-purple-400" />
+                  </div>
+                  <h3 className="text-lg font-bold text-text-primary">Instalar Aplicativo</h3>
+                  <p className="text-xs text-text-muted">Adicione o WorkID à sua tela inicial</p>
+                </div>
+
+                <div className="space-y-0">
+                  <div className="flex gap-3 p-3">
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs font-bold">1</div>
+                      <div className="w-px flex-1 bg-border-input/50 mt-1" />
+                    </div>
+                    <div className="flex-1 pb-4">
+                      <p className="text-sm font-medium text-text-primary">Toque no <strong className="text-purple-400">Menu</strong> do navegador</p>
+                      <p className="text-xs text-text-faint mt-0.5">Os três pontinhos no canto superior</p>
+                      <div className="mt-2 flex items-center justify-center gap-2 bg-hover-bg border border-border-default rounded-xl py-2.5 px-4">
+                        <MoreVertical size={20} className="text-text-secondary" />
+                        <span className="text-xs text-text-muted font-medium">Menu do navegador</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 p-3">
+                    <div className="shrink-0 flex flex-col items-center">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">2</div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-text-primary">Selecione <strong className="text-emerald-400">Instalar aplicativo</strong></p>
+                      <p className="text-xs text-text-faint mt-0.5">O app será instalado automaticamente</p>
+                    </div>
+                  </div>
                 </div>
               </>
             )}
 
             <button
               onClick={() => setShowTutorial(null)}
-              className="w-full bg-white text-slate-950 font-bold py-3 rounded-xl mt-2 hover:bg-slate-200 transition-colors"
+              className="w-full bg-white text-slate-950 font-bold py-3.5 rounded-xl hover:bg-slate-200 transition-colors text-sm"
             >
               Entendi
             </button>
@@ -223,29 +293,31 @@ export default function LoginPage() {
       )}
 
       {/* CARD PRINCIPAL */}
-      <div className="w-full max-w-md p-8 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
+      <div className="w-full max-w-md p-6 sm:p-8 bg-surface/60 backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
         {/* CABEÇALHO */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 mb-4 bg-purple-500/10 rounded-2xl border border-purple-500/20">
-            <span className="text-3xl filter drop-shadow-lg">🚀</span>
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">WorkID</h1>
-          <p className="text-slate-400 text-sm">Gestão Inteligente de Ponto</p>
+          <img
+            src="/logo.png"
+            alt="WorkID"
+            className="w-32 h-32 sm:w-36 sm:h-36 object-contain mb-2 mx-auto"
+            draggable={false}
+          />
+          <p className="text-text-muted text-sm">Gestão Inteligente de Ponto</p>
         </div>
 
         {!showRecovery ? (
           <form onSubmit={handleLogin} className="space-y-5 animate-in slide-in-from-left-4 duration-300">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 ml-1 uppercase tracking-wider">Email</label>
+              <label className="text-xs font-bold text-text-muted ml-1 uppercase tracking-wider">Email</label>
               <div className="relative group">
-                <div className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-purple-400 transition-colors">
-                  <User size={20} />
+                <div className="absolute left-4 top-3.5 text-text-faint group-focus-within:text-purple-400 transition-colors">
+                  <Mail size={20} />
                 </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600 hover:border-slate-600"
+                  className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim hover:border-border-input"
                   placeholder="exemplo@workid.com"
                   required
                 />
@@ -253,23 +325,23 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 ml-1 uppercase tracking-wider">Senha</label>
+              <label className="text-xs font-bold text-text-muted ml-1 uppercase tracking-wider">Senha</label>
               <div className="relative group">
-                <div className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-purple-400 transition-colors">
+                <div className="absolute left-4 top-3.5 text-text-faint group-focus-within:text-purple-400 transition-colors">
                   <ShieldCheck size={20} />
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600 hover:border-slate-600"
+                  className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim hover:border-border-input"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-3.5 text-slate-500 hover:text-white transition-colors focus:outline-none"
+                  className="absolute right-4 top-3.5 text-text-faint hover:text-text-primary transition-colors focus:outline-none"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -303,23 +375,23 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleRecovery} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
             <div className="text-center pb-2">
-              <h3 className="text-white font-bold text-lg flex items-center justify-center gap-2">
+              <h3 className="text-text-primary font-bold text-lg flex items-center justify-center gap-2">
                 <KeyRound size={20} className="text-purple-500" /> Recuperar Acesso
               </h3>
-              <p className="text-xs text-slate-400">Enviaremos um link mágico para seu e-mail.</p>
+              <p className="text-xs text-text-muted">Enviaremos um link mágico para seu e-mail.</p>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 ml-1 uppercase tracking-wider">Email de Cadastro</label>
+              <label className="text-xs font-bold text-text-muted ml-1 uppercase tracking-wider">Email de Cadastro</label>
               <div className="relative group">
-                <div className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-purple-400 transition-colors">
+                <div className="absolute left-4 top-3.5 text-text-faint group-focus-within:text-purple-400 transition-colors">
                   <Mail size={20} />
                 </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-slate-700/50 text-white p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-slate-600 hover:border-slate-600"
+                  className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim hover:border-border-input"
                   placeholder="Digite seu e-mail..."
                   autoFocus
                   required
@@ -338,7 +410,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowRecovery(false)}
-              className="w-full text-slate-400 hover:text-white text-sm py-2 transition-colors flex items-center justify-center gap-2"
+              className="w-full text-text-muted hover:text-text-primary text-sm py-2 transition-colors flex items-center justify-center gap-2"
             >
               <ArrowLeft size={16} /> Voltar para Login
             </button>
@@ -348,17 +420,17 @@ export default function LoginPage() {
         {!isStandalone && !showRecovery && (
           <div className="pt-6 mt-2">
             <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-slate-700/50"></div>
-              <span className="flex-shrink-0 mx-4 text-slate-500 text-[10px] uppercase tracking-widest">Opções do App</span>
-              <div className="flex-grow border-t border-slate-700/50"></div>
+              <div className="flex-grow border-t border-border-input/50"></div>
+              <span className="flex-shrink-0 mx-4 text-text-faint text-[10px] uppercase tracking-widest">Instalar App</span>
+              <div className="flex-grow border-t border-border-input/50"></div>
             </div>
 
             <button
               type="button"
               onClick={handleInstallClick}
-              className="w-full bg-slate-800/50 hover:bg-slate-800 text-slate-300 border border-slate-700/50 hover:border-purple-500/30 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3 text-sm mt-2 group"
+              className="w-full bg-elevated hover:bg-elevated-solid text-text-secondary border border-border-input/50 hover:border-purple-500/30 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3 text-sm mt-2 group"
             >
-              <div className="bg-slate-700 p-1.5 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
+              <div className="bg-border-input p-1.5 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
                 <Smartphone size={16} />
               </div>
               {isIOS ? 'Instalar no iPhone' : 'Instalar Aplicativo'}
@@ -366,7 +438,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <p className="text-center text-slate-600 text-[10px] mt-8">© 2026 WorkID • Tecnologia em Gestão</p>
+        <p className="text-center text-text-dim text-[10px] mt-8">© 2026 WorkID • Tecnologia em Gestão</p>
       </div>
     </div>
   );

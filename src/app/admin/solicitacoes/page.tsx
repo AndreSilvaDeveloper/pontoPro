@@ -43,39 +43,39 @@ export default function SolicitacoesAjuste() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Orbs decorativos */}
-      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
 
         {/* CABEÇALHO */}
         <div className="flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/5 transition-all active:scale-95" title="Voltar">
+            <Link href="/admin" className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95" title="Voltar">
               <ArrowLeft size={20} />
             </Link>
-            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+            <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
               <AlertCircle size={24} className="text-purple-400" />
             </div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">Solicitações de Ajuste</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Solicitações de Ajuste</h1>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-3 py-20 text-slate-400">
+          <div className="flex items-center justify-center gap-3 py-20 text-text-muted">
             <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             Carregando...
           </div>
         ) : solicitacoes.length === 0 ? (
-          <div className="text-center py-10 bg-slate-900/50 backdrop-blur-sm rounded-2xl border border-white/5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <p className="text-slate-500">Nenhuma solicitação pendente.</p>
+          <div className="text-center py-10 bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <p className="text-text-faint">Nenhuma solicitação pendente.</p>
           </div>
         ) : (
           <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
             {solicitacoes.map((sol) => (
-              <div key={sol.id} className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl border border-white/5 flex flex-col md:flex-row gap-6 items-start md:items-center">
+              <div key={sol.id} className="bg-surface backdrop-blur-sm p-6 rounded-2xl border border-border-subtle flex flex-col md:flex-row gap-6 items-start md:items-center">
 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2 mb-2">
@@ -90,31 +90,31 @@ export default function SolicitacoesAjuste() {
                   <div className="flex items-center gap-4 text-sm">
                     {sol.ponto ? (
                       <>
-                        <div className="text-slate-400">
+                        <div className="text-text-muted">
                           <p className="text-[10px] uppercase">Original</p>
                           <p className="font-mono text-red-400 line-through decoration-red-500/50">{format(new Date(sol.ponto.dataHora), 'HH:mm')}</p>
                         </div>
-                        <div className="text-slate-400">➡️</div>
+                        <div className="text-text-muted">➡️</div>
                       </>
                     ) : (
-                      <div className="text-slate-400">
+                      <div className="text-text-muted">
                         <p className="text-[10px] uppercase">Data</p>
-                        <p className="font-mono text-white">{format(new Date(sol.novoHorario), 'dd/MM/yyyy')}</p>
+                        <p className="font-mono text-text-primary">{format(new Date(sol.novoHorario), 'dd/MM/yyyy')}</p>
                       </div>
                     )}
 
                     <div>
-                      <p className="text-[10px] uppercase text-slate-400">Solicitado ({sol.tipo || sol.ponto?.tipo})</p>
+                      <p className="text-[10px] uppercase text-text-muted">Solicitado ({sol.tipo || sol.ponto?.tipo})</p>
                       {editandoId === sol.id ? (
-                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-slate-950/50 border border-purple-500 rounded-xl px-2 py-1 text-white font-bold focus:border-purple-400 outline-none"/>
+                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-input-solid/50 border border-purple-500 rounded-xl px-2 py-1 text-text-primary font-bold focus:border-purple-400 outline-none"/>
                       ) : (
                         <p className="font-mono text-green-400 font-bold text-lg">{format(new Date(sol.novoHorario), 'HH:mm')}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5 mt-2">
-                    <p className="text-xs text-slate-500 italic">&quot; {sol.motivo} &quot;</p>
+                  <div className="bg-input-solid/50 p-3 rounded-xl border border-border-subtle mt-2">
+                    <p className="text-xs text-text-faint italic">&quot; {sol.motivo} &quot;</p>
                   </div>
                 </div>
 
@@ -133,7 +133,7 @@ export default function SolicitacoesAjuste() {
                       >
                         Confirmar Edição
                       </button>
-                      <button onClick={() => setEditandoId(null)} className="bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors">Cancelar</button>
+                      <button onClick={() => setEditandoId(null)} className="bg-hover-bg hover:bg-hover-bg-strong text-text-primary px-4 py-2 rounded-xl text-xs font-bold transition-colors">Cancelar</button>
                     </>
                   ) : (
                     <>

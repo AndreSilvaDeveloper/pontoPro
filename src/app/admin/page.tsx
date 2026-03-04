@@ -34,48 +34,86 @@ import ModalLancarAusencia from '@/components/ModalLancarAusencia';
 import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
+import ActionCard from '@/components/admin/ActionCard';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AdminDashboard() {
   const a = useAdminDashboard();
 
   if (a.loading)
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center text-slate-400 gap-3">
+      <div className="min-h-screen bg-page flex items-center justify-center text-text-muted gap-3">
         <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         Carregando painel...
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans selection:bg-purple-500/30 relative overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-page text-text-secondary font-sans selection:bg-purple-500/30 relative overflow-x-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Efeitos de Fundo */}
-      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
 
-      {/* Toast */}
+      {/* Toast de Pendências */}
       {a.notificacaoVisivel && (
         <div
-          className={`fixed top-16 right-6 z-[100] animate-in slide-in-from-right duration-500 fade-in ${
+          className={`fixed top-4 right-4 z-[100] animate-in slide-in-from-right-full duration-300 fade-in w-80 ${
             a.billingEmpresa ? 'mt-16' : ''
           }`}
         >
-          <Link data-tour="admin-ajustes" href={a.pendenciasAjuste > 0 ? '/admin/solicitacoes' : '/admin/pendencias'}>
-            <div className="bg-purple-600 text-white p-4 rounded-xl shadow-2xl border border-purple-400 flex items-center gap-4 cursor-pointer hover:bg-purple-700 hover:scale-105 transition-all">
-              <div className="bg-white p-2 rounded-full animate-bounce text-purple-600">
-                <Bell size={24} fill="currentColor" />
-              </div>
-              <div>
-                <p className="font-bold text-sm">Novas Pendências!</p>
-                <div className="text-xs text-purple-100 flex flex-col">
-                  {a.pendenciasAjuste > 0 && <span>• {a.pendenciasAjuste} Ajuste(s)</span>}
-                  {a.pendenciasAusencia > 0 && <span>• {a.pendenciasAusencia} Justificativa(s)</span>}
+          <div className="bg-surface-solid/90 backdrop-blur-xl border border-border-default rounded-2xl shadow-2xl shadow-black/40 overflow-hidden">
+            {/* Barra de progresso animada no topo */}
+            <div className="h-0.5 bg-elevated-solid overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 animate-[shrink_8s_linear_forwards]" />
+            </div>
+
+            <div className="p-4">
+              <div className="flex items-start gap-3">
+                {/* Ícone discreto */}
+                <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 shrink-0 mt-0.5">
+                  <Bell size={16} className="text-purple-400" />
                 </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-text-primary">Pendências</p>
+                  <div className="flex flex-col gap-0.5 mt-1">
+                    {a.pendenciasAjuste > 0 && (
+                      <Link
+                        data-tour="admin-ajustes"
+                        href="/admin/solicitacoes"
+                        className="flex items-center gap-2 text-xs text-text-muted hover:text-purple-300 transition-colors group"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                        <span>{a.pendenciasAjuste} solicitação(ões) de ajuste</span>
+                        <span className="ml-auto text-[10px] text-text-dim group-hover:text-purple-400">ver →</span>
+                      </Link>
+                    )}
+                    {a.pendenciasAusencia > 0 && (
+                      <Link
+                        href="/admin/pendencias"
+                        className="flex items-center gap-2 text-xs text-text-muted hover:text-purple-300 transition-colors group"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                        <span>{a.pendenciasAusencia} justificativa(s) pendente(s)</span>
+                        <span className="ml-auto text-[10px] text-text-dim group-hover:text-purple-400">ver →</span>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {/* Botão fechar */}
+                <button
+                  onClick={() => a.setNotificacaoVisivel(false)}
+                  className="p-1 text-text-dim hover:text-text-secondary rounded-lg hover:bg-hover-bg transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
               </div>
             </div>
-          </Link>
+          </div>
         </div>
       )}
 
@@ -88,10 +126,10 @@ export default function AdminDashboard() {
                 <LayoutDashboard size={20} className="text-purple-400" />
               </div>
               <div>
-                <h1 data-tour="admin-title" className="text-3xl font-bold text-white tracking-tight">
+                <h1 data-tour="admin-title" className="text-3xl font-bold text-text-primary tracking-tight">
                   {a.empresa.nome}
                 </h1>
-                <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
+                <p className="text-text-muted text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
               </div>
             </div>
           </div>
@@ -112,18 +150,19 @@ export default function AdminDashboard() {
                 <span className="hidden sm:inline">Tutorial</span>
               </button>
 
-              <div className="flex items-center gap-1 bg-slate-900/50 backdrop-blur border border-white/5 p-1.5 rounded-xl">
+              <div className="flex items-center gap-1 bg-surface backdrop-blur border border-border-subtle p-1.5 rounded-xl">
                 <Link
                   data-tour="admin-profile"
                   href="/admin/perfil"
-                  className="p-2.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                  className="p-2.5 hover:bg-hover-bg-strong rounded-lg text-text-muted hover:text-text-primary transition-colors"
                   title="Minha Conta"
                 >
                   <User size={18} />
                 </Link>
+                <ThemeToggle />
                 <button
                   onClick={() => signOut({ callbackUrl: '/login' })}
-                  className="p-2.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors"
+                  className="p-2.5 hover:bg-red-500/20 text-text-muted hover:text-red-400 rounded-lg transition-colors"
                   title="Sair"
                 >
                   <LogOut size={18} />
@@ -136,132 +175,84 @@ export default function AdminDashboard() {
         {/* === AÇÕES RÁPIDAS === */}
         <div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 grid-flow-dense">
-            <button
-              data-tour="admin-ausencia"
+            <ActionCard
+              dataTour="admin-ausencia"
               onClick={a.abrirModalAusencia}
-              className="flex flex-col items-center justify-center gap-2 p-4
-                        bg-slate-800/50 hover:bg-slate-800
-                        text-slate-200
-                        border border-white/5
-                        rounded-2xl transition-all
-                        hover:border-purple-500/20 hover:-translate-y-1
-                        group shadow-lg shadow-black/20"
-            >
-              <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
-                <Plane size={20} className="text-slate-300 group-hover:text-white" />
-              </div>
-              <span className="text-xs font-bold">Lançar Ausência</span>
-            </button>
+              icon={<Plane size={20} className="text-text-secondary group-hover:text-text-primary" />}
+              label="Lançar Ausência"
+              className="shadow-lg shadow-black/20"
+            />
 
-            <Link
-              data-tour="admin-ajustes"
+            <ActionCard
+              dataTour="admin-ajustes"
               href="/admin/solicitacoes"
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-purple-500/30 hover:-translate-y-1 relative group"
-            >
-              <div className="bg-purple-500/10 p-2 rounded-full group-hover:bg-purple-500/20 transition-colors">
-                <AlertCircle size={20} className="text-purple-400" />
-              </div>
-              <span className="text-xs font-bold">Ajustes</span>
-              {a.pendenciasAjuste > 0 && (
-                <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full animate-pulse border-2 border-slate-900">
-                  {a.pendenciasAjuste}
-                </span>
-              )}
-            </Link>
+              icon={<AlertCircle size={20} className="text-purple-400" />}
+              label="Ajustes"
+              accent="purple"
+              badge={a.pendenciasAjuste}
+            />
 
             {!a.configs.ocultar_menu_atestados && (
-              <Link
-                data-tour="admin-atestados"
+              <ActionCard
+                dataTour="admin-atestados"
                 href="/admin/pendencias"
-                className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-yellow-500/30 hover:-translate-y-1 relative group"
-              >
-                <div className="bg-yellow-500/10 p-2 rounded-full group-hover:bg-yellow-500/20 transition-colors">
-                  <ShieldAlert size={20} className="text-yellow-400" />
-                </div>
-                <span className="text-xs font-bold">Atestados</span>
-                {a.pendenciasAusencia > 0 && (
-                  <span className="absolute top-2 right-2 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full animate-pulse border-2 border-slate-900">
-                    {a.pendenciasAusencia}
-                  </span>
-                )}
-              </Link>
+                icon={<ShieldAlert size={20} className="text-yellow-400" />}
+                label="Atestados"
+                accent="yellow"
+                badge={a.pendenciasAusencia}
+              />
             )}
 
-            <Link
-              data-tour="admin-team"
+            <ActionCard
+              dataTour="admin-team"
               href="/admin/funcionarios"
-              className="col-span-2 md:col-span-1
-                        order-first md:order-none
-                        flex flex-col items-center justify-center gap-2
-                        p-5 md:p-4
-                        bg-slate-800/50 hover:bg-slate-800
-                        text-slate-200
-                        border border-white/5
-                        rounded-2xl transition-all
-                        hover:border-purple-500/30 hover:-translate-y-1
-                        ring-1 ring-purple-500/15
-                        group shadow-lg shadow-black/20"
-            >
-              <div className="bg-purple-500/10 p-2 rounded-full group-hover:bg-purple-500/20 transition-colors">
-                <User size={20} className="text-purple-400 group-hover:text-purple-300" />
-              </div>
-              <span className="text-xs font-bold">Gestão da Equipe</span>
-            </Link>
+              icon={<User size={20} className="text-purple-400 group-hover:text-purple-300" />}
+              label="Gestão da Equipe"
+              accent="purple"
+              className="col-span-2 md:col-span-1 order-first md:order-none p-5 md:p-4 ring-1 ring-purple-500/15 shadow-lg shadow-black/20"
+            />
 
-            <Link
-              data-tour="admin-feriados"
+            <ActionCard
+              dataTour="admin-feriados"
               href="/admin/feriados"
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
-            >
-              <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
-                <CalendarDays size={20} className="text-slate-400 group-hover:text-white" />
-              </div>
-              <span className="text-xs font-bold">Feriados</span>
-            </Link>
+              icon={<CalendarDays size={20} className="text-text-muted group-hover:text-text-primary" />}
+              label="Feriados"
+            />
 
-            <Link
-              data-tour="admin-auditoria"
+            <ActionCard
+              dataTour="admin-auditoria"
               href="/admin/logs"
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
-            >
-              <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
-                <ScrollText size={20} className="text-slate-400 group-hover:text-white" />
-              </div>
-              <span className="text-xs font-bold">Auditoria</span>
-            </Link>
+              icon={<ScrollText size={20} className="text-text-muted group-hover:text-text-primary" />}
+              label="Auditoria"
+            />
 
-            <Link
-              data-tour="admin-visao-geral"
+            <ActionCard
+              dataTour="admin-visao-geral"
               href="/admin/dashboard"
-              className="flex flex-col items-center justify-center gap-2 p-4 bg-slate-800/50 hover:bg-slate-800 text-slate-200 border border-white/5 rounded-2xl transition-all hover:border-white/20 hover:-translate-y-1 group"
-            >
-              <div className="bg-white/5 p-2 rounded-full group-hover:bg-white/10 transition-colors">
-                <LayoutDashboard size={20} className="text-slate-400 group-hover:text-white" />
-              </div>
-              <span className="text-xs font-bold">Visão Geral</span>
-            </Link>
-
+              icon={<LayoutDashboard size={20} className="text-text-muted group-hover:text-text-primary" />}
+              label="Visão Geral"
+            />
           </div>
         </div>
 
         {/* === FILTROS === */}
-        <div className="relative z-20 bg-slate-900/60 backdrop-blur-xl border border-white/5 p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">
+        <div className="relative z-20 bg-surface/60 backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">
           <div className="w-full lg:flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">Funcionário</label>
+              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Funcionário</label>
 
               <div className="flex gap-2">
                 <div ref={a.dropdownRef} className="relative flex-1 group">
                   <Search
                     size={16}
-                    className="absolute left-3 top-3.5 text-slate-500 group-hover:text-purple-400 transition-colors pointer-events-none"
+                    className="absolute left-3 top-3.5 text-text-faint group-hover:text-purple-400 transition-colors pointer-events-none"
                   />
 
                   <button
                     data-tour="admin-filter-user"
                     type="button"
                     onClick={() => a.setDropdownAberto((v) => !v)}
-                    className="w-full bg-slate-950/50 border border-white/10 hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-10 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-left cursor-pointer"
+                    className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-10 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-left cursor-pointer"
                     title="Selecionar funcionário"
                   >
                     <span className="block truncate">
@@ -278,7 +269,7 @@ export default function AdminDashboard() {
                         a.setBuscaFuncionario('');
                         a.setDropdownAberto(false);
                       }}
-                      className="absolute right-3 top-3.5 text-slate-500 hover:text-slate-200 transition-colors"
+                      className="absolute right-3 top-3.5 text-text-faint hover:text-text-secondary transition-colors"
                       title="Limpar filtro"
                     >
                       <X size={16} />
@@ -286,14 +277,14 @@ export default function AdminDashboard() {
                   )}
 
                   {a.dropdownAberto && (
-                    <div className="absolute z-[60] mt-2 w-full bg-slate-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-                      <div className="p-2 border-b border-white/5">
+                    <div className="absolute z-[60] mt-2 w-full bg-page border border-border-default rounded-2xl shadow-2xl overflow-hidden">
+                      <div className="p-2 border-b border-border-subtle">
                         <input
                           autoFocus
                           value={a.buscaFuncionario}
                           onChange={(e) => a.setBuscaFuncionario(e.target.value)}
                           placeholder="Digite o nome ou email..."
-                          className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none focus:border-purple-500/60"
+                          className="w-full bg-surface/60 border border-border-default rounded-xl px-3 py-2 text-sm text-text-secondary outline-none focus:border-purple-500/60"
                         />
                       </div>
 
@@ -305,8 +296,8 @@ export default function AdminDashboard() {
                             a.setBuscaFuncionario('');
                             a.setDropdownAberto(false);
                           }}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
-                            !a.filtroUsuario ? 'text-purple-300' : 'text-slate-200'
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-hover-bg transition-colors ${
+                            !a.filtroUsuario ? 'text-purple-300' : 'text-text-secondary'
                           }`}
                         >
                           Todos os Funcionários
@@ -322,19 +313,19 @@ export default function AdminDashboard() {
                                 a.setBuscaFuncionario('');
                                 a.setDropdownAberto(false);
                               }}
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
-                                a.filtroUsuario === u.id ? 'text-purple-300' : 'text-slate-200'
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-hover-bg transition-colors ${
+                                a.filtroUsuario === u.id ? 'text-purple-300' : 'text-text-secondary'
                               }`}
                               title={u.email || u.nome}
                             >
                               <div className="flex flex-col">
                                 <span className="font-semibold truncate">{u.nome}</span>
-                                {u.email && <span className="text-[10px] text-slate-500 truncate">{u.email}</span>}
+                                {u.email && <span className="text-[10px] text-text-faint truncate">{u.email}</span>}
                               </div>
                             </button>
                           ))
                         ) : (
-                          <div className="px-3 py-3 text-xs text-slate-500">Nenhum funcionário encontrado.</div>
+                          <div className="px-3 py-3 text-xs text-text-faint">Nenhum funcionário encontrado.</div>
                         )}
                       </div>
                     </div>
@@ -344,7 +335,7 @@ export default function AdminDashboard() {
                 {a.filtroUsuario && (
                   <button
                     onClick={() => a.setModalJornadaAberto(true)}
-                    className="px-3 bg-slate-800 hover:bg-purple-600 text-slate-400 hover:text-white rounded-xl border border-white/10 transition-colors"
+                    className="px-3 bg-elevated-solid hover:bg-purple-600 text-text-muted hover:text-white rounded-xl border border-border-default transition-colors"
                     title="Configurar Escala"
                   >
                     <Clock size={20} />
@@ -354,20 +345,20 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider ml-1">Período</label>
-              <div data-tour="admin-filter-period" className="flex gap-2 items-center bg-slate-950/50 border border-white/10 rounded-xl p-1">
+              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Período</label>
+              <div data-tour="admin-filter-period" className="flex gap-2 items-center bg-input-solid/50 border border-border-default rounded-xl p-1">
                 <input
                   type="date"
                   value={a.dataInicio}
                   onChange={(e) => a.setDataInicio(e.target.value)}
-                  className="bg-transparent text-sm text-slate-300 outline-none p-2 w-full text-center cursor-pointer hover:text-white transition-colors"
+                  className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
                 />
-                <span className="text-slate-600 text-xs">até</span>
+                <span className="text-text-dim text-xs">até</span>
                 <input
                   type="date"
                   value={a.dataFim}
                   onChange={(e) => a.setDataFim(e.target.value)}
-                  className="bg-transparent text-sm text-slate-300 outline-none p-2 w-full text-center cursor-pointer hover:text-white transition-colors"
+                  className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
                 />
               </div>
             </div>
@@ -398,11 +389,11 @@ export default function AdminDashboard() {
               className={`p-5 rounded-2xl border backdrop-blur-md shadow-lg transition-all ${
                 a.stats.status.includes('Trabalhando') || a.stats.status.includes('Pausa Café (Pago)')
                   ? 'bg-emerald-500/10 border-emerald-500/20'
-                  : 'bg-slate-900/50 border-white/5'
+                  : 'bg-surface border-border-subtle'
               }`}
             >
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Status Atual</h3>
+                <h3 className="text-[10px] text-text-muted uppercase font-bold tracking-wider">Status Atual</h3>
                 <span
                   className={`w-2 h-2 rounded-full ${
                     a.stats.status.includes('Trabalhando') || a.stats.status.includes('Pausa Café (Pago)')
@@ -415,7 +406,7 @@ export default function AdminDashboard() {
                 className={`text-xl font-bold ${
                   a.stats.status.includes('Trabalhando') || a.stats.status.includes('Pausa Café (Pago)')
                     ? 'text-emerald-400'
-                    : 'text-slate-500'
+                    : 'text-text-faint'
                 }`}
               >
                 {a.stats.status}
@@ -425,17 +416,17 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div className="bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl border border-white/5 shadow-lg">
-              <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Hoje</h3>
+            <div className="bg-surface backdrop-blur-md p-5 rounded-2xl border border-border-subtle shadow-lg">
+              <h3 className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2">Hoje</h3>
               <div className="flex items-baseline gap-2">
-                <p className="text-2xl font-bold text-white">{a.stats.hoje}</p>
-                <p className="text-[10px] text-slate-500">/ Meta: {a.stats.metaHoje}</p>
+                <p className="text-2xl font-bold text-text-primary">{a.stats.hoje}</p>
+                <p className="text-[10px] text-text-faint">/ Meta: {a.stats.metaHoje}</p>
               </div>
             </div>
 
-            <div className="bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl border border-white/5 shadow-lg">
-              <h3 className="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">Total Período</h3>
-              <p className="text-2xl font-bold text-white">{a.stats.total}</p>
+            <div className="bg-surface backdrop-blur-md p-5 rounded-2xl border border-border-subtle shadow-lg">
+              <h3 className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2">Total Período</h3>
+              <p className="text-2xl font-bold text-text-primary">{a.stats.total}</p>
             </div>
 
             {!a.configs.ocultarSaldoHoras ? (
@@ -457,8 +448,8 @@ export default function AdminDashboard() {
                 </p>
               </div>
             ) : (
-              <div className="bg-slate-900/50 p-5 rounded-2xl border border-white/5 flex items-center justify-center opacity-50">
-                <p className="text-xs text-slate-500">Saldo Oculto</p>
+              <div className="bg-surface p-5 rounded-2xl border border-border-subtle flex items-center justify-center opacity-50">
+                <p className="text-xs text-text-faint">Saldo Oculto</p>
               </div>
             )}
           </div>
@@ -478,47 +469,47 @@ export default function AdminDashboard() {
 
         {/* === MODAL EDITAR PONTO (mantido aqui por segurança) === */}
         {a.modalEdicaoAberto && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">
-              <div className="flex justify-between items-center border-b border-white/5 pb-4">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
+            <div className="bg-surface-solid border border-border-default w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">
+              <div className="flex justify-between items-center border-b border-border-subtle pb-4">
+                <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   <Edit2 size={20} className="text-purple-400" /> Editar Horário
                 </h3>
-                <button onClick={() => a.setModalEdicaoAberto(false)} className="text-slate-500 hover:text-white">
+                <button onClick={() => a.setModalEdicaoAberto(false)} className="text-text-faint hover:text-text-primary">
                   <X size={20} />
                 </button>
               </div>
 
               <div>
-                <p className="text-xs text-slate-400 mb-1 uppercase tracking-wider font-bold">Funcionário</p>
-                <p className="font-bold text-white text-lg">{a.pontoEmEdicao?.usuario?.nome}</p>
+                <p className="text-xs text-text-muted mb-1 uppercase tracking-wider font-bold">Funcionário</p>
+                <p className="font-bold text-text-primary text-lg">{a.pontoEmEdicao?.usuario?.nome}</p>
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Novo Horário</label>
+                <label className="text-xs text-text-muted block mb-1 uppercase tracking-wider font-bold">Novo Horário</label>
                 <input
                   type="time"
                   value={a.novaHora}
                   onChange={(e) => a.setNovaHora(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 p-4 rounded-xl text-white text-2xl font-bold text-center focus:border-purple-500 outline-none"
+                  className="w-full bg-page border border-border-input p-4 rounded-xl text-text-primary text-2xl font-bold text-center focus:border-purple-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider font-bold">Motivo</label>
+                <label className="text-xs text-text-muted block mb-1 uppercase tracking-wider font-bold">Motivo</label>
                 <input
                   type="text"
                   value={a.motivoEdicao}
                   onChange={(e) => a.setMotivoEdicao(e.target.value)}
                   placeholder="Justificativa..."
-                  className="w-full bg-slate-950 border border-slate-700 p-3 rounded-xl text-white text-sm outline-none focus:border-purple-500"
+                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500"
                 />
               </div>
 
               <button
                 onClick={a.salvarEdicaoPonto}
                 disabled={a.salvandoEdicao || !a.motivoEdicao}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 mt-2 transition-all"
               >
                 {a.salvandoEdicao ? (
                   'Salvando...'

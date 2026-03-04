@@ -203,10 +203,10 @@ export default function BloqueadoPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#0a0e27] flex items-center justify-center px-4 py-8">
+      <div className="min-h-screen bg-page flex items-center justify-center px-4 py-8">
         <Card className="w-full max-w-md border-purple-500/20 bg-gradient-to-b from-[#0f1535]/95 to-[#0a0e27]/95 shadow-2xl shadow-purple-500/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-white text-xl">Acesso temporariamente indisponivel</CardTitle>
+            <CardTitle className="text-text-primary text-xl">Acesso temporariamente indisponivel</CardTitle>
             <CardDescription className="text-gray-400">Empresa: {nomeEmpresa}</CardDescription>
           </CardHeader>
 
@@ -215,13 +215,13 @@ export default function BloqueadoPage() {
             {isAdmin && (
               <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm space-y-3">
                 <div>
-                  <p className="font-semibold text-white text-xs uppercase tracking-wider mb-1">Motivo do bloqueio</p>
+                  <p className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-1">Motivo do bloqueio</p>
                   <p className="text-gray-300">{motivoAdmin}</p>
                 </div>
 
                 {pixKey && (
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="font-semibold text-white text-xs uppercase tracking-wider mb-2">Chave Pix</p>
+                  <div className="pt-2 border-t border-border-default">
+                    <p className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Chave Pix</p>
                     <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2">
                       <p className="flex-1 text-xs break-all select-all font-mono text-indigo-300">{pixKey}</p>
                       <Button
@@ -250,7 +250,7 @@ export default function BloqueadoPage() {
 
             {/* ====== FUNCIONARIO: mensagem neutra ====== */}
             {!isAdmin && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-gray-200">
+              <div className="rounded-xl border border-border-default bg-hover-bg p-4 text-sm text-gray-200">
                 <p className="text-gray-200 whitespace-pre-line">{msgFuncionario}</p>
               </div>
             )}

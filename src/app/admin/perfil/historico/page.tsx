@@ -56,17 +56,17 @@ function badge(status?: string | null) {
     },
     REFUNDED: {
       label: "Estornado",
-      className: "bg-slate-900 border-slate-700 text-slate-300",
+      className: "bg-surface-solid border-border-input text-text-secondary",
     },
     CANCELED: {
       label: "Cancelado",
-      className: "bg-slate-900 border-slate-700 text-slate-300",
+      className: "bg-surface-solid border-border-input text-text-secondary",
     },
   };
 
   return map[s] ?? {
     label: s || "—",
-    className: "bg-slate-900 border-slate-700 text-slate-200",
+    className: "bg-surface-solid border-border-input text-text-secondary",
   };
 }
 
@@ -113,12 +113,12 @@ export default function HistoricoFaturasPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-6">
+    <div className="min-h-screen bg-page text-text-primary p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex items-center justify-between border-b border-border-input pb-4">
           <div>
             <h1 className="text-2xl font-bold text-purple-400">Histórico de faturas</h1>
-            <p className="text-slate-400 text-sm">
+            <p className="text-text-muted text-sm">
               Últimas cobranças 
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function HistoricoFaturasPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={load}
-              className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg font-bold text-xs"
+              className="inline-flex items-center gap-2 bg-elevated-solid hover:bg-elevated-solid text-text-secondary border border-border-input px-4 py-2 rounded-lg font-bold text-xs"
             >
               <RefreshCw size={16} />
               ATUALIZAR
@@ -134,7 +134,7 @@ export default function HistoricoFaturasPage() {
 
             <Link
               href="/admin/perfil"
-              className="inline-flex items-center gap-2 text-slate-400 hover:text-white"
+              className="inline-flex items-center gap-2 text-text-muted hover:text-text-primary"
             >
               <ArrowLeft size={18} />
               Voltar
@@ -148,29 +148,29 @@ export default function HistoricoFaturasPage() {
           </div>
         )}
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-surface-solid border border-border-input rounded-xl p-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <div className="text-slate-300 text-sm">
-              Total listado: <b className="text-white">{formatBRL(total)}</b>
+            <div className="text-text-secondary text-sm">
+              Total listado: <b className="text-text-primary">{formatBRL(total)}</b>
             </div>
-            <div className="text-slate-400 text-xs">
+            <div className="text-text-muted text-xs">
               Obs: valores podem incluir cobranças reusadas/reemissões.
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-            <h2 className="font-bold text-white flex items-center gap-2">
+        <div className="bg-surface-solid border border-border-input rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-border-input flex items-center justify-between">
+            <h2 className="font-bold text-text-primary flex items-center gap-2">
               <FileText size={18} />
               Cobranças
             </h2>
-            {loading && <span className="text-slate-400 text-xs">Carregando…</span>}
+            {loading && <span className="text-text-muted text-xs">Carregando…</span>}
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-950/60 text-slate-300">
+              <thead className="bg-input-solid/60 text-text-secondary">
                 <tr>
                   <th className="text-left px-4 py-3">Criada</th>
                   <th className="text-left px-4 py-3">Vencimento</th>
@@ -182,16 +182,16 @@ export default function HistoricoFaturasPage() {
               <tbody>
                 {!loading && items.length === 0 && (
                   <tr>
-                    <td className="px-4 py-6 text-slate-400" colSpan={5}>
+                    <td className="px-4 py-6 text-text-muted" colSpan={5}>
                       Nenhuma cobrança encontrada.
                     </td>
                   </tr>
                 )}
 
                 {items.map((it) => (
-                  <tr key={it.id} className="border-t border-slate-800">
-                    <td className="px-4 py-3 text-slate-300">{formatDateBR(it.dateCreated)}</td>
-                    <td className="px-4 py-3 text-slate-200">{formatDateBR(it.dueDate)}</td>
+                  <tr key={it.id} className="border-t border-border-input">
+                    <td className="px-4 py-3 text-text-secondary">{formatDateBR(it.dateCreated)}</td>
+                    <td className="px-4 py-3 text-text-secondary">{formatDateBR(it.dueDate)}</td>
                     <td className="px-4 py-3">
                       {(() => {
                         const b = badge(it.status);
@@ -203,7 +203,7 @@ export default function HistoricoFaturasPage() {
                       })()}
 
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-white">{formatBRL(it.value)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-text-primary">{formatBRL(it.value)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         {it.invoiceUrl && (
@@ -221,7 +221,7 @@ export default function HistoricoFaturasPage() {
                             href={it.bankSlipUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold"
+                            className="inline-flex items-center gap-1 bg-elevated-solid hover:bg-elevated-solid text-text-secondary border border-border-input px-3 py-1.5 rounded-lg text-xs font-bold"
                           >
                             Boleto <ExternalLink size={14} />
                           </a>
@@ -234,7 +234,7 @@ export default function HistoricoFaturasPage() {
             </table>
           </div>
 
-          <div className="p-3 border-t border-slate-800 text-xs text-slate-500">
+          <div className="p-3 border-t border-border-input text-xs text-text-faint">
             Fonte: Asaas /payments (limit 30)
           </div>
         </div>

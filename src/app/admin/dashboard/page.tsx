@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Users, Clock, Coffee, AlertCircle, RefreshCw, ArrowLeft, Search, LayoutDashboard, X } from 'lucide-react';
 
 interface FuncionarioStatus {
@@ -99,45 +100,45 @@ export default function DashboardPresenca() {
   // Skeleton loading no primeiro carregamento
   if (primeiroLoad) {
     return (
-      <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-        <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+        <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
         <div className="max-w-6xl mx-auto p-4 md:p-8 pb-8 space-y-8 relative z-10">
           {/* Skeleton header */}
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-white/5 rounded-xl animate-pulse" />
-            <div className="w-10 h-10 bg-white/5 rounded-xl animate-pulse" />
+            <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
+            <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
             <div className="space-y-2 flex-1">
-              <div className="h-7 w-56 bg-white/5 rounded-lg animate-pulse" />
-              <div className="h-4 w-40 bg-white/5 rounded-lg animate-pulse" />
+              <div className="h-7 w-56 bg-hover-bg rounded-lg animate-pulse" />
+              <div className="h-4 w-40 bg-hover-bg rounded-lg animate-pulse" />
             </div>
           </div>
 
           {/* Skeleton cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="p-5 rounded-2xl border border-white/5 bg-slate-900/50">
+              <div key={i} className="p-5 rounded-2xl border border-border-subtle bg-surface">
                 <div className="flex justify-between items-start mb-3">
-                  <div className="w-10 h-10 bg-white/5 rounded-full animate-pulse" />
-                  <div className="w-12 h-8 bg-white/5 rounded-lg animate-pulse" />
+                  <div className="w-10 h-10 bg-hover-bg rounded-full animate-pulse" />
+                  <div className="w-12 h-8 bg-hover-bg rounded-lg animate-pulse" />
                 </div>
-                <div className="h-3 w-20 bg-white/5 rounded animate-pulse" />
+                <div className="h-3 w-20 bg-hover-bg rounded animate-pulse" />
               </div>
             ))}
           </div>
 
           {/* Skeleton list */}
-          <div className="bg-slate-900/50 rounded-2xl border border-white/5 p-4 space-y-4">
-            <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
+          <div className="bg-surface rounded-2xl border border-border-subtle p-4 space-y-4">
+            <div className="h-5 w-40 bg-hover-bg rounded animate-pulse" />
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center gap-4 py-3">
-                <div className="w-12 h-12 bg-white/5 rounded-full animate-pulse" />
+                <div className="w-12 h-12 bg-hover-bg rounded-full animate-pulse" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-32 bg-white/5 rounded animate-pulse" />
-                  <div className="h-3 w-20 bg-white/5 rounded animate-pulse" />
+                  <div className="h-4 w-32 bg-hover-bg rounded animate-pulse" />
+                  <div className="h-3 w-20 bg-hover-bg rounded animate-pulse" />
                 </div>
-                <div className="h-6 w-20 bg-white/5 rounded-lg animate-pulse" />
+                <div className="h-6 w-20 bg-hover-bg rounded-lg animate-pulse" />
               </div>
             ))}
           </div>
@@ -147,25 +148,25 @@ export default function DashboardPresenca() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Orbs decorativos */}
-      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <div className="max-w-6xl mx-auto p-4 md:p-8 pb-8 space-y-6 md:space-y-8 relative z-10">
 
         {/* CABEÇALHO */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex items-center gap-3 md:gap-4">
-            <Link href="/admin" className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/5 transition-all active:scale-95" title="Voltar ao Menu">
+            <Link href="/admin" className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95" title="Voltar ao Menu">
               <ArrowLeft size={20} />
             </Link>
-            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+            <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
               <LayoutDashboard size={24} className="text-purple-400" />
             </div>
             <div>
-              <h1 className="text-xl md:text-3xl font-bold text-white tracking-tight">Visão Geral</h1>
-              <p className="text-slate-400 text-xs md:text-sm flex items-center gap-2">
+              <h1 className="text-xl md:text-3xl font-bold text-text-primary tracking-tight">Visão Geral</h1>
+              <p className="text-text-muted text-xs md:text-sm flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 Atualizado às {ultimaAtualizacao.toLocaleTimeString()}
               </p>
@@ -175,12 +176,12 @@ export default function DashboardPresenca() {
           <button
             onClick={() => { carregarDados(); setCountdown(INTERVALO_REFRESH); }}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-slate-300 transition-all font-semibold active:scale-95 disabled:opacity-50 group"
+            className="flex items-center gap-2 px-4 py-2.5 bg-hover-bg hover:bg-hover-bg-strong border border-border-subtle rounded-xl text-text-secondary transition-all font-semibold active:scale-95 disabled:opacity-50 group"
             title="Atualizar Agora"
           >
             <RefreshCw size={18} className={loading ? 'animate-spin' : 'group-hover:rotate-45 transition-transform'} />
             <span className="hidden sm:inline">Atualizar</span>
-            <span className="text-xs text-slate-500 font-mono tabular-nums ml-1">{countdown}s</span>
+            <span className="text-xs text-text-faint font-mono tabular-nums ml-1">{countdown}s</span>
           </button>
         </div>
 
@@ -192,9 +193,9 @@ export default function DashboardPresenca() {
             valor={resumo.total}
             ativo={filtroStatus === 'TODOS'}
             onClick={() => setFiltroStatus('TODOS')}
-            corFundo="bg-slate-900/50"
+            corFundo="bg-surface"
             corBordaAtiva="border-purple-500/40"
-            corTexto="text-white"
+            corTexto="text-text-primary"
             corIcone="text-purple-400"
           />
           <CardResumo
@@ -228,17 +229,17 @@ export default function DashboardPresenca() {
             porcentagem={porcentagem(resumo.offline)}
             ativo={filtroStatus === 'OFFLINE'}
             onClick={() => toggleFiltro('OFFLINE')}
-            corFundo="bg-slate-900/50"
-            corBordaAtiva="border-slate-400/40"
-            corTexto="text-slate-400"
-            corIcone="text-slate-500"
+            corFundo="bg-surface"
+            corBordaAtiva="border-border-input/40"
+            corTexto="text-text-muted"
+            corIcone="text-text-faint"
           />
         </div>
 
         {/* Filtro ativo label */}
         {filtroStatus !== 'TODOS' && (
           <div className="flex items-center gap-2 animate-in fade-in duration-300">
-            <span className="text-xs text-slate-400">Filtrando por:</span>
+            <span className="text-xs text-text-muted">Filtrando por:</span>
             <button
               onClick={() => setFiltroStatus('TODOS')}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/20 text-purple-300 rounded-lg text-xs font-bold border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
@@ -254,23 +255,23 @@ export default function DashboardPresenca() {
         {/* LISTA DETALHADA */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
           {/* Barra de busca */}
-          <div className="p-3 md:p-4 bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-t-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <h3 className="font-bold text-slate-300 text-sm md:text-base">
+          <div className="p-3 md:p-4 bg-surface backdrop-blur-sm border border-border-subtle rounded-t-2xl flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h3 className="font-bold text-text-secondary text-sm md:text-base">
               Status dos Funcionários
-              <span className="ml-2 text-xs text-slate-500 font-normal">({listaFinal.length})</span>
+              <span className="ml-2 text-xs text-text-faint font-normal">({listaFinal.length})</span>
             </h3>
             <div className="relative w-full md:w-[320px]">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint" />
               <input
                 value={buscaNome}
                 onChange={(e) => setBuscaNome(e.target.value)}
                 placeholder="Buscar funcionário..."
-                className="w-full bg-slate-950/50 border border-white/10 hover:border-white/20 focus:border-purple-500/60 outline-none rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-200 placeholder:text-slate-600 transition-colors"
+                className="w-full bg-input-solid/50 border border-border-default hover:border-white/20 focus:border-purple-500/60 outline-none rounded-xl py-2.5 pl-10 pr-10 text-sm text-text-secondary placeholder:text-text-dim transition-colors"
               />
               {buscaNome.trim() && (
                 <button
                   onClick={() => setBuscaNome('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-faint hover:text-text-secondary transition-colors"
                   title="Limpar"
                 >
                   <X size={14} />
@@ -280,12 +281,12 @@ export default function DashboardPresenca() {
           </div>
 
           {/* Lista de funcionários — cards individuais no mobile */}
-          <div className="bg-slate-900/50 backdrop-blur-sm rounded-b-2xl border border-white/5 border-t-0 overflow-hidden">
+          <div className="bg-surface backdrop-blur-sm rounded-b-2xl border border-border-subtle border-t-0 overflow-hidden">
 
             {/* Desktop: lista compacta */}
             <div className="hidden md:block divide-y divide-white/5">
               {listaFinal.length === 0 && !loading && (
-                <div className="p-8 text-center text-slate-500">
+                <div className="p-8 text-center text-text-faint">
                   {buscaNome.trim()
                     ? `Nenhum funcionário encontrado para "${buscaNome}".`
                     : filtroStatus !== 'TODOS'
@@ -299,18 +300,18 @@ export default function DashboardPresenca() {
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       {func.foto ? (
-                        <img src={func.foto} className="w-11 h-11 rounded-full object-cover border border-white/10" alt={func.nome} />
+                        <Image src={func.foto} width={44} height={44} className="w-11 h-11 rounded-full object-cover border border-border-default" alt={func.nome} />
                       ) : (
-                        <div className="w-11 h-11 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
-                          <Users size={18} className="text-slate-500" />
+                        <div className="w-11 h-11 rounded-full bg-elevated-solid flex items-center justify-center border border-border-default">
+                          <Users size={18} className="text-text-faint" />
                         </div>
                       )}
                       <StatusDot status={func.status} />
                     </div>
 
                     <div>
-                      <h4 className="font-semibold text-white text-sm">{func.nome}</h4>
-                      <p className="text-xs text-slate-500 uppercase">{func.cargo}</p>
+                      <h4 className="font-semibold text-text-primary text-sm">{func.nome}</h4>
+                      <p className="text-xs text-text-faint uppercase">{func.cargo}</p>
                     </div>
                   </div>
 
@@ -322,7 +323,7 @@ export default function DashboardPresenca() {
             {/* Mobile: cards individuais */}
             <div className="md:hidden p-3 space-y-2">
               {listaFinal.length === 0 && !loading && (
-                <div className="p-6 text-center text-slate-500 text-sm">
+                <div className="p-6 text-center text-text-faint text-sm">
                   {buscaNome.trim()
                     ? `Nenhum resultado para "${buscaNome}".`
                     : filtroStatus !== 'TODOS'
@@ -339,24 +340,24 @@ export default function DashboardPresenca() {
                       ? 'bg-emerald-500/5 border-emerald-500/10'
                       : func.status === 'PAUSA_OU_SAIU'
                         ? 'bg-yellow-500/5 border-yellow-500/10'
-                        : 'bg-white/[0.02] border-white/5'
+                        : 'bg-white/[0.02] border-border-subtle'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative flex-shrink-0">
                       {func.foto ? (
-                        <img src={func.foto} className="w-11 h-11 rounded-full object-cover border border-white/10" alt={func.nome} />
+                        <Image src={func.foto} width={44} height={44} className="w-11 h-11 rounded-full object-cover border border-border-default" alt={func.nome} />
                       ) : (
-                        <div className="w-11 h-11 rounded-full bg-slate-800 flex items-center justify-center border border-white/10">
-                          <Users size={18} className="text-slate-500" />
+                        <div className="w-11 h-11 rounded-full bg-elevated-solid flex items-center justify-center border border-border-default">
+                          <Users size={18} className="text-text-faint" />
                         </div>
                       )}
                       <StatusDot status={func.status} />
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-white text-sm truncate">{func.nome}</h4>
-                      <p className="text-[11px] text-slate-500 uppercase truncate">{func.cargo}</p>
+                      <h4 className="font-semibold text-text-primary text-sm truncate">{func.nome}</h4>
+                      <p className="text-[11px] text-text-faint uppercase truncate">{func.cargo}</p>
                     </div>
 
                     <StatusBadge status={func.status} hora={formatarHora(func.horarioUltimaAcao)} compact />
@@ -388,7 +389,7 @@ function StatusBadge({ status, hora, compact }: { status: string; hora: string; 
     return (
       <div className={`flex flex-col ${compact ? 'items-end' : 'items-end'}`}>
         <span className="text-[10px] md:text-xs font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 md:py-1 rounded-lg">EM SERVIÇO</span>
-        <span className="text-[10px] md:text-xs text-slate-500 mt-0.5">Entrou {hora}</span>
+        <span className="text-[10px] md:text-xs text-text-faint mt-0.5">Entrou {hora}</span>
       </div>
     );
   }
@@ -396,14 +397,14 @@ function StatusBadge({ status, hora, compact }: { status: string; hora: string; 
     return (
       <div className="flex flex-col items-end">
         <span className="text-[10px] md:text-xs font-bold bg-yellow-500/20 text-yellow-400 px-2 py-0.5 md:py-1 rounded-lg">PAUSA / SAIU</span>
-        <span className="text-[10px] md:text-xs text-slate-500 mt-0.5">Último {hora}</span>
+        <span className="text-[10px] md:text-xs text-text-faint mt-0.5">Último {hora}</span>
       </div>
     );
   }
   return (
     <div className="flex flex-col items-end">
-      <span className="text-[10px] md:text-xs font-bold bg-slate-700/50 text-slate-500 px-2 py-0.5 md:py-1 rounded-lg">OFFLINE</span>
-      <span className="text-[10px] md:text-xs text-slate-600 mt-0.5">Sem registro</span>
+      <span className="text-[10px] md:text-xs font-bold bg-border-input/50 text-text-faint px-2 py-0.5 md:py-1 rounded-lg">OFFLINE</span>
+      <span className="text-[10px] md:text-xs text-text-dim mt-0.5">Sem registro</span>
     </div>
   );
 }
@@ -428,14 +429,14 @@ function CardResumo({
       onClick={onClick}
       className={`p-4 md:p-5 rounded-2xl border backdrop-blur-sm text-left transition-all active:scale-[0.97] cursor-pointer group
         ${corFundo}
-        ${ativo ? `${corBordaAtiva} ring-1 ring-white/5 shadow-lg` : 'border-white/5 hover:border-white/10'}`}
+        ${ativo ? `${corBordaAtiva} ring-1 ring-white/5 shadow-lg` : 'border-border-subtle hover:border-border-default'}`}
     >
       <div className="flex justify-between items-start mb-1.5 md:mb-2">
         <div className={`${corIcone} opacity-80 group-hover:opacity-100 transition-opacity`}>{icone}</div>
         <span className={`text-2xl md:text-3xl font-bold ${corTexto} tabular-nums`}>{valor}</span>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-slate-400 text-[10px] md:text-xs font-medium uppercase">{titulo}</p>
+        <p className="text-text-muted text-[10px] md:text-xs font-medium uppercase">{titulo}</p>
         {porcentagem !== undefined && valor > 0 && (
           <span className={`text-[10px] font-bold ${corTexto} opacity-60`}>{porcentagem}%</span>
         )}

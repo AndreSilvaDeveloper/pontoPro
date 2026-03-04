@@ -18,7 +18,7 @@ export async function GET() {
       },
       include: {
         usuario: {
-          select: { id: true, nome: true, email: true }
+          select: { id: true, nome: true, email: true, fotoPerfilUrl: true }
         }
       }
     });

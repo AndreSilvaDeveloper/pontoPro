@@ -35,6 +35,8 @@ model Empresa {
   cobrancaWhatsapp  String?    // ex: "5532935005492"
   
   plano               String    @default("PROFESSIONAL")
+  billingCycle        String    @default("MONTHLY")
+  billingMethod       String    @default("UNDEFINED")
 
   asaasCustomerId     String?
   asaasSubscriptionId String?
@@ -72,6 +74,7 @@ model Usuario {
   ipsPermitidos      String?
   telefone           String?
   modoValidacaoPonto String              @default("GPS")
+  temaPreferido      String              @default("dark") // dark | light | system
   lojasPermitidas    AdminLoja[]
   ausencias          Ausencia[]
   pontos             Ponto[]

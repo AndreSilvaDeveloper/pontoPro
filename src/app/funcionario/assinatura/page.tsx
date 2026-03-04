@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import axios from 'axios';
 import SignatureCanvas from 'react-signature-canvas';
 import { Save, Trash2, PenTool, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AssinaturaDigital() {
+  const { update } = useSession();
   const [loading, setLoading] = useState(false);
   const [assinaturaExistente, setAssinaturaExistente] = useState<string | null>(null);
   const sigCanvas = useRef<any>({});
@@ -36,6 +38,7 @@ export default function AssinaturaDigital() {
 
         const res = await axios.post('/api/funcionario/assinatura', formData);
         setAssinaturaExistente(res.data.url);
+        await update({ temAssinatura: true });
         toast.success("Assinatura salva com sucesso!");
 
     } catch (error) {
@@ -46,31 +49,31 @@ export default function AssinaturaDigital() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] text-white flex flex-col relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+    <div className="min-h-screen bg-page text-text-primary flex flex-col relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Blurs decorativos */}
-      <div className="fixed top-[-10%] right-[-10%] w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[80px] pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none" />
+      <div className="fixed top-[-10%] right-[-10%] w-[300px] h-[300px] bg-orb-purple rounded-full blur-[80px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-orb-indigo rounded-full blur-[80px] pointer-events-none" />
 
       <div className="max-w-md mx-auto w-full p-4 pb-24 flex flex-col flex-1 relative z-10">
 
         {/* CABEÇALHO glassmórfico */}
         <div className="flex items-center gap-3 pt-2 pb-6 animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+          <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
             <PenTool className="text-purple-400" size={20} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white leading-none">Assinatura Digital</h1>
-            <p className="text-xs text-slate-400 mt-1">Valida seus espelhos de ponto</p>
+            <h1 className="text-lg font-bold text-text-primary leading-none">Assinatura Digital</h1>
+            <p className="text-xs text-text-muted mt-1">Valida seus espelhos de ponto</p>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
           <div className="text-center space-y-2">
-              <p className="text-slate-300">
+              <p className="text-text-secondary">
                   {assinaturaExistente ? "Sua assinatura atual:" : "Desenhe sua assinatura abaixo:"}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-text-faint">
                   Esta assinatura será usada para validar seus espelhos de ponto.
               </p>
           </div>
@@ -83,7 +86,7 @@ export default function AssinaturaDigital() {
                   <div className="flex gap-2 w-full">
                       <button
                           onClick={() => setAssinaturaExistente(null)}
-                          className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors active:scale-95"
+                          className="flex-1 bg-slate-100 hover:bg-slate-200 text-text-dim py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors active:scale-95"
                       >
                           <Trash2 size={18} /> Trocar
                       </button>
@@ -103,7 +106,7 @@ export default function AssinaturaDigital() {
                               className: 'w-full h-64 cursor-crosshair'
                           }}
                       />
-                      <div className="bg-slate-200 text-slate-500 text-[10px] text-center py-1 border-t border-slate-300">
+                      <div className="bg-slate-200 text-text-faint text-[10px] text-center py-1 border-t border-border-input">
                           Área de Assinatura
                       </div>
                   </div>
@@ -111,7 +114,7 @@ export default function AssinaturaDigital() {
                   <div className="flex gap-3">
                       <button
                           onClick={limpar}
-                          className="flex-1 bg-slate-800/80 hover:bg-slate-700 text-slate-300 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-white/5 transition-colors active:scale-95"
+                          className="flex-1 bg-elevated/80 hover:bg-elevated-solid text-text-secondary py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-border-subtle transition-colors active:scale-95"
                       >
                           <Trash2 size={20} /> Limpar
                       </button>

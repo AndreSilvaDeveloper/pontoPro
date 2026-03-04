@@ -25,9 +25,12 @@ export default function CadastrarFotoPage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-    // @ts-ignore
     if (status === 'authenticated' && !session?.user?.deveCadastrarFoto) {
-      router.push('/funcionario');
+      if (!session?.user?.temAssinatura) {
+        router.push('/cadastrar-assinatura');
+      } else {
+        router.push('/funcionario');
+      }
     }
   }, [status, session, router]);
 
@@ -77,7 +80,12 @@ export default function CadastrarFotoPage() {
     try {
       await axios.post('/api/auth/cadastrar-foto', { fotoBase64 });
       await update({ deveCadastrarFoto: false });
-      router.push('/funcionario');
+      // @ts-ignore
+      if (!session?.user?.temAssinatura) {
+        router.push('/cadastrar-assinatura');
+      } else {
+        router.push('/funcionario');
+      }
     } catch (error: any) {
       setErro(error.response?.data?.erro || 'Erro ao salvar foto. Tente novamente.');
       setLoading(false);
@@ -86,22 +94,22 @@ export default function CadastrarFotoPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-page">
         <RefreshCw className="animate-spin text-purple-400" size={32} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
-      <div className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl p-6 md:p-8 rounded-2xl border border-purple-500/20 shadow-2xl shadow-purple-900/10">
+    <div className="min-h-screen flex items-center justify-center bg-page p-4">
+      <div className="w-full max-w-md bg-surface-solid/80 backdrop-blur-xl p-6 md:p-8 rounded-2xl border border-purple-500/20 shadow-2xl shadow-purple-900/10">
         {/* Header */}
         <div className="text-center mb-6">
           <div className="mx-auto w-16 h-16 bg-purple-900/30 rounded-full flex items-center justify-center mb-4 border border-purple-500/20">
             <Camera size={32} className="text-purple-400" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Cadastro de Foto</h1>
-          <p className="text-slate-400 text-sm">
+          <h1 className="text-2xl font-bold text-text-primary mb-2">Cadastro de Foto</h1>
+          <p className="text-text-muted text-sm">
             Tire uma selfie ou envie uma foto para validação facial no ponto.
           </p>
         </div>
@@ -109,11 +117,11 @@ export default function CadastrarFotoPage() {
         {/* Webcam / Preview */}
         <div className="relative mb-6">
           {cameraAtiva && !fotoBase64 ? (
-            <div className="rounded-2xl overflow-hidden border border-white/10 bg-black aspect-[3/4] flex items-center justify-center">
+            <div className="rounded-2xl overflow-hidden border border-border-default bg-black aspect-[3/4] flex items-center justify-center">
               {cameraErro ? (
                 <div className="text-center p-6">
                   <AlertCircle size={40} className="text-red-400 mx-auto mb-3" />
-                  <p className="text-slate-400 text-sm mb-4">Não foi possível acessar a câmera.</p>
+                  <p className="text-text-muted text-sm mb-4">Não foi possível acessar a câmera.</p>
                   <button
                     onClick={() => setCameraErro(false)}
                     className="text-purple-400 text-sm font-medium hover:underline"
@@ -163,7 +171,7 @@ export default function CadastrarFotoPage() {
               {/* Upload da galeria */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-2xl transition-all flex items-center justify-center gap-2 border border-white/10"
+                className="w-full bg-elevated-solid hover:bg-elevated-solid text-text-primary font-medium py-3 rounded-2xl transition-all flex items-center justify-center gap-2 border border-border-default"
               >
                 <Upload size={18} />
                 Enviar da Galeria
@@ -202,7 +210,7 @@ export default function CadastrarFotoPage() {
               <button
                 onClick={tirarNovamente}
                 disabled={loading}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-2xl transition-all flex items-center justify-center gap-2 border border-white/10 disabled:opacity-50"
+                className="w-full bg-elevated-solid hover:bg-elevated-solid text-text-primary font-medium py-3 rounded-2xl transition-all flex items-center justify-center gap-2 border border-border-default disabled:opacity-50"
               >
                 <Camera size={18} />
                 Tirar Novamente
@@ -219,7 +227,7 @@ export default function CadastrarFotoPage() {
         )}
 
         {/* Dica */}
-        <p className="text-center text-[11px] text-slate-500 mt-4">
+        <p className="text-center text-[11px] text-text-faint mt-4">
           Dica: foto frontal, boa iluminação, sem óculos ou boné.
         </p>
       </div>
