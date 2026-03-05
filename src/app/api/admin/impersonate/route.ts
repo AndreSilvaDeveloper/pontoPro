@@ -123,8 +123,8 @@ export async function POST(req: Request) {
     await prisma.logAuditoria.create({
       data: {
         acao: "IMPERSONATE_START",
-        detalhes: `SUPER_ADMIN ${session.user.name} (${superId}) entrou como ${target.nome} (${target.email}) [${target.cargo}] alvoId=${target.id} empresaAlvo=${target.empresaId ?? "SEM_EMPRESA"} ip=${ip} ua=${ua}`,
-        adminNome: String(session.user.name || "SUPER_ADMIN"),
+        detalhes: `Suporte acessou a conta de ${target.nome} (${target.email})`,
+        adminNome: "Suporte WorkID",
         adminId: superId,
         empresaId: String(target.empresaId || "SEM_EMPRESA"),
       },

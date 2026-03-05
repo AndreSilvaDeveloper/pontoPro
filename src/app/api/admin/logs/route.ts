@@ -22,6 +22,8 @@ export async function GET(request: Request) {
   const whereClause: any = {
     // @ts-ignore
     empresaId: session.user.empresaId,
+    // Não exibe logs de acesso remoto do suporte para o admin
+    NOT: { acao: { in: ['IMPERSONATE_START', 'IMPERSONATE_STOP'] } },
   };
 
   if (inicio && fim) {
