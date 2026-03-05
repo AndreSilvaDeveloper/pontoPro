@@ -38,6 +38,22 @@ function overlapMinutes(aStart: number, aEnd: number, bStart: number, bEnd: numb
 function getWorkWindowsFromConfig(configDia: any): Array<{ start: number; end: number }> {
   const windows: Array<{ start: number; end: number }> = [];
 
+  if (!configDia || !configDia.ativo) return windows;
+
+  const hasE1 = isValidTimeHHMM(configDia.e1);
+  const hasS1 = isValidTimeHHMM(configDia.s1);
+  const hasE2 = isValidTimeHHMM(configDia.e2);
+  const hasS2 = isValidTimeHHMM(configDia.s2);
+
+  // Jornada contínua (sem almoço): e1 direto até s2
+  if (hasE1 && hasS2 && !hasS1 && !hasE2) {
+    const s = parseHHMMToMinutes(configDia.e1);
+    const e = parseHHMMToMinutes(configDia.s2);
+    if (e > s) windows.push({ start: s, end: e });
+    return windows;
+  }
+
+  // Jornada com dois blocos (padrão)
   const pushIfValid = (i?: string, f?: string) => {
     if (!i || !f) return;
     if (!isValidTimeHHMM(i) || !isValidTimeHHMM(f)) return;
@@ -46,10 +62,8 @@ function getWorkWindowsFromConfig(configDia: any): Array<{ start: number; end: n
     if (e > s) windows.push({ start: s, end: e });
   };
 
-  if (configDia && configDia.ativo) {
-    pushIfValid(configDia.e1, configDia.s1);
-    pushIfValid(configDia.e2, configDia.s2);
-  }
+  pushIfValid(configDia.e1, configDia.s1);
+  pushIfValid(configDia.e2, configDia.s2);
 
   return windows;
 }
@@ -199,14 +213,47 @@ export function calcularEstatisticas(args: {
       return diff;
     };
 
-    const minutosConfigurados =
-      config && config.ativo ? calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2) : 0;
+    const calcMinutosConfig = (cfg: any) => {
+      if (!cfg || !cfg.ativo) return 0;
+      const hS1 = isValidTimeHHMM(cfg.s1);
+      const hE2 = isValidTimeHHMM(cfg.e2);
+      if (!hS1 && !hE2 && isValidTimeHHMM(cfg.e1) && isValidTimeHHMM(cfg.s2)) {
+        return calcDiff(cfg.e1, cfg.s2);
+      }
+      return calcDiff(cfg.e1, cfg.s1) + calcDiff(cfg.e2, cfg.s2);
+    };
+
+    let minutosConfigurados = calcMinutosConfig(config);
 
     // --- LÓGICA HÍBRIDA INTELIGENTE ---
+    // Detecta se o sábado é "regular" (sem regra especial) e tem meta configurada
+    // Sábado regular = ativo, sem regra de sábados específicos, sem alternado
+    // SABADOS_DO_MES com array vazio = sem sábados marcados = comportamento regular
+    const configSabHibrido = jornadaConfig['sab'];
+    const sabTemRegraEspecifica = (() => {
+      const regra = configSabHibrido?.regra;
+      if (!regra?.tipo) return false;
+      if (regra.tipo === 'SABADOS_DO_MES') {
+        const quais = Array.isArray(regra.quais) ? regra.quais : [];
+        return quais.length > 0; // array vazio = sem regra efetiva
+      }
+      return true;
+    })();
+    const sabRegular = configSabHibrido && configSabHibrido.ativo
+      && !sabTemRegraEspecifica
+      && !(configSabHibrido.alternado === true);
+    const metaSabRegular = sabRegular ? (calcMinutosConfig(configSabHibrido) || 240) : 0;
+
     if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
       if (trabalhouSabado) {
-        if (!minutosConfigurados) return 480;
-        if (minutosConfigurados > 520) return 480;
+        // Semana COM sábado: meta do dia útil é a configurada (horário cheio c/ almoço maior)
+        if (!minutosConfigurados) minutosConfigurados = 480;
+        else if (minutosConfigurados > 520) minutosConfigurados = 480;
+      } else if (sabRegular && metaSabRegular > 0) {
+        // Semana SEM sábado: redistribui meta do sábado nos 5 dias úteis (compensação)
+        // Ex: sáb=240min → +48min/dia → meta 480+48=528, funcionário faz 525 → -3 → tolerância zera
+        const compensacaoPorDia = Math.round(metaSabRegular / 5);
+        minutosConfigurados = minutosConfigurados + compensacaoPorDia;
       }
     }
 
@@ -215,16 +262,16 @@ export function calcularEstatisticas(args: {
       const configSab = jornadaConfig['sab'];
       const temConfiguracao = configSab && configSab.ativo;
 
-      // ✅ NOVO: regra "SABADOS_DO_MES" (ex: [1,3])
+      // ✅ regra "SABADOS_DO_MES" (ex: [1,3]) — só ativa se tem sábados marcados
       const regra = configSab?.regra;
-      if (temConfiguracao && regra?.tipo === 'SABADOS_DO_MES') {
-        const quais = Array.isArray(regra?.quais) ? regra.quais : [];
+      const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
+      if (temConfiguracao && regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0) {
         const numero = getNumeroDoSabadoNoMes(data); // 1..5
-        const trabalhaNesteSabado = numero > 0 && quais.includes(numero);
+        const trabalhaNesteSabado = numero > 0 && quaisSab.includes(numero);
         if (!trabalhaNesteSabado) return 0;
 
         // se trabalha, calcula meta sab (com abatimentos)
-        const minsSab = calcDiff(configSab.e1, configSab.s1) + calcDiff(configSab.e2, configSab.s2);
+        const minsSab = calcMinutosConfig(configSab);
         const metaBaseSab = minsSab || 240;
 
         let meta = metaBaseSab;
@@ -262,7 +309,7 @@ export function calcularEstatisticas(args: {
         if (!trabalhaNesteSabado) return 0;
 
         if (temConfiguracao) {
-          const minsSab = calcDiff(configSab.e1, configSab.s1) + calcDiff(configSab.e2, configSab.s2);
+          const minsSab = calcMinutosConfig(configSab);
           const metaBaseSab = minsSab || 240;
 
           let meta = metaBaseSab;
@@ -315,6 +362,14 @@ export function calcularEstatisticas(args: {
       }
 
       if (trabalhouSabado && !temConfiguracao) return 240;
+
+      // Sábado regular configurado mas não trabalhado: meta = 0 (compensado nos dias úteis)
+      // Inclui SABADOS_DO_MES com array vazio (nenhum sábado marcado = comportamento regular)
+      if (temConfiguracao && !trabalhouSabado) {
+        const isAlternado = configSab?.alternado === true;
+        const temRegraEfetiva = regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0;
+        if (!temRegraEfetiva && !isAlternado) return 0;
+      }
     }
 
     // meta base padrão
@@ -377,7 +432,9 @@ export function calcularEstatisticas(args: {
       const diaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][getDay(dataEntradaReal)];
       const configDia = jornadaConfig[diaSemana] || {};
 
-      const metaSaidaStr = parIndex === 0 ? configDia.s1 : configDia.s2;
+      // Jornada contínua (sem almoço): s1 vazio, usar s2 diretamente
+      const jornadaContinua = !isValidTimeHHMM(configDia.s1) && !isValidTimeHHMM(configDia.e2);
+      const metaSaidaStr = jornadaContinua ? configDia.s2 : (parIndex === 0 ? configDia.s1 : configDia.s2);
 
       const pSaida = pontosOrdenados[i + 1];
       const tipoSaida = pSaida ? pSaida.subTipo || pSaida.tipo : null;
