@@ -34,6 +34,7 @@ import ModalLancarAusencia from '@/components/ModalLancarAusencia';
 import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
+import CienciaCelularAlertModal from '@/components/admin/CienciaCelularAlertModal';
 import ActionCard from '@/components/admin/ActionCard';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -56,6 +57,7 @@ export default function AdminDashboard() {
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
+      <CienciaCelularAlertModal />
 
       {/* Toast de Pendências */}
       {a.notificacaoVisivel && (

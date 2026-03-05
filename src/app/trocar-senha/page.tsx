@@ -33,10 +33,12 @@ export default function TrocarSenhaPage() {
       await update({ deveTrocarSenha: false });
 
       setTimeout(() => {
-        if (response.data.deveCadastrarFoto) {
-          router.push('/cadastrar-foto');
-        } else if (!response.data.temAssinatura) {
+        if (!response.data.temAssinatura) {
           router.push('/cadastrar-assinatura');
+        } else if (response.data.deveCadastrarFoto) {
+          router.push('/cadastrar-foto');
+        } else if (response.data.deveDarCienciaCelular) {
+          router.push('/ciencia-celular');
         } else {
           router.push('/funcionario');
         }

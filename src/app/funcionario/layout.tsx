@@ -24,13 +24,18 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
       return;
     }
 
+    if (!session?.user?.temAssinatura) {
+      router.push('/cadastrar-assinatura');
+      return;
+    }
+
     if (session?.user?.deveCadastrarFoto) {
       router.push('/cadastrar-foto');
       return;
     }
 
-    if (!session?.user?.temAssinatura) {
-      router.push('/cadastrar-assinatura');
+    if (session?.user?.deveDarCienciaCelular) {
+      router.push('/ciencia-celular');
       return;
     }
   }, [status, session, router]);

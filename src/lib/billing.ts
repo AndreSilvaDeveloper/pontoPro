@@ -158,21 +158,25 @@ export function getBillingStatus(
 
   // 3) TRIAL
   if (trialAte) {
-    if (now <= trialAte) {
-      const diasRestantes = Math.max(0, diffDays(trialAte, now));
-      const code: BillingCode = diasRestantes <= 1 ? "TRIAL_ENDING" : "TRIAL_ACTIVE";
+    // Compara por dia-calendário (ignora horário)
+    const trialDiff = diffDays(trialAte, now);
+    if (trialDiff >= 0) {
+      const diasRestantes = trialDiff;
+      const code: BillingCode = diasRestantes <= 2 ? "TRIAL_ENDING" : "TRIAL_ACTIVE";
 
       return buildStatus({
         blocked: false,
         bloqueado: false,
+        // TRIAL_ACTIVE: modal decide (1x por empresa); TRIAL_ENDING: alerta diário
         showAlert: true,
         paidForCycle: false,
         code,
         message:
           code === "TRIAL_ENDING"
-            ? "Seu período de teste está acabando."
+            ? diasRestantes === 0
+              ? "Seu período de teste termina hoje!"
+              : `Seu período de teste acaba em ${diasRestantes} dia(s).`
             : "Período de teste ativo.",
-        // aqui faz sentido mostrar quando acaba o trial
         dueAtISO: trialAte.toISOString(),
         dueAt: trialAte.toISOString(),
         days: diasRestantes,
@@ -182,18 +186,21 @@ export function getBillingStatus(
 
     // Trial expirou, mas existe anchor para 1ª fatura ainda no futuro:
     // ✅ LIBERA até o anchor vencer
-    if (anchorAt && now <= anchorAt) {
-      const diasAteVencer = Math.max(0, diffDays(anchorAt, now));
+    if (anchorAt && diffDays(anchorAt, now) >= 0) {
+      const diasAteVencer = diffDays(anchorAt, now);
       return buildStatus({
         blocked: false,
         bloqueado: false,
-        showAlert: true,
+        // Só alerta quando faltam 2 dias ou menos
+        showAlert: diasAteVencer <= 2,
         paidForCycle: false,
         code: "PENDING_FIRST_INVOICE",
         message:
           diasAteVencer === 0
-            ? "Seu período de teste acabou e sua 1ª fatura vence hoje."
-            : `Sua fatura vence em  ${diasAteVencer} dias.`,
+            ? "Sua 1ª fatura vence hoje."
+            : diasAteVencer <= 2
+              ? `Sua fatura vence em ${diasAteVencer} dia(s).`
+              : `Sua fatura vence em ${diasAteVencer} dias.`,
         dueAtISO: anchorAt.toISOString(),
         dueAt: anchorAt.toISOString(),
         days: diasAteVencer,
@@ -263,7 +270,9 @@ export function getBillingStatus(
       message:
         diasAtrasado >= TOLERANCE_DAYS
           ? "Último dia! Amanhã seu acesso será bloqueado se o pagamento não for regularizado."
-          : `Assinatura vencida há ${diasAtrasado} dias. Você tem até ${TOLERANCE_DAYS} dias de tolerância para regularizar e evitar bloqueio.`,
+          : diasAtrasado >= TOLERANCE_DAYS - 1
+            ? `Atenção: seu acesso será bloqueado em 2 dias se o pagamento não for regularizado. Fatura vencida há ${diasAtrasado} dias.`
+            : `Assinatura vencida há ${diasAtrasado} dia(s). Você tem até ${TOLERANCE_DAYS} dias de tolerância para regularizar.`,
       dueAtISO: dueAt.toISOString(),
       dueAt: dueAt.toISOString(),
       days: diasAtrasado,
@@ -274,7 +283,8 @@ export function getBillingStatus(
   // agora <= dueAt => não venceu
   const diasAteVenc = Math.max(0, diffDays(dueAt, now));
 
-  if (diasAteVenc <= 1) {
+  // Alerta 2 dias antes, 1 dia antes e no dia do vencimento
+  if (diasAteVenc <= 2) {
     return buildStatus({
       blocked: false,
       bloqueado: false,
@@ -284,7 +294,7 @@ export function getBillingStatus(
       message:
         diasAteVenc === 0
           ? "Fatura vence hoje. Regularize para evitar bloqueio."
-          : `Fatura vence em ${diasAteVenc} dias.`,
+          : `Fatura vence em ${diasAteVenc} dia(s).`,
       dueAtISO: dueAt.toISOString(),
       dueAt: dueAt.toISOString(),
       days: diasAteVenc,
@@ -292,6 +302,7 @@ export function getBillingStatus(
     });
   }
 
+  // Mais de 2 dias até o vencimento — sem alerta
   return buildStatus({
     blocked: false,
     bloqueado: false,

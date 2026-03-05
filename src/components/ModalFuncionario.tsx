@@ -54,6 +54,8 @@ export interface Funcionario {
   ipsPermitidos?: string;
   modoValidacaoPonto?: string;
   deveCadastrarFoto?: boolean;
+  deveDarCienciaCelular?: boolean;
+  cienciaCelularDocUrl?: string;
 }
 
 interface ModalFuncionarioProps {
@@ -120,6 +122,7 @@ export default function ModalFuncionario({
   const [raio, setRaio] = useState('100');
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
   const [exigirFotoFuncionario, setExigirFotoFuncionario] = useState(false);
+  const [exigirCienciaCelular, setExigirCienciaCelular] = useState(false);
 
   // Upload UX
   const [fotoErro, setFotoErro] = useState<string>('');
@@ -197,6 +200,7 @@ export default function ModalFuncionario({
       setIpsPermitidos(funcionarioEdicao.ipsPermitidos || '');
       setFotoArquivo(null);
       setExigirFotoFuncionario(funcionarioEdicao.deveCadastrarFoto || false);
+      setExigirCienciaCelular(funcionarioEdicao.deveDarCienciaCelular || false);
 
       setEnderecoPrincipal((funcionarioEdicao as any)?.enderecoPrincipal || '');
 
@@ -215,6 +219,7 @@ export default function ModalFuncionario({
       setLocaisExtras([]);
       setFotoArquivo(null);
       setExigirFotoFuncionario(false);
+      setExigirCienciaCelular(false);
       setModoValidacao('GPS');
       setIpsPermitidos('');
       setEnderecoPrincipal('');
@@ -507,6 +512,7 @@ export default function ModalFuncionario({
 
       if (fotoArquivo) formData.append('foto', fotoArquivo);
       formData.append('exigirFotoFuncionario', String(exigirFotoFuncionario));
+      formData.append('exigirCienciaCelular', String(exigirCienciaCelular));
 
       if (funcionarioEdicao?.id) {
         formData.append('id', funcionarioEdicao.id);
@@ -1267,6 +1273,39 @@ export default function ModalFuncionario({
                 <div className="flex items-center gap-2 bg-green-900/20 border border-green-500/20 p-3 rounded-xl">
                   <CheckCircle2 size={16} className="text-green-400 flex-shrink-0" />
                   <span className="text-sm text-green-300">Foto de referência cadastrada</span>
+                </div>
+              )}
+
+              {/* Checkbox: exigir ciência de uso de celular */}
+              {!funcionarioEdicao?.cienciaCelularDocUrl ? (
+                <label className="flex items-start gap-3 bg-elevated p-4 rounded-xl border border-border-subtle cursor-pointer hover:bg-elevated-solid/70 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={exigirCienciaCelular}
+                    onChange={(e) => setExigirCienciaCelular(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-purple-500 rounded"
+                  />
+                  <div>
+                    <span className="text-sm text-text-secondary font-medium">
+                      Exigir ciência de uso de celular pessoal
+                    </span>
+                    <p className="text-[11px] text-text-faint mt-1">
+                      O funcionário deverá informar o CPF e declarar se usará celular próprio ou da empresa para bater ponto. Um PDF será gerado automaticamente.
+                    </p>
+                  </div>
+                </label>
+              ) : (
+                <div className="flex items-center gap-2 bg-blue-900/20 border border-blue-500/20 p-3 rounded-xl">
+                  <CheckCircle2 size={16} className="text-blue-400 flex-shrink-0" />
+                  <span className="text-sm text-blue-300">Termo de ciência assinado</span>
+                  <a
+                    href={funcionarioEdicao.cienciaCelularDocUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto text-xs text-blue-400 hover:text-blue-300 underline font-medium"
+                  >
+                    Ver PDF
+                  </a>
                 </div>
               )}
             </section>
