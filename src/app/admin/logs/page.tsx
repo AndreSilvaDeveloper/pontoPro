@@ -44,38 +44,99 @@ export default function LogsAuditoria() {
   const exportarPDF = () => {
     const doc = new jsPDF();
 
-    // Título
-    doc.setFontSize(18);
-    doc.text('Relatório de Auditoria e Logs', 14, 20);
-    
-    // Subtítulo com filtros
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleString()}`, 14, 28);
-    doc.text(`Período: ${format(new Date(dataInicio), 'dd/MM/yyyy')} até ${format(new Date(dataFim), 'dd/MM/yyyy')}`, 14, 34);
+    // ─── Header roxo ───
+    doc.setFillColor(124, 58, 237);
+    doc.rect(0, 0, 210, 42, 'F');
+    doc.setFillColor(88, 28, 135);
+    doc.rect(0, 38, 210, 4, 'F');
 
-    // Configuração da Tabela
-    const tableColumn = ["Data/Hora", "Responsável", "Ação", "Detalhes"];
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('WorkID', 14, 18);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Relatório de Auditoria e Logs', 14, 27);
+    doc.setFontSize(8);
+    doc.setTextColor(220, 220, 255);
+    doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, 14, 34);
+
+    // Info direita
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Período: ${format(new Date(dataInicio), 'dd/MM/yyyy')} a ${format(new Date(dataFim), 'dd/MM/yyyy')}`, 196, 18, { align: 'right' });
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${logs.length} registros`, 196, 28, { align: 'right' });
+    if (tipoAcao !== 'TODOS') {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(220, 220, 255);
+      doc.text(`Filtro: ${tipoAcao}`, 196, 34, { align: 'right' });
+    }
+
+    // ─── Tabela ───
+    const tableColumn = ['Data/Hora', 'Responsável', 'Ação', 'Detalhes'];
     const tableRows: any[] = [];
 
     logs.forEach(log => {
-      const logData = [
+      tableRows.push([
         format(new Date(log.dataHora), 'dd/MM/yyyy HH:mm'),
         log.adminNome || 'Sistema',
-        log.acao.replace('_', ' '),
+        log.acao.replace(/_/g, ' '),
         log.detalhes,
-      ];
-      tableRows.push(logData);
+      ]);
     });
 
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 40,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [75, 85, 99] }, // Cor cinza escuro (Slate-600)
-      alternateRowStyles: { fillColor: [240, 240, 240] }, // Listrado leve
+      startY: 52,
+      theme: 'striped',
+      styles: { fontSize: 8, cellPadding: 3, valign: 'middle' },
+      headStyles: {
+        fillColor: [55, 48, 83],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+      },
+      columnStyles: {
+        0: { cellWidth: 30, halign: 'center' },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 28, halign: 'center', fontStyle: 'bold' },
+        3: { cellWidth: 'auto' },
+      },
+      alternateRowStyles: { fillColor: [248, 248, 252] },
+      didParseCell: function(data) {
+        if (data.section === 'body' && data.column.index === 2) {
+          const acao = String(data.cell.raw || '');
+          if (acao.includes('APROVA')) {
+            data.cell.styles.textColor = [22, 163, 74];
+          } else if (acao.includes('REJEI')) {
+            data.cell.styles.textColor = [220, 38, 38];
+          } else if (acao.includes('EDICAO') || acao.includes('AJUSTE')) {
+            data.cell.styles.textColor = [37, 99, 235];
+          } else if (acao.includes('EXCLUSAO')) {
+            data.cell.styles.textColor = [220, 38, 38];
+          }
+        }
+      }
     });
+
+    // Footer em todas as páginas
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(160, 160, 170);
+      doc.text(
+        `WorkID — Auditoria  |  Página ${i} de ${pageCount}`,
+        105,
+        290,
+        { align: 'center' }
+      );
+    }
 
     doc.save(`auditoria_${format(new Date(), 'yyyyMMdd_HHmm')}.pdf`);
   };

@@ -48,8 +48,8 @@ export async function POST(req: Request) {
       await prisma.logAuditoria.create({
         data: {
           acao: "IMPERSONATE_STOP",
-          detalhes: `SUPER_ADMIN ${superId ?? "unknown"} voltou da sessão de ${alvoNome ?? "unknown"} (${alvoEmail ?? "unknown"}) [${alvoCargo ?? "unknown"}] alvoId=${alvoId ?? "unknown"} empresaAlvo=${alvoEmpresaId ?? "SEM_EMPRESA"} ip=${ip} ua=${ua}`,
-          adminNome: "SUPER_ADMIN",
+          detalhes: `Suporte encerrou o acesso à conta de ${alvoNome ?? "usuário"} (${alvoEmail ?? ""})`,
+          adminNome: "Suporte WorkID",
           adminId: String(superId || "unknown"),
           empresaId: String(alvoEmpresaId || "SEM_EMPRESA"),
         },

@@ -81,7 +81,11 @@ model Usuario {
   solicitacoes       SolicitacaoAjuste[]
   empresa            Empresa?            @relation(fields: [empresaId], references: [id])
 
-
+  deveDarCienciaCelular   Boolean   @default(false)
+  cpf                     String?
+  cienciaCelularOpcao     String?
+  cienciaCelularData      DateTime?
+  cienciaCelularDocUrl    String?
 }
 
 model AdminLoja {

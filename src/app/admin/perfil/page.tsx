@@ -23,7 +23,7 @@ import {
 import { useSession } from "next-auth/react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format, differenceInDays, isValid, addDays } from "date-fns";
+import { format, isValid, addDays } from "date-fns";
 import type { BillingStatus } from "@/lib/billing";
 
 import PaymentModal, { AsaasBundle, type PayMode } from "@/components/billing/PaymentModal";
@@ -402,17 +402,9 @@ export default function PerfilAdmin() {
   // ==========================
   const renderBillingBadge = () => {
     if (!fatura) return null;
+    const b = fatura.billing;
 
-    if (fatura.billing.phase === "TRIAL") {
-      return (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 border border-amber-500/20">
-          <Clock size={14} />
-          Trial: {fatura.billing.days ?? 0} dias restantes
-        </div>
-      );
-    }
-
-    if (fatura.pago) {
+    if (b.code === "OK" && b.paidForCycle) {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-400 border border-emerald-500/20">
           <CheckCircle size={14} />
@@ -421,38 +413,47 @@ export default function PerfilAdmin() {
       );
     }
 
-    const dataVenc = fatura.vencimento;
-    if (!dataVenc || !isValid(dataVenc)) return null;
-
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const vencZerado = new Date(dataVenc);
-    vencZerado.setHours(0, 0, 0, 0);
-    const diasParaVencimento = differenceInDays(vencZerado, hoje);
-
-    if (diasParaVencimento <= -10) {
+    if (b.code === "BLOCKED" || b.code === "MANUAL_BLOCK") {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 border border-red-500/20 animate-pulse">
           <Lock size={14} />
-          Bloqueio iminente
+          {b.code === "BLOCKED" ? "Acesso suspenso" : "Bloqueado"}
         </div>
       );
     }
 
-    if (diasParaVencimento < 0) {
+    if (b.code === "PAST_DUE") {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-400 border border-red-500/20">
           <AlertTriangle size={14} />
-          Vencida h\u00e1 {Math.abs(diasParaVencimento)}d
+          Vencida há {b.days ?? 0} {(b.days ?? 0) === 1 ? "dia" : "dias"}
         </div>
       );
     }
 
-    if (diasParaVencimento <= 5) {
+    if (b.code === "DUE_SOON") {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 border border-yellow-500/20">
           <Clock size={14} />
-          Vence em {diasParaVencimento}d
+          {b.days === 0 ? "Vence hoje" : `Vence em ${b.days}d`}
+        </div>
+      );
+    }
+
+    if (b.code === "TRIAL_ACTIVE" || b.code === "TRIAL_ENDING") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 border border-amber-500/20">
+          <Clock size={14} />
+          Trial: {b.days ?? 0} {(b.days ?? 0) === 1 ? "dia" : "dias"}
+        </div>
+      );
+    }
+
+    if (b.code === "PENDING_FIRST_INVOICE") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 border border-yellow-500/20">
+          <Clock size={14} />
+          1ª fatura em {b.days ?? 0}d
         </div>
       );
     }
@@ -462,37 +463,8 @@ export default function PerfilAdmin() {
 
   const renderBillingAlert = () => {
     if (!fatura) return null;
-
-    if (fatura.billing.phase === "TRIAL") {
-      return (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="shrink-0 rounded-xl bg-amber-500/10 p-3 text-amber-400">
-              <Clock size={22} />
-            </div>
-            <div>
-              <p className="font-bold text-amber-300">Per\u00edodo de teste ativo</p>
-              <p className="text-sm text-amber-200/60">
-                Restam <b>{fatura.billing.days ?? "\u2014"}</b> dias (at\u00e9{" "}
-                <b>{formatSafe(fatura.trialEndsAt)}</b>). 1\u00aa fatura em{" "}
-                <b>{formatSafe(fatura.billingAnchorAt)}</b>.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (fatura.pago) return null;
-
-    const dataVenc = fatura.vencimento;
-    if (!dataVenc || !isValid(dataVenc)) return null;
-
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const vencZerado = new Date(dataVenc);
-    vencZerado.setHours(0, 0, 0, 0);
-    const diasParaVencimento = differenceInDays(vencZerado, hoje);
+    const b = fatura.billing;
+    const isCartao = fatura.billingMethod === "CREDIT_CARD";
 
     const payButtons = (variant: "red" | "yellow") => (
       <div className="flex gap-2 shrink-0">
@@ -521,9 +493,53 @@ export default function PerfilAdmin() {
       </div>
     );
 
-    const isCartao = fatura.billingMethod === "CREDIT_CARD";
+    // OK e pago → sem alerta
+    if (b.code === "OK" && b.paidForCycle) return null;
+    if (b.code === "OK" && !b.showAlert) return null;
 
-    if (diasParaVencimento <= -10) {
+    // TRIAL
+    if (b.code === "TRIAL_ACTIVE" || b.code === "TRIAL_ENDING") {
+      return (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 rounded-xl bg-amber-500/10 p-3 text-amber-400">
+              <Clock size={22} />
+            </div>
+            <div>
+              <p className="font-bold text-amber-300">Período de teste ativo</p>
+              <p className="text-sm text-amber-200/60">
+                Restam <b>{b.days ?? "—"}</b> {(b.days ?? 0) === 1 ? "dia" : "dias"} (até{" "}
+                <b>{formatSafe(fatura.trialEndsAt)}</b>).
+                {fatura.billingAnchorAt && (
+                  <> 1ª fatura em <b>{formatSafe(fatura.billingAnchorAt)}</b>.</>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // PENDING_FIRST_INVOICE
+    if (b.code === "PENDING_FIRST_INVOICE") {
+      return (
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
+              <Clock size={22} />
+            </div>
+            <div>
+              <p className="font-bold text-yellow-400">1ª fatura a caminho</p>
+              <p className="text-sm text-yellow-200/60">{b.message}</p>
+            </div>
+          </div>
+          {!isCartao && payButtons("yellow")}
+        </div>
+      );
+    }
+
+    // BLOCKED / MANUAL_BLOCK
+    if (b.code === "BLOCKED" || b.code === "MANUAL_BLOCK") {
       return (
         <div className="rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-950/40 to-slate-900/50 p-5 space-y-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-red-600/5 animate-pulse pointer-events-none" />
@@ -532,18 +548,19 @@ export default function PerfilAdmin() {
               <Lock size={22} />
             </div>
             <div>
-              <p className="font-bold text-red-400 text-lg">Bloqueio de acesso</p>
-              <p className="text-sm text-text-secondary">
-                Fatura vencida h\u00e1 {Math.abs(diasParaVencimento)} dias. Regularize para continuar.
+              <p className="font-bold text-red-400 text-lg">
+                {b.code === "MANUAL_BLOCK" ? "Acesso bloqueado" : "Acesso suspenso"}
               </p>
+              <p className="text-sm text-text-secondary">{b.message}</p>
             </div>
           </div>
-          {!isCartao && <div className="z-10 relative">{payButtons("red")}</div>}
+          {!isCartao && b.code === "BLOCKED" && <div className="z-10 relative">{payButtons("red")}</div>}
         </div>
       );
     }
 
-    if (diasParaVencimento < 0) {
+    // PAST_DUE
+    if (b.code === "PAST_DUE") {
       return (
         <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-5 space-y-4">
           <div className="flex items-center gap-4">
@@ -552,9 +569,7 @@ export default function PerfilAdmin() {
             </div>
             <div>
               <p className="font-bold text-red-400">Fatura vencida</p>
-              <p className="text-sm text-red-200/60">
-                Venceu em {format(vencZerado, "dd/MM")}. Evite bloqueio regularizando agora.
-              </p>
+              <p className="text-sm text-red-200/60">{b.message}</p>
             </div>
           </div>
           {!isCartao && payButtons("red")}
@@ -562,7 +577,8 @@ export default function PerfilAdmin() {
       );
     }
 
-    if (diasParaVencimento <= 5) {
+    // DUE_SOON
+    if (b.code === "DUE_SOON") {
       return (
         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 space-y-4">
           <div className="flex items-center gap-4">
@@ -571,11 +587,7 @@ export default function PerfilAdmin() {
             </div>
             <div>
               <p className="font-bold text-yellow-400">Fatura em aberto</p>
-              <p className="text-sm text-yellow-200/60">
-                {diasParaVencimento === 0
-                  ? "Vence HOJE!"
-                  : `Vence em ${diasParaVencimento} dias (${format(vencZerado, "dd/MM")}).`}
-              </p>
+              <p className="text-sm text-yellow-200/60">{b.message}</p>
             </div>
           </div>
           {!isCartao && payButtons("yellow")}

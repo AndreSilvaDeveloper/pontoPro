@@ -47,6 +47,7 @@ export const authOptions: NextAuthOptions = {
             empresaId: true,
             deveTrocarSenha: true,
             deveCadastrarFoto: true,
+            deveDarCienciaCelular: true,
             assinaturaUrl: true,
           },
         });
@@ -90,6 +91,7 @@ export const authOptions: NextAuthOptions = {
             empresaId: user.empresaId ?? null,
             deveTrocarSenha: user.deveTrocarSenha,
             deveCadastrarFoto: user.deveCadastrarFoto,
+            deveDarCienciaCelular: user.deveDarCienciaCelular,
             temAssinatura: !!user.assinaturaUrl,
           } as any;
         }
@@ -198,6 +200,7 @@ export const authOptions: NextAuthOptions = {
           empresaId: user.empresaId,
           deveTrocarSenha: user.deveTrocarSenha,
           deveCadastrarFoto: user.deveCadastrarFoto,
+          deveDarCienciaCelular: user.deveDarCienciaCelular,
           temAssinatura: !!user.assinaturaUrl,
         } as any;
       },
@@ -212,6 +215,7 @@ export const authOptions: NextAuthOptions = {
         token.empresaId = (user as any).empresaId ?? null;
         token.deveTrocarSenha = (user as any).deveTrocarSenha;
         token.deveCadastrarFoto = (user as any).deveCadastrarFoto;
+        token.deveDarCienciaCelular = (user as any).deveDarCienciaCelular;
         token.temAssinatura = (user as any).temAssinatura;
 
         // ✅ preserve se alguém (ex: endpoint de impersonação) já setou isso no user
@@ -238,6 +242,7 @@ export const authOptions: NextAuthOptions = {
 
         (session.user as any).deveTrocarSenha = (token as any).deveTrocarSenha;
         (session.user as any).deveCadastrarFoto = (token as any).deveCadastrarFoto;
+        (session.user as any).deveDarCienciaCelular = (token as any).deveDarCienciaCelular;
         (session.user as any).temAssinatura = (token as any).temAssinatura;
 
         // ✅ novo: expõe a marca de impersonação no session

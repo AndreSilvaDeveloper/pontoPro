@@ -26,8 +26,8 @@ export default function CadastrarFotoPage() {
       router.push('/login');
     }
     if (status === 'authenticated' && !session?.user?.deveCadastrarFoto) {
-      if (!session?.user?.temAssinatura) {
-        router.push('/cadastrar-assinatura');
+      if (session?.user?.deveDarCienciaCelular) {
+        router.push('/ciencia-celular');
       } else {
         router.push('/funcionario');
       }
@@ -81,8 +81,8 @@ export default function CadastrarFotoPage() {
       await axios.post('/api/auth/cadastrar-foto', { fotoBase64 });
       await update({ deveCadastrarFoto: false });
       // @ts-ignore
-      if (!session?.user?.temAssinatura) {
-        router.push('/cadastrar-assinatura');
+      if (session?.user?.deveDarCienciaCelular) {
+        router.push('/ciencia-celular');
       } else {
         router.push('/funcionario');
       }

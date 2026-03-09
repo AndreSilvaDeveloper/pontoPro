@@ -34,12 +34,13 @@ export async function POST(request: Request) {
         senha: senhaCriptografada,
         deveTrocarSenha: false
       },
-      select: { deveCadastrarFoto: true, assinaturaUrl: true }
+      select: { deveCadastrarFoto: true, deveDarCienciaCelular: true, assinaturaUrl: true }
     });
 
     return NextResponse.json({
       success: true,
       deveCadastrarFoto: usuarioAtualizado.deveCadastrarFoto,
+      deveDarCienciaCelular: usuarioAtualizado.deveDarCienciaCelular,
       temAssinatura: !!usuarioAtualizado.assinaturaUrl,
     });
 

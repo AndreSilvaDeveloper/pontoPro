@@ -150,42 +150,56 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
     const diasTrabalhados = dadosProcessados.filter((d: any) => d.trabalhou).length;
     const ehPeriodo = !isSameDay(filtro.inicio, filtro.fim);
 
-    // Cabeçalho Roxo
-    doc.setFillColor(124, 58, 237); 
-    doc.rect(0, 0, 210, 40, 'F');
+    // ─── Header roxo ───
+    doc.setFillColor(124, 58, 237);
+    doc.rect(0, 0, 210, 42, 'F');
+    doc.setFillColor(88, 28, 135);
+    doc.rect(0, 38, 210, 4, 'F');
+
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22); doc.setFont('helvetica', 'bold'); 
-    doc.text(nomeEmpresa || 'WorkID', 14, 20);
-    doc.setFontSize(12); doc.setFont('helvetica', 'normal'); 
-    doc.text('Relatório Detalhado de Frequência', 14, 28);
-    
+    doc.setFontSize(22); doc.setFont('helvetica', 'bold');
+    doc.text(nomeEmpresa || 'WorkID', 14, 18);
+    doc.setFontSize(12); doc.setFont('helvetica', 'normal');
+    doc.text('Relatório Detalhado de Frequência', 14, 27);
+    doc.setFontSize(8);
+    doc.setTextColor(220, 220, 255);
+    doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}`, 14, 34);
+
     // Info Direita
-    doc.setFontSize(9); 
-    doc.text('Sistema de Ponto Eletrônico', 195, 15, { align: 'right' });
-    doc.text('Conformidade Portaria 671', 195, 20, { align: 'right' });
-    doc.text(`Gerado em: ${format(new Date(), "dd/MM/yyyy HH:mm")}`, 195, 25, { align: 'right' });
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.text('Sistema de Ponto Eletrônico', 196, 15, { align: 'right' });
+    doc.text('Conformidade Portaria 671', 196, 21, { align: 'right' });
 
     // === BARRA CINZA ===
-    doc.setFillColor(245, 245, 245); 
-    doc.rect(14, 45, 182, 25, 'F');
+    doc.setFillColor(248, 248, 252);
+    doc.rect(14, 48, 182, 25, 'F');
+    doc.setDrawColor(230, 230, 240);
+    doc.rect(14, 48, 182, 25, 'S');
     doc.setTextColor(0, 0, 0); doc.setFontSize(10);
-    
+
     // FUNCIONÁRIO
-    doc.setFont('helvetica', 'bold'); doc.text('FUNCIONÁRIO:', 18, 52); 
-    doc.setFont('helvetica', 'normal'); 
+    doc.setTextColor(100, 100, 120);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.text('FUNCIONÁRIO', 18, 54);
+    doc.setTextColor(30, 30, 50);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
     let nomeFuncionario = ehRelatorioGeral ? 'TODOS OS COLABORADORES' : filtro.usuario;
     if (nomeFuncionario.length > 22) nomeFuncionario = nomeFuncionario.substring(0, 22) + '...';
-    doc.text(nomeFuncionario, 18, 58);
-    
+    doc.text(nomeFuncionario, 18, 61);
+
     // PERÍODO
-    const xPeriodo = 72; 
-    doc.setFont('helvetica', 'bold'); doc.text('PERÍODO:', xPeriodo, 52); 
-    doc.setFont('helvetica', 'normal'); 
-    doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, xPeriodo, 58);
+    const xPeriodo = 72;
+    doc.setTextColor(100, 100, 120);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.text('PERÍODO', xPeriodo, 54);
+    doc.setTextColor(30, 30, 50);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text(`${format(filtro.inicio, 'dd/MM/yyyy')} até ${format(filtro.fim, 'dd/MM/yyyy')}`, xPeriodo, 61);
 
     // === CARDS ===
     if (resumoHoras && !ehRelatorioGeral) {
-      const cardY = 45;
+      const cardY = 48;
       const cardHeight = 25;
       const cardWidth = 24; 
       const endX = 196; 
@@ -271,15 +285,24 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
       body: dadosProcessados,
       startY: 80,
       theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1, valign: 'middle', halign: 'center' },
-      headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+      styles: { fontSize: 7, cellPadding: 1.5, valign: 'middle', halign: 'center' },
+      headStyles: { fillColor: [55, 48, 83], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 7 },
       columns: colunas,
       columnStyles: colStyles,
+      alternateRowStyles: { fillColor: [248, 248, 252] },
       didParseCell: function(data) {
         if (data.row.raw && (data.row.raw as any).isAusencia) {
-            if (data.section === 'body') { 
-                data.cell.styles.fillColor = [255, 240, 240]; 
-                data.cell.styles.textColor = [180, 0, 0]; 
+            if (data.section === 'body') {
+                data.cell.styles.fillColor = [255, 235, 235];
+                data.cell.styles.textColor = [180, 0, 0];
+            }
+        }
+        // Domingos em cinza claro
+        if (data.section === 'body' && !(data.row.raw as any)?.isAusencia) {
+            const dia = (data.row.raw as any)?.diaSemana;
+            if (dia === 'DOM') {
+                data.cell.styles.fillColor = [240, 240, 245];
+                data.cell.styles.textColor = [140, 140, 160];
             }
         }
       }
@@ -301,6 +324,20 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
                 if (imgData) doc.addImage(imgData, 'PNG', 20, finalY - 25, 40, 20);
             } catch (e) { console.error(e); }
         }
+    }
+
+    // Footer com paginação em todas as páginas
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(160, 160, 170);
+      doc.text(
+        `WorkID — Relatório de Frequência  |  Página ${i} de ${pageCount}`,
+        105,
+        290,
+        { align: 'center' }
+      );
     }
 
     return doc;
@@ -377,18 +414,45 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
 
   const gerarExcel = () => {
     const dados = processarDados();
-    const ws = XLSX.utils.json_to_sheet(dados.map((row: any) => ({
-        Funcionario: row.nomeFunc, 
-        Data: row.dataFormatada,
-        Dia: row.diaSemana,
-        Ent1: row.e1, Sai1: row.s1, 
-        Ent2: row.e2, Sai2: row.s2,
-        Ent3: row.e3, Sai3: row.s3,
-        Obs: row.obs
-    })));
+    const ehGeral = filtro.usuario === 'Todos' || !filtro.usuario || filtro.usuario === 'Todos os Funcionários';
+
+    // Cabeçalho informativo
+    const headerRows: any[] = [
+      { Funcionario: nomeEmpresa, Data: '', Dia: '', Ent1: '', Sai1: '', Ent2: '', Sai2: '', Ent3: '', Sai3: '', Obs: '' },
+      { Funcionario: `Período: ${format(filtro.inicio, 'dd/MM/yyyy')} a ${format(filtro.fim, 'dd/MM/yyyy')}`, Data: '', Dia: '', Ent1: '', Sai1: '', Ent2: '', Sai2: '', Ent3: '', Sai3: '', Obs: '' },
+      { Funcionario: `Funcionário: ${ehGeral ? 'Todos' : filtro.usuario}`, Data: '', Dia: '', Ent1: '', Sai1: '', Ent2: '', Sai2: '', Ent3: '', Sai3: '', Obs: '' },
+      { Funcionario: '', Data: '', Dia: '', Ent1: '', Sai1: '', Ent2: '', Sai2: '', Ent3: '', Sai3: '', Obs: '' },
+    ];
+
+    const dataRows = dados.map((row: any) => ({
+      Funcionario: row.nomeFunc,
+      Data: row.dataFormatada,
+      Dia: row.diaSemana,
+      Ent1: row.e1, Sai1: row.s1,
+      Ent2: row.e2, Sai2: row.s2,
+      Ent3: row.e3, Sai3: row.s3,
+      Obs: row.obs
+    }));
+
+    const ws = XLSX.utils.json_to_sheet([...headerRows, ...dataRows]);
+
+    // Larguras das colunas
+    ws['!cols'] = [
+      { wch: 22 }, // Funcionário
+      { wch: 22 }, // Data (range pode ser longo)
+      { wch: 6 },  // Dia
+      { wch: 7 },  // Ent1
+      { wch: 7 },  // Sai1
+      { wch: 7 },  // Ent2
+      { wch: 7 },  // Sai2
+      { wch: 7 },  // Ent3
+      { wch: 7 },  // Sai3
+      { wch: 35 }, // Obs
+    ];
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Espelho");
-    XLSX.writeFile(wb, `Espelho_${filtro.usuario}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Espelho de Ponto");
+    XLSX.writeFile(wb, `Espelho_${filtro.usuario}_${format(filtro.inicio, 'MMyyyy')}.xlsx`);
     setMenuAberto(false);
   };
 

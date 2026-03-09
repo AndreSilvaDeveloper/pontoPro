@@ -73,6 +73,7 @@ export async function POST(request: Request) {
 
     const telefone = formData.get('telefone') as string || '';
     const exigirFotoFuncionario = formData.get('exigirFotoFuncionario') === 'true';
+    const exigirCienciaCelular = formData.get('exigirCienciaCelular') === 'true';
 
     // === NOVOS CAMPOS (IP e MODO) ===
     const modoValidacaoPontoStr = formData.get('modoValidacaoPonto') as string || 'GPS';
@@ -129,6 +130,7 @@ export async function POST(request: Request) {
         locaisAdicionais: locaisAdicionaisDados,
         deveTrocarSenha: true,
         deveCadastrarFoto,
+        deveDarCienciaCelular: exigirCienciaCelular,
         modoValidacaoPonto: modoValidacaoPontoStr as any,
         ipsPermitidos,
         telefone: telefone || null,
@@ -247,6 +249,7 @@ export async function PUT(request: Request) {
 
     const telefone = formData.get('telefone') as string || '';
     const exigirFotoFuncionarioStr = formData.get('exigirFotoFuncionario');
+    const exigirCienciaCelularStr = formData.get('exigirCienciaCelular');
 
     // === NOVOS CAMPOS (IP e MODO) ===
     const modoValidacaoPontoStr = formData.get('modoValidacaoPonto') as string || 'GPS';
@@ -282,6 +285,10 @@ export async function PUT(request: Request) {
     } else if (exigirFotoFuncionarioStr !== null) {
       // Admin alterou o checkbox de exigir foto
       dados.deveCadastrarFoto = exigirFotoFuncionarioStr === 'true';
+    }
+
+    if (exigirCienciaCelularStr !== null) {
+      dados.deveDarCienciaCelular = exigirCienciaCelularStr === 'true';
     }
 
     const usuarioAtualizado = await prisma.usuario.update({

@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { X, Save, Clock, Copy } from 'lucide-react';
+import { X, Save, Clock, Copy, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface ModalProps {
   usuario: any;
@@ -11,373 +12,450 @@ interface ModalProps {
 }
 
 const DIAS = [
-  { chave: 'seg', label: 'Segunda-feira' },
-  { chave: 'ter', label: 'Terça-feira' },
-  { chave: 'qua', label: 'Quarta-feira' },
-  { chave: 'qui', label: 'Quinta-feira' },
-  { chave: 'sex', label: 'Sexta-feira' },
+  { chave: 'seg', label: 'Segunda' },
+  { chave: 'ter', label: 'Terça' },
+  { chave: 'qua', label: 'Quarta' },
+  { chave: 'qui', label: 'Quinta' },
+  { chave: 'sex', label: 'Sexta' },
   { chave: 'sab', label: 'Sábado' },
   { chave: 'dom', label: 'Domingo' },
 ] as const;
 
 type DiaChave = (typeof DIAS)[number]['chave'];
 
-type DiaJornada = {
-  e1: string; // entrada
-  s1: string; // saida (intervalo/almoço)
-  e2: string; // volta (intervalo/almoço)
-  s2: string; // saida final
-  ativo: boolean;
-};
+function timeToMin(t: string) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map((x) => Number(x));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  return h * 60 + m;
+}
 
-type Jornada = Record<DiaChave, DiaJornada>;
+function validarBloco(e: string, s: string) {
+  const me = timeToMin(e);
+  const ms = timeToMin(s);
+  if (me == null && ms == null) return null;
+  if (me == null || ms == null) return 'Preencha entrada e saída';
+  if (ms <= me) return 'Saída deve ser maior que entrada';
+  return null;
+}
 
-const criarDia = (ativo: boolean, e1 = '', s1 = '', e2 = '', s2 = ''): DiaJornada => ({
-  e1,
-  s1,
-  e2,
-  s2,
-  ativo,
-});
+function uniqSortedNumbers(arr: any[]) {
+  const out = Array.from(new Set(arr.map((n) => Number(n)).filter((n) => Number.isFinite(n))));
+  out.sort((a, b) => a - b);
+  return out;
+}
 
 export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: ModalProps) {
   const [loading, setLoading] = useState(false);
 
-  const jornadaInicial: Jornada = useMemo(() => {
-    const padrao: Jornada = {
-      seg: criarDia(true, '08:00', '12:00', '13:15', '18:00'),
-      ter: criarDia(true, '08:00', '12:00', '13:15', '18:00'),
-      qua: criarDia(true, '08:00', '12:00', '13:15', '18:00'),
-      qui: criarDia(true, '08:00', '12:00', '13:15', '18:00'),
-      sex: criarDia(true, '08:00', '12:00', '13:15', '18:00'),
-      sab: criarDia(false),
-      dom: criarDia(false),
-    };
+  const jornadaPadrao: any = {
+    seg: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
+    ter: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
+    qua: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
+    qui: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
+    sex: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
+    sab: { e1: '08:00', s1: '12:00', e2: '', s2: '', ativo: false },
+    dom: { e1: '', s1: '', e2: '', s2: '', ativo: false },
+  };
 
-    // Se já tiver jornada salva no usuário, usa ela (faz merge simples para evitar undefined)
+  const [jornada, setJornada] = useState<any>(jornadaPadrao);
+
+  useEffect(() => {
     if (usuario?.jornada) {
-      const j = usuario.jornada as Partial<Jornada>;
-      return {
-        seg: { ...padrao.seg, ...(j.seg || {}) },
-        ter: { ...padrao.ter, ...(j.ter || {}) },
-        qua: { ...padrao.qua, ...(j.qua || {}) },
-        qui: { ...padrao.qui, ...(j.qui || {}) },
-        sex: { ...padrao.sex, ...(j.sex || {}) },
-        sab: { ...padrao.sab, ...(j.sab || {}) },
-        dom: { ...padrao.dom, ...(j.dom || {}) },
-      };
+      const j = usuario.jornada;
+      const merged: any = {};
+      for (const dia of DIAS) {
+        merged[dia.chave] = { ...jornadaPadrao[dia.chave], ...(j[dia.chave] || {}) };
+      }
+      setJornada(merged);
     }
-
-    return padrao;
   }, [usuario?.jornada]);
 
-  const [jornada, setJornada] = useState<Jornada>(jornadaInicial);
+  const updateJornada = (dia: string, campo: string, valor: any) => {
+    setJornada((prev: any) => {
+      const diaAtual = prev?.[dia] || {};
+      const novoDia = { ...diaAtual, [campo]: valor };
 
-  // Para o preset 12x36: qual dia é "base" (dia trabalhado)
-  const [diaBase12x36, setDiaBase12x36] = useState<DiaChave>('seg');
-
-  const handleChange = (dia: DiaChave, campo: keyof DiaJornada, valor: string) => {
-    setJornada((prev) => ({
-      ...prev,
-      [dia]: { ...prev[dia], [campo]: valor },
-    }));
-  };
-
-  const toggleDia = (dia: DiaChave) => {
-    setJornada((prev) => ({
-      ...prev,
-      [dia]: { ...prev[dia], ativo: !prev[dia].ativo },
-    }));
-  };
-
-  // --- PRESETS ---
-  const aplicarPreset = (tipo: 'COM_SABADO' | 'SEM_SABADO' | 'DOZE_X_TRINTA_E_SEIS') => {
-    if (tipo === 'COM_SABADO') {
-      const padrao2h = criarDia(true, '08:00', '12:00', '14:00', '18:00');
-      const sabado = criarDia(true, '08:00', '12:00', '', '');
-      setJornada((prev) => ({
-        ...prev,
-        seg: padrao2h,
-        ter: padrao2h,
-        qua: padrao2h,
-        qui: padrao2h,
-        sex: padrao2h,
-        sab: sabado,
-        dom: { ...prev.dom, ativo: false, e1: '', s1: '', e2: '', s2: '' },
-      }));
-      return;
-    }
-
-    if (tipo === 'SEM_SABADO') {
-      const padrao1h15 = criarDia(true, '08:00', '12:00', '13:15', '18:00');
-      setJornada((prev) => ({
-        ...prev,
-        seg: padrao1h15,
-        ter: padrao1h15,
-        qua: padrao1h15,
-        qui: padrao1h15,
-        sex: padrao1h15,
-        sab: { ...prev.sab, ativo: false, e1: '', s1: '', e2: '', s2: '' },
-        dom: { ...prev.dom, ativo: false, e1: '', s1: '', e2: '', s2: '' },
-      }));
-      return;
-    }
-
-    // 12x36: marca dias alternados como ativos, baseado em diaBase12x36
-    if (tipo === 'DOZE_X_TRINTA_E_SEIS') {
-      const idxBase = DIAS.findIndex((d) => d.chave === diaBase12x36);
-
-      // Padrão comum 12h: 07:00-19:00
-      // Intervalo opcional: deixei vazio por padrão para não "forçar almoço"
-      const diaTrabalho = criarDia(true, '07:00', '', '', '19:00');
-      const diaFolga = criarDia(false);
-
-      const nova: Partial<Jornada> = {};
-      DIAS.forEach((d, i) => {
-        const diff = (i - idxBase + 7) % 7;
-        const trabalha = diff % 2 === 0; // alterna
-        nova[d.chave] = trabalha ? diaTrabalho : diaFolga;
-      });
-
-      setJornada((prev) => ({
-        ...prev,
-        ...(nova as Jornada),
-      }));
-    }
-  };
-
-  // --- COPIAR SEGUNDA PARA O RESTO DA SEMANA ---
-  const copiarSegundaParaSemana = (opcao: 'MANTER_ATIVO' | 'COPIAR_TUDO' = 'MANTER_ATIVO') => {
-    setJornada((prev) => {
-      const seg = prev.seg;
-
-      const aplicar = (dia: DiaChave) => {
-        if (dia === 'seg') return prev[dia];
-        if (opcao === 'COPIAR_TUDO') {
-          return { ...seg };
+      if (dia === 'sab' && campo === 'ativo' && valor === true) {
+        if (!novoDia.regra || novoDia.regra?.tipo !== 'SABADOS_DO_MES') {
+          novoDia.regra = { tipo: 'SABADOS_DO_MES', quais: [] };
+        } else {
+          novoDia.regra = {
+            tipo: 'SABADOS_DO_MES',
+            quais: uniqSortedNumbers(Array.isArray(novoDia.regra?.quais) ? novoDia.regra.quais : []),
+          };
         }
-        // MANTER_ATIVO: copia horários, mas mantém o "ativo" do dia atual
-        return { ...prev[dia], e1: seg.e1, s1: seg.s1, e2: seg.e2, s2: seg.s2 };
-      };
+      }
+
+      if (dia === 'sab' && campo === 'ativo' && valor === false) {
+        if (novoDia.regra) {
+          const copy = { ...novoDia };
+          delete copy.regra;
+          return { ...prev, [dia]: copy };
+        }
+      }
+
+      return { ...prev, [dia]: novoDia };
+    });
+  };
+
+  const toggleSabadoDoMes = (n: number) => {
+    setJornada((prev: any) => {
+      const sab = prev?.sab || {};
+      const regra = sab?.regra && sab.regra.tipo === 'SABADOS_DO_MES' ? sab.regra : { tipo: 'SABADOS_DO_MES', quais: [] };
+      const atuais = uniqSortedNumbers(Array.isArray(regra.quais) ? regra.quais : []);
+      const has = atuais.includes(n);
+      const novos = has ? atuais.filter((x: number) => x !== n) : uniqSortedNumbers([...atuais, n]);
 
       return {
-        seg: prev.seg,
-        ter: aplicar('ter'),
-        qua: aplicar('qua'),
-        qui: aplicar('qui'),
-        sex: aplicar('sex'),
-        sab: aplicar('sab'),
-        dom: aplicar('dom'),
+        ...prev,
+        sab: {
+          ...sab,
+          ativo: true,
+          regra: { tipo: 'SABADOS_DO_MES', quais: novos },
+        },
       };
     });
   };
 
+  const sabQuais: number[] = useMemo(() => {
+    const regra = jornada?.sab?.regra;
+    if (jornada?.sab?.ativo && regra?.tipo === 'SABADOS_DO_MES') {
+      return uniqSortedNumbers(Array.isArray(regra?.quais) ? regra.quais : []);
+    }
+    return [];
+  }, [jornada]);
+
+  const errosJornada = useMemo(() => {
+    const out: Record<string, string[]> = {};
+    for (const dia of DIAS) {
+      if (!jornada?.[dia.chave]?.ativo) continue;
+      const { e1, s1, e2, s2 } = jornada[dia.chave];
+      const arr: string[] = [];
+
+      const me1 = timeToMin(e1);
+      const ms2 = timeToMin(s2);
+      const ms1 = timeToMin(s1);
+      const me2 = timeToMin(e2);
+
+      // Entrada e saída final são obrigatórias
+      if (me1 == null && ms2 == null) {
+        arr.push('Preencha ao menos entrada e saída');
+      } else if (me1 == null) {
+        arr.push('Preencha o horário de entrada');
+      } else if (ms2 == null) {
+        arr.push('Preencha o horário de saída');
+      } else if (ms2 <= me1) {
+        arr.push('Saída deve ser maior que entrada');
+      }
+
+      // Almoço: só valida se pelo menos um campo for preenchido
+      const temAlmoco = ms1 != null || me2 != null;
+      if (temAlmoco) {
+        if (ms1 == null) arr.push('Preencha o horário de ida ao almoço');
+        if (me2 == null) arr.push('Preencha o horário de volta do almoço');
+        if (ms1 != null && me2 != null && me2 <= ms1) arr.push('Volta do almoço deve ser após ida');
+        if (ms1 != null && me1 != null && ms1 <= me1) arr.push('Almoço deve ser após entrada');
+        if (me2 != null && ms2 != null && ms2 <= me2) arr.push('Saída deve ser após volta do almoço');
+      }
+
+      if (arr.length) out[dia.chave] = arr;
+    }
+    return out;
+  }, [jornada]);
+
+  const replicarHorarioSegunda = () => {
+    const base = jornada['seg'];
+    if (!base) return;
+    const novaJornada = { ...jornada };
+    ['ter', 'qua', 'qui', 'sex'].forEach((dia) => {
+      novaJornada[dia] = { ...base };
+    });
+    setJornada(novaJornada);
+    toast.success('Horário de Segunda replicado até Sexta!');
+  };
+
+  const aplicarPreset = (tipo: 'COM_SABADO' | 'SEM_SABADO' | 'DOZE_X_TRINTA_E_SEIS') => {
+    if (tipo === 'SEM_SABADO') {
+      const padrao = { e1: '08:00', s1: '12:00', e2: '13:15', s2: '18:00', ativo: true };
+      setJornada((prev: any) => ({
+        ...prev,
+        seg: padrao, ter: padrao, qua: padrao, qui: padrao, sex: padrao,
+        sab: { ...prev.sab, ativo: false, e1: '', s1: '', e2: '', s2: '' },
+        dom: { ...prev.dom, ativo: false, e1: '', s1: '', e2: '', s2: '' },
+      }));
+      toast.success('Preset aplicado: Seg-Sex, 1h15 almoço');
+      return;
+    }
+
+    if (tipo === 'COM_SABADO') {
+      const padrao = { e1: '08:00', s1: '12:00', e2: '14:00', s2: '18:00', ativo: true };
+      const sabado = { e1: '08:00', s1: '12:00', e2: '', s2: '', ativo: true };
+      setJornada((prev: any) => ({
+        ...prev,
+        seg: padrao, ter: padrao, qua: padrao, qui: padrao, sex: padrao,
+        sab: sabado,
+        dom: { ...prev.dom, ativo: false, e1: '', s1: '', e2: '', s2: '' },
+      }));
+      toast.success('Preset aplicado: Seg-Sáb, 2h almoço');
+      return;
+    }
+
+    if (tipo === 'DOZE_X_TRINTA_E_SEIS') {
+      const diaTrabalho = { e1: '07:00', s1: '', e2: '', s2: '19:00', ativo: true };
+      const diaFolga = { e1: '', s1: '', e2: '', s2: '', ativo: false };
+      setJornada((prev: any) => ({
+        ...prev,
+        seg: diaTrabalho, ter: diaFolga, qua: diaTrabalho, qui: diaFolga,
+        sex: diaTrabalho, sab: diaFolga, dom: diaTrabalho,
+      }));
+      toast.success('Preset aplicado: 12x36');
+    }
+  };
+
   const salvar = async () => {
+    const temErroJornada = Object.keys(errosJornada).length > 0;
+    if (temErroJornada) {
+      toast.warning('Existem horários inválidos. Corrija antes de salvar.');
+      return;
+    }
+
     setLoading(true);
     try {
       await axios.put('/api/admin/usuario/jornada', {
         usuarioId: usuario.id,
         jornada,
       });
-      alert('Escala atualizada com sucesso!');
+      toast.success('Escala atualizada com sucesso!');
       aoSalvar();
       aoFechar();
-    } catch (error) {
-      alert('Erro ao salvar escala.');
+    } catch {
+      toast.error('Erro ao salvar escala.');
     } finally {
       setLoading(false);
     }
   };
 
+  const diaLabel: Record<string, string> = {
+    seg: 'Segunda', ter: 'Terça', qua: 'Quarta',
+    qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
+  };
+
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm">
-      <div className="bg-surface-solid w-full max-w-2xl rounded-2xl border border-border-input shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Cabeçalho */}
-        <div className="flex justify-between items-center p-6 border-b border-border-input">
-          <div>
-            <h3 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              <Clock className="text-purple-400" /> Configurar Escala
-            </h3>
-            <p className="text-text-muted text-sm">
-              Funcionário: <span className="text-text-primary font-bold">{usuario.nome}</span>
-            </p>
+    <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center bg-page md:bg-overlay md:backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
+      <div className="bg-page md:bg-surface-solid w-full min-h-full md:min-h-0 md:h-auto md:max-h-[90vh] md:max-w-3xl md:rounded-2xl md:border md:border-border-default shadow-2xl flex flex-col relative">
+        {/* Header */}
+        <div className="p-4 md:p-6 border-b border-border-subtle flex justify-between items-center bg-surface-solid/80 backdrop-blur-sm md:rounded-t-2xl sticky top-0 z-10 flex-shrink-0" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}>
+          <h2 className="text-lg md:text-xl font-bold text-text-primary flex items-center gap-3">
+            <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
+              <Clock size={18} className="text-purple-400" />
+            </div>
+            Configurar Escala
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-text-muted hidden sm:block">{usuario?.nome}</span>
+            <button
+              onClick={aoFechar}
+              className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong rounded-xl text-text-muted hover:text-text-primary transition-colors border border-border-subtle active:scale-95"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={aoFechar} className="text-text-faint hover:text-text-primary">
-            <X size={24} />
-          </button>
         </div>
 
-        {/* Corpo com Scroll */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          {/* Modelos + Copiar */}
-          <div className="bg-elevated p-4 rounded-xl border border-border-input space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-text-muted font-bold uppercase flex items-center gap-2">
-                <Copy size={12} /> Modelos Rápidos
-              </p>
-
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6">
+          {/* Presets */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-end border-b border-border-subtle pb-2">
+              <h3 className="text-sm font-bold text-text-faint uppercase tracking-wider flex items-center gap-2">
+                <Copy size={16} /> Modelos Rápidos
+              </h3>
               <button
-                onClick={() => copiarSegundaParaSemana('MANTER_ATIVO')}
-                className="bg-surface/40 hover:bg-surface-solid/70 border border-border-input text-text-secondary px-3 py-2 rounded text-xs font-bold transition-all flex items-center gap-2"
-                title="Copia os horários da Segunda para os demais dias, mantendo o 'ativo' de cada dia"
+                type="button"
+                onClick={replicarHorarioSegunda}
+                className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-purple-600 hover:text-white hover:border-purple-600 transition-colors active:scale-95"
               >
-                <Copy size={14} /> Copiar Segunda → Semana
+                <Copy size={12} /> Copiar Seg &rarr; Sexta
               </button>
             </div>
 
-            <div className="flex gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
+                type="button"
                 onClick={() => aplicarPreset('SEM_SABADO')}
-                className="flex-1 bg-blue-900/30 hover:bg-blue-900/50 border border-blue-800 text-blue-200 py-2 rounded text-xs font-bold transition-all"
+                className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-300 text-xs font-bold hover:bg-blue-500/20 transition-colors active:scale-95"
               >
-                Sem Sábado (1h15 Almoço)
+                Sem Sábado (1h15)
               </button>
-
               <button
+                type="button"
                 onClick={() => aplicarPreset('COM_SABADO')}
-                className="flex-1 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-800 text-purple-200 py-2 rounded text-xs font-bold transition-all"
+                className="p-3 rounded-xl border border-purple-500/20 bg-purple-500/10 text-purple-300 text-xs font-bold hover:bg-purple-500/20 transition-colors active:scale-95"
               >
-                Com Sábado (2h Almoço)
+                Com Sábado (2h)
               </button>
-            </div>
-
-            {/* 12x36 */}
-            <div className="grid grid-cols-12 gap-3 items-center pt-2">
-              <div className="col-span-12 sm:col-span-4">
-                <p className="text-[11px] text-text-muted font-bold uppercase">12x36</p>
-                <p className="text-[11px] text-text-faint">Alterna dias ativos/inativos</p>
-              </div>
-
-              <div className="col-span-12 sm:col-span-5">
-                <label className="text-[10px] text-text-faint block mb-1">Dia base (trabalha)</label>
-                <select
-                  value={diaBase12x36}
-                  onChange={(e) => setDiaBase12x36(e.target.value as DiaChave)}
-                  className="w-full bg-page border border-border-input rounded p-2 text-text-primary text-xs"
-                >
-                  {DIAS.map((d) => (
-                    <option key={d.chave} value={d.chave}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-span-12 sm:col-span-3">
-                <button
-                  onClick={() => aplicarPreset('DOZE_X_TRINTA_E_SEIS')}
-                  className="w-full bg-emerald-900/30 hover:bg-emerald-900/50 border border-emerald-800 text-emerald-200 py-2 rounded text-xs font-bold transition-all"
-                >
-                  Aplicar 12x36
-                </button>
-              </div>
-
-              <div className="col-span-12">
-                <p className="text-[11px] text-text-faint">
-                  Padrão aplicado: <span className="text-text-secondary font-bold">07:00 → 19:00</span> (intervalo vazio; edite se quiser).
-                </p>
-              </div>
-            </div>
-
-            {/* Extra: copiar tudo (inclui ativo) */}
-            <div className="flex justify-end">
               <button
-                onClick={() => copiarSegundaParaSemana('COPIAR_TUDO')}
-                className="text-[11px] text-text-muted hover:text-text-primary underline underline-offset-4"
-                title="Copia inclusive o 'ativo' da Segunda para todos os dias (deixa todos iguais)"
+                type="button"
+                onClick={() => aplicarPreset('DOZE_X_TRINTA_E_SEIS')}
+                className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 transition-colors active:scale-95"
               >
-                Copiar Segunda (incluindo ativo)
+                12x36 (07h-19h)
               </button>
             </div>
           </div>
 
-          {/* Lista de Dias */}
-          <div className="space-y-2">
-            {DIAS.map((dia) => (
-              <div
-                key={dia.chave}
-                className={`grid grid-cols-12 gap-2 items-center p-3 rounded-lg border ${
-                  jornada[dia.chave]?.ativo
-                    ? 'bg-elevated-solid border-border-input'
-                    : 'bg-surface border-border-input opacity-60'
-                }`}
-              >
-                <div className="col-span-3 flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={jornada[dia.chave]?.ativo}
-                    onChange={() => toggleDia(dia.chave)}
-                    className="w-4 h-4 rounded border-border-input bg-border-input text-purple-600"
-                  />
-                  <span className="text-sm font-bold text-text-secondary">{dia.label}</span>
-                </div>
-
-                {jornada[dia.chave]?.ativo ? (
-                  <div className="col-span-9 grid grid-cols-4 gap-2">
-                    <div>
-                      <label className="text-[10px] text-text-faint block">Entrada</label>
-                      <input
-                        type="time"
-                        value={jornada[dia.chave].e1}
-                        onChange={(e) => handleChange(dia.chave, 'e1', e.target.value)}
-                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-text-faint block">Saída Almoço</label>
-                      <input
-                        type="time"
-                        value={jornada[dia.chave].s1}
-                        onChange={(e) => handleChange(dia.chave, 's1', e.target.value)}
-                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-text-faint block">Volta Almoço</label>
-                      <input
-                        type="time"
-                        value={jornada[dia.chave].e2}
-                        onChange={(e) => handleChange(dia.chave, 'e2', e.target.value)}
-                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-text-faint block">Saída</label>
-                      <input
-                        type="time"
-                        value={jornada[dia.chave].s2}
-                        onChange={(e) => handleChange(dia.chave, 's2', e.target.value)}
-                        className="w-full bg-page border border-border-input rounded p-1 text-text-primary text-xs text-center"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="col-span-9 text-xs text-text-dim italic text-center py-2">
-                    Dia de folga / Livre
-                  </div>
-                )}
+          {/* Validação */}
+          {Object.keys(errosJornada).length > 0 && (
+            <div className="flex items-start gap-2 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-3">
+              <AlertTriangle className="text-yellow-300 mt-0.5" size={16} />
+              <div className="text-xs text-yellow-100">
+                Existem horários inválidos em alguns dias. Corrija para evitar inconsistências no ponto.
               </div>
-            ))}
+            </div>
+          )}
+
+          {/* Dias */}
+          <div className="space-y-3">
+            {DIAS.map((dia) => {
+              const diaErros = errosJornada[dia.chave] || [];
+              return (
+                <div
+                  key={dia.chave}
+                  className={`relative rounded-2xl border transition-all overflow-hidden ${
+                    jornada[dia.chave]?.ativo
+                      ? 'bg-surface border-border-default'
+                      : 'bg-input-solid/30 border-border-subtle opacity-60'
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-between p-3.5 ${
+                      jornada[dia.chave]?.ativo ? 'bg-white/[0.02]' : 'bg-transparent'
+                    }`}
+                  >
+                    <span className="font-bold text-sm text-text-secondary flex items-center gap-2">
+                      {diaLabel[dia.chave]}
+                      {jornada[dia.chave]?.ativo && <CheckCircle2 size={12} className="text-green-500" />}
+                    </span>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={jornada[dia.chave]?.ativo}
+                        onChange={(e) => updateJornada(dia.chave, 'ativo', e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-border-input peer-focus:outline-none rounded-full peer peer-checked:bg-purple-600 peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
+                    </label>
+                  </div>
+
+                  {jornada[dia.chave]?.ativo && (
+                    <div className="p-3.5 pt-0 space-y-2">
+                      <div className="grid grid-cols-4 gap-2">
+                        <div>
+                          <p className="text-[10px] text-text-faint font-bold uppercase text-center mb-1">Entrada</p>
+                          <input
+                            type="time"
+                            value={jornada[dia.chave].e1}
+                            onChange={(e) => updateJornada(dia.chave, 'e1', e.target.value)}
+                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-text-faint font-bold uppercase text-center mb-1">Almoço</p>
+                          <input
+                            type="time"
+                            value={jornada[dia.chave].s1}
+                            onChange={(e) => updateJornada(dia.chave, 's1', e.target.value)}
+                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-text-faint font-bold uppercase text-center mb-1">Volta</p>
+                          <input
+                            type="time"
+                            value={jornada[dia.chave].e2}
+                            onChange={(e) => updateJornada(dia.chave, 'e2', e.target.value)}
+                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-text-faint font-bold uppercase text-center mb-1">Saída</p>
+                          <input
+                            type="time"
+                            value={jornada[dia.chave].s2}
+                            onChange={(e) => updateJornada(dia.chave, 's2', e.target.value)}
+                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Regra do sábado (sábados do mês) */}
+                      {dia.chave === 'sab' && (
+                        <div className="mt-2 bg-input-solid/50 border border-border-default rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-text-faint font-bold uppercase">
+                              Sábados do mês que trabalha
+                            </p>
+                            <span className="text-[10px] text-text-faint">
+                              (marque 1-5)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-5 gap-2">
+                            {[1, 2, 3, 4, 5].map((n) => {
+                              const active = sabQuais.includes(n);
+                              return (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  onClick={() => toggleSabadoDoMes(n)}
+                                  className={`py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                                    active
+                                      ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/30'
+                                      : 'bg-hover-bg border-border-default text-text-secondary hover:border-white/20'
+                                  }`}
+                                  title={`${n}º sábado do mês`}
+                                >
+                                  {n}º
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="text-[10px] text-text-muted leading-relaxed">
+                            Se não marcar nenhum, o sistema considera folga e <b>não cobra meta</b> no sábado.
+                          </div>
+                        </div>
+                      )}
+
+                      {diaErros.length > 0 && (
+                        <div className="text-[10px] text-yellow-200 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-2">
+                          {diaErros.map((m, i) => (
+                            <div key={i}>• {m}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Rodapé */}
-        <div className="p-4 border-t border-border-input flex justify-end gap-3">
-          <button
-            onClick={aoFechar}
-            className="px-4 py-2 text-text-muted hover:text-text-primary text-sm font-bold transition-colors"
-          >
-            Cancelar
-          </button>
-
+        {/* Footer */}
+        <div className="p-4 md:p-6 border-t border-border-subtle bg-surface-solid/80 backdrop-blur-sm md:rounded-b-2xl sticky bottom-0 z-10 flex-shrink-0" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)' }}>
           <button
             onClick={salvar}
             disabled={loading}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 text-sm shadow-lg shadow-green-900/20 transition-all"
+            className="w-full py-4 rounded-2xl font-bold text-text-primary shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base active:scale-[0.98] bg-blue-600 hover:bg-blue-700 shadow-blue-900/30"
           >
-            {loading ? 'Salvando...' : (
+            {loading ? (
+              <RefreshCw className="animate-spin" size={20} />
+            ) : (
               <>
-                <Save size={18} /> Salvar Alterações
+                <Save size={20} /> Salvar Escala
               </>
             )}
           </button>

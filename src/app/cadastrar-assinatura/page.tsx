@@ -51,7 +51,15 @@ export default function CadastrarAssinaturaPage() {
       await update({ temAssinatura: true });
 
       setSucesso(true);
-      setTimeout(() => router.push('/funcionario'), 1500);
+      setTimeout(() => {
+        if (session?.user?.deveCadastrarFoto) {
+          router.push('/cadastrar-foto');
+        } else if (session?.user?.deveDarCienciaCelular) {
+          router.push('/ciencia-celular');
+        } else {
+          router.push('/funcionario');
+        }
+      }, 1500);
     } catch (error: any) {
       setErro(error.response?.data?.erro || 'Erro ao salvar assinatura.');
       setLoading(false);

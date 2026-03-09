@@ -20,13 +20,16 @@ export const gerarAFD = (pontos: any[], empresa: any) => {
     // 1(NSR)2(3)3(Data)4(Hora)5(PIS)6(CRC)
     const pontosOrdenados = [...pontos].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
+    const tiposValidos = ['PONTO', 'ENTRADA', 'SAIDA', 'SAIDA_ALMOCO', 'VOLTA_ALMOCO', 'SAIDA_INTERVALO', 'VOLTA_INTERVALO'];
+
     pontosOrdenados.forEach((p) => {
         nsr++;
-        if (p.tipo === 'PONTO' || p.subTipo === 'ENTRADA' || p.subTipo === 'SAIDA') {
+        const tipoReal = p.tipo === 'PONTO' ? p.subTipo : p.tipo;
+        if (tiposValidos.includes(p.tipo) || tiposValidos.includes(p.subTipo) || tiposValidos.includes(tipoReal)) {
             const data = format(new Date(p.dataHora), 'ddMMyyyy');
             const hora = format(new Date(p.dataHora), 'HHmm');
             const pis = p.usuario?.pis || '00000000000'; // É obrigatório ter PIS no cadastro
-            
+
             // Layout: NSR(9) + Tipo(1) + Data(8) + Hora(4) + PIS(12) + CRC(4)
             const linha = `${txt(nsr, 9, 'num')}3${data}${hora}${txt(pis, 12, 'num')}0000`;
             linhas.push(linha);

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X } from 'lucide-react';
+import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X, FileCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 import ModalFuncionario, { Funcionario } from '@/components/ModalFuncionario';
@@ -20,6 +20,7 @@ export default function GestaoFuncionarios() {
   // Confirmação inline
   const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null);
   const [confirmandoReset, setConfirmandoReset] = useState<string | null>(null);
+  const [regenerandoTermos, setRegenerandoTermos] = useState(false);
 
   useEffect(() => {
     carregarLista();
@@ -70,6 +71,23 @@ export default function GestaoFuncionarios() {
     }
   };
 
+  const regenerarTermos = async () => {
+    setRegenerandoTermos(true);
+    try {
+      const res = await axios.post('/api/admin/funcionarios/regenerar-termos');
+      const { atualizados } = res.data;
+      if (atualizados > 0) {
+        toast.success(`${atualizados} termo(s) regenerado(s) com assinatura!`);
+      } else {
+        toast.info('Nenhum termo encontrado para regenerar.');
+      }
+    } catch {
+      toast.error('Erro ao regenerar termos.');
+    } finally {
+      setRegenerandoTermos(false);
+    }
+  };
+
   // Filtro de busca
   const listaFiltrada = funcionarios.filter((f) => {
     if (!buscaNome.trim()) return true;
@@ -104,9 +122,20 @@ export default function GestaoFuncionarios() {
               <p className="text-text-muted text-sm">{lojaAtual} &middot; {funcionarios.length} funcionário(s)</p>
             </div>
           </div>
-          <button onClick={handleNovo} className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-green-900/20 transition-colors active:scale-95">
-            <UserPlus size={18} /> Novo Funcionário
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={regenerarTermos}
+              disabled={regenerandoTermos}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-blue-900/20 transition-colors active:scale-95 disabled:opacity-50"
+              title="Regenerar PDFs dos termos existentes com assinatura"
+            >
+              {regenerandoTermos ? <RefreshCw size={18} className="animate-spin" /> : <FileCheck size={18} />}
+              <span className="hidden sm:inline">Regenerar Termos</span>
+            </button>
+            <button onClick={handleNovo} className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-green-900/20 transition-colors active:scale-95">
+              <UserPlus size={18} /> Novo Funcionário
+            </button>
+          </div>
         </div>
 
         {/* BARRA DE BUSCA */}
@@ -173,6 +202,11 @@ export default function GestaoFuncionarios() {
                     {func.tituloCargo && <span className="text-[10px] bg-elevated-solid px-2 py-0.5 rounded text-purple-400 font-bold uppercase">{func.tituloCargo}</span>}
                     {func.pontoLivre && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">Livre</span>}
                     {func.modoValidacaoPonto === 'PC_IP' && <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded flex items-center gap-1"><Monitor size={10}/> IP Fixo</span>}
+                    {(func as any).cienciaCelularDocUrl && (
+                      <a href={(func as any).cienciaCelularDocUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded hover:bg-blue-900/50 transition-colors">
+                        Termo &middot; {(func as any).cienciaCelularOpcao === 'PROPRIO' ? 'Cel. Pessoal' : 'Cel. Empresa'}
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

@@ -11,38 +11,118 @@ type Props = {
   billing?: BillingStatus | null;
 };
 
-const OK_KEY = "billing_alert_ok_v1";
-
 const BILLING_CLOSED_KEY = "ui:billing-modal-closed:v1";
 const BILLING_EVENT = "billing-modal-closed";
 
+// ─── Helpers de storage para controle de frequência ───
 
+/** Chave diária: mostra o alerta 1x por dia para este código */
+function dailyKey(code: string): string {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  return `billing_alert_daily_${code}_${today}`;
+}
+
+/** Chave permanente: trial visto 1x por empresa (persiste até limpar) */
+function trialSeenKey(empresaId: string): string {
+  return `billing_trial_first_seen_${empresaId}`;
+}
+
+/** Verifica se já mostrou hoje para este código */
+function alreadyShownToday(code: string): boolean {
+  try {
+    return localStorage.getItem(dailyKey(code)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Marca que já mostrou hoje para este código */
+function markShownToday(code: string): void {
+  try {
+    localStorage.setItem(dailyKey(code), "1");
+  } catch {}
+}
+
+/** Verifica se o trial já foi visto (primeiro acesso) */
+function trialAlreadySeen(empresaId: string): boolean {
+  try {
+    return localStorage.getItem(trialSeenKey(empresaId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Marca o trial como visto (primeiro acesso) */
+function markTrialSeen(empresaId: string): void {
+  try {
+    localStorage.setItem(trialSeenKey(empresaId), "1");
+  } catch {}
+}
+
+/**
+ * Decide se o alerta deve ser mostrado com base no código e frequência desejada:
+ *
+ * - TRIAL_ACTIVE (> 2 dias): mostra apenas no primeiro acesso por empresa
+ * - TRIAL_ENDING (≤ 2 dias): mostra 1x por dia
+ * - DUE_SOON (≤ 2 dias até vencer): mostra 1x por dia
+ * - PENDING_FIRST_INVOICE: mostra 1x por dia (billing.ts já filtra > 2 dias)
+ * - PAST_DUE (vencida): mostra 1x por dia
+ * - BLOCKED / MANUAL_BLOCK: mostra sempre (cada sessão)
+ * - OK: nunca mostra
+ */
+function shouldShowAlert(
+  billing: BillingStatus,
+  empresaId: string | undefined
+): boolean {
+  if (!billing.showAlert) return false;
+
+  const code = billing.code;
+
+  // Bloqueio: sempre mostra (sessionStorage — cada sessão)
+  if (code === "BLOCKED" || code === "MANUAL_BLOCK") {
+    try {
+      const sessionKey = `billing_blocked_session`;
+      if (sessionStorage.getItem(sessionKey) === "1") return false;
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  // Trial ativo (> 2 dias restantes): mostra 1x por empresa (primeiro acesso)
+  if (code === "TRIAL_ACTIVE") {
+    const eid = empresaId || "unknown";
+    if (trialAlreadySeen(eid)) return false;
+    return true;
+  }
+
+  // Todos os outros: 1x por dia
+  if (alreadyShownToday(code)) return false;
+  return true;
+}
 
 function parseDateOnlyToLocal(dateOrIso: string) {
-  const base = dateOrIso?.slice(0, 10); // pega YYYY-MM-DD
+  const base = dateOrIso?.slice(0, 10);
   if (!base || base.length !== 10) return null;
 
   const [y, m, d] = base.split("-").map(Number);
   if (!y || !m || !d) return null;
 
-  return new Date(y, m - 1, d); // local time (00:00 local)
+  return new Date(y, m - 1, d);
 }
 
 export default function BillingAlertModal({ empresa, billing }: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!billing?.showAlert) return;
-    const alreadyOk = sessionStorage.getItem(OK_KEY) === "1";
-    if (!alreadyOk) setOpen(true);
-  }, [billing]);
+    if (!billing) return;
+    const show = shouldShowAlert(billing, empresa?.id);
+    if (show) setOpen(true);
+  }, [billing, empresa?.id]);
 
-
-    const closeModal = () => {
-    // 1) primeiro fecha o modal
+  const closeModal = () => {
     setOpen(false);
 
-    // 2) depois marca/avisa (no próximo ciclo de render)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         try {
@@ -54,20 +134,33 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
     });
   };
 
+  const dismiss = () => {
+    if (!billing) return;
+    const code = billing.code;
 
+    // Marcar como visto de acordo com a frequência
+    if (code === "BLOCKED" || code === "MANUAL_BLOCK") {
+      try {
+        sessionStorage.setItem("billing_blocked_session", "1");
+      } catch {}
+    } else if (code === "TRIAL_ACTIVE") {
+      markTrialSeen(empresa?.id || "unknown");
+    } else {
+      markShownToday(code);
+    }
+
+    closeModal();
+  };
 
   const ui = useMemo(() => {
     const code = billing?.code;
 
-    // perigo/bloqueio
     if (code === "BLOCKED" || code === "MANUAL_BLOCK") {
       return { icon: Lock, title: "Ação necessária", tone: "danger" as const };
     }
-    // atraso / vencendo
     if (code === "PAST_DUE" || code === "DUE_SOON" || code === "TRIAL_ENDING") {
       return { icon: AlertTriangle, title: "Atenção", tone: "warn" as const };
     }
-    // trial normal
     if (code === "TRIAL_ACTIVE") {
       return { icon: Clock, title: "Período de teste", tone: "trial" as const };
     }
@@ -78,7 +171,6 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
 
   const Icon = ui.icon;
 
-  // ✅ FIX: usar parse "data pura" para não converter em UTC e voltar 1 dia no Brasil
   const due = billing.dueAtISO ? parseDateOnlyToLocal(billing.dueAtISO) : null;
 
   const bg =
@@ -99,15 +191,15 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
 
   return (
     <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-        data-billing-modal="open"
-      >
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      data-billing-modal="open"
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => {}} />
 
       <div className={`relative w-full max-w-md rounded-2xl border ${bg} p-5 shadow-2xl`}>
         <button
           className="absolute right-3 top-3 text-text-primary/60 hover:text-text-primary"
-          onClick={closeModal}
+          onClick={dismiss}
           aria-label="Fechar"
         >
           ✕
@@ -132,7 +224,6 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
                   <span className="font-semibold">
                     {billing.phase === "TRIAL" ? "Fim do teste:" : "Vencimento:"}
                   </span>{" "}
-                  {/* ✅ agora não "volta 1 dia" */}
                   {due.toLocaleDateString("pt-BR")}
                 </div>
               )}
@@ -151,16 +242,14 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
               <Link
                 href="/admin/perfil"
                 className={`flex-1 rounded-xl px-4 py-2 text-center text-sm font-bold ${btn}`}
+                onClick={dismiss}
               >
-                A fatura e detalhes da cobrança estão disponíveis no perfil da empresa.
+                Ver detalhes da cobrança
               </Link>
 
               <button
                 className="rounded-xl bg-hover-bg-strong px-4 py-2 text-sm font-bold text-text-primary hover:bg-white/15"
-                onClick={() => {
-                  sessionStorage.setItem(OK_KEY, "1");
-                  closeModal();
-                }}
+                onClick={dismiss}
               >
                 Ok
               </button>
