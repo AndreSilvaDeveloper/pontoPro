@@ -56,16 +56,29 @@ export async function GET() {
     try {
       payment = (await asaas.get(`/payments/${empresa.asaasCurrentPaymentId}`)).data;
     } catch {
+      // Cobrança removida ou inválida — limpa o ID salvo
+      await prisma.empresa.update({
+        where: { id: billingEmpresaId },
+        data: { asaasCurrentPaymentId: null, asaasCurrentDueDate: null },
+      });
       return NextResponse.json({ ok: true, hasPayment: false });
     }
 
     if (!payment?.id) {
+      await prisma.empresa.update({
+        where: { id: billingEmpresaId },
+        data: { asaasCurrentPaymentId: null, asaasCurrentDueDate: null },
+      });
       return NextResponse.json({ ok: true, hasPayment: false });
     }
 
     // Se já foi pago/cancelado, não há cobrança pendente
     const inactiveStatuses = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH", "REFUNDED", "CANCELLED"];
     if (inactiveStatuses.includes(payment.status)) {
+      await prisma.empresa.update({
+        where: { id: billingEmpresaId },
+        data: { asaasCurrentPaymentId: null, asaasCurrentDueDate: null },
+      });
       return NextResponse.json({ ok: true, hasPayment: false });
     }
 

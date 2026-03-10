@@ -142,9 +142,25 @@ export async function POST(req: Request) {
     }
 
     // externalReference pode vir do payment ou da subscription
-    const empresaId = extractEmpresaId(
+    let empresaId = extractEmpresaId(
       payment?.externalReference || body?.subscription?.externalReference
     );
+
+    // Fallback: se não tem externalReference, busca empresa pelo asaasCustomerId
+    if (!empresaId && payment?.customer) {
+      const empByCustomer = await prisma.empresa.findFirst({
+        where: { asaasCustomerId: payment.customer },
+        select: { id: true },
+      });
+      if (empByCustomer) {
+        empresaId = empByCustomer.id;
+        console.log("[ASAAS_WEBHOOK] fallback: found empresa by customerId", {
+          customerId: payment.customer,
+          empresaId,
+        });
+      }
+    }
+
     if (!empresaId) {
       return NextResponse.json(
         { ok: false, error: "missing_externalReference_empresa" },
@@ -199,9 +215,7 @@ export async function POST(req: Request) {
     const isYearly = current.billingCycle === "YEARLY";
     const advanceMonths = isYearly ? 12 : 1;
 
-    const paidUntilDate = isYearly
-      ? startOfDay(addMonthsCalendar(dueDate, 12))
-      : startOfDay(dueDate);
+    const paidUntilDate = startOfDay(addMonthsCalendar(dueDate, advanceMonths));
 
     const paidUntil = maxDate(
       current.pagoAte ? startOfDay(current.pagoAte) : null,

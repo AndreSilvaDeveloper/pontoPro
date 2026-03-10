@@ -49,6 +49,8 @@ export default function Home() {
   const [tipoManual, setTipoManual] = useState<TipoSolicitacao>('ENTRADA');
 
   const webcamRef = useRef<Webcam>(null);
+  const [mostrarCamera, setMostrarCamera] = useState(true);
+  const [acaoPendente, setAcaoPendente] = useState<TipoSolicitacao | null>(null);
 
   // === NOVOS ESTADOS PARA O MODAL DE INCLUSÃO ===
   const [modalInclusaoAberto, setModalInclusaoAberto] = useState(false);
@@ -114,12 +116,18 @@ export default function Home() {
         fluxoEstrito: resConfig.data.fluxoEstrito !== false
       });
 
-      setStatusPonto(resStatus.data.ultimoTipo || null);
+      const ultimoTipo = resStatus.data.ultimoTipo || null;
+      setStatusPonto(ultimoTipo);
 
       const dataRegistro = resStatus.data.data || resStatus.data.ultimoRegistro;
       setUltimoPontoData(dataRegistro ? new Date(dataRegistro) : null);
 
       setJaAlmocou(resStatus.data.jaAlmocou || false);
+
+      // Se já bateu ponto hoje, esconde a câmera e mostra status
+      if (ultimoTipo && ultimoTipo !== 'SAIDA') {
+        setMostrarCamera(false);
+      }
 
     } catch (e) {
       console.error(e);
@@ -200,7 +208,20 @@ export default function Home() {
 
   const baterPonto = async (tipoAcao?: TipoSolicitacao) => {
     const tipoFinal = (tipoAcao || tipoManual) as TipoSolicitacao;
+
+    // Se câmera está fechada e empresa exige foto, reabre e aguarda confirmação
+    if (!mostrarCamera && configs.exigirFoto) {
+      setMostrarCamera(true);
+      setAcaoPendente(tipoFinal);
+      return;
+    }
+
+    executarPonto(tipoFinal);
+  };
+
+  const executarPonto = async (tipoFinal: TipoSolicitacao) => {
     setAcaoEmProcesso(tipoFinal);
+    setAcaoPendente(null);
 
     if (!location) {
       setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' });
@@ -232,19 +253,20 @@ export default function Home() {
 
       setStatusPonto(tipoFinal);
       setUltimoPontoData(new Date());
+      setMostrarCamera(false);
 
       if (tipoFinal === 'VOLTA_ALMOCO') setJaAlmocou(true);
 
-      setStatusMsg({ tipo: 'sucesso', texto: `✅ Ponto Registrado!` });
+      setStatusMsg({ tipo: 'sucesso', texto: `Ponto Registrado!` });
 
       setTimeout(() => {
         setStatusMsg(null);
         carregarConfigEStatus();
         setAcaoEmProcesso(null);
-      }, 1500);
+      }, 2000);
 
     } catch (error: any) {
-      setStatusMsg({ tipo: 'erro', texto: `❌ ${error.response?.data?.erro || 'Erro ao registrar'}` });
+      setStatusMsg({ tipo: 'erro', texto: `${error.response?.data?.erro || 'Erro ao registrar'}` });
       setAcaoEmProcesso(null);
     } finally {
       setLoading(false);
@@ -341,21 +363,52 @@ export default function Home() {
     amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', dot: 'bg-amber-400' },
   };
 
-  // Componente Visual do Timer
-  const IntervalDisplay = ({ label, tempo }: { label: string, tempo: string }) => (
-    <div className="w-full bg-amber-900/20 border border-amber-500/50 rounded-2xl p-4 mb-4 flex items-center justify-between shadow-[0_0_15px_rgba(245,158,11,0.15)] animate-in fade-in slide-in-from-top-4">
-      <div className="flex items-center gap-3 text-amber-400">
-        <div className="p-2 bg-amber-500/20 rounded-lg animate-pulse">
-          <Clock size={24} />
+  // Display grande de status após bater ponto
+  const StatusDisplay = () => {
+    if (!statusPonto || statusPonto === 'SAIDA') {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 animate-in fade-in zoom-in-95 duration-500">
+          <div className="w-20 h-20 rounded-full bg-slate-500/10 border border-slate-500/20 flex items-center justify-center mb-4">
+            <Briefcase size={36} className="text-slate-400" />
+          </div>
+          <p className="text-lg font-bold text-text-muted">Fora do expediente</p>
+          <p className="text-sm text-text-faint mt-1">Bom descanso!</p>
         </div>
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-500/80">Status Atual</p>
-          <p className="text-sm font-bold uppercase tracking-wide text-text-primary">{label}</p>
+      );
+    }
+
+    if (statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO') {
+      const isAlmoco = statusPonto === 'SAIDA_ALMOCO';
+      return (
+        <div className="flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in-95 duration-500">
+          <div className={`w-24 h-24 rounded-full ${isAlmoco ? 'bg-orange-500/10 border-orange-500/30' : 'bg-amber-500/10 border-amber-500/30'} border-2 flex items-center justify-center mb-5 relative`}>
+            <div className={`absolute inset-0 rounded-full ${isAlmoco ? 'bg-orange-500/5' : 'bg-amber-500/5'} animate-ping`} />
+            {isAlmoco ? <UtensilsCrossed size={40} className="text-orange-400 relative z-10" /> : <Coffee size={40} className="text-amber-400 relative z-10" />}
+          </div>
+          <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isAlmoco ? 'text-orange-500/70' : 'text-amber-500/70'} mb-2`}>
+            {isAlmoco ? 'Em Almoço' : 'Em Pausa'}
+          </p>
+          <p className="text-5xl font-mono font-bold text-text-primary tracking-widest tabular-nums mb-3">
+            {tempoIntervalo}
+          </p>
+          <p className="text-xs text-text-faint">Tempo de intervalo</p>
         </div>
+      );
+    }
+
+    // Trabalhando
+    return (
+      <div className="flex flex-col items-center justify-center py-10 animate-in fade-in zoom-in-95 duration-500">
+        <div className="w-24 h-24 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mb-5 relative">
+          <div className="absolute inset-0 rounded-full bg-emerald-500/5 animate-pulse" />
+          <Briefcase size={40} className="text-emerald-400 relative z-10" />
+        </div>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-500/70 mb-2">Trabalhando</p>
+        <p className="text-2xl font-bold text-text-primary">Bom trabalho!</p>
+        <p className="text-sm text-text-faint mt-1">Seu ponto foi registrado</p>
       </div>
-      <span className="text-2xl font-mono font-bold text-text-primary tracking-widest tabular-nums">{tempo}</span>
-    </div>
-  );
+    );
+  };
 
   const renderizarBotoesInteligentes = () => {
     const btnBase = "w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-text-primary relative overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed";
@@ -496,15 +549,7 @@ export default function Home() {
           );
         })()}
 
-        {/* CRONÔMETRO DE INTERVALO */}
-        {(statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO') && (
-          <IntervalDisplay
-            label={statusPonto === 'SAIDA_ALMOCO' ? "Em Almoço" : "Em Pausa"}
-            tempo={tempoIntervalo}
-          />
-        )}
-
-        {/* ÁREA PRINCIPAL (CÂMERA E AÇÃO) */}
+        {/* ÁREA PRINCIPAL (CÂMERA/STATUS E AÇÃO) */}
         <div data-tour="emp-main" className="bg-surface/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-border-subtle p-5 space-y-5">
 
           {statusMsg && (
@@ -514,45 +559,58 @@ export default function Home() {
             </div>
           )}
 
-          {/* Câmera (sempre existe para o tour) */}
-          <div
-            data-tour="emp-camera"
-            className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner ${cameraErro ? 'border-red-500/50' : 'border-purple-500/30 ring-1 ring-purple-500/20'
-              }`}
-          >
+          {/* Câmera / Status Display */}
+          <div data-tour="emp-camera">
+            {/* Webcam oculta (sempre montada para captura) */}
+            {configs.exigirFoto && location && !cameraErro && (
+              <div className={mostrarCamera ? '' : 'sr-only'}>
+                <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner border-purple-500/30 ring-1 ring-purple-500/20`}>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{ facingMode: 'user' }}
+                    className="w-full h-full object-cover"
+                    onUserMediaError={() => setCameraErro(true)}
+                  />
+                  <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
+                    AO VIVO
+                  </div>
+                </div>
+              </div>
+            )}
 
-            {!configs.exigirFoto || !location ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-input-solid/40 text-text-muted text-sm px-6 text-center">
-                A câmera aparece após permitir o GPS (se a empresa exigir foto).
-              </div>
-            ) : !cameraErro ? (
-              <>
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  screenshotFormat="image/jpeg"
-                  videoConstraints={{ facingMode: 'user' }}
-                  className="w-full h-full object-cover"
-                  onUserMediaError={() => setCameraErro(true)}
-                />
-                <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
-                  AO VIVO
+            {/* Câmera visível: placeholder sem GPS / erro */}
+            {mostrarCamera && (!configs.exigirFoto || !location) && (
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner border-purple-500/30 ring-1 ring-purple-500/20">
+                <div className="absolute inset-0 flex items-center justify-center bg-input-solid/40 text-text-muted text-sm px-6 text-center">
+                  A câmera aparece após permitir o GPS (se a empresa exigir foto).
                 </div>
-              </>
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-solid text-center p-6">
-                <div className="bg-red-500/10 p-4 rounded-full mb-3">
-                  <AlertCircle size={32} className="text-red-500" />
-                </div>
-                <p className="text-red-400 font-bold mb-1">Câmera Indisponível</p>
-                <p className="text-text-faint text-xs mb-4">Verifique as permissões do navegador</p>
-                <button
-                  onClick={tentarRecuperarCamera}
-                  className="bg-elevated-solid hover:bg-elevated-solid text-text-primary px-4 py-2 rounded-xl text-xs font-bold border border-border-input transition-colors"
-                >
-                  Tentar Novamente
-                </button>
               </div>
+            )}
+
+            {/* Erro de câmera */}
+            {mostrarCamera && cameraErro && configs.exigirFoto && location && (
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner border-red-500/50">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-solid text-center p-6">
+                  <div className="bg-red-500/10 p-4 rounded-full mb-3">
+                    <AlertCircle size={32} className="text-red-500" />
+                  </div>
+                  <p className="text-red-400 font-bold mb-1">Câmera Indisponível</p>
+                  <p className="text-text-faint text-xs mb-4">Verifique as permissões do navegador</p>
+                  <button
+                    onClick={tentarRecuperarCamera}
+                    className="bg-elevated-solid hover:bg-elevated-solid text-text-primary px-4 py-2 rounded-xl text-xs font-bold border border-border-input transition-colors"
+                  >
+                    Tentar Novamente
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Status Display (substitui câmera após bater ponto) */}
+            {!mostrarCamera && location && !carregandoStatus && (
+              <StatusDisplay />
             )}
           </div>
 
@@ -581,6 +639,25 @@ export default function Home() {
                   <div className="py-10 text-center">
                     <div className="inline-block w-8 h-8 border-4 border-border-input border-t-purple-500 rounded-full animate-spin mb-3"></div>
                     <p className="text-text-faint text-sm font-medium">Sincronizando...</p>
+                  </div>
+                ) : acaoPendente ? (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4">
+                    <p className="text-center text-sm text-text-muted font-medium">
+                      Posicione seu rosto na câmera e confirme
+                    </p>
+                    <button
+                      onClick={() => executarPonto(acaoPendente)}
+                      disabled={loading}
+                      className="w-full py-5 rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-lg hover:shadow-xl transition-all active:scale-95 text-white bg-gradient-to-r from-purple-600 to-purple-500 disabled:opacity-70"
+                    >
+                      {loading ? <Loader2 className="animate-spin" /> : <><Camera size={24} /> CONFIRMAR</>}
+                    </button>
+                    <button
+                      onClick={() => { setAcaoPendente(null); setMostrarCamera(false); }}
+                      className="w-full py-3 rounded-xl font-medium text-sm text-text-muted hover:text-text-primary border border-border-subtle hover:bg-elevated/50 transition-all"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 ) : (
                   configs.fluxoEstrito ? renderizarBotoesInteligentes() : renderizarBotoesFlexiveis()

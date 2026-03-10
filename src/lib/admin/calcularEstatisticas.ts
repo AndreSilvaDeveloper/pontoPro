@@ -250,10 +250,18 @@ export function calcularEstatisticas(args: {
         if (!minutosConfigurados) minutosConfigurados = 480;
         else if (minutosConfigurados > 520) minutosConfigurados = 480;
       } else if (sabRegular && metaSabRegular > 0) {
-        // Semana SEM sábado: redistribui meta do sábado nos 5 dias úteis (compensação)
-        // Ex: sáb=240min → +48min/dia → meta 480+48=528, funcionário faz 525 → -3 → tolerância zera
-        const compensacaoPorDia = Math.round(metaSabRegular / 5);
-        minutosConfigurados = minutosConfigurados + compensacaoPorDia;
+        // Só redistribui sábado se a semana já terminou (sábado já passou)
+        // e confirmamos que não trabalhou. Se o sábado ainda não chegou, não compensa.
+        const sabadoDaSemana = new Date(data);
+        sabadoDaSemana.setDate(sabadoDaSemana.getDate() + (6 - diaSemanaIndex));
+        const hoje = new Date();
+        hoje.setHours(23, 59, 59, 999);
+        const sabadoJaPassou = sabadoDaSemana <= hoje;
+
+        if (sabadoJaPassou && !trabalhouSabado) {
+          const compensacaoPorDia = Math.round(metaSabRegular / 5);
+          minutosConfigurados = minutosConfigurados + compensacaoPorDia;
+        }
       }
     }
 

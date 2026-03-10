@@ -185,22 +185,64 @@ export function getBillingStatus(
     }
 
     // Trial expirou, mas existe anchor para 1ª fatura ainda no futuro:
-    // ✅ LIBERA até o anchor vencer
     if (anchorAt && diffDays(anchorAt, now) >= 0) {
+      // Se já pagou e pagoAte cobre o ciclo, está em dia
+      if (pagoAte && diffDays(pagoAte, now) >= 0) {
+        const diasAteVencer = diffDays(anchorAt, now);
+        return buildStatus({
+          blocked: false,
+          bloqueado: false,
+          showAlert: diasAteVencer <= 3,
+          paidForCycle: true,
+          code: diasAteVencer <= 3 ? "DUE_SOON" : "OK",
+          message: diasAteVencer <= 3
+            ? diasAteVencer === 0
+              ? "Fatura vence hoje. Regularize para evitar bloqueio."
+              : `Fatura vence em ${diasAteVencer} dia(s).`
+            : "Assinatura em dia.",
+          dueAtISO: anchorAt.toISOString(),
+          dueAt: anchorAt.toISOString(),
+          days: diasAteVencer,
+          phase: "BILLING",
+        });
+      }
+
+      // Não pagou (ou pagoAte expirou) — mostra alerta só 3 dias antes
       const diasAteVencer = diffDays(anchorAt, now);
+
+      // Se pagoAte existe, empresa já pagou antes — não é "1ª fatura"
+      if (pagoAte) {
+        return buildStatus({
+          blocked: false,
+          bloqueado: false,
+          showAlert: diasAteVencer <= 3,
+          paidForCycle: false,
+          code: diasAteVencer <= 3 ? "DUE_SOON" : "OK",
+          message:
+            diasAteVencer === 0
+              ? "Fatura vence hoje. Regularize para evitar bloqueio."
+              : diasAteVencer <= 3
+                ? `Fatura vence em ${diasAteVencer} dia(s).`
+                : "Assinatura em dia.",
+          dueAtISO: anchorAt.toISOString(),
+          dueAt: anchorAt.toISOString(),
+          days: diasAteVencer,
+          phase: "BILLING",
+        });
+      }
+
       return buildStatus({
         blocked: false,
         bloqueado: false,
-        // Só alerta quando faltam 2 dias ou menos
-        showAlert: diasAteVencer <= 2,
+        showAlert: diasAteVencer <= 3,
         paidForCycle: false,
-        code: "PENDING_FIRST_INVOICE",
+        code: diasAteVencer <= 3 ? "DUE_SOON" : "PENDING_FIRST_INVOICE",
         message:
           diasAteVencer === 0
-            ? "Sua 1ª fatura vence hoje."
-            : diasAteVencer <= 2
+            ? "Sua fatura vence hoje."
+            : diasAteVencer <= 3
               ? `Sua fatura vence em ${diasAteVencer} dia(s).`
-              : `Sua fatura vence em ${diasAteVencer} dias.`,
+              : `Próxima fatura em ${diasAteVencer} dia(s).`,
         dueAtISO: anchorAt.toISOString(),
         dueAt: anchorAt.toISOString(),
         days: diasAteVencer,
@@ -230,7 +272,7 @@ export function getBillingStatus(
 
   // 5) Se pagoAte existir e ainda está válido => em dia
   // (mantemos o dueAt como o anchor do próximo vencimento)
-  if (pagoAte && now <= pagoAte) {
+  if (pagoAte && diffDays(pagoAte, now) >= 0) {
     return buildOk(dueAt, "Assinatura em dia.");
   }
 
@@ -283,8 +325,8 @@ export function getBillingStatus(
   // agora <= dueAt => não venceu
   const diasAteVenc = Math.max(0, diffDays(dueAt, now));
 
-  // Alerta 2 dias antes, 1 dia antes e no dia do vencimento
-  if (diasAteVenc <= 2) {
+  // Alerta 3 dias antes do vencimento
+  if (diasAteVenc <= 3) {
     return buildStatus({
       blocked: false,
       bloqueado: false,
