@@ -105,7 +105,7 @@ export default function NotificacaoSolicitacao() {
 
         if (!somTocadoRef.current) {
           somTocadoRef.current = true;
-          playNotifSound();
+          setTimeout(() => playNotifSound(), 2000);
         }
       }
     } catch {

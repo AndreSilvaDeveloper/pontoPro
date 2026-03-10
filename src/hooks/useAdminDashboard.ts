@@ -214,7 +214,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       setNotificacaoVisivel(true);
       if (!somTocadoRef.current) {
         somTocadoRef.current = true;
-        playNotificationSound();
+        const somTimer = setTimeout(() => playNotificationSound(), 2000);
+        const dismissTimer = setTimeout(() => setNotificacaoVisivel(false), 10000);
+        return () => { clearTimeout(somTimer); clearTimeout(dismissTimer); };
       }
       const timer = setTimeout(() => setNotificacaoVisivel(false), 8000);
       return () => clearTimeout(timer);
