@@ -151,7 +151,7 @@ export async function POST(request: Request) {
       const tempoPassado = agora.getTime() - new Date(ultimoPonto.dataHora).getTime();
       const segundos = tempoPassado / 1000;
 
-      if (segundos < 60) {
+      if (segundos >= 0 && segundos < 60) {
         return NextResponse.json(
           { erro: 'Ponto já registrado! Aguarde 1 minuto para registrar novamente.' },
           { status: 429 }

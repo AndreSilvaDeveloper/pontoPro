@@ -85,7 +85,7 @@ export default function PaymentModal({
   const showPix = hasPix && mode !== "BOLETO";
   const showBoleto = hasBoleto && mode !== "PIX";
 
-  const headerTitle = mode === "PIX" ? "Pagar via Pix" : mode === "BOLETO" ? "Pagar via Boleto" : "Pagamento";
+  const headerTitle = mode === "PIX" ? "Pagar via Pix" : mode === "BOLETO" ? "Fatura" : "Pagamento";
 
   useEffect(() => {
     if (!open) return;
@@ -242,8 +242,6 @@ export default function PaymentModal({
               {boletoPdfUrl && (
                 <a
                   href={boletoPdfUrl}
-                  target="_blank"
-                  rel="noreferrer"
                   className="flex items-center justify-between p-4 bg-elevated-solid hover:bg-elevated-solid rounded-xl border border-border-input transition-all group"
                 >
                   <div className="flex items-center gap-3">
@@ -251,8 +249,8 @@ export default function PaymentModal({
                       <FileText size={20} />
                     </div>
                     <div className="text-left">
-                      <span className="block text-text-primary font-medium text-sm">Baixar boleto PDF</span>
-                      <span className="text-xs text-text-faint">Abrir em nova aba</span>
+                      <span className="block text-text-primary font-medium text-sm">Abrir boleto</span>
+                      <span className="text-xs text-text-faint">Visualizar e imprimir</span>
                     </div>
                   </div>
                   <ExternalLink size={18} className="text-text-faint group-hover:text-text-primary" />
@@ -261,8 +259,8 @@ export default function PaymentModal({
             </div>
           )}
 
-          {/* Ver fatura link (discreto, no final) */}
-          {faturaUrl && (
+          {/* Ver fatura link — só para modo sem filtro (não PIX nem BOLETO) */}
+          {faturaUrl && !mode && (
             <a
               href={faturaUrl}
               target="_blank"

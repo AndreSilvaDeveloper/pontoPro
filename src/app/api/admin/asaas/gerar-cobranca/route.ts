@@ -94,18 +94,33 @@ async function ensureCustomer(params: {
   email?: string | null;
   phone?: string | null;
 }) {
+  const cpfCnpj = normalizeCpfCnpj(params.cnpj ?? null);
+
+  if (!cpfCnpj) {
+    throw new Error("CPF ou CNPJ da empresa é obrigatório para gerar cobrança.");
+  }
+
   const empresa = await prisma.empresa.findUnique({
     where: { id: params.empresaId },
     select: { asaasCustomerId: true },
   });
 
-  if (empresa?.asaasCustomerId) return empresa.asaasCustomerId;
-
-  const cpfCnpj = normalizeCpfCnpj(params.cnpj ?? null);
+  if (empresa?.asaasCustomerId) {
+    // Atualiza CPF/CNPJ do cliente caso tenha sido criado sem
+    try {
+      await asaas.put(`/customers/${empresa.asaasCustomerId}`, {
+        name: params.nome,
+        cpfCnpj,
+      });
+    } catch {
+      // ignora erro de atualização — pode já estar correto
+    }
+    return empresa.asaasCustomerId;
+  }
 
   const { data } = await asaas.post("/customers", {
     name: params.nome,
-    ...(cpfCnpj ? { cpfCnpj } : {}),
+    cpfCnpj,
     email: params.email ?? undefined,
     phone: params.phone ?? undefined,
   });
@@ -388,7 +403,11 @@ export async function POST() {
 
     return NextResponse.json({ ok: true, asaas: { dueDate, pix: null, boleto: null } });
   } catch (err: any) {
+    const msg = err?.message ?? "";
     console.error("[GERAR_COBRANCA_ASAAS]", err?.response?.data ?? err);
+    if (msg.includes("CPF ou CNPJ")) {
+      return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    }
     return NextResponse.json({ ok: false, error: "Erro ao gerar cobrança" }, { status: 500 });
   }
 }

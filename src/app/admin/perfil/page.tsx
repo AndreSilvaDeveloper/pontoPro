@@ -241,13 +241,21 @@ export default function PerfilAdmin() {
   const abrirPagamento = async (mode: PayMode = "PIX") => {
     setPayMode(mode);
     setMsgAsaas(null);
-    await carregarCobrancaAtual();
-    if (!asaas) {
-      await gerarCobrancaAsaas();
-    } else {
-      await carregarCobrancaAtual();
-    }
+    setLoadingAsaas(true);
     setOpenPay(true);
+    try {
+      // Tenta buscar cobrança existente
+      await carregarCobrancaAtual();
+      // Se não encontrou, gera uma nova
+      if (!asaas) {
+        await gerarCobrancaAsaas();
+      }
+    } catch {
+      // Se falhou ao buscar, tenta gerar
+      await gerarCobrancaAsaas();
+    } finally {
+      setLoadingAsaas(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -449,14 +457,17 @@ export default function PerfilAdmin() {
       );
     }
 
-    if (b.code === "PENDING_FIRST_INVOICE") {
+    if (b.code === "PENDING_FIRST_INVOICE" && b.showAlert) {
       return (
         <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 border border-yellow-500/20">
           <Clock size={14} />
-          1ª fatura em {b.days ?? 0}d
+          Fatura em {b.days ?? 0}d
         </div>
       );
     }
+
+    // OK sem paidForCycle (aguardando pagamento, mas longe do vencimento)
+    if (b.code === "OK" && !b.showAlert) return null;
 
     return null;
   };
@@ -464,37 +475,25 @@ export default function PerfilAdmin() {
   const renderBillingAlert = () => {
     if (!fatura) return null;
     const b = fatura.billing;
-    const isCartao = fatura.billingMethod === "CREDIT_CARD";
 
-    const payButtons = (variant: "red" | "yellow") => (
-      <div className="flex gap-2 shrink-0">
-        <button
-          onClick={() => abrirPagamento("PIX")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
-            variant === "red"
-              ? "bg-red-600 text-white hover:bg-red-700"
-              : "bg-yellow-500 text-black hover:bg-yellow-400"
-          }`}
-        >
-          <QrCode size={16} />
-          Pix
-        </button>
-        <button
-          onClick={() => abrirPagamento("BOLETO")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
-            variant === "red"
-              ? "bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20"
-              : "bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/20"
-          }`}
-        >
-          <FileText size={16} />
-          Boleto
-        </button>
-      </div>
-    );
-
-    // OK e pago → sem alerta
-    if (b.code === "OK" && b.paidForCycle) return null;
+    // OK e pago → mostra "em dia"
+    if (b.code === "OK" && b.paidForCycle) {
+      return (
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-5">
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
+              <CheckCircle size={22} />
+            </div>
+            <div>
+              <p className="font-bold text-emerald-300">Assinatura em dia</p>
+              <p className="text-sm text-emerald-400/60">
+                Próximo vencimento em <b>{formatSafe(fatura.vencimento)}</b>.
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     if (b.code === "OK" && !b.showAlert) return null;
 
     // TRIAL
@@ -520,20 +519,19 @@ export default function PerfilAdmin() {
       );
     }
 
-    // PENDING_FIRST_INVOICE
-    if (b.code === "PENDING_FIRST_INVOICE") {
+    // PENDING_FIRST_INVOICE — só mostra se showAlert (≤3 dias)
+    if (b.code === "PENDING_FIRST_INVOICE" && b.showAlert) {
       return (
-        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 space-y-4">
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5">
           <div className="flex items-center gap-4">
             <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
               <Clock size={22} />
             </div>
             <div>
-              <p className="font-bold text-yellow-400">1ª fatura a caminho</p>
+              <p className="font-bold text-yellow-400">Fatura a caminho</p>
               <p className="text-sm text-yellow-200/60">{b.message}</p>
             </div>
           </div>
-          {!isCartao && payButtons("yellow")}
         </div>
       );
     }
@@ -554,7 +552,7 @@ export default function PerfilAdmin() {
               <p className="text-sm text-text-secondary">{b.message}</p>
             </div>
           </div>
-          {!isCartao && b.code === "BLOCKED" && <div className="z-10 relative">{payButtons("red")}</div>}
+          {/* Botões de pagamento ficam na seção "Realizar Pagamento" abaixo */}
         </div>
       );
     }
@@ -562,7 +560,7 @@ export default function PerfilAdmin() {
     // PAST_DUE
     if (b.code === "PAST_DUE") {
       return (
-        <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-5 space-y-4">
+        <div className="rounded-2xl border border-red-500/20 bg-red-950/20 p-5">
           <div className="flex items-center gap-4">
             <div className="shrink-0 rounded-xl bg-red-500/10 p-3 text-red-400">
               <AlertTriangle size={22} />
@@ -572,7 +570,6 @@ export default function PerfilAdmin() {
               <p className="text-sm text-red-200/60">{b.message}</p>
             </div>
           </div>
-          {!isCartao && payButtons("red")}
         </div>
       );
     }
@@ -580,7 +577,7 @@ export default function PerfilAdmin() {
     // DUE_SOON
     if (b.code === "DUE_SOON") {
       return (
-        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5 space-y-4">
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5">
           <div className="flex items-center gap-4">
             <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
               <Clock size={22} />
@@ -590,7 +587,6 @@ export default function PerfilAdmin() {
               <p className="text-sm text-yellow-200/60">{b.message}</p>
             </div>
           </div>
-          {!isCartao && payButtons("yellow")}
         </div>
       );
     }
@@ -656,8 +652,8 @@ export default function PerfilAdmin() {
         {/* Billing Alert */}
         {!loadingFatura && renderBillingAlert()}
 
-        {/* Realizar Pagamento — só mostra para PIX/Boleto (não cartão recorrente) */}
-        {!loadingFatura && !fatura?.pago && fatura && fatura.billing.phase !== "TRIAL" && fatura.billingMethod !== "CREDIT_CARD" && (
+        {/* Realizar Pagamento — mostra sempre que não for trial nem cartão */}
+        {!loadingFatura && fatura && fatura.billing.phase !== "TRIAL" && fatura.billingMethod !== "CREDIT_CARD" && (
           <div className="rounded-2xl border border-border-input bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">

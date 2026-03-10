@@ -36,7 +36,7 @@ const cards = [
       v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
   },
   {
-    label: "Em Trial",
+    label: "Em Teste",
     key: "emTrial" as const,
     icon: Clock,
     color: "blue",
