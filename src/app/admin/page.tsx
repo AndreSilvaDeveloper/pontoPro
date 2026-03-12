@@ -27,6 +27,7 @@ import {
 
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 import DashboardGraficos from '@/components/DashboardGraficos';
+import ModalNovidades from '@/components/ModalNovidades';
 import SeletorLoja from '@/components/SeletorLoja';
 import ModalEditarJornada from '@/components/ModalEditarJornada';
 import ModalLancarAusencia from '@/components/ModalLancarAusencia';
@@ -36,6 +37,7 @@ import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
 import CienciaCelularAlertModal from '@/components/admin/CienciaCelularAlertModal';
 import ActionCard from '@/components/admin/ActionCard';
+import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -174,6 +176,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        <PushNotificationPrompt />
+
         {/* === AÇÕES RÁPIDAS === */}
         <div>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 grid-flow-dense">
@@ -215,10 +219,10 @@ export default function AdminDashboard() {
             />
 
             <ActionCard
-              dataTour="admin-feriados"
-              href="/admin/feriados"
-              icon={<CalendarDays size={20} className="text-text-muted group-hover:text-text-primary" />}
-              label="Feriados"
+              dataTour="admin-visao-geral"
+              href="/admin/dashboard"
+              icon={<LayoutDashboard size={20} className="text-text-muted group-hover:text-text-primary" />}
+              label="Visão Geral"
             />
 
             <ActionCard
@@ -229,11 +233,12 @@ export default function AdminDashboard() {
             />
 
             <ActionCard
-              dataTour="admin-visao-geral"
-              href="/admin/dashboard"
-              icon={<LayoutDashboard size={20} className="text-text-muted group-hover:text-text-primary" />}
-              label="Visão Geral"
+              dataTour="admin-feriados"
+              href="/admin/feriados"
+              icon={<CalendarDays size={20} className="text-text-muted group-hover:text-text-primary" />}
+              label="Feriados"
             />
+
           </div>
         </div>
 
@@ -559,6 +564,8 @@ export default function AdminDashboard() {
             aoSalvar={a.carregarDados}
           />
         )}
+
+        <ModalNovidades tipo="ADMIN" />
       </div>
     </div>
   );

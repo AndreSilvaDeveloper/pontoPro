@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { format } from 'date-fns';
-import { Check, X, Clock, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Check, X, Clock, ArrowLeft, AlertCircle, CheckSquare, Square } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -14,6 +14,10 @@ export default function SolicitacoesAjuste() {
 
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [horarioAdmin, setHorarioAdmin] = useState('');
+
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [processandoLote, setProcessandoLote] = useState(false);
+  const [progressoLote, setProgressoLote] = useState(0);
 
   useEffect(() => { carregar(); }, []);
 
@@ -42,6 +46,51 @@ export default function SolicitacoesAjuste() {
     }
   };
 
+  const toggleSelecionado = (id: string) => {
+    setSelecionados(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleTodos = () => {
+    if (selecionados.size === solicitacoes.length) {
+      setSelecionados(new Set());
+    } else {
+      setSelecionados(new Set(solicitacoes.map(s => s.id)));
+    }
+  };
+
+  const processarLote = async (acao: 'APROVAR' | 'REJEITAR') => {
+    const ids = Array.from(selecionados);
+    setProcessandoLote(true);
+    setProgressoLote(0);
+    let sucesso = 0;
+    let erros = 0;
+
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        await axios.post('/api/admin/solicitacoes', { id: ids[i], acao });
+        sucesso++;
+      } catch {
+        erros++;
+      }
+      setProgressoLote(i + 1);
+    }
+
+    setProcessandoLote(false);
+    setProgressoLote(0);
+    setSelecionados(new Set());
+    carregar();
+
+    if (erros === 0) {
+      toast.success(`${sucesso} solicitação(ões) ${acao === 'APROVAR' ? 'aprovada(s)' : 'rejeitada(s)'} com sucesso!`);
+    } else {
+      toast.warning(`${sucesso} processada(s), ${erros} com erro.`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       {/* Orbs decorativos */}
@@ -61,6 +110,15 @@ export default function SolicitacoesAjuste() {
             </div>
             <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Solicitações de Ajuste</h1>
           </div>
+          {solicitacoes.length > 0 && (
+            <button
+              onClick={toggleTodos}
+              className="flex items-center gap-2 px-3 py-2 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95 text-xs font-bold"
+            >
+              {selecionados.size === solicitacoes.length ? <CheckSquare size={18} className="text-purple-400" /> : <Square size={18} className="text-text-muted" />}
+              {selecionados.size === solicitacoes.length ? 'Desmarcar todos' : 'Selecionar todos'}
+            </button>
+          )}
         </div>
 
         {loading ? (
@@ -75,7 +133,15 @@ export default function SolicitacoesAjuste() {
         ) : (
           <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
             {solicitacoes.map((sol) => (
-              <div key={sol.id} className="bg-surface backdrop-blur-sm p-6 rounded-2xl border border-border-subtle flex flex-col md:flex-row gap-6 items-start md:items-center">
+              <div key={sol.id} className={`bg-surface backdrop-blur-sm p-6 rounded-2xl border flex flex-col md:flex-row gap-6 items-start md:items-center transition-colors ${selecionados.has(sol.id) ? 'border-purple-500/60 bg-purple-500/5' : 'border-border-subtle'}`}>
+
+                <button
+                  onClick={() => toggleSelecionado(sol.id)}
+                  className="flex-shrink-0 p-1 rounded-lg hover:bg-hover-bg transition-colors active:scale-95"
+                  disabled={processandoLote}
+                >
+                  {selecionados.has(sol.id) ? <CheckSquare size={22} className="text-purple-400" /> : <Square size={22} className="text-text-muted" />}
+                </button>
 
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2 mb-2">
@@ -163,7 +229,54 @@ export default function SolicitacoesAjuste() {
             ))}
           </div>
         )}
+        {/* Espaço extra quando a barra de ações em lote está visível */}
+        {selecionados.size > 0 && <div className="h-24" />}
       </div>
+
+      {/* BARRA DE AÇÕES EM LOTE */}
+      {selecionados.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border-subtle p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+            <span className="text-sm text-text-muted font-medium">
+              {processandoLote
+                ? `Processando ${progressoLote}/${selecionados.size}...`
+                : `${selecionados.size} solicitação(ões) selecionada(s)`}
+            </span>
+
+            {processandoLote ? (
+              <div className="flex items-center gap-3">
+                <div className="w-40 h-2 bg-hover-bg rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                    style={{ width: `${(progressoLote / selecionados.size) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => processarLote('APROVAR')}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors active:scale-95"
+                >
+                  <Check size={16} /> Aprovar Selecionados
+                </button>
+                <button
+                  onClick={() => processarLote('REJEITAR')}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors active:scale-95"
+                >
+                  <X size={16} /> Rejeitar Selecionados
+                </button>
+                <button
+                  onClick={() => setSelecionados(new Set())}
+                  className="bg-hover-bg hover:bg-hover-bg-strong text-text-primary px-4 py-2 rounded-xl text-xs font-bold transition-colors active:scale-95"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
