@@ -19,12 +19,14 @@ export default function PushNotificationPrompt() {
 
     // Se não vai mostrar o prompt, avisa que já resolveu
     if (!isSupported || isSubscribed || permission === 'denied' || sessionStorage.getItem('push_prompt_dispensado')) {
+      sessionStorage.setItem('push_prompt_resolved', 'true');
       window.dispatchEvent(new Event('push-prompt-done'));
     }
   }, [isSupported, isSubscribed, permission]);
 
   const dispensar = () => {
     sessionStorage.setItem('push_prompt_dispensado', 'true');
+    sessionStorage.setItem('push_prompt_resolved', 'true');
     setDispensado(true);
     window.dispatchEvent(new Event('push-prompt-done'));
   };
@@ -33,6 +35,7 @@ export default function PushNotificationPrompt() {
     const ok = await subscribe();
     if (ok) {
       setDispensado(true);
+      sessionStorage.setItem('push_prompt_resolved', 'true');
       window.dispatchEvent(new Event('push-prompt-done'));
     }
   };

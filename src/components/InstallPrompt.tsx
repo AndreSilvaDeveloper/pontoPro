@@ -17,6 +17,7 @@ export default function InstallPrompt() {
 
     setIsStandalone(isRunningStandalone);
     if (isRunningStandalone) {
+      sessionStorage.setItem('install_prompt_resolved', 'true');
       window.dispatchEvent(new Event('install-prompt-done'));
       return;
     }
@@ -36,22 +37,29 @@ export default function InstallPrompt() {
     // Mostra o modal apenas uma vez por sessão
     const jaDispensou = sessionStorage.getItem('install_prompt_dispensado');
     if (jaDispensou) {
+      sessionStorage.setItem('install_prompt_resolved', 'true');
       window.dispatchEvent(new Event('install-prompt-done'));
       return;
     }
-
-    // Só mostra depois que o prompt de notificação terminar
-    const onPushDone = () => {
-      setTimeout(() => setShowModal(true), 500);
-    };
-    window.addEventListener('push-prompt-done', onPushDone);
 
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Só mostra depois que o prompt de notificação terminar
+    if (sessionStorage.getItem('push_prompt_resolved')) {
+      setTimeout(() => setShowModal(true), 500);
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      };
+    }
+
+    const onPushDone = () => {
+      setTimeout(() => setShowModal(true), 500);
+    };
+    window.addEventListener('push-prompt-done', onPushDone);
 
     return () => {
       window.removeEventListener('push-prompt-done', onPushDone);
@@ -61,6 +69,7 @@ export default function InstallPrompt() {
 
   const fechar = () => {
     sessionStorage.setItem('install_prompt_dispensado', 'true');
+    sessionStorage.setItem('install_prompt_resolved', 'true');
     setShowModal(false);
     window.dispatchEvent(new Event('install-prompt-done'));
   };
@@ -73,6 +82,7 @@ export default function InstallPrompt() {
         setDeferredPrompt(null);
         setShowModal(false);
         sessionStorage.setItem('install_prompt_dispensado', 'true');
+        sessionStorage.setItem('install_prompt_resolved', 'true');
         window.dispatchEvent(new Event('install-prompt-done'));
       }
     } else {

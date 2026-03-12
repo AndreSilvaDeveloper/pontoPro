@@ -139,14 +139,21 @@ export default function ModalNovidades({ tipo }: Props) {
   useEffect(() => {
     if (!jaVerificou || jaViu) return;
 
-    let pushDone = false;
-    let installDone = false;
+    // Verifica se os prompts já resolveram ANTES de registrar os listeners
+    let pushDone = !!sessionStorage.getItem('push_prompt_resolved');
+    let installDone = !!sessionStorage.getItem('install_prompt_resolved');
 
     const tentarAbrir = () => {
       if (pushDone && installDone) {
         setTimeout(() => setAberto(true), 500);
       }
     };
+
+    // Se ambos já resolveram, abre direto
+    if (pushDone && installDone) {
+      tentarAbrir();
+      return;
+    }
 
     const onPushDone = () => { pushDone = true; tentarAbrir(); };
     const onInstallDone = () => { installDone = true; tentarAbrir(); };
