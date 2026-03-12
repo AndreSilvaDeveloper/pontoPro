@@ -122,10 +122,28 @@ export default function ModalNovidades({ tipo }: Props) {
 
   useEffect(() => {
     const jaViu = localStorage.getItem(storageKey);
-    if (!jaViu) {
-      const timer = setTimeout(() => setAberto(true), 6000);
-      return () => clearTimeout(timer);
-    }
+    if (jaViu) return;
+
+    let pushDone = false;
+    let installDone = false;
+
+    const tentarAbrir = () => {
+      if (pushDone && installDone) {
+        // Pequeno delay para transição suave após fechar o último prompt
+        setTimeout(() => setAberto(true), 500);
+      }
+    };
+
+    const onPushDone = () => { pushDone = true; tentarAbrir(); };
+    const onInstallDone = () => { installDone = true; tentarAbrir(); };
+
+    window.addEventListener('push-prompt-done', onPushDone);
+    window.addEventListener('install-prompt-done', onInstallDone);
+
+    return () => {
+      window.removeEventListener('push-prompt-done', onPushDone);
+      window.removeEventListener('install-prompt-done', onInstallDone);
+    };
   }, [storageKey]);
 
   const fechar = () => {

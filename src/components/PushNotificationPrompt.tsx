@@ -16,16 +16,25 @@ export default function PushNotificationPrompt() {
         return () => clearTimeout(timer);
       }
     }
+
+    // Se não vai mostrar o prompt, avisa que já resolveu
+    if (!isSupported || isSubscribed || permission === 'denied' || sessionStorage.getItem('push_prompt_dispensado')) {
+      window.dispatchEvent(new Event('push-prompt-done'));
+    }
   }, [isSupported, isSubscribed, permission]);
 
   const dispensar = () => {
     sessionStorage.setItem('push_prompt_dispensado', 'true');
     setDispensado(true);
+    window.dispatchEvent(new Event('push-prompt-done'));
   };
 
   const ativar = async () => {
     const ok = await subscribe();
-    if (ok) setDispensado(true);
+    if (ok) {
+      setDispensado(true);
+      window.dispatchEvent(new Event('push-prompt-done'));
+    }
   };
 
   if (dispensado || !isSupported || isSubscribed || permission === 'denied') return null;

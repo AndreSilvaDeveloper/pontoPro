@@ -16,7 +16,10 @@ export default function InstallPrompt() {
       || document.referrer.includes('android-app://');
 
     setIsStandalone(isRunningStandalone);
-    if (isRunningStandalone) return;
+    if (isRunningStandalone) {
+      window.dispatchEvent(new Event('install-prompt-done'));
+      return;
+    }
 
     const ua = window.navigator.userAgent.toLowerCase();
     const isIos = /iphone|ipad|ipod/.test(ua);
@@ -32,9 +35,16 @@ export default function InstallPrompt() {
 
     // Mostra o modal apenas uma vez por sessão
     const jaDispensou = sessionStorage.getItem('install_prompt_dispensado');
-    if (jaDispensou) return;
+    if (jaDispensou) {
+      window.dispatchEvent(new Event('install-prompt-done'));
+      return;
+    }
 
-    const timer = setTimeout(() => setShowModal(true), 3000);
+    // Só mostra depois que o prompt de notificação terminar
+    const onPushDone = () => {
+      setTimeout(() => setShowModal(true), 500);
+    };
+    window.addEventListener('push-prompt-done', onPushDone);
 
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
@@ -44,7 +54,7 @@ export default function InstallPrompt() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     return () => {
-      clearTimeout(timer);
+      window.removeEventListener('push-prompt-done', onPushDone);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
@@ -52,6 +62,7 @@ export default function InstallPrompt() {
   const fechar = () => {
     sessionStorage.setItem('install_prompt_dispensado', 'true');
     setShowModal(false);
+    window.dispatchEvent(new Event('install-prompt-done'));
   };
 
   const instalar = async () => {
@@ -61,6 +72,8 @@ export default function InstallPrompt() {
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
         setShowModal(false);
+        sessionStorage.setItem('install_prompt_dispensado', 'true');
+        window.dispatchEvent(new Event('install-prompt-done'));
       }
     } else {
       setShowInstrucoes(true);
