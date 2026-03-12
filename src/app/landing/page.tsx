@@ -50,7 +50,18 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (isStandalone()) {
-      router.replace("/login");
+      // Verifica se tem sessão ativa antes de mandar pro login
+      fetch('/api/auth/session').then(r => r.json()).then(session => {
+        if (session?.user?.cargo === 'ADMIN') {
+          router.replace('/admin');
+        } else if (session?.user) {
+          router.replace('/funcionario');
+        } else {
+          router.replace('/login');
+        }
+      }).catch(() => {
+        router.replace('/login');
+      });
     }
   }, [router]);
 

@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/db';
 import { registrarLog } from '@/lib/logger';
+import { enviarEmailSeguro } from '@/lib/email';
+import { enviarPushAdmins } from '@/lib/push';
 
 // ============================
 // Helpers de Data (SP)
@@ -222,6 +224,54 @@ export async function POST(request: Request) {
       detalhes: `Solicitou ${pontoId ? 'ajuste' : 'inclusão'} para: ${new Date(novoHorario).toLocaleString(
         'pt-BR'
       )} - Motivo: ${motivo}`,
+    });
+
+    // Notificar todos os admins da empresa por e-mail
+    // @ts-ignore
+    const empresaId = session.user.empresaId as string;
+    const funcionarioNome = session.user.name || 'Funcionário';
+    const tipoLabel = pontoId ? 'Ajuste de ponto' : 'Inclusão de ponto';
+    const dataFormatada = new Date(novoHorario).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    const admins = await prisma.usuario.findMany({
+      where: { empresaId, cargo: 'ADMIN' },
+      select: { email: true },
+    });
+
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #5b21b6; padding: 20px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">WorkID</h1>
+        </div>
+        <div style="border: 1px solid #e5e7eb; border-top: none; padding: 30px;">
+          <div style="background-color: #f5f3ff; border-left: 4px solid #5b21b6; padding: 16px; margin-bottom: 20px;">
+            <h2 style="color: #5b21b6; margin: 0 0 8px 0; font-size: 18px;">Nova Solicitação de Ajuste</h2>
+            <p style="color: #4c1d95; margin: 0;">Um funcionário enviou uma nova solicitação que aguarda sua análise.</p>
+          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 8px 0; color: #6b7280; width: 140px;">Funcionário:</td><td style="padding: 8px 0; color: #111827; font-weight: 600;">${funcionarioNome}</td></tr>
+            <tr><td style="padding: 8px 0; color: #6b7280;">Tipo:</td><td style="padding: 8px 0; color: #111827;">${tipoLabel}</td></tr>
+            <tr><td style="padding: 8px 0; color: #6b7280;">Data/Hora:</td><td style="padding: 8px 0; color: #111827;">${dataFormatada}</td></tr>
+            <tr><td style="padding: 8px 0; color: #6b7280;">Motivo:</td><td style="padding: 8px 0; color: #111827;">${motivo}</td></tr>
+          </table>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+          <p style="color: #6b7280; font-size: 13px; margin: 0;">Este é um e-mail automático do sistema WorkID.</p>
+        </div>
+      </div>
+    `;
+
+    for (const admin of admins) {
+      if (admin.email) {
+        enviarEmailSeguro(admin.email, 'Nova solicitação de ajuste - WorkID', emailHtml);
+      }
+    }
+
+    // Push notification para admins
+    enviarPushAdmins(empresaId, {
+      title: 'Nova Solicitação de Ajuste',
+      body: `${session.user.name} enviou uma solicitação`,
+      url: '/admin/solicitacoes',
+      tag: 'nova-solicitacao',
     });
 
     return NextResponse.json({ success: true, solicitacao });

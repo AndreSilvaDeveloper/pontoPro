@@ -10,6 +10,10 @@ import {
   eachDayOfInterval,
   getISOWeek,
   getYear,
+  startOfMonth,
+  endOfMonth,
+  addMonths,
+  subMonths,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -33,6 +37,8 @@ import {
   Coffee,
   UtensilsCrossed,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Trash2,
   ShieldAlert,
@@ -100,6 +106,10 @@ export default function MeuHistorico() {
   const [pontoParaExcluir, setPontoParaExcluir] = useState<any>(null);
   const [excluindo, setExcluindo] = useState(false);
 
+  // Calendário
+  const [mostrarCalendario, setMostrarCalendario] = useState(true);
+  const [mesCalendario, setMesCalendario] = useState(new Date());
+
   // Solicitação expandida
   const [solicitacaoExpandida, setSolicitacaoExpandida] = useState<string | null>(null);
 
@@ -150,6 +160,8 @@ export default function MeuHistorico() {
       }
     });
 
+    const isValidTimeHHMM = (v: any) => typeof v === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+
     const getMetaDoDia = (data: Date) => {
       const dataString = format(data, 'yyyy-MM-dd');
       if (feriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
@@ -172,13 +184,49 @@ export default function MeuHistorico() {
         return diff;
       };
 
-      const minutosConfigurados = config && config.ativo ? calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2) : 0;
+      const calcMinutosConfig = (cfg: any) => {
+        if (!cfg || !cfg.ativo) return 0;
+        const hS1 = isValidTimeHHMM(cfg.s1);
+        const hE2 = isValidTimeHHMM(cfg.e2);
+        if (!hS1 && !hE2 && isValidTimeHHMM(cfg.e1) && isValidTimeHHMM(cfg.s2)) {
+          return calcDiff(cfg.e1, cfg.s2);
+        }
+        return calcDiff(cfg.e1, cfg.s1) + calcDiff(cfg.e2, cfg.s2);
+      };
+
+      let minutosConfigurados = calcMinutosConfig(config);
+
+      // --- LÓGICA HÍBRIDA INTELIGENTE ---
+      const configSabHibrido = jornadaConfig['sab'];
+      const sabTemRegraEspecifica = (() => {
+        const regra = configSabHibrido?.regra;
+        if (!regra?.tipo) return false;
+        if (regra.tipo === 'SABADOS_DO_MES') {
+          const quais = Array.isArray(regra.quais) ? regra.quais : [];
+          return quais.length > 0;
+        }
+        return true;
+      })();
+      const sabRegular = configSabHibrido && configSabHibrido.ativo
+        && !sabTemRegraEspecifica
+        && !(configSabHibrido.alternado === true);
+      const metaSabRegular = sabRegular ? (calcMinutosConfig(configSabHibrido) || 240) : 0;
 
       if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
         if (trabalhouSabado) {
-          if (!minutosConfigurados) return 480;
-          if (minutosConfigurados > 520) return 480;
-          return minutosConfigurados;
+          if (!minutosConfigurados) minutosConfigurados = 480;
+          else if (minutosConfigurados > 520) minutosConfigurados = 480;
+        } else if (sabRegular && metaSabRegular > 0) {
+          const sabadoDaSemana = new Date(data);
+          sabadoDaSemana.setDate(sabadoDaSemana.getDate() + (6 - diaSemanaIndex));
+          const hoje = new Date();
+          hoje.setHours(23, 59, 59, 999);
+          const sabadoJaPassou = sabadoDaSemana <= hoje;
+
+          if (sabadoJaPassou && !trabalhouSabado) {
+            const compensacaoPorDia = Math.round(metaSabRegular / 5);
+            minutosConfigurados = minutosConfigurados + compensacaoPorDia;
+          }
         }
       }
 
@@ -186,6 +234,15 @@ export default function MeuHistorico() {
         const configSab = jornadaConfig['sab'];
         const temConfiguracao = configSab && configSab.ativo;
         if (trabalhouSabado && !temConfiguracao) return 240;
+
+        // Sábado regular configurado mas não trabalhado: meta = 0 (compensado nos dias úteis)
+        if (temConfiguracao && !trabalhouSabado) {
+          const regra = configSab?.regra;
+          const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
+          const isAlternado = configSab?.alternado === true;
+          const temRegraEfetiva = regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0;
+          if (!temRegraEfetiva && !isAlternado) return 0;
+        }
       }
 
       return minutosConfigurados;
@@ -578,6 +635,182 @@ export default function MeuHistorico() {
                 )}
               </div>
             </div>
+
+            {/* Toggle Calendário */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setMostrarCalendario(v => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-text-muted hover:text-purple-400 hover:bg-purple-500/10 border border-border-subtle hover:border-purple-500/20 transition-all"
+              >
+                <Calendar size={14} />
+                {mostrarCalendario ? 'Ocultar Calendário' : 'Mostrar Calendário'}
+              </button>
+            </div>
+
+            {/* Calendário Mensal */}
+            {mostrarCalendario && (() => {
+              const hoje = new Date();
+              const inicioMes = startOfMonth(mesCalendario);
+              const fimMes = endOfMonth(mesCalendario);
+              const diasDoMes = eachDayOfInterval({ start: inicioMes, end: fimMes });
+              const primeiroDiaSemana = getDay(inicioMes); // 0=Dom
+
+              const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+              const getCorDia = (dia: Date) => {
+                const diaStr = format(dia, 'yyyy-MM-dd');
+                const diaSemanaIdx = getDay(dia);
+                const isFuturo = dia > hoje;
+                const isHoje = isSameDay(dia, hoje);
+                const isFeriado = feriados.includes(diaStr);
+
+                // Weekend check
+                const configDia = jornada ? jornada[diasMap[diaSemanaIdx]] : null;
+                const isDiaAtivo = configDia?.ativo === true;
+
+                // Fim de semana ou dia inativo ou futuro
+                if (isFuturo) return { bg: 'bg-slate-800/30', text: 'text-text-dim', dot: '' };
+                if (isFeriado) return { bg: 'bg-blue-500/20', text: 'text-blue-300', dot: 'bg-blue-400' };
+                if (!isDiaAtivo) return { bg: 'bg-slate-800/30', text: 'text-text-dim', dot: '' };
+
+                // Check pontos for this day
+                const pontosDoDia = pontos.filter(p => {
+                  if (p.tipo === 'AUSENCIA') {
+                    const ini = format(new Date(p.dataHora), 'yyyy-MM-dd');
+                    const fim = p.extra?.dataFim ? format(new Date(p.extra.dataFim), 'yyyy-MM-dd') : ini;
+                    return diaStr >= ini && diaStr <= fim;
+                  }
+                  return isSameDay(new Date(p.dataHora), dia);
+                });
+
+                // Check for absences (férias, atestado)
+                const temAusencia = pontosDoDia.some(p => p.tipo === 'AUSENCIA');
+                if (temAusencia) return { bg: 'bg-blue-500/20', text: 'text-blue-300', dot: 'bg-blue-400' };
+
+                // No pontos on active weekday
+                const pontosNormais = pontosDoDia.filter(p => p.tipo !== 'AUSENCIA');
+                if (pontosNormais.length === 0) {
+                  // Only mark as missed if the day has passed
+                  if (dia < hoje && !isHoje) return { bg: 'bg-red-500/15', text: 'text-red-300', dot: 'bg-red-400' };
+                  return { bg: 'bg-slate-800/30', text: 'text-text-dim', dot: '' };
+                }
+
+                // Check if has ENTRADA + SAIDA
+                const tipos = pontosNormais.map(p => p.subTipo || p.tipo);
+                const temEntrada = tipos.includes('ENTRADA');
+                const temSaida = tipos.includes('SAIDA');
+
+                if (temEntrada && temSaida) return { bg: 'bg-emerald-500/15', text: 'text-emerald-300', dot: 'bg-emerald-400' };
+
+                // Partial day
+                return { bg: 'bg-amber-500/15', text: 'text-amber-300', dot: 'bg-amber-400' };
+              };
+
+              const navMes = (dir: number) => {
+                const novoMes = dir > 0 ? addMonths(mesCalendario, 1) : subMonths(mesCalendario, 1);
+                setMesCalendario(novoMes);
+                const novoInicio = format(startOfMonth(novoMes), 'yyyy-MM-dd');
+                const novoFim = format(endOfMonth(novoMes), 'yyyy-MM-dd');
+                setDataInicio(novoInicio);
+                setDataFim(novoFim);
+              };
+
+              const clicarDia = (dia: Date) => {
+                const diaStr = format(dia, 'yyyy-MM-dd');
+                setDataInicio(diaStr);
+                setDataFim(diaStr);
+              };
+
+              return (
+                <div className="bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle p-4">
+                  {/* Header: navegação de mês */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => navMes(-1)}
+                      className="p-2 rounded-xl hover:bg-hover-bg text-text-muted hover:text-text-primary transition-all active:scale-95"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="text-sm font-bold text-text-primary capitalize">
+                      {format(mesCalendario, 'MMMM yyyy', { locale: ptBR })}
+                    </span>
+                    <button
+                      onClick={() => navMes(1)}
+                      className="p-2 rounded-xl hover:bg-hover-bg text-text-muted hover:text-text-primary transition-all active:scale-95"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+
+                  {/* Cabeçalho dias da semana */}
+                  <div className="grid grid-cols-7 gap-1 mb-1">
+                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => (
+                      <div key={d} className="text-center text-[10px] font-bold text-text-faint uppercase py-1">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Grid de dias */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {/* Espaços vazios antes do primeiro dia */}
+                    {Array.from({ length: primeiroDiaSemana }).map((_, i) => (
+                      <div key={`empty-${i}`} className="aspect-square" />
+                    ))}
+
+                    {diasDoMes.map(dia => {
+                      const cores = getCorDia(dia);
+                      const isHoje = isSameDay(dia, hoje);
+                      const diaStr = format(dia, 'yyyy-MM-dd');
+                      const isSelecionado = diaStr === dataInicio && diaStr === dataFim;
+
+                      return (
+                        <button
+                          key={diaStr}
+                          onClick={() => clicarDia(dia)}
+                          className={`aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all active:scale-90 ${cores.bg} ${
+                            isHoje ? 'ring-2 ring-purple-500 ring-offset-1 ring-offset-page' : ''
+                          } ${
+                            isSelecionado ? 'ring-2 ring-white/40' : ''
+                          }`}
+                        >
+                          <span className={`text-xs font-bold ${cores.text}`}>
+                            {format(dia, 'd')}
+                          </span>
+                          {cores.dot && (
+                            <div className={`w-1.5 h-1.5 rounded-full ${cores.dot} mt-0.5`} />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Legenda */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border-subtle">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                      <span className="text-[10px] text-text-faint">Completo</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span className="text-[10px] text-text-faint">Parcial</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-red-400" />
+                      <span className="text-[10px] text-text-faint">Falta</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                      <span className="text-[10px] text-text-faint">Ausência</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full ring-1 ring-purple-500 bg-transparent" />
+                      <span className="text-[10px] text-text-faint">Hoje</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Lista de Pontos Agrupados por Data */}
             <div className="space-y-4">

@@ -12,6 +12,9 @@ import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour';
 import ThemeToggle from '@/components/ThemeToggle';
+import ModalNovidades from '@/components/ModalNovidades';
+import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import InstallPrompt from '@/components/InstallPrompt';
 
 // ✅ TIPAGEM DOS TIPOS (para não errar string)
 type TipoSolicitacao =
@@ -47,6 +50,13 @@ export default function Home() {
   const [jaAlmocou, setJaAlmocou] = useState(false);
   const [carregandoStatus, setCarregandoStatus] = useState(true);
   const [tipoManual, setTipoManual] = useState<TipoSolicitacao>('ENTRADA');
+
+  // === NOVOS: PROGRESSO DO DIA ===
+  const [minutosTrabalhadosHoje, setMinutosTrabalhadosHoje] = useState(0);
+  const [metaMinutosHoje, setMetaMinutosHoje] = useState(0);
+  const [primeiraEntrada, setPrimeiraEntrada] = useState<Date | null>(null);
+  const [jornadaHoje, setJornadaHoje] = useState<any>(null);
+  const [alertaIntervaloMostrado, setAlertaIntervaloMostrado] = useState(false);
 
   const webcamRef = useRef<Webcam>(null);
   const [mostrarCamera, setMostrarCamera] = useState(true);
@@ -91,10 +101,27 @@ export default function Home() {
           .join(":");
 
         setTempoIntervalo(timeString);
+
+        // Alerta de café excedido (> 15min)
+        if (statusPonto === 'SAIDA_INTERVALO' && minutes >= 15 && !alertaIntervaloMostrado) {
+          setAlertaIntervaloMostrado(true);
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+      } else {
+        setAlertaIntervaloMostrado(false);
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [ultimoPontoData, statusPonto]);
+  }, [ultimoPontoData, statusPonto, alertaIntervaloMostrado]);
+
+  // Recarrega dados de progresso a cada 60s
+  useEffect(() => {
+    if (status !== 'authenticated' || !statusPonto || statusPonto === 'SAIDA') return;
+    const intervalo = setInterval(() => {
+      carregarConfigEStatus();
+    }, 60000);
+    return () => clearInterval(intervalo);
+  }, [status, statusPonto]);
 
   const carregarConfigEStatus = async () => {
     // @ts-ignore
@@ -123,6 +150,12 @@ export default function Home() {
       setUltimoPontoData(dataRegistro ? new Date(dataRegistro) : null);
 
       setJaAlmocou(resStatus.data.jaAlmocou || false);
+
+      // Novos dados de progresso
+      setMinutosTrabalhadosHoje(resStatus.data.minutosTrabalhadosHoje || 0);
+      setMetaMinutosHoje(resStatus.data.metaMinutosHoje || 0);
+      setPrimeiraEntrada(resStatus.data.primeiraEntrada ? new Date(resStatus.data.primeiraEntrada) : null);
+      setJornadaHoje(resStatus.data.jornada || null);
 
       // Se já bateu ponto hoje, esconde a câmera e mostra status
       if (ultimoTipo && ultimoTipo !== 'SAIDA') {
@@ -176,7 +209,8 @@ export default function Home() {
         setStatusMsg({ tipo: 'sucesso', texto: 'Localização Confirmada!' });
         setTimeout(() => setStatusMsg(null), 3000);
       },
-      (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message })
+      (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message }),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -219,14 +253,35 @@ export default function Home() {
     executarPonto(tipoFinal);
   };
 
+  const obterGPSAtual = (): Promise<{ lat: number; lng: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('Navegador sem GPS.'));
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    });
+  };
+
   const executarPonto = async (tipoFinal: TipoSolicitacao) => {
     setAcaoEmProcesso(tipoFinal);
     setAcaoPendente(null);
 
-    if (!location) {
-      setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' });
-      setAcaoEmProcesso(null);
-      return;
+    // Recaptura GPS em tempo real para evitar coordenada antiga/imprecisa
+    setStatusMsg({ tipo: 'info', texto: 'Confirmando localização...' });
+    let gpsAtual: { lat: number; lng: number };
+    try {
+      gpsAtual = await obterGPSAtual();
+      setLocation(gpsAtual);
+    } catch {
+      // Fallback: usa a última localização conhecida
+      if (!location) {
+        setStatusMsg({ tipo: 'erro', texto: 'Não foi possível obter sua localização. Verifique o GPS.' });
+        setAcaoEmProcesso(null);
+        return;
+      }
+      gpsAtual = location;
     }
 
     let imageSrc = null;
@@ -246,7 +301,7 @@ export default function Home() {
       await axios.post('/api/funcionario/ponto', {
         // @ts-ignore
         usuarioId: session?.user?.id,
-        latitude: location.lat, longitude: location.lng,
+        latitude: gpsAtual.lat, longitude: gpsAtual.lng,
         fotoBase64: imageSrc,
         tipo: tipoFinal
       });
@@ -254,6 +309,7 @@ export default function Home() {
       setStatusPonto(tipoFinal);
       setUltimoPontoData(new Date());
       setMostrarCamera(false);
+      setAlertaIntervaloMostrado(false);
 
       if (tipoFinal === 'VOLTA_ALMOCO') setJaAlmocou(true);
 
@@ -397,6 +453,8 @@ export default function Home() {
     }
 
     // Trabalhando
+    const horasT = Math.floor(minutosTrabalhadosHoje / 60);
+    const minutosT = minutosTrabalhadosHoje % 60;
     return (
       <div className="flex flex-col items-center justify-center py-10 animate-in fade-in zoom-in-95 duration-500">
         <div className="w-24 h-24 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mb-5 relative">
@@ -404,8 +462,17 @@ export default function Home() {
           <Briefcase size={40} className="text-emerald-400 relative z-10" />
         </div>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-500/70 mb-2">Trabalhando</p>
-        <p className="text-2xl font-bold text-text-primary">Bom trabalho!</p>
-        <p className="text-sm text-text-faint mt-1">Seu ponto foi registrado</p>
+        {minutosTrabalhadosHoje > 0 ? (
+          <>
+            <p className="text-3xl font-mono font-bold text-text-primary tabular-nums">{horasT}h{String(minutosT).padStart(2, '0')}</p>
+            <p className="text-xs text-text-faint mt-1">trabalhadas hoje</p>
+          </>
+        ) : (
+          <>
+            <p className="text-2xl font-bold text-text-primary">Bom trabalho!</p>
+            <p className="text-sm text-text-faint mt-1">Seu ponto foi registrado</p>
+          </>
+        )}
       </div>
     );
   };
@@ -497,6 +564,9 @@ export default function Home() {
 
       <div className="w-full max-w-md space-y-6 relative z-10">
 
+        <InstallPrompt />
+        <PushNotificationPrompt />
+
         {/* CABEÇALHO */}
         <div
           data-tour="emp-header"
@@ -515,7 +585,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.dispatchEvent(new Event(FUNC_TOUR_RESTART_EVENT))}
+              onClick={() => { window.dispatchEvent(new Event(FUNC_TOUR_RESTART_EVENT)); window.dispatchEvent(new Event('show-novidades')); }}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 rounded-2xl text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 transition-all active:scale-95 text-xs font-bold"
             >
               <HelpCircle size={16} />
@@ -547,6 +617,156 @@ export default function Home() {
               )}
             </div>
           );
+        })()}
+
+        {/* PROGRESSO DO DIA */}
+        {location && !carregandoStatus && statusPonto && statusPonto !== 'SAIDA' && metaMinutosHoje > 0 && (() => {
+          const agora = new Date();
+          // Calcula minutos trabalhados em tempo real (base da API + tempo desde última atualização)
+          const minutosAtual = minutosTrabalhadosHoje;
+          const porcentagem = Math.min(Math.round((minutosAtual / metaMinutosHoje) * 100), 100);
+          const horasTrab = Math.floor(minutosAtual / 60);
+          const minutosTrab = minutosAtual % 60;
+          const horasMeta = Math.floor(metaMinutosHoje / 60);
+          const minutosMeta = metaMinutosHoje % 60;
+
+          // Previsão de saída
+          let previsaoSaida = '';
+          if (primeiraEntrada && jornadaHoje) {
+            const diasSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+            const diaAtual = diasSemana[agora.getDay()];
+            const jornadaDia = jornadaHoje[diaAtual];
+            if (jornadaDia?.ativo && jornadaDia.s2) {
+              // Calcula: entrada real + meta de trabalho + tempo de almoço
+              const parseHM = (h: string) => {
+                if (!h || !/^\d{2}:\d{2}$/.test(h)) return 0;
+                const [hh, mm] = h.split(':').map(Number);
+                return hh * 60 + mm;
+              };
+              const e1Config = parseHM(jornadaDia.e1);
+              const s1Config = parseHM(jornadaDia.s1);
+              const e2Config = parseHM(jornadaDia.e2);
+              const s2Config = parseHM(jornadaDia.s2);
+
+              let tempoAlmoco = 0;
+              if (s1Config && e2Config) {
+                tempoAlmoco = e2Config - s1Config; // intervalo almoço configurado
+              }
+
+              const entradaMin = primeiraEntrada.getHours() * 60 + primeiraEntrada.getMinutes();
+              const saidaPrevista = entradaMin + metaMinutosHoje + tempoAlmoco;
+              const saidaHoras = Math.floor(saidaPrevista / 60);
+              const saidaMinutos = saidaPrevista % 60;
+              previsaoSaida = `${String(saidaHoras).padStart(2, '0')}:${String(saidaMinutos).padStart(2, '0')}`;
+            }
+          }
+
+          const faltam = metaMinutosHoje - minutosAtual;
+          const faltamH = Math.floor(Math.max(0, faltam) / 60);
+          const faltamM = Math.max(0, faltam) % 60;
+
+          return (
+            <div className="bg-surface/60 backdrop-blur-md rounded-2xl border border-border-subtle p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
+              {/* Barra de progresso */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock size={13} /> Progresso do dia
+                </span>
+                <span className={`font-bold tabular-nums ${porcentagem >= 100 ? 'text-emerald-400' : 'text-text-primary'}`}>
+                  {porcentagem}%
+                </span>
+              </div>
+
+              <div className="w-full h-3 bg-elevated-solid rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                    porcentagem >= 100 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                    porcentagem >= 75 ? 'bg-gradient-to-r from-blue-500 to-purple-500' :
+                    'bg-gradient-to-r from-purple-600 to-purple-400'
+                  }`}
+                  style={{ width: `${porcentagem}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-text-muted">
+                  <span className="text-text-primary font-bold">{horasTrab}h{String(minutosTrab).padStart(2, '0')}</span>
+                  {' / '}{horasMeta}h{String(minutosMeta).padStart(2, '0')}
+                </span>
+                {faltam > 0 ? (
+                  <span className="text-text-faint">
+                    Faltam <span className="text-text-muted font-semibold">{faltamH > 0 ? `${faltamH}h` : ''}{String(faltamM).padStart(2, '0')}min</span>
+                  </span>
+                ) : (
+                  <span className="text-emerald-400 font-bold">Meta atingida!</span>
+                )}
+              </div>
+
+              {/* Previsão de saída e entrada */}
+              {(previsaoSaida || primeiraEntrada) && (
+                <div className="flex items-center justify-between pt-1 border-t border-border-subtle">
+                  {primeiraEntrada && (
+                    <span className="text-[11px] text-text-faint flex items-center gap-1">
+                      <LogIn size={11} /> Entrada: <span className="text-text-muted font-semibold">{primeiraEntrada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </span>
+                  )}
+                  {previsaoSaida && (
+                    <span className="text-[11px] text-text-faint flex items-center gap-1">
+                      <LogOut size={11} /> Previsão: <span className="text-purple-400 font-bold">{previsaoSaida}</span>
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Alerta de café excedido */}
+        {statusPonto === 'SAIDA_INTERVALO' && alertaIntervaloMostrado && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <div className="bg-red-500/20 p-2 rounded-xl">
+              <AlertCircle size={20} className="text-red-400" />
+            </div>
+            <div>
+              <p className="text-red-400 font-bold text-sm">Pausa excedida!</p>
+              <p className="text-red-400/70 text-xs">Seu café ultrapassou 15 minutos</p>
+            </div>
+          </div>
+        )}
+
+        {/* Alerta de almoço longo */}
+        {statusPonto === 'SAIDA_ALMOCO' && ultimoPontoData && (() => {
+          const diffAlmoco = Math.floor((new Date().getTime() - new Date(ultimoPontoData).getTime()) / 60000);
+          // Calcula tempo de almoço configurado
+          let tempoAlmocoConfig = 60; // default 1h
+          if (jornadaHoje) {
+            const diasSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+            const diaAtual = diasSemana[new Date().getDay()];
+            const jornadaDia = jornadaHoje[diaAtual];
+            if (jornadaDia?.s1 && jornadaDia?.e2) {
+              const parseHM = (h: string) => {
+                if (!h || !/^\d{2}:\d{2}$/.test(h)) return 0;
+                const [hh, mm] = h.split(':').map(Number);
+                return hh * 60 + mm;
+              };
+              tempoAlmocoConfig = parseHM(jornadaDia.e2) - parseHM(jornadaDia.s1);
+            }
+          }
+          if (diffAlmoco > tempoAlmocoConfig) {
+            const excedeu = diffAlmoco - tempoAlmocoConfig;
+            return (
+              <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                <div className="bg-orange-500/20 p-2 rounded-xl">
+                  <AlertCircle size={20} className="text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-orange-400 font-bold text-sm">Almoço excedido!</p>
+                  <p className="text-orange-400/70 text-xs">{excedeu}min além do configurado ({Math.floor(tempoAlmocoConfig / 60)}h{tempoAlmocoConfig % 60 > 0 ? String(tempoAlmocoConfig % 60).padStart(2, '0') : ''})</p>
+                </div>
+              </div>
+            );
+          }
+          return null;
         })()}
 
         {/* ÁREA PRINCIPAL (CÂMERA/STATUS E AÇÃO) */}
@@ -844,6 +1064,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <ModalNovidades tipo="FUNCIONARIO" />
     </main>
   );
 }

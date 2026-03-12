@@ -8,6 +8,7 @@ import ThemedToaster from "@/components/ThemedToaster";
 import ThemeSyncer from "@/components/ThemeSyncer";
 import OnboardingMount from "@/components/onboarding/OnboardingMount";
 import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -34,6 +35,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Provider>
             <ThemeSyncer />
+            <ServiceWorkerRegistrar />
             <Suspense fallback={null}>
               <OnboardingMount />
             </Suspense>

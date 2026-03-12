@@ -14,21 +14,36 @@ export async function GET(request: Request) {
   if (!inicio || !fim) return NextResponse.json({ erro: 'Datas inválidas' }, { status: 400 });
 
   try {
+    // Expande o range de busca para incluir o sábado da semana do início e do fim
+    // Isso garante que a lógica híbrida (trabalhouSabado) funcione mesmo filtrando seg-sex
+    const dataInicio = new Date(`${inicio}T00:00:00`);
+    const dataFim = new Date(`${fim}T23:59:59`);
+    const diaSemanaInicio = dataInicio.getDay(); // 0=dom ... 6=sab
+    const diaSemanaFim = dataFim.getDay();
+    const buscaInicio = new Date(dataInicio);
+    // Se início não é domingo, voltar até a segunda da semana (para pegar contexto)
+    if (diaSemanaInicio === 0) buscaInicio.setDate(buscaInicio.getDate() - 1); // volta ao sábado
+    const buscaFim = new Date(dataFim);
+    // Se fim não é sábado, avançar até o sábado da semana
+    if (diaSemanaFim < 6) buscaFim.setDate(buscaFim.getDate() + (6 - diaSemanaFim));
+    buscaFim.setHours(23, 59, 59, 999);
+
     // 1. Busca dados do usuário (Jornada) e da empresa (Nome)
     const usuario = await prisma.usuario.findUnique({
         where: { id: session.user.id },
-        include: { 
-            empresa: { 
+        include: {
+            empresa: {
                 include: { feriados: true } // Traz feriados da empresa
-            } 
+            }
         }
     });
 
     // 2. Busca registros (Pontos + Ausências Aprovadas)
+    // Range expandido para detectar se trabalhou sábado na semana
     const pontos = await prisma.ponto.findMany({
       where: {
         usuarioId: session.user.id,
-        dataHora: { gte: new Date(`${inicio}T00:00:00`), lte: new Date(`${fim}T23:59:59`) },
+        dataHora: { gte: buscaInicio, lte: buscaFim },
       },
       orderBy: { dataHora: 'asc' }
     });

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { registrarLog } from '@/lib/logger';
+import { enviarEmailSeguro } from '@/lib/email';
+import { enviarPushSeguro } from '@/lib/push';
 
 // ============================
 // Helpers de Data (SP)
@@ -128,6 +130,44 @@ export async function POST(request: Request) {
           acao: 'REJEICAO_SOLICITACAO',
           detalhes,
         });
+      });
+
+      // Notificar funcionário por e-mail sobre rejeição
+      if (sol.usuario?.email) {
+        const dataFormatada = dataSolicitada ? fmt(dataSolicitada) : 'N/A';
+        const tipoLabel = tipoSol === 'INCLUSAO' ? 'Inclusão de ponto' : 'Ajuste de ponto';
+        enviarEmailSeguro(
+          sol.usuario.email,
+          'Sua solicitação foi rejeitada - WorkID',
+          `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #5b21b6; padding: 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">WorkID</h1>
+            </div>
+            <div style="border: 1px solid #e5e7eb; border-top: none; padding: 30px;">
+              <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin-bottom: 20px;">
+                <h2 style="color: #dc2626; margin: 0 0 8px 0; font-size: 18px;">Solicitação Rejeitada</h2>
+                <p style="color: #991b1b; margin: 0;">Sua solicitação foi analisada e rejeitada.</p>
+              </div>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #6b7280; width: 140px;">Funcionário:</td><td style="padding: 8px 0; color: #111827; font-weight: 600;">${funcionarioNome}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280;">Tipo:</td><td style="padding: 8px 0; color: #111827;">${tipoLabel}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280;">Data/Hora:</td><td style="padding: 8px 0; color: #111827;">${dataFormatada}</td></tr>
+              </table>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p style="color: #6b7280; font-size: 13px; margin: 0;">Este é um e-mail automático do sistema WorkID.</p>
+            </div>
+          </div>
+          `
+        );
+      }
+
+      // Push notification para funcionário
+      enviarPushSeguro(sol.usuarioId, {
+        title: 'Solicitação Rejeitada',
+        body: 'Sua solicitação de ajuste foi rejeitada.',
+        url: '/funcionario/historico',
+        tag: 'solicitacao-decidida',
       });
 
       return NextResponse.json({ success: true });
@@ -329,6 +369,44 @@ export async function POST(request: Request) {
           acao: 'APROVACAO_SOLICITACAO',
           detalhes,
         });
+      });
+
+      // Notificar funcionário por e-mail sobre aprovação
+      if (sol.usuario?.email) {
+        const dataFormatada = fmt(dataFinal);
+        const tipoLabel = tipoSol === 'INCLUSAO' ? 'Inclusão de ponto' : 'Ajuste de ponto';
+        enviarEmailSeguro(
+          sol.usuario.email,
+          'Sua solicitação foi aprovada - WorkID',
+          `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #5b21b6; padding: 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">WorkID</h1>
+            </div>
+            <div style="border: 1px solid #e5e7eb; border-top: none; padding: 30px;">
+              <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; margin-bottom: 20px;">
+                <h2 style="color: #16a34a; margin: 0 0 8px 0; font-size: 18px;">Solicitação Aprovada</h2>
+                <p style="color: #166534; margin: 0;">Sua solicitação foi analisada e aprovada.</p>
+              </div>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 0; color: #6b7280; width: 140px;">Funcionário:</td><td style="padding: 8px 0; color: #111827; font-weight: 600;">${funcionarioNome}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280;">Tipo:</td><td style="padding: 8px 0; color: #111827;">${tipoLabel}</td></tr>
+                <tr><td style="padding: 8px 0; color: #6b7280;">Horário aprovado:</td><td style="padding: 8px 0; color: #111827; font-weight: 600;">${dataFormatada}</td></tr>
+              </table>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+              <p style="color: #6b7280; font-size: 13px; margin: 0;">Este é um e-mail automático do sistema WorkID.</p>
+            </div>
+          </div>
+          `
+        );
+      }
+
+      // Push notification para funcionário
+      enviarPushSeguro(sol.usuarioId, {
+        title: 'Solicitação Aprovada',
+        body: 'Sua solicitação de ajuste foi aprovada!',
+        url: '/funcionario/historico',
+        tag: 'solicitacao-decidida',
       });
 
       return NextResponse.json({ success: true });

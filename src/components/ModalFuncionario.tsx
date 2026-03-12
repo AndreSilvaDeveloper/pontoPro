@@ -297,9 +297,23 @@ export default function ModalFuncionario({
     const out: Record<string, string[]> = {};
     (['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'] as string[]).forEach((dia) => {
       if (!jornada?.[dia]?.ativo) return;
-      const e1 = validarBloco(jornada[dia].e1, jornada[dia].s1);
-      const e2 = validarBloco(jornada[dia].e2, jornada[dia].s2);
-      const arr = [e1, e2].filter(Boolean) as string[];
+      const { e1, s1, e2, s2 } = jornada[dia];
+      const temE1 = !!e1;
+      const temS1 = !!s1;
+      const temE2 = !!e2;
+      const temS2 = !!s2;
+
+      // Turno contínuo: só entrada (e1) e saída (s2), sem almoço — válido
+      if (temE1 && temS2 && !temS1 && !temE2) {
+        const err = validarBloco(e1, s2);
+        if (err) out[dia] = [err];
+        return;
+      }
+
+      // Se preencheu almoço ou volta, valida os dois blocos
+      const err1 = validarBloco(e1, s1);
+      const err2 = validarBloco(e2, s2);
+      const arr = [err1, err2].filter(Boolean) as string[];
       if (arr.length) out[dia] = arr;
     });
     return out;
@@ -705,43 +719,42 @@ export default function ModalFuncionario({
 
                       {jornada[dia]?.ativo && (
                         <div className="p-3.5 pt-0 space-y-2">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Manhã</p>
-                              <div className="flex items-center gap-1.5 bg-input-solid/50 rounded-xl p-1.5 border border-border-default">
-                                <input
-                                  type="time"
-                                  value={jornada[dia].e1}
-                                  onChange={(e) => updateJornada(dia, 'e1', e.target.value)}
-                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
-                                />
-                                <span className="text-text-dim text-xs">às</span>
-                                <input
-                                  type="time"
-                                  value={jornada[dia].s1}
-                                  onChange={(e) => updateJornada(dia, 's1', e.target.value)}
-                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
-                                />
-                              </div>
+                          <div className="grid grid-cols-4 gap-2">
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Entrada</p>
+                              <input
+                                type="time"
+                                value={jornada[dia].e1}
+                                onChange={(e) => updateJornada(dia, 'e1', e.target.value)}
+                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                              />
                             </div>
-
-                            <div className="space-y-1.5">
-                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Tarde</p>
-                              <div className="flex items-center gap-1.5 bg-input-solid/50 rounded-xl p-1.5 border border-border-default">
-                                <input
-                                  type="time"
-                                  value={jornada[dia].e2}
-                                  onChange={(e) => updateJornada(dia, 'e2', e.target.value)}
-                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
-                                />
-                                <span className="text-text-dim text-xs">às</span>
-                                <input
-                                  type="time"
-                                  value={jornada[dia].s2}
-                                  onChange={(e) => updateJornada(dia, 's2', e.target.value)}
-                                  className="bg-transparent text-text-primary text-sm font-mono w-full text-center outline-none py-2 rounded-lg focus:bg-hover-bg transition-colors"
-                                />
-                              </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Almoço</p>
+                              <input
+                                type="time"
+                                value={jornada[dia].s1}
+                                onChange={(e) => updateJornada(dia, 's1', e.target.value)}
+                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Volta</p>
+                              <input
+                                type="time"
+                                value={jornada[dia].e2}
+                                onChange={(e) => updateJornada(dia, 'e2', e.target.value)}
+                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-[10px] text-text-faint font-bold uppercase text-center">Saída</p>
+                              <input
+                                type="time"
+                                value={jornada[dia].s2}
+                                onChange={(e) => updateJornada(dia, 's2', e.target.value)}
+                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                              />
                             </div>
                           </div>
 
