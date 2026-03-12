@@ -1,7 +1,22 @@
+// Ativa o SW imediatamente, sem esperar navegação
+self.addEventListener('install', function(event) {
+  self.skipWaiting();
+});
+
+// Assume controle de todas as abas/clientes imediatamente
+self.addEventListener('activate', function(event) {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', function(event) {
   if (!event.data) return;
 
-  const data = event.data.json();
+  let data;
+  try {
+    data = event.data.json();
+  } catch (e) {
+    data = { title: 'WorkID', body: event.data.text() };
+  }
 
   const options = {
     body: data.body || '',
