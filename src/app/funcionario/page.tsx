@@ -14,6 +14,7 @@ import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour
 import ThemeToggle from '@/components/ThemeToggle';
 import ModalNovidades from '@/components/ModalNovidades';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import InstallPrompt from '@/components/InstallPrompt';
 
 // ✅ TIPAGEM DOS TIPOS (para não errar string)
 type TipoSolicitacao =
@@ -563,6 +564,7 @@ export default function Home() {
 
       <div className="w-full max-w-md space-y-6 relative z-10">
 
+        <InstallPrompt />
         <PushNotificationPrompt />
 
         {/* CABEÇALHO */}
