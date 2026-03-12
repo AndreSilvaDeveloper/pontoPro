@@ -176,7 +176,8 @@ export default function Home() {
         setStatusMsg({ tipo: 'sucesso', texto: 'Localização Confirmada!' });
         setTimeout(() => setStatusMsg(null), 3000);
       },
-      (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message })
+      (error) => setStatusMsg({ tipo: 'erro', texto: 'Erro GPS: ' + error.message }),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -219,14 +220,35 @@ export default function Home() {
     executarPonto(tipoFinal);
   };
 
+  const obterGPSAtual = (): Promise<{ lat: number; lng: number }> => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) return reject(new Error('Navegador sem GPS.'));
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    });
+  };
+
   const executarPonto = async (tipoFinal: TipoSolicitacao) => {
     setAcaoEmProcesso(tipoFinal);
     setAcaoPendente(null);
 
-    if (!location) {
-      setStatusMsg({ tipo: 'erro', texto: 'Precisamos da sua localização!' });
-      setAcaoEmProcesso(null);
-      return;
+    // Recaptura GPS em tempo real para evitar coordenada antiga/imprecisa
+    setStatusMsg({ tipo: 'info', texto: 'Confirmando localização...' });
+    let gpsAtual: { lat: number; lng: number };
+    try {
+      gpsAtual = await obterGPSAtual();
+      setLocation(gpsAtual);
+    } catch {
+      // Fallback: usa a última localização conhecida
+      if (!location) {
+        setStatusMsg({ tipo: 'erro', texto: 'Não foi possível obter sua localização. Verifique o GPS.' });
+        setAcaoEmProcesso(null);
+        return;
+      }
+      gpsAtual = location;
     }
 
     let imageSrc = null;
@@ -246,7 +268,7 @@ export default function Home() {
       await axios.post('/api/funcionario/ponto', {
         // @ts-ignore
         usuarioId: session?.user?.id,
-        latitude: location.lat, longitude: location.lng,
+        latitude: gpsAtual.lat, longitude: gpsAtual.lng,
         fotoBase64: imageSrc,
         tipo: tipoFinal
       });

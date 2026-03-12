@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X, FileCheck } from 'lucide-react';
+import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X, FileCheck, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 
 import ModalFuncionario, { Funcionario } from '@/components/ModalFuncionario';
+import ModalImportarFuncionarios from '@/components/ModalImportarFuncionarios';
 
 export default function GestaoFuncionarios() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -21,6 +22,7 @@ export default function GestaoFuncionarios() {
   const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null);
   const [confirmandoReset, setConfirmandoReset] = useState<string | null>(null);
   const [regenerandoTermos, setRegenerandoTermos] = useState(false);
+  const [showImportar, setShowImportar] = useState(false);
 
   useEffect(() => {
     carregarLista();
@@ -131,6 +133,14 @@ export default function GestaoFuncionarios() {
             >
               {regenerandoTermos ? <RefreshCw size={18} className="animate-spin" /> : <FileCheck size={18} />}
               <span className="hidden sm:inline">Regenerar Termos</span>
+            </button>
+            <button
+              onClick={() => setShowImportar(true)}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-emerald-900/20 transition-colors active:scale-95"
+              title="Importar funcionários via CSV"
+            >
+              <FileSpreadsheet size={18} />
+              <span className="hidden sm:inline">Importar</span>
             </button>
             <button onClick={handleNovo} className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-bold text-sm flex gap-2 items-center shadow-lg shadow-green-900/20 transition-colors active:scale-95">
               <UserPlus size={18} /> Novo Funcionário
@@ -267,6 +277,12 @@ export default function GestaoFuncionarios() {
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           funcionarioEdicao={funcionarioSelecionado}
+          onSuccess={carregarLista}
+        />
+
+        <ModalImportarFuncionarios
+          isOpen={showImportar}
+          onClose={() => setShowImportar(false)}
           onSuccess={carregarLista}
         />
 

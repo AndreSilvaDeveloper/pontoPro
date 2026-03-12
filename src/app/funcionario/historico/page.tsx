@@ -150,6 +150,8 @@ export default function MeuHistorico() {
       }
     });
 
+    const isValidTimeHHMM = (v: any) => typeof v === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+
     const getMetaDoDia = (data: Date) => {
       const dataString = format(data, 'yyyy-MM-dd');
       if (feriados.includes(dataString) || diasIsentos.has(dataString)) return 0;
@@ -172,13 +174,49 @@ export default function MeuHistorico() {
         return diff;
       };
 
-      const minutosConfigurados = config && config.ativo ? calcDiff(config.e1, config.s1) + calcDiff(config.e2, config.s2) : 0;
+      const calcMinutosConfig = (cfg: any) => {
+        if (!cfg || !cfg.ativo) return 0;
+        const hS1 = isValidTimeHHMM(cfg.s1);
+        const hE2 = isValidTimeHHMM(cfg.e2);
+        if (!hS1 && !hE2 && isValidTimeHHMM(cfg.e1) && isValidTimeHHMM(cfg.s2)) {
+          return calcDiff(cfg.e1, cfg.s2);
+        }
+        return calcDiff(cfg.e1, cfg.s1) + calcDiff(cfg.e2, cfg.s2);
+      };
+
+      let minutosConfigurados = calcMinutosConfig(config);
+
+      // --- LÓGICA HÍBRIDA INTELIGENTE ---
+      const configSabHibrido = jornadaConfig['sab'];
+      const sabTemRegraEspecifica = (() => {
+        const regra = configSabHibrido?.regra;
+        if (!regra?.tipo) return false;
+        if (regra.tipo === 'SABADOS_DO_MES') {
+          const quais = Array.isArray(regra.quais) ? regra.quais : [];
+          return quais.length > 0;
+        }
+        return true;
+      })();
+      const sabRegular = configSabHibrido && configSabHibrido.ativo
+        && !sabTemRegraEspecifica
+        && !(configSabHibrido.alternado === true);
+      const metaSabRegular = sabRegular ? (calcMinutosConfig(configSabHibrido) || 240) : 0;
 
       if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
         if (trabalhouSabado) {
-          if (!minutosConfigurados) return 480;
-          if (minutosConfigurados > 520) return 480;
-          return minutosConfigurados;
+          if (!minutosConfigurados) minutosConfigurados = 480;
+          else if (minutosConfigurados > 520) minutosConfigurados = 480;
+        } else if (sabRegular && metaSabRegular > 0) {
+          const sabadoDaSemana = new Date(data);
+          sabadoDaSemana.setDate(sabadoDaSemana.getDate() + (6 - diaSemanaIndex));
+          const hoje = new Date();
+          hoje.setHours(23, 59, 59, 999);
+          const sabadoJaPassou = sabadoDaSemana <= hoje;
+
+          if (sabadoJaPassou && !trabalhouSabado) {
+            const compensacaoPorDia = Math.round(metaSabRegular / 5);
+            minutosConfigurados = minutosConfigurados + compensacaoPorDia;
+          }
         }
       }
 
@@ -186,6 +224,15 @@ export default function MeuHistorico() {
         const configSab = jornadaConfig['sab'];
         const temConfiguracao = configSab && configSab.ativo;
         if (trabalhouSabado && !temConfiguracao) return 240;
+
+        // Sábado regular configurado mas não trabalhado: meta = 0 (compensado nos dias úteis)
+        if (temConfiguracao && !trabalhouSabado) {
+          const regra = configSab?.regra;
+          const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
+          const isAlternado = configSab?.alternado === true;
+          const temRegraEfetiva = regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0;
+          if (!temRegraEfetiva && !isAlternado) return 0;
+        }
       }
 
       return minutosConfigurados;
