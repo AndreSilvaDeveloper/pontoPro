@@ -279,7 +279,7 @@ export default function BloqueadoPage() {
                   className="w-full h-11 text-sm font-medium bg-green-600/10 text-green-400 border border-green-500/20 hover:bg-green-600/20 rounded-xl transition-all"
                   onClick={() => openInNewTab(whatsappSuporte)}
                 >
-                  Falar com suporte via WhatsApp
+                  Para falar com suporte via WhatsApp
                 </Button>
 
                 {payError && (
