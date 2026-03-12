@@ -30,7 +30,10 @@ export default function InstallPrompt() {
     else if (!isIos) setBrowserInfo('desktop');
     else setBrowserInfo('outro');
 
-    // Mostra o modal sempre que não instalou (a cada login)
+    // Mostra o modal apenas uma vez por sessão
+    const jaDispensou = sessionStorage.getItem('install_prompt_dispensado');
+    if (jaDispensou) return;
+
     const timer = setTimeout(() => setShowModal(true), 3000);
 
     const handleBeforeInstallPrompt = (e: any) => {
@@ -47,6 +50,7 @@ export default function InstallPrompt() {
   }, []);
 
   const fechar = () => {
+    sessionStorage.setItem('install_prompt_dispensado', 'true');
     setShowModal(false);
   };
 
