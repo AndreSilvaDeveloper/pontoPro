@@ -123,7 +123,7 @@ export default function ModalNovidades({ tipo }: Props) {
   useEffect(() => {
     const jaViu = localStorage.getItem(storageKey);
     if (!jaViu) {
-      const timer = setTimeout(() => setAberto(true), 1500);
+      const timer = setTimeout(() => setAberto(true), 6000);
       return () => clearTimeout(timer);
     }
   }, [storageKey]);
