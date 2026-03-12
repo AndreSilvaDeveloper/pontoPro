@@ -86,6 +86,7 @@ model Usuario {
   cienciaCelularOpcao     String?
   cienciaCelularData      DateTime?
   cienciaCelularDocUrl    String?
+  novidadesVisto          String?
   pushSubscriptions       PushSubscription[]
 }
 

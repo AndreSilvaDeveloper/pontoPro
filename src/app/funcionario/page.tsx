@@ -585,7 +585,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => window.dispatchEvent(new Event(FUNC_TOUR_RESTART_EVENT))}
+              onClick={() => { window.dispatchEvent(new Event(FUNC_TOUR_RESTART_EVENT)); window.dispatchEvent(new Event('show-novidades')); }}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 rounded-2xl text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 transition-all active:scale-95 text-xs font-bold"
             >
               <HelpCircle size={16} />

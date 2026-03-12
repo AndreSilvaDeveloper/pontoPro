@@ -116,20 +116,34 @@ const novidadesFuncionario: Novidade[] = [
 
 export default function ModalNovidades({ tipo }: Props) {
   const [aberto, setAberto] = useState(false);
+  const [jaVerificou, setJaVerificou] = useState(false);
+  const [jaViu, setJaViu] = useState(true);
   const router = useRouter();
 
-  const storageKey = `novidades_visto_${tipo}_${VERSAO_NOVIDADES}`;
-
+  // Verifica no banco se o usuário já viu esta versão
   useEffect(() => {
-    const jaViu = localStorage.getItem(storageKey);
-    if (jaViu) return;
+    fetch('/api/novidades-visto')
+      .then(r => r.json())
+      .then(data => {
+        const visto = data.novidadesVisto === VERSAO_NOVIDADES;
+        setJaViu(visto);
+        setJaVerificou(true);
+      })
+      .catch(() => {
+        setJaViu(true);
+        setJaVerificou(true);
+      });
+  }, []);
+
+  // Espera os prompts terminarem para abrir automaticamente
+  useEffect(() => {
+    if (!jaVerificou || jaViu) return;
 
     let pushDone = false;
     let installDone = false;
 
     const tentarAbrir = () => {
       if (pushDone && installDone) {
-        // Pequeno delay para transição suave após fechar o último prompt
         setTimeout(() => setAberto(true), 500);
       }
     };
@@ -144,11 +158,23 @@ export default function ModalNovidades({ tipo }: Props) {
       window.removeEventListener('push-prompt-done', onPushDone);
       window.removeEventListener('install-prompt-done', onInstallDone);
     };
-  }, [storageKey]);
+  }, [jaVerificou, jaViu]);
+
+  // Permite reabrir via botão Tutorial
+  useEffect(() => {
+    const onShowNovidades = () => setAberto(true);
+    window.addEventListener('show-novidades', onShowNovidades);
+    return () => window.removeEventListener('show-novidades', onShowNovidades);
+  }, []);
 
   const fechar = () => {
-    localStorage.setItem(storageKey, 'true');
     setAberto(false);
+    // Salva no banco que o usuário já viu
+    fetch('/api/novidades-visto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ versao: VERSAO_NOVIDADES }),
+    }).catch(() => {});
   };
 
   const irPara = (link: string) => {
