@@ -255,7 +255,6 @@ export default function BloqueadoPage() {
               </div>
             )}
 
-            /// ====== ADMIN: opções de pagamento ======
             {isBlocked && isAdmin && (
               <div className="space-y-3">
                 <Button
