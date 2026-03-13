@@ -131,28 +131,32 @@ export default function ModalNovidades({ tipo }: Props) {
     }
 
     const w = window as any;
+    let promptsReady = !!w.__promptsReady;
     let pushDone = !!w.__pushDone;
     let installDone = !!w.__installDone;
 
     const tentarAbrir = () => {
-      if (pushDone && installDone) {
+      if (promptsReady && pushDone && installDone) {
         setTimeout(() => setAberto(true), 500);
       }
     };
 
     // Checa se já resolveram antes
-    if (pushDone && installDone) {
+    if (promptsReady && pushDone && installDone) {
       tentarAbrir();
       return;
     }
 
+    const onReady = () => { promptsReady = true; tentarAbrir(); };
     const onPushDone = () => { pushDone = true; tentarAbrir(); };
     const onInstallDone = () => { installDone = true; tentarAbrir(); };
 
+    window.addEventListener('prompts-ready', onReady);
     window.addEventListener('push-prompt-done', onPushDone);
     window.addEventListener('install-prompt-done', onInstallDone);
 
     return () => {
+      window.removeEventListener('prompts-ready', onReady);
       window.removeEventListener('push-prompt-done', onPushDone);
       window.removeEventListener('install-prompt-done', onInstallDone);
     };

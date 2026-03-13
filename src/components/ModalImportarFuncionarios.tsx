@@ -11,6 +11,7 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Users,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -101,6 +102,7 @@ export default function ModalImportarFuncionarios({ isOpen, onClose, onSuccess }
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [loading, setLoading] = useState(false);
   const [criados, setCriados] = useState(0);
+  const [gpsLivre, setGpsLivre] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetar = () => {
@@ -109,6 +111,7 @@ export default function ModalImportarFuncionarios({ isOpen, onClose, onSuccess }
     setResultados([]);
     setLoading(false);
     setCriados(0);
+    setGpsLivre(false);
   };
 
   const fechar = () => {
@@ -183,6 +186,7 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
       const res = await axios.post('/api/admin/funcionarios/importar', {
         funcionarios,
         apenasValidar: false,
+        gpsLivre,
       });
 
       setCriados(res.data.criados);
@@ -320,6 +324,29 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
                     <p className="text-[10px] text-red-300/70 uppercase font-bold">Com Erro</p>
                   </div>
                 )}
+              </div>
+
+              {/* GPS Livre */}
+              <div
+                onClick={() => setGpsLivre(!gpsLivre)}
+                className={`flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition-colors ${
+                  gpsLivre
+                    ? 'bg-emerald-900/15 border-emerald-500/30'
+                    : 'bg-surface border-border-subtle'
+                }`}
+              >
+                <div className={`p-2 rounded-xl ${gpsLivre ? 'bg-emerald-500/15' : 'bg-hover-bg'}`}>
+                  <MapPin size={18} className={gpsLivre ? 'text-emerald-400' : 'text-text-faint'} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text-primary">GPS Livre</p>
+                  <p className="text-[11px] text-text-muted mt-0.5">
+                    Permite bater ponto de qualquer local, sem validação de GPS.
+                  </p>
+                </div>
+                <div className={`w-10 h-6 rounded-full relative transition-colors ${gpsLivre ? 'bg-emerald-500' : 'bg-elevated-solid'}`}>
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${gpsLivre ? 'left-5' : 'left-1'}`} />
+                </div>
               </div>
 
               {/* Tabela */}

@@ -46,9 +46,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { funcionarios, apenasValidar } = await request.json() as {
+    const { funcionarios, apenasValidar, gpsLivre } = await request.json() as {
       funcionarios: FuncionarioImport[];
       apenasValidar?: boolean;
+      gpsLivre?: boolean;
     };
 
     if (!Array.isArray(funcionarios) || funcionarios.length === 0) {
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
             longitudeBase: 0,
             raioPermitido: 100,
             jornada,
-            pontoLivre: false,
+            pontoLivre: !!gpsLivre,
             deveTrocarSenha: true,
             deveCadastrarFoto: true,
             deveDarCienciaCelular: true,
