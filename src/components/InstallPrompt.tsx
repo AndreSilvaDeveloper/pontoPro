@@ -58,11 +58,6 @@ export default function InstallPrompt() {
     const onPushDone = () => show();
     window.addEventListener('push-prompt-done', onPushDone);
 
-    // Checa se o push já resolveu (o evento pode ter disparado antes)
-    if (status.pushAtivado || sessionStorage.getItem('push_prompt_fechado')) {
-      show();
-    }
-
     return () => window.removeEventListener('push-prompt-done', onPushDone);
   }, [statusLoading, status, isStandalone]);
 

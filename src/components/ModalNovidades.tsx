@@ -139,21 +139,7 @@ export default function ModalNovidades({ tipo }: Props) {
       }
     };
 
-    // Verifica se os prompts já estão resolvidos
-    if (status.pushAtivado || sessionStorage.getItem('push_prompt_fechado')) {
-      pushDone = true;
-    }
-    if (status.installPromptVisto) {
-      installDone = true;
-    }
-
-    // Se ambos já resolvidos no banco, abre direto
-    if (pushDone && installDone) {
-      tentarAbrir();
-      return;
-    }
-
-    // Senão, espera os eventos dos prompts que ainda vão aparecer
+    // Espera os eventos dos prompts terminarem
     const onPushDone = () => { pushDone = true; tentarAbrir(); };
     const onInstallDone = () => { installDone = true; tentarAbrir(); };
 
