@@ -713,6 +713,8 @@ function StatusBadge({ status, statusLabel, tempo, compact }: { status: string; 
 }
 
 function AlertaItem({ alerta }: { alerta: any }) {
+  const [expandido, setExpandido] = useState(false);
+
   const configs: Record<string, { icon: any; bg: string; border: string; text: string; label: string }> = {
     ATRASO: {
       icon: Clock,
@@ -776,13 +778,16 @@ function AlertaItem({ alerta }: { alerta: any }) {
   }
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border}`}>
-      <div className={`p-1.5 rounded-lg ${cfg.bg}`}>
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border} cursor-pointer active:scale-[0.98] transition-all`}
+      onClick={() => setExpandido(!expandido)}
+    >
+      <div className={`p-1.5 rounded-lg ${cfg.bg} shrink-0`}>
         <Icon size={16} className={cfg.text} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-text-primary truncate">{alerta.funcionarioNome}</p>
-        <p className={`text-[11px] ${cfg.text} truncate`}>{detalhe}</p>
+        <p className={`text-[11px] ${cfg.text} ${expandido ? '' : 'truncate'}`}>{detalhe}</p>
       </div>
       <span className={`text-[10px] font-bold ${cfg.bg} ${cfg.text} px-2 py-0.5 rounded-lg border ${cfg.border} shrink-0`}>
         {cfg.label}
