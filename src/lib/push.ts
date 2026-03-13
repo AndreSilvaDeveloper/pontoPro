@@ -31,7 +31,10 @@ export async function enviarPushSeguro(usuarioId: string, payload: PushPayload) 
       where: { usuarioId },
     });
 
-    if (subs.length === 0) return;
+    if (subs.length === 0) {
+      console.log(`ℹ️ Push: nenhuma subscription para ${usuarioId}`);
+      return;
+    }
 
     const jsonPayload = JSON.stringify(payload);
 
@@ -42,21 +45,32 @@ export async function enviarPushSeguro(usuarioId: string, payload: PushPayload) 
             endpoint: sub.endpoint,
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           },
-          jsonPayload
+          jsonPayload,
+          {
+            TTL: 60 * 60, // 1 hora — importante para iOS/Safari
+            urgency: 'high',
+          }
         )
       )
     );
 
-    // Limpa subscriptions expiradas (410 Gone ou 404)
+    // Processa resultados
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
       if (r.status === 'rejected') {
         const statusCode = (r.reason as any)?.statusCode;
-        if (statusCode === 410 || statusCode === 404) {
+        const body = (r.reason as any)?.body;
+        console.error(`❌ Push falhou para ${usuarioId} (endpoint: ${subs[i].endpoint.substring(0, 60)}...): status=${statusCode}, body=${body}`);
+
+        // Limpa subscriptions expiradas
+        if (statusCode === 410 || statusCode === 404 || statusCode === 401) {
           await prisma.pushSubscription.delete({
             where: { id: subs[i].id },
           }).catch(() => {});
+          console.log(`🗑️ Subscription removida (expirada): ${subs[i].id}`);
         }
+      } else {
+        console.log(`✅ Push enviado para ${usuarioId} (endpoint: ${subs[i].endpoint.substring(0, 60)}...)`);
       }
     }
   } catch (error) {

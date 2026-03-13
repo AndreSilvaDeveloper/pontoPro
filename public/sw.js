@@ -9,17 +9,31 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('push', function(event) {
-  if (!event.data) return;
+  // iOS EXIGE que toda push mostre notificação — nunca retornar sem mostrar
+  var data = { title: 'WorkID', body: 'Nova notificação' };
 
-  let data;
   try {
-    data = event.data.json();
+    if (event.data) {
+      var parsed = event.data.json();
+      data = {
+        title: parsed.title || 'WorkID',
+        body: parsed.body || 'Nova notificação',
+        url: parsed.url || '/',
+        tag: parsed.tag || 'default',
+      };
+    }
   } catch (e) {
-    data = { title: 'WorkID', body: event.data.text() };
+    try {
+      if (event.data) {
+        data.body = event.data.text() || 'Nova notificação';
+      }
+    } catch (e2) {
+      // usa o fallback já definido
+    }
   }
 
-  const options = {
-    body: data.body || '',
+  var options = {
+    body: data.body,
     icon: '/icon.png',
     badge: '/icon.png',
     vibrate: [200, 100, 200],
@@ -31,18 +45,19 @@ self.addEventListener('push', function(event) {
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || 'WorkID', options)
+    self.registration.showNotification(data.title, options)
   );
 });
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
+  var url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
+        if (client.url.indexOf(self.location.origin) !== -1 && 'focus' in client) {
           client.navigate(url);
           return client.focus();
         }
