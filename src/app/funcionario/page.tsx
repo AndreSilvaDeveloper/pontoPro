@@ -591,12 +591,6 @@ export default function Home() {
               <HelpCircle size={16} />
               Tutorial
             </button>
-            <button
-              onClick={() => window.location.href = '/push-debug'}
-              className="p-3 rounded-2xl border border-border-subtle active:scale-95 text-text-dim text-[10px]"
-            >
-              🔔
-            </button>
             <ThemeToggle className="p-3 rounded-2xl border border-border-subtle active:scale-95" />
             <button data-tour="emp-logout" onClick={() => signOut({ callbackUrl: '/login' })} className="p-3 bg-hover-bg hover:bg-red-500/20 rounded-2xl text-text-muted hover:text-red-400 border border-border-subtle hover:border-red-500/30 transition-all active:scale-95">
               <LogOut size={20} />

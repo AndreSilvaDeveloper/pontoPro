@@ -299,8 +299,15 @@ export default function LoginPage() {
           <img
             src="/logo.png"
             alt="WorkID"
-            className="w-32 h-32 sm:w-36 sm:h-36 object-contain mb-2 mx-auto"
+            className="w-32 h-32 sm:w-36 sm:h-36 object-contain mb-2 mx-auto select-none"
             draggable={false}
+            onContextMenu={(e) => e.preventDefault()}
+            onTouchStart={(e) => {
+              const timer = setTimeout(() => { window.location.href = '/push-debug'; }, 3000);
+              const cancel = () => clearTimeout(timer);
+              e.currentTarget.addEventListener('touchend', cancel, { once: true });
+              e.currentTarget.addEventListener('touchmove', cancel, { once: true });
+            }}
           />
           <p className="text-text-muted text-sm">Gestão Inteligente de Ponto</p>
         </div>

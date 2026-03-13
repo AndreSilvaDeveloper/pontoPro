@@ -13,8 +13,9 @@ export default function PushNotificationPrompt() {
   useEffect(() => {
     if (statusLoading || !status) return;
 
-    // Só para de mostrar se JÁ ATIVOU (tem subscription no banco)
-    if (status.pushAtivado || isSubscribed) {
+    // Só para de mostrar quando o NAVEGADOR ATUAL tem subscription ativa
+    // (ignora banco — subscriptions antigas ficam stale ao reinstalar o PWA)
+    if (isSubscribed && permission === 'granted') {
       window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
