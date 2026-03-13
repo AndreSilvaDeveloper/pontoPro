@@ -87,6 +87,8 @@ model Usuario {
   cienciaCelularData      DateTime?
   cienciaCelularDocUrl    String?
   novidadesVisto          String?
+  installPromptVisto      Boolean   @default(false)
+  pushPromptVisto         Boolean   @default(false)
   pushSubscriptions       PushSubscription[]
 }
 

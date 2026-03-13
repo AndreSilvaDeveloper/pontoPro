@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Sparkles, Clock, Bell, BarChart3, FileText, CheckSquare, Calendar, TrendingUp, AlertTriangle, Coffee, UtensilsCrossed, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { usePromptStatus } from '@/hooks/usePromptStatus';
 
 const VERSAO_NOVIDADES = 'v2.5.0';
 
@@ -116,32 +117,18 @@ const novidadesFuncionario: Novidade[] = [
 
 export default function ModalNovidades({ tipo }: Props) {
   const [aberto, setAberto] = useState(false);
-  const [jaVerificou, setJaVerificou] = useState(false);
-  const [jaViu, setJaViu] = useState(true);
+  const { status, loading: statusLoading, markSeen } = usePromptStatus();
   const router = useRouter();
-
-  // Verifica no banco se o usuário já viu esta versão
-  useEffect(() => {
-    fetch('/api/novidades-visto')
-      .then(r => r.json())
-      .then(data => {
-        const visto = data.novidadesVisto === VERSAO_NOVIDADES;
-        setJaViu(visto);
-        setJaVerificou(true);
-      })
-      .catch(() => {
-        setJaViu(true);
-        setJaVerificou(true);
-      });
-  }, []);
 
   // Espera os prompts terminarem para abrir automaticamente
   useEffect(() => {
-    if (!jaVerificou || jaViu) return;
+    if (statusLoading || !status) return;
 
-    // Verifica se os prompts já resolveram ANTES de registrar os listeners
-    let pushDone = !!sessionStorage.getItem('push_prompt_resolved');
-    let installDone = !!sessionStorage.getItem('install_prompt_resolved');
+    // Já viu esta versão no banco
+    if (status.novidadesVisto === VERSAO_NOVIDADES) return;
+
+    let pushDone = false;
+    let installDone = false;
 
     const tentarAbrir = () => {
       if (pushDone && installDone) {
@@ -149,12 +136,21 @@ export default function ModalNovidades({ tipo }: Props) {
       }
     };
 
-    // Se ambos já resolveram, abre direto
+    // Verifica se os prompts já estão resolvidos no banco (não precisam mais aparecer)
+    if (status.pushAtivado || status.pushPromptVisto) {
+      pushDone = true;
+    }
+    if (status.installPromptVisto) {
+      installDone = true;
+    }
+
+    // Se ambos já resolvidos no banco, abre direto
     if (pushDone && installDone) {
       tentarAbrir();
       return;
     }
 
+    // Senão, espera os eventos dos prompts que ainda vão aparecer
     const onPushDone = () => { pushDone = true; tentarAbrir(); };
     const onInstallDone = () => { installDone = true; tentarAbrir(); };
 
@@ -165,7 +161,7 @@ export default function ModalNovidades({ tipo }: Props) {
       window.removeEventListener('push-prompt-done', onPushDone);
       window.removeEventListener('install-prompt-done', onInstallDone);
     };
-  }, [jaVerificou, jaViu]);
+  }, [statusLoading, status]);
 
   // Permite reabrir via botão Tutorial
   useEffect(() => {
@@ -176,12 +172,7 @@ export default function ModalNovidades({ tipo }: Props) {
 
   const fechar = () => {
     setAberto(false);
-    // Salva no banco que o usuário já viu
-    fetch('/api/novidades-visto', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ versao: VERSAO_NOVIDADES }),
-    }).catch(() => {});
+    markSeen('novidadesVisto', VERSAO_NOVIDADES);
   };
 
   const irPara = (link: string) => {

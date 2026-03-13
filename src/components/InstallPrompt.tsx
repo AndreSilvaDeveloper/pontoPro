@@ -2,44 +2,36 @@
 
 import { useState, useEffect } from 'react';
 import { Download, X, Smartphone, Rocket, Wifi, BellRing, ArrowUp, MoreVertical, Monitor } from 'lucide-react';
+import { usePromptStatus } from '@/hooks/usePromptStatus';
 
 export default function InstallPrompt() {
+  const { status, loading: statusLoading, markSeen } = usePromptStatus();
   const [isStandalone, setIsStandalone] = useState(true);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [mostrar, setMostrar] = useState(false);
   const [showInstrucoes, setShowInstrucoes] = useState(false);
   const [browserInfo, setBrowserInfo] = useState<'safari' | 'chrome-ios' | 'android' | 'desktop' | 'outro'>('outro');
 
+  // Detecta browser e standalone
   useEffect(() => {
     const isRunningStandalone = window.matchMedia('(display-mode: standalone)').matches
       || (window.navigator as any).standalone
       || document.referrer.includes('android-app://');
 
     setIsStandalone(isRunningStandalone);
-    if (isRunningStandalone) {
-      sessionStorage.setItem('install_prompt_resolved', 'true');
-      window.dispatchEvent(new Event('install-prompt-done'));
-      return;
-    }
 
-    const ua = window.navigator.userAgent.toLowerCase();
-    const isIos = /iphone|ipad|ipod/.test(ua);
-    const isSafari = isIos && /safari/.test(ua) && !/crios|fxios|opios|edgios/.test(ua);
-    const isChromeIos = isIos && /crios/.test(ua);
-    const isAndroid = /android/.test(ua);
+    if (!isRunningStandalone) {
+      const ua = window.navigator.userAgent.toLowerCase();
+      const isIos = /iphone|ipad|ipod/.test(ua);
+      const isSafari = isIos && /safari/.test(ua) && !/crios|fxios|opios|edgios/.test(ua);
+      const isChromeIos = isIos && /crios/.test(ua);
+      const isAndroid = /android/.test(ua);
 
-    if (isSafari) setBrowserInfo('safari');
-    else if (isChromeIos) setBrowserInfo('chrome-ios');
-    else if (isAndroid) setBrowserInfo('android');
-    else if (!isIos) setBrowserInfo('desktop');
-    else setBrowserInfo('outro');
-
-    // Mostra o modal apenas uma vez por sessão
-    const jaDispensou = sessionStorage.getItem('install_prompt_dispensado');
-    if (jaDispensou) {
-      sessionStorage.setItem('install_prompt_resolved', 'true');
-      window.dispatchEvent(new Event('install-prompt-done'));
-      return;
+      if (isSafari) setBrowserInfo('safari');
+      else if (isChromeIos) setBrowserInfo('chrome-ios');
+      else if (isAndroid) setBrowserInfo('android');
+      else if (!isIos) setBrowserInfo('desktop');
+      else setBrowserInfo('outro');
     }
 
     const handleBeforeInstallPrompt = (e: any) => {
@@ -47,30 +39,37 @@ export default function InstallPrompt() {
       setDeferredPrompt(e);
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    // Só mostra depois que o prompt de notificação terminar
-    if (sessionStorage.getItem('push_prompt_resolved')) {
-      setTimeout(() => setShowModal(true), 500);
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      };
-    }
-
-    const onPushDone = () => {
-      setTimeout(() => setShowModal(true), 500);
-    };
-    window.addEventListener('push-prompt-done', onPushDone);
-
-    return () => {
-      window.removeEventListener('push-prompt-done', onPushDone);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
+  // Decide se mostra, após o banco carregar e o push prompt terminar
+  useEffect(() => {
+    if (statusLoading || !status) return;
+
+    // Não mostra se: já está no PWA standalone, ou já dispensou no banco
+    if (isStandalone || status.installPromptVisto) {
+      window.dispatchEvent(new Event('install-prompt-done'));
+      return;
+    }
+
+    // Espera o push prompt terminar primeiro
+    const show = () => setTimeout(() => setMostrar(true), 500);
+
+    const onPushDone = () => show();
+    window.addEventListener('push-prompt-done', onPushDone);
+
+    // Checa se o push já resolveu (o evento pode ter disparado antes)
+    // Se push já foi ativado ou dispensado no banco, não vai mostrar o prompt de push
+    if (status.pushAtivado || status.pushPromptVisto) {
+      show();
+    }
+
+    return () => window.removeEventListener('push-prompt-done', onPushDone);
+  }, [statusLoading, status, isStandalone]);
+
   const fechar = () => {
-    sessionStorage.setItem('install_prompt_dispensado', 'true');
-    sessionStorage.setItem('install_prompt_resolved', 'true');
-    setShowModal(false);
+    setMostrar(false);
+    markSeen('installPromptVisto', true);
     window.dispatchEvent(new Event('install-prompt-done'));
   };
 
@@ -80,17 +79,14 @@ export default function InstallPrompt() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
-        setShowModal(false);
-        sessionStorage.setItem('install_prompt_dispensado', 'true');
-        sessionStorage.setItem('install_prompt_resolved', 'true');
-        window.dispatchEvent(new Event('install-prompt-done'));
+        fechar();
       }
     } else {
       setShowInstrucoes(true);
     }
   };
 
-  if (isStandalone || !showModal) return null;
+  if (!mostrar) return null;
 
   // Modal de instruções detalhadas
   if (showInstrucoes) {
