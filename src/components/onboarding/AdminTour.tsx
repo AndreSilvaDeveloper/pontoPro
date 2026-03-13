@@ -13,9 +13,6 @@ function makeAdminTourKey(empresaId: string | null, userId: string | null) {
   return `onboarding:admin:${TOUR_VERSION}:${e}:${u}`;
 }
 
-const BILLING_KEY = "ui:billing-modal-closed:v1";
-const BILLING_EVENT = "billing-modal-closed";
-
 export const ADMIN_TOUR_RESTART_EVENT = "admin-tour-restart";
 
 function getSteps(): DriveStep[] {
@@ -25,7 +22,7 @@ function getSteps(): DriveStep[] {
       popover: {
         title: "Bem-vindo ao Painel Admin",
         description:
-          "Vou te mostrar rapidamente onde ficam as principais funções do sistema.",
+          "Vou te mostrar onde ficam as principais funções. Use o botão Tutorial para rever este guia quando quiser.",
         side: "bottom",
         align: "start",
       },
@@ -35,7 +32,7 @@ function getSteps(): DriveStep[] {
       popover: {
         title: "Sua empresa",
         description:
-          "Aqui você vê a empresa/unidade ativa e acessa o painel administrativo.",
+          "Nome da empresa ou unidade que você está gerenciando agora.",
         side: "bottom",
         align: "start",
       },
@@ -45,7 +42,7 @@ function getSteps(): DriveStep[] {
       popover: {
         title: "Trocar unidade",
         description:
-          "Use este seletor para alternar entre filiais ou unidades da empresa.",
+          "Se tiver mais de uma filial, troque por aqui para ver os dados de cada uma.",
         side: "bottom",
         align: "start",
       },
@@ -54,7 +51,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-team"]',
       popover: {
         title: "Gestão da equipe",
-        description: "Cadastre funcionários, gerencie dados e controle acessos.",
+        description: "Cadastre e edite funcionários, defina escalas e controle acessos.",
         side: "bottom",
         align: "start",
       },
@@ -63,7 +60,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-ausencia"]',
       popover: {
         title: "Lançar ausência",
-        description: "Aqui você lança ausências para os funcionários.",
+        description: "Registre férias, folgas ou faltas dos funcionários.",
         side: "bottom",
         align: "start",
       },
@@ -71,9 +68,9 @@ function getSteps(): DriveStep[] {
     {
       element: '[data-tour="admin-ajustes"]',
       popover: {
-        title: "Ajustes e pendências",
+        title: "Ajustes de ponto",
         description:
-          "Aqui você aprova ajustes de ponto e solicitações dos funcionários.",
+          "Veja e aprove solicitações de ajuste feitas pelos funcionários.",
         side: "bottom",
         align: "start",
       },
@@ -82,7 +79,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-atestados"]',
       popover: {
         title: "Atestados",
-        description: "Gerencie atestados e justificativas médicas.",
+        description: "Veja atestados e justificativas enviadas pelos funcionários.",
         side: "bottom",
         align: "start",
       },
@@ -92,7 +89,7 @@ function getSteps(): DriveStep[] {
       popover: {
         title: "Feriados",
         description:
-          "Importe os feriados e dias não úteis\npara o calculo de banco de horas.",
+          "Cadastre feriados e dias não úteis para o cálculo correto do banco de horas.",
         side: "bottom",
         align: "start",
       },
@@ -101,7 +98,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-auditoria"]',
       popover: {
         title: "Auditoria",
-        description: "Acesse o histórico de alterações e auditoria do sistema.",
+        description: "Veja tudo que foi alterado no sistema e por quem.",
         side: "bottom",
         align: "start",
       },
@@ -111,7 +108,7 @@ function getSteps(): DriveStep[] {
       popover: {
         title: "Visão Geral",
         description:
-          "Aqui você vê um cenário de quais funcionários estão ativos e em quais unidades.",
+          "Veja um resumo de presença, faltas, atrasos e alertas de toda a equipe.",
         side: "bottom",
         align: "start",
       },
@@ -119,8 +116,8 @@ function getSteps(): DriveStep[] {
     {
       element: '[data-tour="admin-filter-user"]',
       popover: {
-        title: "Filtro por funcionário",
-        description: "Filtre os registros por funcionário específico.",
+        title: "Filtrar por funcionário",
+        description: "Escolha um funcionário para ver só os registros dele.",
         side: "bottom",
         align: "start",
       },
@@ -128,9 +125,9 @@ function getSteps(): DriveStep[] {
     {
       element: '[data-tour="admin-filter-period"]',
       popover: {
-        title: "Filtro por período",
+        title: "Filtrar por período",
         description:
-          "Defina o intervalo de datas para visualizar os registros.",
+          "Escolha as datas de início e fim para ver os registros desse período.",
         side: "bottom",
         align: "start",
       },
@@ -138,9 +135,9 @@ function getSteps(): DriveStep[] {
     {
       element: '[data-tour="admin-report"]',
       popover: {
-        title: "Relatórios",
+        title: "Gerar relatório",
         description:
-          "Gere relatórios em PDF ou Excel para conferência e auditoria.",
+          "Exporte a folha de ponto em PDF ou Excel, pronto para enviar ao contador.",
         side: "bottom",
         align: "start",
       },
@@ -149,7 +146,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-profile"]',
       popover: {
         title: "Minha conta",
-        description: "Acesse seus dados, plano, pagamentos e configurações.",
+        description: "Veja seus dados, plano, pagamentos e configurações.",
         side: "bottom",
         align: "start",
       },
@@ -163,15 +160,10 @@ function getSteps(): DriveStep[] {
   });
 }
 
-/** Verifica se o billing modal está aberto no DOM */
-function isBillingModalOpen() {
-  return !!document.querySelector('[data-billing-modal="open"]');
-}
-
-/** Verifica se o toast de notificação está visível */
-function isToastVisible() {
-  // O toast tem z-[100] e fica em fixed top-16 right-6
-  return !!document.querySelector('[data-tour="admin-ajustes"].fixed');
+/** Dispara evento tour-done e seta flag no window */
+function fireTourDone() {
+  (window as any).__tourDone = true;
+  window.dispatchEvent(new Event('tour-done'));
 }
 
 function createDriver(steps: DriveStep[], tourKey: string): Driver {
@@ -189,6 +181,7 @@ function createDriver(steps: DriveStep[], tourKey: string): Driver {
     },
     onDestroyed: () => {
       localStorage.setItem(tourKey, "1");
+      fireTourDone();
     },
   });
   return d;
@@ -208,7 +201,7 @@ export default function AdminTour() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   };
 
-  // ========== TOUR AUTOMÁTICO (primeiro acesso) ==========
+  // ========== TOUR AUTOMÁTICO (PRIMEIRO a aparecer) ==========
   useEffect(() => {
     const isAdminHome = pathname === "/admin" || pathname === "/admin/";
     if (!isAdminHome || status !== "authenticated") return;
@@ -222,56 +215,27 @@ export default function AdminTour() {
     const TOUR_KEY = makeAdminTourKey(empresaId, userId);
 
     const done = localStorage.getItem(TOUR_KEY) === "1";
-    if (done && !forced) return;
+
+    // Se já viu o tour, dispara tour-done direto para liberar os banners
+    if (done && !forced) {
+      fireTourDone();
+      return;
+    }
 
     const launchTour = () => {
       destroyDriver();
       const steps = getSteps();
-      if (!steps.length) return;
+      if (!steps.length) {
+        fireTourDone();
+        return;
+      }
       const d = createDriver(steps, TOUR_KEY);
       driverRef.current = d;
       d.drive();
     };
 
-    /**
-     * Tenta iniciar o tour. Se algo estiver bloqueando (billing modal ou toast),
-     * reagenda. Máximo de tentativas para não ficar em loop infinito.
-     */
-    let attempts = 0;
-    const tryStart = () => {
-      attempts++;
-      if (attempts > 30) return; // desiste após ~30s
-
-      // Billing modal aberto? Espera evento ou re-poll
-      if (!forced && isBillingModalOpen()) {
-        timerRef.current = setTimeout(tryStart, 1000);
-        return;
-      }
-
-      // Toast de notificação visível? Espera sumir
-      const notifEl = document.querySelector('.fixed.top-16.right-6');
-      if (notifEl) {
-        timerRef.current = setTimeout(tryStart, 1000);
-        return;
-      }
-
-      launchTour();
-    };
-
-    // Delay inicial para o DOM estabilizar
-    timerRef.current = setTimeout(tryStart, forced ? 300 : 800);
-
-    // Também escuta o evento de billing fechar (caso esteja esperando)
-    const onBillingClosed = () => {
-      // Pequeno delay após billing fechar
-      timerRef.current = setTimeout(tryStart, 500);
-    };
-    window.addEventListener(BILLING_EVENT, onBillingClosed);
-
-    return () => {
-      window.removeEventListener(BILLING_EVENT, onBillingClosed);
-      destroyDriver();
-    };
+    timerRef.current = setTimeout(launchTour, forced ? 300 : 1500);
+    return () => destroyDriver();
   }, [pathname, status, session, searchParams]);
 
   // ========== RESTART MANUAL (botão "Ver Tutorial") ==========

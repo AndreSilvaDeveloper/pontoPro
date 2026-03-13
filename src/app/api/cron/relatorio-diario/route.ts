@@ -300,6 +300,11 @@ export async function GET(req: NextRequest) {
       empresasProcessadas++;
     }
 
+    // Limpar lembretes push com mais de 7 dias
+    await prisma.lembretePush.deleteMany({
+      where: { criadoEm: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+    }).catch(() => {});
+
     return NextResponse.json({ empresasProcessadas, emailsEnviados });
   } catch (error) {
     console.error('Erro no relatório diário:', error);

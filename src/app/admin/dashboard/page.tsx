@@ -334,10 +334,10 @@ export default function DashboardPresenca() {
                   <p className="text-[11px] text-red-400/60">
                     {[
                       resumoAlertas.atrasos > 0 && `${resumoAlertas.atrasos} atraso${resumoAlertas.atrasos > 1 ? 's' : ''}`,
-                      resumoAlertas.ausenciasSemJustificativa > 0 && `${resumoAlertas.ausenciasSemJustificativa} ausência${resumoAlertas.ausenciasSemJustificativa > 1 ? 's' : ''}`,
-                      resumoAlertas.horaExtra > 0 && `${resumoAlertas.horaExtra} hora extra`,
+                      resumoAlertas.ausenciasSemJustificativa > 0 && `${resumoAlertas.ausenciasSemJustificativa} falta${resumoAlertas.ausenciasSemJustificativa > 1 ? 's' : ''}`,
+                      resumoAlertas.horaExtra > 0 && `${resumoAlertas.horaExtra} com hora extra`,
                       resumoAlertas.saiuCedo > 0 && `${resumoAlertas.saiuCedo} saiu cedo`,
-                      resumoAlertas.padroesAtraso > 0 && `${resumoAlertas.padroesAtraso} padrão recorrente`,
+                      resumoAlertas.padroesAtraso > 0 && `${resumoAlertas.padroesAtraso} atraso${resumoAlertas.padroesAtraso > 1 ? 's' : ''} recorrente${resumoAlertas.padroesAtraso > 1 ? 's' : ''}`,
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -713,20 +713,22 @@ function StatusBadge({ status, statusLabel, tempo, compact }: { status: string; 
 }
 
 function AlertaItem({ alerta }: { alerta: any }) {
+  const [expandido, setExpandido] = useState(false);
+
   const configs: Record<string, { icon: any; bg: string; border: string; text: string; label: string }> = {
     ATRASO: {
       icon: Clock,
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/20',
       text: 'text-amber-400',
-      label: 'Atrasado',
+      label: 'Atraso',
     },
     AUSENCIA_SEM_JUSTIFICATIVA: {
       icon: UserX,
       bg: 'bg-red-500/10',
       border: 'border-red-500/20',
       text: 'text-red-400',
-      label: 'Sem justificativa',
+      label: 'Falta',
     },
     HORA_EXTRA: {
       icon: Hourglass,
@@ -747,7 +749,7 @@ function AlertaItem({ alerta }: { alerta: any }) {
       bg: 'bg-purple-500/10',
       border: 'border-purple-500/20',
       text: 'text-purple-400',
-      label: 'Padrão',
+      label: 'Recorrente',
     },
   };
 
@@ -756,31 +758,36 @@ function AlertaItem({ alerta }: { alerta: any }) {
 
   let detalhe = '';
   if (alerta.tipo === 'ATRASO') {
-    detalhe = `Deveria entrar às ${alerta.horarioConfigurado} · ${alerta.minutosAtraso}min de atraso`;
+    detalhe = `Entrada era às ${alerta.horarioConfigurado}, mas chegou ${alerta.minutosAtraso} minutos atrasado(a)`;
   } else if (alerta.tipo === 'AUSENCIA_SEM_JUSTIFICATIVA') {
-    detalhe = `Horário configurado: ${alerta.horarioConfigurado} · Sem registros hoje`;
+    detalhe = `Deveria ter entrado às ${alerta.horarioConfigurado}, mas não bateu o ponto hoje`;
   } else if (alerta.tipo === 'HORA_EXTRA') {
     const extra = alerta.minutosExtra;
     const h = Math.floor(extra / 60);
     const m = extra % 60;
-    detalhe = `+${h > 0 ? `${h}h` : ''}${m}min além da meta`;
+    const tempo = h > 0 ? `${h}h${m > 0 ? ` e ${m}min` : ''}` : `${m} minutos`;
+    detalhe = `Trabalhou ${tempo} a mais do que o previsto`;
   } else if (alerta.tipo === 'SAIU_CEDO') {
     const falta = alerta.minutosFaltantes;
     const h = Math.floor(falta / 60);
     const m = falta % 60;
-    detalhe = `Saiu ${h > 0 ? `${h}h` : ''}${m}min antes da meta`;
+    const tempo = h > 0 ? `${h}h${m > 0 ? ` e ${m}min` : ''}` : `${m} minutos`;
+    detalhe = `Saiu ${tempo} antes do horário previsto`;
   } else if (alerta.tipo === 'PADRAO_ATRASO') {
-    detalhe = alerta.mensagem || `Chegou atrasado ${alerta.diasAtrasado} dos últimos ${alerta.diasAnalisados} dias`;
+    detalhe = alerta.mensagem || `Atenção: chegou atrasado(a) em ${alerta.diasAtrasado} de ${alerta.diasAnalisados} dias`;
   }
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border}`}>
-      <div className={`p-1.5 rounded-lg ${cfg.bg}`}>
+    <div
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border} cursor-pointer active:scale-[0.98] transition-all`}
+      onClick={() => setExpandido(!expandido)}
+    >
+      <div className={`p-1.5 rounded-lg ${cfg.bg} shrink-0`}>
         <Icon size={16} className={cfg.text} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-text-primary truncate">{alerta.funcionarioNome}</p>
-        <p className={`text-[11px] ${cfg.text} truncate`}>{detalhe}</p>
+        <p className={`text-[11px] ${cfg.text} ${expandido ? '' : 'truncate'}`}>{detalhe}</p>
       </div>
       <span className={`text-[10px] font-bold ${cfg.bg} ${cfg.text} px-2 py-0.5 rounded-lg border ${cfg.border} shrink-0`}>
         {cfg.label}

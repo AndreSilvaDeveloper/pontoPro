@@ -26,7 +26,7 @@ function getAllSteps(): DriveStep[] {
       popover: {
         title: "Bem-vindo!",
         description:
-          "Vou te mostrar rapidinho como bater o ponto e onde ver suas informações.",
+          "Vou te mostrar rapidinho como bater o ponto e usar o sistema.",
         side: "bottom",
         align: "center",
       },
@@ -35,7 +35,7 @@ function getAllSteps(): DriveStep[] {
       element: '[data-tour="emp-header"]',
       popover: {
         title: "Seu painel",
-        description: "Aqui aparece seu nome e o horário atual.",
+        description: "Aqui aparece seu nome e o horário atual. Use o botão Tutorial para rever este guia quando quiser.",
         side: "bottom",
         align: "start",
       },
@@ -43,9 +43,9 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-gps"]',
       popover: {
-        title: "Permitir GPS",
+        title: "Ativar localização",
         description:
-          "Primeiro passo: permita a localização para validar o ponto.",
+          "Toque aqui para permitir o GPS. Sem isso, não é possível bater o ponto.",
         side: "top",
         align: "center",
       },
@@ -55,7 +55,7 @@ function getAllSteps(): DriveStep[] {
       popover: {
         title: "Bater ponto",
         description:
-          "Depois do GPS, estes botões aparecem para registrar entrada/pausas/saída.",
+          "Após ativar o GPS, os botões aparecem aqui. Toque para registrar entrada, pausas e saída.",
         side: "top",
         align: "start",
       },
@@ -63,9 +63,9 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-camera"]',
       popover: {
-        title: "Reconhecimento por foto",
+        title: "Foto para validação",
         description:
-          "Se a empresa exigir foto, ela aparece aqui para validar o ponto.",
+          "Se a empresa exigir, a câmera aparece aqui. Posicione seu rosto e confirme o ponto.",
         side: "bottom",
         align: "start",
       },
@@ -73,35 +73,8 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-forgot"]',
       popover: {
-        title: "Esqueci de bater o ponto",
-        description: "Solicite inclusão de registro e o admin aprova.",
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="emp-sign"]',
-      popover: {
-        title: "Assinatura eletrônica",
-        description: "Crie sua assinatura para validar registros.",
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="emp-justify"]',
-      popover: {
-        title: "Justificativas",
-        description: "Justifique ausências e envie arquivos comprovantes.",
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="emp-history"]',
-      popover: {
-        title: "Histórico",
-        description: "Veja registros, solicitações e acompanhamentos.",
+        title: "Esqueceu de bater o ponto?",
+        description: "Toque aqui para solicitar a inclusão do registro. Seu gestor vai aprovar ou recusar.",
         side: "top",
         align: "start",
       },
@@ -109,8 +82,8 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-logout"]',
       popover: {
-        title: "Sair",
-        description: "Finalize sua sessão por aqui.",
+        title: "Sair do sistema",
+        description: "Toque aqui para encerrar sua sessão.",
         side: "left",
         align: "center",
       },
@@ -137,6 +110,15 @@ function nextExistingIndex(steps: DriveStep[], fromIndex: number) {
   return -1;
 }
 
+/** Dispara evento tour-done e seta flag no window */
+function fireTourDone() {
+  (window as any).__tourDone = true;
+  window.dispatchEvent(new Event('tour-done'));
+  // Funcionário não tem billing/ciência, libera prompts direto
+  (window as any).__promptsReady = true;
+  window.dispatchEvent(new Event('prompts-ready'));
+}
+
 function createTourDriver(all: DriveStep[], tourKey: string): Driver {
   const d: Driver = driver({
     showProgress: true,
@@ -154,6 +136,7 @@ function createTourDriver(all: DriveStep[], tourKey: string): Driver {
 
     onDestroyed: () => {
       localStorage.setItem(tourKey, "1");
+      fireTourDone();
     },
 
     onNextClick: () => {
@@ -194,13 +177,12 @@ export default function FuncionarioTour() {
     driverRef.current = null;
   };
 
-  // ========== TOUR AUTOMÁTICO ==========
+  // ========== TOUR AUTOMÁTICO (PRIMEIRO a aparecer) ==========
   useEffect(() => {
     const isFuncHome =
       pathname === "/funcionario" || pathname === "/funcionario/";
     if (!isFuncHome || status !== "authenticated") return;
 
-    // NÃO inicia se ainda precisa trocar senha ou cadastrar foto
     // @ts-ignore
     if (session?.user?.deveTrocarSenha) return;
     // @ts-ignore
@@ -212,7 +194,12 @@ export default function FuncionarioTour() {
 
     const forced = search?.get("tour") === "1";
     const done = localStorage.getItem(TOUR_KEY) === "1";
-    if (done && !forced) return;
+
+    // Se já viu o tour, dispara tour-done direto para liberar os banners
+    if (done && !forced) {
+      fireTourDone();
+      return;
+    }
 
     const boot = () => {
       requestAnimationFrame(() => {
@@ -222,17 +209,18 @@ export default function FuncionarioTour() {
           const d = createTourDriver(all, TOUR_KEY);
           driverRef.current = d;
           const first = nextExistingIndex(all, 0);
-          if (first === -1) return;
+          if (first === -1) {
+            fireTourDone();
+            return;
+          }
           d.drive(first);
         });
       });
     };
 
+    // Inicia o tour após um pequeno delay para a página renderizar
     const t = setTimeout(boot, forced ? 300 : 1500);
-    return () => {
-      clearTimeout(t);
-      destroyDriver();
-    };
+    return () => { clearTimeout(t); destroyDriver(); };
   }, [pathname, search, session, status]);
 
   // ========== RESTART MANUAL ==========

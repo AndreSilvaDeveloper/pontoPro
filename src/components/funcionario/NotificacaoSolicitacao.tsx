@@ -5,7 +5,7 @@ import { CheckCircle2, XCircle, X, History } from 'lucide-react';
 import Link from 'next/link';
 import axios from 'axios';
 
-const STORAGE_KEY = 'func_solicit_vistas_v1';
+const TS_KEY = 'func_solicit_ultimo_check_v2';
 const POLL_INTERVAL = 30_000; // 30 segundos
 
 /** Som sutil via Web Audio API */
@@ -32,20 +32,17 @@ function playNotifSound() {
   } catch { /* silent */ }
 }
 
-function getVistas(): string[] {
+function getUltimoCheck(): string {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return localStorage.getItem(TS_KEY) || '';
   } catch {
-    return [];
+    return '';
   }
 }
 
-function marcarVistas(ids: string[]) {
+function salvarUltimoCheck() {
   try {
-    const atuais = getVistas();
-    const merged = [...new Set([...atuais, ...ids])].slice(-200);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    localStorage.setItem(TS_KEY, new Date().toISOString());
     window.dispatchEvent(new Event('func-notif-update'));
   } catch { /* ignore */ }
 }
@@ -76,16 +73,26 @@ export default function NotificacaoSolicitacao() {
 
   const verificar = useCallback(async () => {
     try {
-      const res = await axios.get('/api/funcionario/minhas-solicitacoes');
+      const depois = getUltimoCheck();
+      const url = depois
+        ? `/api/funcionario/minhas-solicitacoes?depois=${encodeURIComponent(depois)}`
+        : '/api/funcionario/minhas-solicitacoes';
+      const res = await axios.get(url);
       const todas: any[] = res.data;
 
-      // Filtrar solicitações decididas (não PENDENTE)
-      const decididas = todas.filter(
+      // Se não tinha timestamp salvo (primeiro uso), apenas salva o marco
+      // para que na próxima vez só venham as novas
+      if (!depois) {
+        salvarUltimoCheck();
+        localStorage.setItem('func_notif_count', '0');
+        window.dispatchEvent(new Event('func-notif-update'));
+        return;
+      }
+
+      // Filtrar decididas (a API já filtra por timestamp, mas garante no client)
+      const novas = todas.filter(
         (s: any) => s.status === 'APROVADO' || s.status === 'REJEITADO'
       );
-
-      const vistas = getVistas();
-      const novas = decididas.filter((s: any) => !vistas.includes(s.id));
 
       // Atualizar contador global (para o badge do BottomNav)
       localStorage.setItem('func_notif_count', String(novas.length));
@@ -127,7 +134,7 @@ export default function NotificacaoSolicitacao() {
   }, [verificar]);
 
   const dismiss = () => {
-    marcarVistas(notificacoes.map((n) => n.id));
+    salvarUltimoCheck();
     setVisible(false);
     somTocadoRef.current = false;
     localStorage.setItem('func_notif_count', '0');

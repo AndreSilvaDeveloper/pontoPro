@@ -3,51 +3,71 @@
 import { useState, useEffect } from 'react';
 import { Bell, BellRing, Shield, Zap, X } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { usePromptStatus } from '@/hooks/usePromptStatus';
 
 export default function PushNotificationPrompt() {
   const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
-  const [dispensado, setDispensado] = useState(true);
+  const { status, loading: statusLoading } = usePromptStatus();
+  const [mostrar, setMostrar] = useState(false);
 
   useEffect(() => {
-    if (isSupported && !isSubscribed && permission !== 'denied') {
-      const jaDispensou = sessionStorage.getItem('push_prompt_dispensado');
-      if (!jaDispensou) {
-        const timer = setTimeout(() => setDispensado(false), 2000);
-        return () => clearTimeout(timer);
-      }
+    if (statusLoading || !status) return;
+
+    // Já ativou — não mostra
+    if (isSubscribed && permission === 'granted') {
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
+      return;
     }
 
-    // Se não vai mostrar o prompt, avisa que já resolveu
-    if (!isSupported || isSubscribed || permission === 'denied' || sessionStorage.getItem('push_prompt_dispensado')) {
-      sessionStorage.setItem('push_prompt_resolved', 'true');
-      window.dispatchEvent(new Event('push-prompt-done'));
+    // Navegador não suporta ou permissão bloqueada
+    if (!isSupported || permission === 'denied') {
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
+      return;
     }
-  }, [isSupported, isSubscribed, permission]);
+
+    // Já fechou nesta sessão
+    if (sessionStorage.getItem('push_prompt_fechado')) {
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
+      return;
+    }
+
+    // Espera tour + billing + ciência terminarem antes de mostrar
+    const show = () => setTimeout(() => setMostrar(true), 500);
+
+    const w = window as any;
+    if (w.__promptsReady) {
+      show();
+      return;
+    }
+
+    const onReady = () => show();
+    window.addEventListener('prompts-ready', onReady);
+    return () => window.removeEventListener('prompts-ready', onReady);
+  }, [statusLoading, status, isSupported, permission, isSubscribed]);
 
   const dispensar = () => {
-    sessionStorage.setItem('push_prompt_dispensado', 'true');
-    sessionStorage.setItem('push_prompt_resolved', 'true');
-    setDispensado(true);
+    // Só esconde NESTA SESSÃO — volta na próxima vez que abrir o app
+    sessionStorage.setItem('push_prompt_fechado', 'true');
+    setMostrar(false);
     window.dispatchEvent(new Event('push-prompt-done'));
   };
 
   const ativar = async () => {
     const ok = await subscribe();
     if (ok) {
-      setDispensado(true);
-      sessionStorage.setItem('push_prompt_resolved', 'true');
-      window.dispatchEvent(new Event('push-prompt-done'));
+      setMostrar(false);
+      // Ativou de verdade — nunca mais mostra
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
     }
   };
 
-  if (dispensado || !isSupported || isSubscribed || permission === 'denied') return null;
+  if (!mostrar) return null;
 
   return (
     <div className="fixed inset-0 z-[190] flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
       <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={dispensar} />
 
       <div className="relative z-10 w-full max-w-sm bg-page border border-border-default shadow-2xl rounded-3xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
-        {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-center relative">
           <button onClick={dispensar} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors">
             <X size={20} />
@@ -59,7 +79,6 @@ export default function PushNotificationPrompt() {
           <p className="text-white/70 text-sm mt-1">Fique por dentro de tudo em tempo real</p>
         </div>
 
-        {/* Benefícios */}
         <div className="px-6 py-5 space-y-3">
           <div className="flex items-start gap-3">
             <div className="bg-emerald-500/10 p-2 rounded-xl shrink-0">
@@ -92,7 +111,6 @@ export default function PushNotificationPrompt() {
           </div>
         </div>
 
-        {/* Botões */}
         <div className="px-6 pb-6 space-y-2">
           <button
             onClick={ativar}

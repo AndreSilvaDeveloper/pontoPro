@@ -13,6 +13,20 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+
+async function enviarSubscriptionAoServidor(sub: PushSubscription) {
+  const subJson = sub.toJSON();
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      endpoint: subJson.endpoint,
+      keys: subJson.keys,
+    }),
+  });
+}
+
 export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -23,10 +37,37 @@ export function usePushNotifications() {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
     setIsSupported(supported);
 
-    if (supported) {
-      setPermission(Notification.permission);
+    if (!supported) return;
 
-      // Verifica se já está inscrito
+    const perm = Notification.permission;
+    setPermission(perm);
+
+    // Se o usuário já deu permissão, garante que a subscription está fresca
+    // iOS mata a subscription quando fecha o PWA — precisa recriar
+    if (perm === 'granted') {
+      navigator.serviceWorker.ready.then(async (reg) => {
+        try {
+          let sub = await reg.pushManager.getSubscription();
+
+          // Se não existe (iOS expirou), recria automaticamente
+          if (!sub) {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(VAPID_KEY) as any,
+            });
+          }
+
+          if (sub) {
+            setIsSubscribed(true);
+            // Envia ao servidor — limpa as antigas e salva a nova
+            await enviarSubscriptionAoServidor(sub).catch(() => {});
+          }
+        } catch (e) {
+          console.error('Erro ao renovar subscription:', e);
+        }
+      });
+    } else {
+      // Verifica se tem subscription mesmo sem permissão granted
       navigator.serviceWorker.ready.then(reg => {
         reg.pushManager.getSubscription().then(sub => {
           setIsSubscribed(!!sub);
@@ -40,11 +81,9 @@ export function usePushNotifications() {
     setLoading(true);
 
     try {
-      // Registra o service worker
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
 
-      // Pede permissão
       const perm = await Notification.requestPermission();
       setPermission(perm);
 
@@ -53,25 +92,12 @@ export function usePushNotifications() {
         return false;
       }
 
-      // Cria a subscription
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
-        ) as any,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_KEY) as any,
       });
 
-      const subJson = subscription.toJSON();
-
-      // Envia para o servidor
-      await fetch('/api/push/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          endpoint: subJson.endpoint,
-          keys: subJson.keys,
-        }),
-      });
+      await enviarSubscriptionAoServidor(subscription);
 
       setIsSubscribed(true);
       setLoading(false);
