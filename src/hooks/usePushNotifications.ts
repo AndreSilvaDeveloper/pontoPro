@@ -26,10 +26,24 @@ export function usePushNotifications() {
     if (supported) {
       setPermission(Notification.permission);
 
-      // Verifica se já está inscrito
+      // Verifica se já está inscrito e re-envia a subscription ao servidor
+      // iOS gera novo endpoint quando o PWA reabre — isso mantém atualizado
       navigator.serviceWorker.ready.then(reg => {
         reg.pushManager.getSubscription().then(sub => {
           setIsSubscribed(!!sub);
+
+          // Se já tem subscription ativa, re-envia ao servidor para manter fresca
+          if (sub) {
+            const subJson = sub.toJSON();
+            fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                endpoint: subJson.endpoint,
+                keys: subJson.keys,
+              }),
+            }).catch(() => {});
+          }
         });
       });
     }
