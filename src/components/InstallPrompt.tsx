@@ -59,8 +59,7 @@ export default function InstallPrompt() {
     window.addEventListener('push-prompt-done', onPushDone);
 
     // Checa se o push já resolveu (o evento pode ter disparado antes)
-    // Se push já foi ativado ou dispensado no banco, não vai mostrar o prompt de push
-    if (status.pushAtivado || status.pushPromptVisto) {
+    if (status.pushAtivado || sessionStorage.getItem('push_prompt_fechado')) {
       show();
     }
 

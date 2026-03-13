@@ -7,39 +7,39 @@ import { usePromptStatus } from '@/hooks/usePromptStatus';
 
 export default function PushNotificationPrompt() {
   const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
-  const { status, loading: statusLoading, markSeen } = usePromptStatus();
+  const { status, loading: statusLoading } = usePromptStatus();
   const [mostrar, setMostrar] = useState(false);
 
   useEffect(() => {
-    // Espera carregar o status do banco
     if (statusLoading || !status) return;
 
-    // Não mostra se: já ativou push no banco, já dispensou no banco, ou navegador não suporta
-    if (status.pushAtivado || status.pushPromptVisto) {
+    // Só para de mostrar se JÁ ATIVOU (tem subscription no banco)
+    if (status.pushAtivado || isSubscribed) {
       window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Não mostra se o navegador não suporta ou permissão já foi negada
+    // Navegador não suporta ou permissão bloqueada — não tem o que fazer
     if (!isSupported || permission === 'denied') {
       window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Já está inscrito no navegador (pode ter ativado por outro caminho)
-    if (isSubscribed) {
+    // Já fechou nesta sessão — não mostra de novo nesta sessão
+    if (sessionStorage.getItem('push_prompt_fechado')) {
       window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Mostra o prompt após 2s
+    // Mostra após 2s
     const timer = setTimeout(() => setMostrar(true), 2000);
     return () => clearTimeout(timer);
   }, [statusLoading, status, isSupported, permission, isSubscribed]);
 
   const dispensar = () => {
+    // Só esconde NESTA SESSÃO — volta na próxima vez que abrir o app
+    sessionStorage.setItem('push_prompt_fechado', 'true');
     setMostrar(false);
-    markSeen('pushPromptVisto', true);
     window.dispatchEvent(new Event('push-prompt-done'));
   };
 
@@ -47,7 +47,7 @@ export default function PushNotificationPrompt() {
     const ok = await subscribe();
     if (ok) {
       setMostrar(false);
-      markSeen('pushPromptVisto', true);
+      // Ativou de verdade — nunca mais mostra
       window.dispatchEvent(new Event('push-prompt-done'));
     }
   };

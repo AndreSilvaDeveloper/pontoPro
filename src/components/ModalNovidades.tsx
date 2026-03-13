@@ -136,8 +136,8 @@ export default function ModalNovidades({ tipo }: Props) {
       }
     };
 
-    // Verifica se os prompts já estão resolvidos no banco (não precisam mais aparecer)
-    if (status.pushAtivado || status.pushPromptVisto) {
+    // Verifica se os prompts já estão resolvidos
+    if (status.pushAtivado || sessionStorage.getItem('push_prompt_fechado')) {
       pushDone = true;
     }
     if (status.installPromptVisto) {
