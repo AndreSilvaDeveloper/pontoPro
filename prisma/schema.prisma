@@ -197,3 +197,15 @@ model AsaasWebhookEvent {
   @@map("asaas_webhook_event")
 }
 
+model LembretePush {
+  id        String   @id @default(cuid())
+  usuarioId String
+  tipo      String   // ALMOCO_5MIN | VOLTA_ALMOCO | SAIDA_5MIN | PAUSA_CAFE_EXCEDIDA
+  data      String   // "2026-03-13" (data em SP timezone)
+  criadoEm  DateTime @default(now())
+
+  @@unique([usuarioId, tipo, data])
+  @@index([data])
+  @@map("lembrete_push")
+}
+
