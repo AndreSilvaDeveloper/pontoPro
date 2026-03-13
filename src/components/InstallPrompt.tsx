@@ -55,9 +55,14 @@ export default function InstallPrompt() {
     // Espera o push prompt terminar primeiro
     const show = () => setTimeout(() => setMostrar(true), 500);
 
+    const w = window as any;
+    if (w.__pushDone) {
+      show();
+      return;
+    }
+
     const onPushDone = () => show();
     window.addEventListener('push-prompt-done', onPushDone);
-
     return () => window.removeEventListener('push-prompt-done', onPushDone);
   }, [statusLoading, status, isStandalone]);
 

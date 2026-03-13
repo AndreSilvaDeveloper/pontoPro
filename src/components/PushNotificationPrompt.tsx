@@ -13,28 +13,36 @@ export default function PushNotificationPrompt() {
   useEffect(() => {
     if (statusLoading || !status) return;
 
-    // Só para de mostrar quando o NAVEGADOR ATUAL tem subscription ativa
-    // (ignora banco — subscriptions antigas ficam stale ao reinstalar o PWA)
+    // Já ativou — não mostra
     if (isSubscribed && permission === 'granted') {
       (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Navegador não suporta ou permissão bloqueada — não tem o que fazer
+    // Navegador não suporta ou permissão bloqueada
     if (!isSupported || permission === 'denied') {
       (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Já fechou nesta sessão — não mostra de novo nesta sessão
+    // Já fechou nesta sessão
     if (sessionStorage.getItem('push_prompt_fechado')) {
       (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Mostra após 2s
-    const timer = setTimeout(() => setMostrar(true), 2000);
-    return () => clearTimeout(timer);
+    // Espera tour + billing + ciência terminarem antes de mostrar
+    const show = () => setTimeout(() => setMostrar(true), 500);
+
+    const w = window as any;
+    if (w.__promptsReady) {
+      show();
+      return;
+    }
+
+    const onReady = () => show();
+    window.addEventListener('prompts-ready', onReady);
+    return () => window.removeEventListener('prompts-ready', onReady);
   }, [statusLoading, status, isSupported, permission, isSubscribed]);
 
   const dispensar = () => {

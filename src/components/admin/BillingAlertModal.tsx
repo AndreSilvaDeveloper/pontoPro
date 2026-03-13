@@ -111,14 +111,37 @@ function parseDateOnlyToLocal(dateOrIso: string) {
   return new Date(y, m - 1, d);
 }
 
+function fireBillingDone() {
+  (window as any).__billingDone = true;
+  window.dispatchEvent(new Event(BILLING_EVENT));
+}
+
 export default function BillingAlertModal({ empresa, billing }: Props) {
   const [open, setOpen] = useState(false);
+  const [tourDone, setTourDone] = useState(false);
+
+  // Espera o tour terminar antes de avaliar
+  useEffect(() => {
+    const w = window as any;
+    if (w.__tourDone) { setTourDone(true); return; }
+    const handler = () => setTourDone(true);
+    window.addEventListener('tour-done', handler);
+    return () => window.removeEventListener('tour-done', handler);
+  }, []);
 
   useEffect(() => {
-    if (!billing) return;
+    if (!tourDone) return;
+    if (!billing) {
+      fireBillingDone();
+      return;
+    }
     const show = shouldShowAlert(billing, empresa?.id);
-    if (show) setOpen(true);
-  }, [billing, empresa?.id]);
+    if (show) {
+      setOpen(true);
+    } else {
+      fireBillingDone();
+    }
+  }, [tourDone, billing, empresa?.id]);
 
   const closeModal = () => {
     setOpen(false);
@@ -129,7 +152,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
           localStorage.setItem(BILLING_CLOSED_KEY, "1");
         } catch {}
 
-        window.dispatchEvent(new Event(BILLING_EVENT));
+        fireBillingDone();
       });
     });
   };

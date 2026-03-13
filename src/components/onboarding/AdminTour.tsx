@@ -13,9 +13,6 @@ function makeAdminTourKey(empresaId: string | null, userId: string | null) {
   return `onboarding:admin:${TOUR_VERSION}:${e}:${u}`;
 }
 
-const BILLING_KEY = "ui:billing-modal-closed:v1";
-const BILLING_EVENT = "billing-modal-closed";
-
 export const ADMIN_TOUR_RESTART_EVENT = "admin-tour-restart";
 
 function getSteps(): DriveStep[] {
@@ -163,15 +160,10 @@ function getSteps(): DriveStep[] {
   });
 }
 
-/** Verifica se o billing modal está aberto no DOM */
-function isBillingModalOpen() {
-  return !!document.querySelector('[data-billing-modal="open"]');
-}
-
-/** Verifica se o toast de notificação está visível */
-function isToastVisible() {
-  // O toast tem z-[100] e fica em fixed top-16 right-6
-  return !!document.querySelector('[data-tour="admin-ajustes"].fixed');
+/** Dispara evento tour-done e seta flag no window */
+function fireTourDone() {
+  (window as any).__tourDone = true;
+  window.dispatchEvent(new Event('tour-done'));
 }
 
 function createDriver(steps: DriveStep[], tourKey: string): Driver {
@@ -189,6 +181,7 @@ function createDriver(steps: DriveStep[], tourKey: string): Driver {
     },
     onDestroyed: () => {
       localStorage.setItem(tourKey, "1");
+      fireTourDone();
     },
   });
   return d;
@@ -208,7 +201,7 @@ export default function AdminTour() {
     if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
   };
 
-  // ========== TOUR AUTOMÁTICO (primeiro acesso) ==========
+  // ========== TOUR AUTOMÁTICO (PRIMEIRO a aparecer) ==========
   useEffect(() => {
     const isAdminHome = pathname === "/admin" || pathname === "/admin/";
     if (!isAdminHome || status !== "authenticated") return;
@@ -222,68 +215,27 @@ export default function AdminTour() {
     const TOUR_KEY = makeAdminTourKey(empresaId, userId);
 
     const done = localStorage.getItem(TOUR_KEY) === "1";
-    if (done && !forced) return;
+
+    // Se já viu o tour, dispara tour-done direto para liberar os banners
+    if (done && !forced) {
+      fireTourDone();
+      return;
+    }
 
     const launchTour = () => {
       destroyDriver();
       const steps = getSteps();
-      if (!steps.length) return;
+      if (!steps.length) {
+        fireTourDone();
+        return;
+      }
       const d = createDriver(steps, TOUR_KEY);
       driverRef.current = d;
       d.drive();
     };
 
-    if (forced) {
-      timerRef.current = setTimeout(launchTour, 300);
-      return () => destroyDriver();
-    }
-
-    const w = window as any;
-
-    const hasModalAberto = () =>
-      !!document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
-      !!document.querySelector('.fixed.inset-0.z-\\[200\\]') ||
-      isBillingModalOpen();
-
-    let checkInterval: ReturnType<typeof setInterval> | null = null;
-
-    const tentarLaunch = () => {
-      if (!w.__pushDone || !w.__installDone || !w.__novidadesDone) return;
-      if (hasModalAberto()) return;
-      timerRef.current = setTimeout(launchTour, 500);
-    };
-
-    const iniciarCheck = () => {
-      if (checkInterval) return;
-      checkInterval = setInterval(() => {
-        if (w.__pushDone && w.__installDone && w.__novidadesDone && !hasModalAberto()) {
-          clearInterval(checkInterval!);
-          checkInterval = null;
-          timerRef.current = setTimeout(launchTour, 500);
-        }
-      }, 500);
-      setTimeout(() => { if (checkInterval) { clearInterval(checkInterval); checkInterval = null; } }, 60000);
-    };
-
-    const onPush = () => { w.__pushDone = true; tentarLaunch(); iniciarCheck(); };
-    const onInstall = () => { w.__installDone = true; tentarLaunch(); iniciarCheck(); };
-    const onNovidades = () => { w.__novidadesDone = true; tentarLaunch(); iniciarCheck(); };
-
-    window.addEventListener('push-prompt-done', onPush);
-    window.addEventListener('install-prompt-done', onInstall);
-    window.addEventListener('novidades-done', onNovidades);
-
-    if (w.__pushDone && w.__installDone && w.__novidadesDone) {
-      iniciarCheck();
-    }
-
-    return () => {
-      window.removeEventListener('push-prompt-done', onPush);
-      window.removeEventListener('install-prompt-done', onInstall);
-      window.removeEventListener('novidades-done', onNovidades);
-      if (checkInterval) clearInterval(checkInterval);
-      destroyDriver();
-    };
+    timerRef.current = setTimeout(launchTour, forced ? 300 : 1500);
+    return () => destroyDriver();
   }, [pathname, status, session, searchParams]);
 
   // ========== RESTART MANUAL (botão "Ver Tutorial") ==========

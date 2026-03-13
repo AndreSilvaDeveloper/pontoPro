@@ -130,8 +130,9 @@ export default function ModalNovidades({ tipo }: Props) {
       return;
     }
 
-    let pushDone = false;
-    let installDone = false;
+    const w = window as any;
+    let pushDone = !!w.__pushDone;
+    let installDone = !!w.__installDone;
 
     const tentarAbrir = () => {
       if (pushDone && installDone) {
@@ -139,7 +140,12 @@ export default function ModalNovidades({ tipo }: Props) {
       }
     };
 
-    // Espera os eventos dos prompts terminarem
+    // Checa se já resolveram antes
+    if (pushDone && installDone) {
+      tentarAbrir();
+      return;
+    }
+
     const onPushDone = () => { pushDone = true; tentarAbrir(); };
     const onInstallDone = () => { installDone = true; tentarAbrir(); };
 

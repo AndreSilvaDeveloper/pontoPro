@@ -110,6 +110,15 @@ function nextExistingIndex(steps: DriveStep[], fromIndex: number) {
   return -1;
 }
 
+/** Dispara evento tour-done e seta flag no window */
+function fireTourDone() {
+  (window as any).__tourDone = true;
+  window.dispatchEvent(new Event('tour-done'));
+  // Funcionário não tem billing/ciência, libera prompts direto
+  (window as any).__promptsReady = true;
+  window.dispatchEvent(new Event('prompts-ready'));
+}
+
 function createTourDriver(all: DriveStep[], tourKey: string): Driver {
   const d: Driver = driver({
     showProgress: true,
@@ -127,6 +136,7 @@ function createTourDriver(all: DriveStep[], tourKey: string): Driver {
 
     onDestroyed: () => {
       localStorage.setItem(tourKey, "1");
+      fireTourDone();
     },
 
     onNextClick: () => {
@@ -167,13 +177,12 @@ export default function FuncionarioTour() {
     driverRef.current = null;
   };
 
-  // ========== TOUR AUTOMÁTICO ==========
+  // ========== TOUR AUTOMÁTICO (PRIMEIRO a aparecer) ==========
   useEffect(() => {
     const isFuncHome =
       pathname === "/funcionario" || pathname === "/funcionario/";
     if (!isFuncHome || status !== "authenticated") return;
 
-    // NÃO inicia se ainda precisa trocar senha ou cadastrar foto
     // @ts-ignore
     if (session?.user?.deveTrocarSenha) return;
     // @ts-ignore
@@ -185,7 +194,12 @@ export default function FuncionarioTour() {
 
     const forced = search?.get("tour") === "1";
     const done = localStorage.getItem(TOUR_KEY) === "1";
-    if (done && !forced) return;
+
+    // Se já viu o tour, dispara tour-done direto para liberar os banners
+    if (done && !forced) {
+      fireTourDone();
+      return;
+    }
 
     const boot = () => {
       requestAnimationFrame(() => {
@@ -195,64 +209,18 @@ export default function FuncionarioTour() {
           const d = createTourDriver(all, TOUR_KEY);
           driverRef.current = d;
           const first = nextExistingIndex(all, 0);
-          if (first === -1) return;
+          if (first === -1) {
+            fireTourDone();
+            return;
+          }
           d.drive(first);
         });
       });
     };
 
-    if (forced) {
-      const t = setTimeout(boot, 300);
-      return () => { clearTimeout(t); destroyDriver(); };
-    }
-
-    const w = window as any;
-
-    const hasModalAberto = () =>
-      !!document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
-      !!document.querySelector('.fixed.inset-0.z-\\[200\\]');
-
-    // Espera os 3 eventos + tela limpa
-    const tentarBoot = () => {
-      if (!w.__pushDone || !w.__installDone || !w.__novidadesDone) return;
-      if (hasModalAberto()) return;
-      setTimeout(boot, 500);
-    };
-
-    // Checa periodicamente após todos os flags estarem true
-    let checkInterval: ReturnType<typeof setInterval> | null = null;
-    const iniciarCheck = () => {
-      if (checkInterval) return;
-      checkInterval = setInterval(() => {
-        if (w.__pushDone && w.__installDone && w.__novidadesDone && !hasModalAberto()) {
-          clearInterval(checkInterval!);
-          checkInterval = null;
-          setTimeout(boot, 500);
-        }
-      }, 500);
-      setTimeout(() => { if (checkInterval) { clearInterval(checkInterval); checkInterval = null; } }, 60000);
-    };
-
-    const onPush = () => { w.__pushDone = true; tentarBoot(); iniciarCheck(); };
-    const onInstall = () => { w.__installDone = true; tentarBoot(); iniciarCheck(); };
-    const onNovidades = () => { w.__novidadesDone = true; tentarBoot(); iniciarCheck(); };
-
-    window.addEventListener('push-prompt-done', onPush);
-    window.addEventListener('install-prompt-done', onInstall);
-    window.addEventListener('novidades-done', onNovidades);
-
-    // Checa flags que já foram setados antes do listener montar
-    if (w.__pushDone && w.__installDone && w.__novidadesDone) {
-      iniciarCheck();
-    }
-
-    return () => {
-      window.removeEventListener('push-prompt-done', onPush);
-      window.removeEventListener('install-prompt-done', onInstall);
-      window.removeEventListener('novidades-done', onNovidades);
-      if (checkInterval) clearInterval(checkInterval);
-      destroyDriver();
-    };
+    // Inicia o tour após um pequeno delay para a página renderizar
+    const t = setTimeout(boot, forced ? 300 : 1500);
+    return () => { clearTimeout(t); destroyDriver(); };
   }, [pathname, search, session, status]);
 
   // ========== RESTART MANUAL ==========

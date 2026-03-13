@@ -8,22 +8,42 @@ import Link from 'next/link';
 
 const STORAGE_KEY = 'ui:ciencia-celular-alert-dismissed';
 
+function firePromptsReady() {
+  (window as any).__promptsReady = true;
+  window.dispatchEvent(new Event('prompts-ready'));
+}
+
 export default function CienciaCelularAlertModal() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [billingDone, setBillingDone] = useState(false);
+
+  // Espera o billing terminar antes de avaliar
+  useEffect(() => {
+    const w = window as any;
+    if (w.__billingDone) { setBillingDone(true); return; }
+    const handler = () => setBillingDone(true);
+    window.addEventListener('billing-modal-closed', handler);
+    return () => window.removeEventListener('billing-modal-closed', handler);
+  }, []);
 
   useEffect(() => {
+    if (!billingDone) return;
     try {
-      if (localStorage.getItem(STORAGE_KEY) === '1') return;
+      if (localStorage.getItem(STORAGE_KEY) === '1') {
+        firePromptsReady();
+        return;
+      }
     } catch {}
     setOpen(true);
-  }, []);
+  }, [billingDone]);
 
   const dismiss = () => {
     setOpen(false);
     try {
       localStorage.setItem(STORAGE_KEY, '1');
     } catch {}
+    firePromptsReady();
   };
 
   const aplicarParaTodos = async () => {
