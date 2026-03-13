@@ -48,7 +48,7 @@ export default function InstallPrompt() {
 
     // Não mostra se: já está no PWA standalone, ou já dispensou no banco
     if (isStandalone || status.installPromptVisto) {
-      window.dispatchEvent(new Event('install-prompt-done'));
+      (window as any).__installDone = true; window.dispatchEvent(new Event('install-prompt-done'));
       return;
     }
 

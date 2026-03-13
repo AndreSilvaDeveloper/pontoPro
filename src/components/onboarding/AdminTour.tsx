@@ -238,33 +238,50 @@ export default function AdminTour() {
       return () => destroyDriver();
     }
 
-    // Função que verifica se algum modal/banner está aberto na tela
+    const w = window as any;
+
     const hasModalAberto = () =>
       !!document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
       !!document.querySelector('.fixed.inset-0.z-\\[200\\]') ||
       isBillingModalOpen();
 
-    // Só inicia o tour quando não tem nenhum modal aberto
-    const launchQuandoLivre = () => {
-      if (hasModalAberto()) {
-        const check = setInterval(() => {
-          if (!hasModalAberto()) {
-            clearInterval(check);
-            timerRef.current = setTimeout(launchTour, 500);
-          }
-        }, 500);
-        setTimeout(() => clearInterval(check), 60000);
-        return;
-      }
+    let checkInterval: ReturnType<typeof setInterval> | null = null;
+
+    const tentarLaunch = () => {
+      if (!w.__pushDone || !w.__installDone || !w.__novidadesDone) return;
+      if (hasModalAberto()) return;
       timerRef.current = setTimeout(launchTour, 500);
     };
 
-    // Espera o evento novidades-done (último da cadeia)
-    const onNovidadesDone = () => launchQuandoLivre();
-    window.addEventListener('novidades-done', onNovidadesDone);
+    const iniciarCheck = () => {
+      if (checkInterval) return;
+      checkInterval = setInterval(() => {
+        if (w.__pushDone && w.__installDone && w.__novidadesDone && !hasModalAberto()) {
+          clearInterval(checkInterval!);
+          checkInterval = null;
+          timerRef.current = setTimeout(launchTour, 500);
+        }
+      }, 500);
+      setTimeout(() => { if (checkInterval) { clearInterval(checkInterval); checkInterval = null; } }, 60000);
+    };
+
+    const onPush = () => { w.__pushDone = true; tentarLaunch(); iniciarCheck(); };
+    const onInstall = () => { w.__installDone = true; tentarLaunch(); iniciarCheck(); };
+    const onNovidades = () => { w.__novidadesDone = true; tentarLaunch(); iniciarCheck(); };
+
+    window.addEventListener('push-prompt-done', onPush);
+    window.addEventListener('install-prompt-done', onInstall);
+    window.addEventListener('novidades-done', onNovidades);
+
+    if (w.__pushDone && w.__installDone && w.__novidadesDone) {
+      iniciarCheck();
+    }
 
     return () => {
-      window.removeEventListener('novidades-done', onNovidadesDone);
+      window.removeEventListener('push-prompt-done', onPush);
+      window.removeEventListener('install-prompt-done', onInstall);
+      window.removeEventListener('novidades-done', onNovidades);
+      if (checkInterval) clearInterval(checkInterval);
       destroyDriver();
     };
   }, [pathname, status, session, searchParams]);

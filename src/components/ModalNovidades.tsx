@@ -126,7 +126,7 @@ export default function ModalNovidades({ tipo }: Props) {
 
     // Já viu esta versão no banco
     if (status.novidadesVisto === VERSAO_NOVIDADES) {
-      window.dispatchEvent(new Event('novidades-done'));
+      (window as any).__novidadesDone = true; window.dispatchEvent(new Event('novidades-done'));
       return;
     }
 

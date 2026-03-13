@@ -206,34 +206,51 @@ export default function FuncionarioTour() {
       return () => { clearTimeout(t); destroyDriver(); };
     }
 
-    // Função que verifica se algum modal/banner está aberto na tela
+    const w = window as any;
+
     const hasModalAberto = () =>
       !!document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
       !!document.querySelector('.fixed.inset-0.z-\\[200\\]');
 
-    // Só inicia o tour quando não tem nenhum modal aberto
-    const bootQuandoLivre = () => {
-      if (hasModalAberto()) {
-        // Ainda tem modal, espera ele fechar
-        const check = setInterval(() => {
-          if (!hasModalAberto()) {
-            clearInterval(check);
-            setTimeout(boot, 500);
-          }
-        }, 500);
-        // Safety: para de checar depois de 60s
-        setTimeout(() => clearInterval(check), 60000);
-        return;
-      }
+    // Espera os 3 eventos + tela limpa
+    const tentarBoot = () => {
+      if (!w.__pushDone || !w.__installDone || !w.__novidadesDone) return;
+      if (hasModalAberto()) return;
       setTimeout(boot, 500);
     };
 
-    // Espera o evento novidades-done (último da cadeia)
-    const onNovidadesDone = () => bootQuandoLivre();
-    window.addEventListener('novidades-done', onNovidadesDone);
+    // Checa periodicamente após todos os flags estarem true
+    let checkInterval: ReturnType<typeof setInterval> | null = null;
+    const iniciarCheck = () => {
+      if (checkInterval) return;
+      checkInterval = setInterval(() => {
+        if (w.__pushDone && w.__installDone && w.__novidadesDone && !hasModalAberto()) {
+          clearInterval(checkInterval!);
+          checkInterval = null;
+          setTimeout(boot, 500);
+        }
+      }, 500);
+      setTimeout(() => { if (checkInterval) { clearInterval(checkInterval); checkInterval = null; } }, 60000);
+    };
+
+    const onPush = () => { w.__pushDone = true; tentarBoot(); iniciarCheck(); };
+    const onInstall = () => { w.__installDone = true; tentarBoot(); iniciarCheck(); };
+    const onNovidades = () => { w.__novidadesDone = true; tentarBoot(); iniciarCheck(); };
+
+    window.addEventListener('push-prompt-done', onPush);
+    window.addEventListener('install-prompt-done', onInstall);
+    window.addEventListener('novidades-done', onNovidades);
+
+    // Checa flags que já foram setados antes do listener montar
+    if (w.__pushDone && w.__installDone && w.__novidadesDone) {
+      iniciarCheck();
+    }
 
     return () => {
-      window.removeEventListener('novidades-done', onNovidadesDone);
+      window.removeEventListener('push-prompt-done', onPush);
+      window.removeEventListener('install-prompt-done', onInstall);
+      window.removeEventListener('novidades-done', onNovidades);
+      if (checkInterval) clearInterval(checkInterval);
       destroyDriver();
     };
   }, [pathname, search, session, status]);

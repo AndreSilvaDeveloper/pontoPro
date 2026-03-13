@@ -16,19 +16,19 @@ export default function PushNotificationPrompt() {
     // Só para de mostrar quando o NAVEGADOR ATUAL tem subscription ativa
     // (ignora banco — subscriptions antigas ficam stale ao reinstalar o PWA)
     if (isSubscribed && permission === 'granted') {
-      window.dispatchEvent(new Event('push-prompt-done'));
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
     // Navegador não suporta ou permissão bloqueada — não tem o que fazer
     if (!isSupported || permission === 'denied') {
-      window.dispatchEvent(new Event('push-prompt-done'));
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
     // Já fechou nesta sessão — não mostra de novo nesta sessão
     if (sessionStorage.getItem('push_prompt_fechado')) {
-      window.dispatchEvent(new Event('push-prompt-done'));
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
@@ -49,7 +49,7 @@ export default function PushNotificationPrompt() {
     if (ok) {
       setMostrar(false);
       // Ativou de verdade — nunca mais mostra
-      window.dispatchEvent(new Event('push-prompt-done'));
+      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
     }
   };
 
