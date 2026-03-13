@@ -6,7 +6,7 @@ import { enviarPushSeguro } from '@/lib/push';
 
 export const runtime = 'nodejs';
 
-// Diagnóstico: lista subscriptions do usuário e envia push de teste
+// Diagnóstico: lista subscriptions do usuário
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -24,10 +24,9 @@ export async function GET() {
     },
   });
 
-  // Detecta o provedor de push pelo endpoint
   const subsInfo = subs.map(s => ({
     id: s.id,
-    provedor: s.endpoint.includes('apple') || s.endpoint.includes('push.apple')
+    provedor: s.endpoint.includes('push.apple.com')
       ? 'Apple (iOS/Safari)'
       : s.endpoint.includes('fcm.googleapis')
         ? 'Google (Android/Chrome)'
@@ -47,7 +46,7 @@ export async function GET() {
   });
 }
 
-// Envia push de teste para o próprio usuário
+// POST: envia push de teste para o próprio usuário
 export async function POST() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -63,5 +62,25 @@ export async function POST() {
     tag: 'teste',
   });
 
-  return NextResponse.json({ ok: true, message: 'Push de teste enviado — verifique os logs do servidor' });
+  return NextResponse.json({ ok: true, message: 'Push de teste enviado' });
+}
+
+// DELETE: limpa TODAS as subscriptions do usuário (para recomeçar do zero)
+export async function DELETE() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
+
+  const userId = (session.user as any).id;
+
+  const result = await prisma.pushSubscription.deleteMany({
+    where: { usuarioId: userId },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    removidas: result.count,
+    message: 'Todas subscriptions removidas. Reabra o PWA para criar uma nova.',
+  });
 }
