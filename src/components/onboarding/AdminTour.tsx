@@ -238,40 +238,33 @@ export default function AdminTour() {
       return () => destroyDriver();
     }
 
-    // Espera todos os modais (billing, push, install, novidades) terminarem
-    const onNovidadesDone = () => {
-      // Ainda verifica billing modal
-      if (isBillingModalOpen()) {
-        window.addEventListener(BILLING_EVENT, () => {
-          timerRef.current = setTimeout(launchTour, 500);
-        }, { once: true });
+    // Função que verifica se algum modal/banner está aberto na tela
+    const hasModalAberto = () =>
+      !!document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
+      !!document.querySelector('.fixed.inset-0.z-\\[200\\]') ||
+      isBillingModalOpen();
+
+    // Só inicia o tour quando não tem nenhum modal aberto
+    const launchQuandoLivre = () => {
+      if (hasModalAberto()) {
+        const check = setInterval(() => {
+          if (!hasModalAberto()) {
+            clearInterval(check);
+            timerRef.current = setTimeout(launchTour, 500);
+          }
+        }, 500);
+        setTimeout(() => clearInterval(check), 60000);
         return;
       }
       timerRef.current = setTimeout(launchTour, 500);
     };
 
+    // Espera o evento novidades-done (último da cadeia)
+    const onNovidadesDone = () => launchQuandoLivre();
     window.addEventListener('novidades-done', onNovidadesDone);
-    window.addEventListener(BILLING_EVENT, onNovidadesDone);
-
-    // Fallback: checa a cada 2s se os modais sumiram (max 30s)
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      // Se nenhum modal overlay está aberto, pode iniciar
-      const hasModal = document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
-                       document.querySelector('.fixed.inset-0.z-\\[200\\]');
-      const hasBilling = isBillingModalOpen();
-      if (!hasModal && !hasBilling) {
-        clearInterval(interval);
-        timerRef.current = setTimeout(launchTour, 500);
-      }
-      if (attempts > 15) clearInterval(interval);
-    }, 2000);
 
     return () => {
       window.removeEventListener('novidades-done', onNovidadesDone);
-      window.removeEventListener(BILLING_EVENT, onNovidadesDone);
-      clearInterval(interval);
       destroyDriver();
     };
   }, [pathname, status, session, searchParams]);

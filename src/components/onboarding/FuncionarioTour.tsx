@@ -206,39 +206,34 @@ export default function FuncionarioTour() {
       return () => { clearTimeout(t); destroyDriver(); };
     }
 
-    // Espera todos os modais (push, install, novidades) terminarem
-    const onNovidadesDone = () => {
+    // Função que verifica se algum modal/banner está aberto na tela
+    const hasModalAberto = () =>
+      !!document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
+      !!document.querySelector('.fixed.inset-0.z-\\[200\\]');
+
+    // Só inicia o tour quando não tem nenhum modal aberto
+    const bootQuandoLivre = () => {
+      if (hasModalAberto()) {
+        // Ainda tem modal, espera ele fechar
+        const check = setInterval(() => {
+          if (!hasModalAberto()) {
+            clearInterval(check);
+            setTimeout(boot, 500);
+          }
+        }, 500);
+        // Safety: para de checar depois de 60s
+        setTimeout(() => clearInterval(check), 60000);
+        return;
+      }
       setTimeout(boot, 500);
     };
 
-    // Se novidades já resolveu antes do listener
-    // (pode ter sido disparado antes deste useEffect montar)
-    // Usa um pequeno polling como fallback
-    const checkReady = () => {
-      // Se nenhum modal fixed está aberto, pode iniciar
-      const hasModal = document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
-                       document.querySelector('.fixed.inset-0.z-\\[200\\]');
-      if (!hasModal) {
-        setTimeout(boot, 500);
-        return true;
-      }
-      return false;
-    };
-
+    // Espera o evento novidades-done (último da cadeia)
+    const onNovidadesDone = () => bootQuandoLivre();
     window.addEventListener('novidades-done', onNovidadesDone);
-
-    // Fallback: checa a cada 2s se os modais sumiram (max 30s)
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      if (attempts > 15 || checkReady()) {
-        clearInterval(interval);
-      }
-    }, 2000);
 
     return () => {
       window.removeEventListener('novidades-done', onNovidadesDone);
-      clearInterval(interval);
       destroyDriver();
     };
   }, [pathname, search, session, status]);
