@@ -62,13 +62,11 @@ export async function enviarPushSeguro(usuarioId: string, payload: PushPayload) 
         const body = (r.reason as any)?.body;
         console.error(`❌ Push falhou para ${usuarioId} (endpoint: ${subs[i].endpoint.substring(0, 60)}...): status=${statusCode}, body=${body}`);
 
-        // Limpa subscriptions expiradas
-        if (statusCode === 410 || statusCode === 404 || statusCode === 401) {
-          await prisma.pushSubscription.delete({
-            where: { id: subs[i].id },
-          }).catch(() => {});
-          console.log(`🗑️ Subscription removida (expirada): ${subs[i].id}`);
-        }
+        // Limpa subscriptions que falharam (expirada, inválida, etc)
+        await prisma.pushSubscription.delete({
+          where: { id: subs[i].id },
+        }).catch(() => {});
+        console.log(`🗑️ Subscription removida (status ${statusCode}): ${subs[i].id}`);
       } else {
         console.log(`✅ Push enviado para ${usuarioId} (endpoint: ${subs[i].endpoint.substring(0, 60)}...)`);
       }
