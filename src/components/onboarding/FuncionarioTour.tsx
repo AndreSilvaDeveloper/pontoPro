@@ -26,7 +26,7 @@ function getAllSteps(): DriveStep[] {
       popover: {
         title: "Bem-vindo!",
         description:
-          "Vou te mostrar rapidinho como bater o ponto e onde ver suas informações.",
+          "Vou te mostrar rapidinho como bater o ponto e usar o sistema.",
         side: "bottom",
         align: "center",
       },
@@ -35,7 +35,7 @@ function getAllSteps(): DriveStep[] {
       element: '[data-tour="emp-header"]',
       popover: {
         title: "Seu painel",
-        description: "Aqui aparece seu nome e o horário atual.",
+        description: "Aqui aparece seu nome e o horário atual. Use o botão Tutorial para rever este guia quando quiser.",
         side: "bottom",
         align: "start",
       },
@@ -43,9 +43,9 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-gps"]',
       popover: {
-        title: "Permitir GPS",
+        title: "Ativar localização",
         description:
-          "Primeiro passo: permita a localização para validar o ponto.",
+          "Toque aqui para permitir o GPS. Sem isso, não é possível bater o ponto.",
         side: "top",
         align: "center",
       },
@@ -55,7 +55,7 @@ function getAllSteps(): DriveStep[] {
       popover: {
         title: "Bater ponto",
         description:
-          "Depois do GPS, estes botões aparecem para registrar entrada/pausas/saída.",
+          "Após ativar o GPS, os botões aparecem aqui. Toque para registrar entrada, pausas e saída.",
         side: "top",
         align: "start",
       },
@@ -63,9 +63,9 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-camera"]',
       popover: {
-        title: "Reconhecimento por foto",
+        title: "Foto para validação",
         description:
-          "Se a empresa exigir foto, ela aparece aqui para validar o ponto.",
+          "Se a empresa exigir, a câmera aparece aqui. Posicione seu rosto e confirme o ponto.",
         side: "bottom",
         align: "start",
       },
@@ -73,35 +73,8 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-forgot"]',
       popover: {
-        title: "Esqueci de bater o ponto",
-        description: "Solicite inclusão de registro e o admin aprova.",
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="emp-sign"]',
-      popover: {
-        title: "Assinatura eletrônica",
-        description: "Crie sua assinatura para validar registros.",
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="emp-justify"]',
-      popover: {
-        title: "Justificativas",
-        description: "Justifique ausências e envie arquivos comprovantes.",
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="emp-history"]',
-      popover: {
-        title: "Histórico",
-        description: "Veja registros, solicitações e acompanhamentos.",
+        title: "Esqueceu de bater o ponto?",
+        description: "Toque aqui para solicitar a inclusão do registro. Seu gestor vai aprovar ou recusar.",
         side: "top",
         align: "start",
       },
@@ -109,8 +82,8 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-logout"]',
       popover: {
-        title: "Sair",
-        description: "Finalize sua sessão por aqui.",
+        title: "Sair do sistema",
+        description: "Toque aqui para encerrar sua sessão.",
         side: "left",
         align: "center",
       },
@@ -228,9 +201,44 @@ export default function FuncionarioTour() {
       });
     };
 
-    const t = setTimeout(boot, forced ? 300 : 1500);
+    if (forced) {
+      const t = setTimeout(boot, 300);
+      return () => { clearTimeout(t); destroyDriver(); };
+    }
+
+    // Espera todos os modais (push, install, novidades) terminarem
+    const onNovidadesDone = () => {
+      setTimeout(boot, 500);
+    };
+
+    // Se novidades já resolveu antes do listener
+    // (pode ter sido disparado antes deste useEffect montar)
+    // Usa um pequeno polling como fallback
+    const checkReady = () => {
+      // Se nenhum modal fixed está aberto, pode iniciar
+      const hasModal = document.querySelector('.fixed.inset-0.z-\\[190\\]') ||
+                       document.querySelector('.fixed.inset-0.z-\\[200\\]');
+      if (!hasModal) {
+        setTimeout(boot, 500);
+        return true;
+      }
+      return false;
+    };
+
+    window.addEventListener('novidades-done', onNovidadesDone);
+
+    // Fallback: checa a cada 2s se os modais sumiram (max 30s)
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (attempts > 15 || checkReady()) {
+        clearInterval(interval);
+      }
+    }, 2000);
+
     return () => {
-      clearTimeout(t);
+      window.removeEventListener('novidades-done', onNovidadesDone);
+      clearInterval(interval);
       destroyDriver();
     };
   }, [pathname, search, session, status]);

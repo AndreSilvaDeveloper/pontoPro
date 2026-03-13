@@ -125,7 +125,10 @@ export default function ModalNovidades({ tipo }: Props) {
     if (statusLoading || !status) return;
 
     // Já viu esta versão no banco
-    if (status.novidadesVisto === VERSAO_NOVIDADES) return;
+    if (status.novidadesVisto === VERSAO_NOVIDADES) {
+      window.dispatchEvent(new Event('novidades-done'));
+      return;
+    }
 
     let pushDone = false;
     let installDone = false;
@@ -163,16 +166,10 @@ export default function ModalNovidades({ tipo }: Props) {
     };
   }, [statusLoading, status]);
 
-  // Permite reabrir via botão Tutorial
-  useEffect(() => {
-    const onShowNovidades = () => setAberto(true);
-    window.addEventListener('show-novidades', onShowNovidades);
-    return () => window.removeEventListener('show-novidades', onShowNovidades);
-  }, []);
-
   const fechar = () => {
     setAberto(false);
     markSeen('novidadesVisto', VERSAO_NOVIDADES);
+    window.dispatchEvent(new Event('novidades-done'));
   };
 
   const irPara = (link: string) => {
