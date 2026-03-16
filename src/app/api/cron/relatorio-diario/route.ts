@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { enviarEmailSeguro } from '@/lib/email';
+import { enviarPushSeguro } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -198,12 +199,19 @@ export async function GET(req: NextRequest) {
             }
           }
 
-          // Hora extra (trabalhou > meta + 30min)
-          if (meta > 0 && minTrabalhados > meta + 30) {
-            const extra = minTrabalhados - meta;
+          // Hora extra (trabalhou > meta + 10min) — cria registro pendente de aprovação
+          if (meta > 0 && minTrabalhados > meta + 10) {
+            const minutosExtra = minTrabalhados - meta;
             horaExtra.push(
-              `${func.nome} - trabalhou ${formatMinToHM(minTrabalhados)}, meta ${formatMinToHM(meta)} (+${extra}min)`,
+              `${func.nome} - trabalhou ${formatMinToHM(minTrabalhados)}, meta ${formatMinToHM(meta)} (+${minutosExtra}min)`,
             );
+
+            // Criar/atualizar registro de hora extra pendente
+            await prisma.horaExtra.upsert({
+              where: { usuarioId_data: { usuarioId: func.id, data: ontemStr } },
+              create: { usuarioId: func.id, data: ontemStr, minutosExtra, status: 'PENDENTE' },
+              update: { minutosExtra },
+            });
           }
 
           // Saiu cedo (trabalhou < meta - 30min)
@@ -295,6 +303,18 @@ export async function GET(req: NextRequest) {
       for (const admin of admins) {
         await enviarEmailSeguro(admin.email, assunto, html);
         emailsEnviados++;
+      }
+
+      // Push para admins se há horas extras pendentes
+      if (horaExtra.length > 0) {
+        for (const admin of admins) {
+          enviarPushSeguro(admin.id, {
+            title: 'Horas Extras Pendentes',
+            body: `${horaExtra.length} funcionário(s) com hora extra ontem. Aprove ou rejeite.`,
+            url: '/admin/solicitacoes',
+            tag: 'hora-extra-pendente',
+          });
+        }
       }
 
       empresasProcessadas++;

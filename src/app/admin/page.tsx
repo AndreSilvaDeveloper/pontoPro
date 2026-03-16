@@ -104,6 +104,16 @@ export default function AdminDashboard() {
                         <span className="ml-auto text-[10px] text-text-dim group-hover:text-purple-400">ver →</span>
                       </Link>
                     )}
+                    {a.pendenciasHoraExtra > 0 && (
+                      <Link
+                        href="/admin/solicitacoes"
+                        className="flex items-center gap-2 text-xs text-text-muted hover:text-purple-300 transition-colors group"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+                        <span>{a.pendenciasHoraExtra} hora(s) extra(s) pendente(s)</span>
+                        <span className="ml-auto text-[10px] text-text-dim group-hover:text-purple-400">ver →</span>
+                      </Link>
+                    )}
                   </div>
                 </div>
 
@@ -192,7 +202,7 @@ export default function AdminDashboard() {
               icon={<AlertCircle size={20} className="text-purple-400" />}
               label="Ajustes"
               accent="purple"
-              badge={a.pendenciasAjuste}
+              badge={a.pendenciasAjuste + a.pendenciasHoraExtra}
             />
 
             {!a.configs.ocultar_menu_atestados && (
