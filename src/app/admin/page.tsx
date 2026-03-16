@@ -137,14 +137,12 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full xl:w-auto">
-            <div className="flex-1 xl:flex-none">
-              <div data-tour="admin-store-selector" className="flex-1 xl:flex-none">
-                <SeletorLoja empresaAtualId={a.empresa.id} empresaAtualNome={a.empresa.nome} />
-              </div>
+          <div className="flex flex-col xl:flex-row xl:items-center gap-3 w-full xl:w-auto">
+            <div data-tour="admin-store-selector" className="w-full xl:w-auto xl:flex-1">
+              <SeletorLoja empresaAtualId={a.empresa.id} empresaAtualNome={a.empresa.nome} />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-between xl:justify-end">
               <button
                 onClick={() => window.dispatchEvent(new Event(ADMIN_TOUR_RESTART_EVENT))}
                 className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/10 hover:bg-purple-500/20 rounded-xl text-purple-400 hover:text-purple-300 border border-purple-500/20 hover:border-purple-500/40 transition-all text-xs font-bold"
