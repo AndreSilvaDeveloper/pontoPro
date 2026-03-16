@@ -17,7 +17,7 @@ const VAPID_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 
 async function enviarSubscriptionAoServidor(sub: PushSubscription) {
   const subJson = sub.toJSON();
-  await fetch('/api/push/subscribe', {
+  const res = await fetch('/api/push/subscribe', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -25,6 +25,10 @@ async function enviarSubscriptionAoServidor(sub: PushSubscription) {
       keys: subJson.keys,
     }),
   });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Erro ao salvar subscription: ${res.status} ${body}`);
+  }
 }
 
 export function usePushNotifications() {
@@ -81,6 +85,12 @@ export function usePushNotifications() {
     setLoading(true);
 
     try {
+      if (!VAPID_KEY) {
+        console.error('VAPID_KEY vazia — NEXT_PUBLIC_VAPID_PUBLIC_KEY não foi incluída no build');
+        setLoading(false);
+        return false;
+      }
+
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
 
@@ -88,6 +98,7 @@ export function usePushNotifications() {
       setPermission(perm);
 
       if (perm !== 'granted') {
+        console.warn('Permissão de notificação negada:', perm);
         setLoading(false);
         return false;
       }

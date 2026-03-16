@@ -1,37 +1,41 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, BellRing, Shield, Zap, X } from 'lucide-react';
+import { BellRing, X } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { usePromptStatus } from '@/hooks/usePromptStatus';
+import { toast } from 'sonner';
+
+const STORAGE_KEY = 'push_prompt_ativado_v1';
 
 export default function PushNotificationPrompt() {
   const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
-  const { status, loading: statusLoading } = usePromptStatus();
   const [mostrar, setMostrar] = useState(false);
 
   useEffect(() => {
-    if (statusLoading || !status) return;
-
-    // Já ativou — não mostra
+    // Já ativou ou já dispensou permanentemente
     if (isSubscribed && permission === 'granted') {
-      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
+      (window as any).__pushDone = true;
+      window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Navegador não suporta ou permissão bloqueada
+    // Navegador não suporta ou bloqueou
     if (!isSupported || permission === 'denied') {
-      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
+      (window as any).__pushDone = true;
+      window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Já fechou nesta sessão
-    if (sessionStorage.getItem('push_prompt_fechado')) {
-      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
-      return;
-    }
+    // Já ativou antes (localStorage persistente)
+    try {
+      if (localStorage.getItem(STORAGE_KEY) === '1') {
+        (window as any).__pushDone = true;
+        window.dispatchEvent(new Event('push-prompt-done'));
+        return;
+      }
+    } catch {}
 
-    // Espera tour + billing + ciência terminarem antes de mostrar
+    // Espera tour + billing + ciência terminarem
     const show = () => setTimeout(() => setMostrar(true), 500);
 
     const w = window as any;
@@ -43,98 +47,75 @@ export default function PushNotificationPrompt() {
     const onReady = () => show();
     window.addEventListener('prompts-ready', onReady);
     return () => window.removeEventListener('prompts-ready', onReady);
-  }, [statusLoading, status, isSupported, permission, isSubscribed]);
+  }, [isSupported, permission, isSubscribed]);
 
   const dispensar = () => {
-    // Só esconde NESTA SESSÃO — volta na próxima vez que abrir o app
-    sessionStorage.setItem('push_prompt_fechado', 'true');
     setMostrar(false);
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch {}
+    (window as any).__pushDone = true;
     window.dispatchEvent(new Event('push-prompt-done'));
   };
 
   const ativar = async () => {
     const ok = await subscribe();
     if (ok) {
-      setMostrar(false);
-      // Ativou de verdade — nunca mais mostra
-      (window as any).__pushDone = true; window.dispatchEvent(new Event('push-prompt-done'));
+      toast.success('Notificações ativadas!');
+      dispensar();
+    } else {
+      toast.error('Não foi possível ativar. Verifique as permissões do navegador.');
     }
   };
 
   if (!mostrar) return null;
 
   return (
-    <div className="fixed inset-0 z-[190] flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
-      <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={dispensar} />
-
-      <div className="relative z-10 w-full max-w-sm bg-page border border-border-default shadow-2xl rounded-3xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-center relative">
-          <button onClick={dispensar} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors">
-            <X size={20} />
-          </button>
-          <div className="mx-auto w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
-            <BellRing size={32} className="text-white" />
-          </div>
-          <h2 className="text-white font-bold text-lg">Ative as Notificações</h2>
-          <p className="text-white/70 text-sm mt-1">Fique por dentro de tudo em tempo real</p>
-        </div>
-
-        <div className="px-6 py-5 space-y-3">
+    <div className="fixed top-4 left-4 right-4 z-[190] flex justify-center animate-in slide-in-from-top-4 fade-in duration-300">
+      <div className="w-full max-w-sm bg-surface-solid/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl shadow-2xl shadow-black/40 overflow-hidden">
+        <div className="p-4">
           <div className="flex items-start gap-3">
-            <div className="bg-emerald-500/10 p-2 rounded-xl shrink-0">
-              <Zap size={18} className="text-emerald-400" />
+            <div className="p-2 bg-purple-500/10 rounded-xl border border-purple-500/20 shrink-0">
+              <BellRing size={18} className="text-purple-400" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-text-primary">Saiba na hora</p>
-              <p className="text-xs text-text-muted">Receba aviso quando sua solicitação for aprovada ou rejeitada.</p>
-            </div>
-          </div>
 
-          <div className="flex items-start gap-3">
-            <div className="bg-amber-500/10 p-2 rounded-xl shrink-0">
-              <Bell size={18} className="text-amber-400" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-text-primary">Mesmo com o app fechado</p>
-              <p className="text-xs text-text-muted">A notificação aparece na tela do celular igual WhatsApp e Instagram.</p>
-            </div>
-          </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary">
+                Ative as notificações
+              </p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Receba avisos de horários e atualizações em tempo real.
+              </p>
 
-          <div className="flex items-start gap-3">
-            <div className="bg-blue-500/10 p-2 rounded-xl shrink-0">
-              <Shield size={18} className="text-blue-400" />
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={ativar}
+                  disabled={loading}
+                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  {loading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <BellRing size={14} />
+                      Ativar
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={dispensar}
+                  className="px-3 py-2 text-text-muted hover:text-text-primary text-xs transition-colors"
+                >
+                  Agora não
+                </button>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-bold text-text-primary">Seguro e sem spam</p>
-              <p className="text-xs text-text-muted">Apenas avisos importantes do sistema. Sem propagandas.</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="px-6 pb-6 space-y-2">
-          <button
-            onClick={ativar}
-            disabled={loading}
-            className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Ativando...
-              </>
-            ) : (
-              <>
-                <BellRing size={18} />
-                Ativar Notificações
-              </>
-            )}
-          </button>
-          <button
-            onClick={dispensar}
-            className="w-full py-2.5 text-text-muted hover:text-text-primary text-xs font-medium transition-colors"
-          >
-            Agora não
-          </button>
+            <button
+              onClick={dispensar}
+              className="p-1 text-text-dim hover:text-text-secondary rounded-lg hover:bg-hover-bg transition-colors shrink-0"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
