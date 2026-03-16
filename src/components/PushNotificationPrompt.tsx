@@ -5,35 +5,42 @@ import { BellRing, X } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { toast } from 'sonner';
 
-const STORAGE_KEY = 'push_prompt_ativado_v1';
+const ATIVADO_KEY = 'push_prompt_ativado_v1';
 
 export default function PushNotificationPrompt() {
   const { isSupported, permission, isSubscribed, loading, subscribe } = usePushNotifications();
   const [mostrar, setMostrar] = useState(false);
 
   useEffect(() => {
-    // Já ativou ou já dispensou permanentemente
+    // Já ativou com sucesso antes — nunca mais mostra
     if (isSubscribed && permission === 'granted') {
       (window as any).__pushDone = true;
       window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Navegador não suporta ou bloqueou
+    // Navegador não suporta ou bloqueou permanentemente
     if (!isSupported || permission === 'denied') {
       (window as any).__pushDone = true;
       window.dispatchEvent(new Event('push-prompt-done'));
       return;
     }
 
-    // Já ativou antes (localStorage persistente)
+    // Já ativou antes (persistente)
     try {
-      if (localStorage.getItem(STORAGE_KEY) === '1') {
+      if (localStorage.getItem(ATIVADO_KEY) === '1') {
         (window as any).__pushDone = true;
         window.dispatchEvent(new Event('push-prompt-done'));
         return;
       }
     } catch {}
+
+    // Já fechou nesta sessão — não insiste agora, mas volta na próxima
+    if (sessionStorage.getItem('push_prompt_depois')) {
+      (window as any).__pushDone = true;
+      window.dispatchEvent(new Event('push-prompt-done'));
+      return;
+    }
 
     // Espera tour + billing + ciência terminarem
     const show = () => setTimeout(() => setMostrar(true), 500);
@@ -49,18 +56,26 @@ export default function PushNotificationPrompt() {
     return () => window.removeEventListener('prompts-ready', onReady);
   }, [isSupported, permission, isSubscribed]);
 
-  const dispensar = () => {
-    setMostrar(false);
-    try { localStorage.setItem(STORAGE_KEY, '1'); } catch {}
+  const fireDone = () => {
     (window as any).__pushDone = true;
     window.dispatchEvent(new Event('push-prompt-done'));
   };
 
+  // "Agora não" — esconde só nesta sessão, volta na próxima
+  const dispensar = () => {
+    setMostrar(false);
+    sessionStorage.setItem('push_prompt_depois', '1');
+    fireDone();
+  };
+
+  // "Ativar" — ativa e nunca mais mostra
   const ativar = async () => {
     const ok = await subscribe();
     if (ok) {
       toast.success('Notificações ativadas!');
-      dispensar();
+      setMostrar(false);
+      try { localStorage.setItem(ATIVADO_KEY, '1'); } catch {}
+      fireDone();
     } else {
       toast.error('Não foi possível ativar. Verifique as permissões do navegador.');
     }
