@@ -134,7 +134,6 @@ export async function GET(req: NextRequest) {
       const pontosOntem = await prisma.ponto.findMany({
         where: {
           usuarioId: { in: funcionarioIds },
-          tipo: 'PONTO',
           dataHora: {
             gte: inicioOntem,
             lte: fimOntem,
