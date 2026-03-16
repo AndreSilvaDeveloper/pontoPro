@@ -10,6 +10,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=BEcU9LWV3PkjR0C5JQFXSU1ZHQP2IbixATtrf2O3CYo42VLqwbliJe-SYIfL_BBhZqs5tIKOUaKCygZ_LBHd810
 RUN npm run build
 
 FROM node:20-bookworm-slim AS runner
