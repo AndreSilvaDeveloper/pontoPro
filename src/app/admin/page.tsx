@@ -27,7 +27,6 @@ import {
 
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 import DashboardGraficos from '@/components/DashboardGraficos';
-import ModalNovidades from '@/components/ModalNovidades';
 import SeletorLoja from '@/components/SeletorLoja';
 import ModalEditarJornada from '@/components/ModalEditarJornada';
 import ModalLancarAusencia from '@/components/ModalLancarAusencia';
@@ -38,7 +37,6 @@ import BillingAlertModal from '@/components/admin/BillingAlertModal';
 import CienciaCelularAlertModal from '@/components/admin/CienciaCelularAlertModal';
 import ActionCard from '@/components/admin/ActionCard';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
-import InstallPrompt from '@/components/InstallPrompt';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -177,7 +175,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <InstallPrompt />
         <PushNotificationPrompt />
 
         {/* === AÇÕES RÁPIDAS === */}
@@ -567,7 +564,6 @@ export default function AdminDashboard() {
           />
         )}
 
-        <ModalNovidades tipo="ADMIN" />
       </div>
     </div>
   );
