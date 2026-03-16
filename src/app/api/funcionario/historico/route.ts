@@ -57,17 +57,28 @@ export async function GET(request: Request) {
         }
     });
 
+    // Buscar horas extras aprovadas do funcionário
+    const horasExtrasAprovadas = await prisma.horaExtra.findMany({
+      where: {
+        usuarioId: session.user.id,
+        status: 'APROVADO',
+        data: { gte: inicio, lte: fim },
+      },
+      select: { data: true, minutosExtra: true },
+    });
+
     // Mescla Pontos e Ausências numa lista só para o Front
     const listaUnificada = [
         ...pontos.map(p => ({ ...p, tipo: 'PONTO', subTipo: p.tipo })),
         ...ausencias.map(a => ({ ...a, dataHora: a.dataInicio, tipo: 'AUSENCIA', subTipo: a.tipo, extra: { dataFim: a.dataFim } }))
     ].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
-    return NextResponse.json({ 
-        pontos: listaUnificada, 
+    return NextResponse.json({
+        pontos: listaUnificada,
         empresaNome: usuario?.empresa?.nome || 'Minha Empresa',
         jornada: usuario?.jornada,
-        feriados: usuario?.empresa?.feriados?.map(f => f.data.toISOString().split('T')[0]) || []
+        feriados: usuario?.empresa?.feriados?.map(f => f.data.toISOString().split('T')[0]) || [],
+        horasExtrasAprovadas: horasExtrasAprovadas.map(h => ({ data: h.data, minutosExtra: h.minutosExtra })),
     });
 
   } catch (error) {
