@@ -79,6 +79,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // --- Backfill de horas extras: ?dias=30 (só cria HoraExtra, sem email) ---
+    const { searchParams } = new URL(req.url);
+    const diasParam = searchParams.get('dias');
+    if (diasParam) {
+      return await backfillHorasExtras(parseInt(diasParam, 10));
+    }
+
     // --- Data de ontem ---
     const agora = new Date();
     const ontem = new Date(agora);
@@ -338,4 +345,74 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+// === BACKFILL: processar horas extras dos últimos N dias (sem enviar email) ===
+async function backfillHorasExtras(dias: number) {
+  const empresas = await prisma.empresa.findMany({
+    where: { status: 'ATIVO' },
+    include: {
+      usuarios: { select: { id: true, nome: true, cargo: true, jornada: true } },
+    },
+  });
+
+  let totalCriados = 0;
+
+  for (let d = dias; d >= 1; d--) {
+    const data = new Date();
+    data.setDate(data.getDate() - d);
+    const ano = data.getFullYear();
+    const mes = data.getMonth();
+    const dia = data.getDate();
+    const diaSemana = data.getDay();
+
+    const dataStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    const inicioDia = new Date(ano, mes, dia, 0, 0, 0, 0);
+    const fimDia = new Date(ano, mes, dia, 23, 59, 59, 999);
+
+    for (const empresa of empresas) {
+      const funcionarios = empresa.usuarios.filter(u => u.cargo !== 'ADMIN');
+      const funcionarioIds = funcionarios.map(f => f.id);
+      if (funcionarioIds.length === 0) continue;
+
+      const pontosDia = await prisma.ponto.findMany({
+        where: {
+          usuarioId: { in: funcionarioIds },
+          dataHora: { gte: inicioDia, lte: fimDia },
+        },
+        orderBy: { dataHora: 'asc' },
+      });
+
+      const pontosPorUsuario: Record<string, any[]> = {};
+      for (const p of pontosDia) {
+        if (!pontosPorUsuario[p.usuarioId]) pontosPorUsuario[p.usuarioId] = [];
+        pontosPorUsuario[p.usuarioId].push(p);
+      }
+
+      for (const func of funcionarios) {
+        const jornada = (func.jornada as any) || {};
+        const meta = getMetaMinutos(jornada, diaSemana);
+        const pontos = pontosPorUsuario[func.id] || [];
+        if (pontos.length === 0) continue;
+
+        const minTrabalhados = calcularMinutosTrabalhados(pontos);
+
+        const ehHoraExtra = meta > 0
+          ? minTrabalhados > meta + 10
+          : minTrabalhados > 10;
+
+        if (ehHoraExtra) {
+          const minutosExtra = meta > 0 ? minTrabalhados - meta : minTrabalhados;
+          await prisma.horaExtra.upsert({
+            where: { usuarioId_data: { usuarioId: func.id, data: dataStr } },
+            create: { usuarioId: func.id, data: dataStr, minutosExtra, status: 'PENDENTE' },
+            update: { minutosExtra },
+          });
+          totalCriados++;
+        }
+      }
+    }
+  }
+
+  return NextResponse.json({ backfill: true, dias, totalCriados });
 }

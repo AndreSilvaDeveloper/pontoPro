@@ -120,7 +120,7 @@ export default function MeuHistorico() {
   const ajustarId = searchParams.get('ajustar');
 
   // === CÁLCULO INTELIGENTE (COM TOLERÂNCIA CLT DE 10 MINUTOS) ===
-  const calcularHorasAvancado = (listaRegistros: any[], jornadaConfig: any, listaFeriados: string[]) => {
+  const calcularHorasAvancado = (listaRegistros: any[], jornadaConfig: any, listaFeriados: string[], heAprovadas?: Array<{ data: string; minutosExtra: number }>) => {
     if (!listaRegistros) return { total: '0h 0m', saldo: '0h 0m', saldoPositivo: true };
 
     const agora = new Date();
@@ -297,7 +297,23 @@ export default function MeuHistorico() {
         minutosTotalTrabalhado += trabalhadoDia;
 
         if (!diasIsentos.has(diaStr)) {
-          let saldoDia = trabalhadoDia - metaDia;
+          // Cortar hora extra no saldo se não aprovada
+          const toleranciaHE = 10;
+          let trabalhadoEfetivo = trabalhadoDia;
+
+          const temHoraExtra = metaDia > 0
+            ? trabalhadoDia > metaDia + toleranciaHE
+            : trabalhadoDia > toleranciaHE;
+
+          if (temHoraExtra) {
+            trabalhadoEfetivo = metaDia; // corta no expediente
+            const aprovada = heAprovadas?.find(h => h.data === diaStr);
+            if (aprovada) {
+              trabalhadoEfetivo = metaDia + aprovada.minutosExtra;
+            }
+          }
+
+          let saldoDia = trabalhadoEfetivo - metaDia;
           if (Math.abs(saldoDia) <= 10) saldoDia = 0;
           saldoTotalBanco += saldoDia;
         }
@@ -329,7 +345,7 @@ export default function MeuHistorico() {
         setEmpresaNome(resHistorico.data.empresaNome);
         setJornada(resHistorico.data.jornada);
         setFeriados(resHistorico.data.feriados);
-        setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados));
+        setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas));
       } else {
         setPontos(resHistorico.data);
       }
