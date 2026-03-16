@@ -79,6 +79,7 @@ model Usuario {
   ausencias          Ausencia[]
   pontos             Ponto[]
   solicitacoes       SolicitacaoAjuste[]
+  horasExtras        HoraExtra[]
   empresa            Empresa?            @relation(fields: [empresaId], references: [id])
 
   deveDarCienciaCelular   Boolean   @default(false)
@@ -207,5 +208,20 @@ model LembretePush {
   @@unique([usuarioId, tipo, data])
   @@index([data])
   @@map("lembrete_push")
+}
+
+model HoraExtra {
+  id              String    @id @default(cuid())
+  usuarioId       String
+  data            String    // "YYYY-MM-DD"
+  minutosExtra    Int       // minutos além do expediente
+  status          String    @default("PENDENTE") // PENDENTE | APROVADO | REJEITADO
+  aprovadoPorId   String?
+  aprovadoPorNome String?
+  aprovadoEm      DateTime?
+  criadoEm        DateTime  @default(now())
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, data])
 }
 

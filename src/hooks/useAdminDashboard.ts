@@ -81,6 +81,8 @@ export function useAdminDashboard() {
   const [notificacaoVisivel, setNotificacaoVisivel] = useState(false);
   const [pendenciasAjuste, setPendenciasAjuste] = useState(0);
   const [pendenciasAusencia, setPendenciasAusencia] = useState(0);
+  const [pendenciasHoraExtra, setPendenciasHoraExtra] = useState(0);
+  const [horasExtrasAprovadas, setHorasExtrasAprovadas] = useState<Array<{ usuarioId: string; data: string; minutosExtra: number }>>([]);
 
   // ✅ NOVO: Billing status central
   const [billing, setBilling] = useState<BillingStatus | null>(null);
@@ -127,6 +129,8 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         resFeriados,
         resEmpresa,
         resBilling,
+        resHEAprovadas,
+        resHEPendentes,
       ] = await Promise.all([
         axios.get('/api/admin/pontos-todos'),
         axios.get('/api/admin/ausencias-aprovadas'),
@@ -136,6 +140,8 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         axios.get('/api/admin/feriados'),
         axios.get('/api/admin/empresa'),
         axios.get('/api/empresa/billing-status').catch(() => ({ data: null })),
+        axios.get('/api/admin/horas-extras?status=APROVADO').catch(() => ({ data: [] })),
+        axios.get('/api/admin/horas-extras?status=PENDENTE').catch(() => ({ data: [] })),
       ]);
 
       setUsuarios(resUsers.data);
@@ -160,6 +166,14 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       setEmpresa(resEmpresa.data);
       setPendenciasAjuste(resSolicitacoes.data.length);
       setPendenciasAusencia(resPendencias.data.length);
+      setPendenciasHoraExtra((resHEPendentes.data || []).length);
+      setHorasExtrasAprovadas(
+        (resHEAprovadas.data || []).map((h: any) => ({
+          usuarioId: h.usuarioId,
+          data: h.data,
+          minutosExtra: h.minutosExtra,
+        }))
+      );
 
       if (resBilling?.data?.ok) {
         setBilling(resBilling.data.billing || null);
@@ -209,7 +223,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
   }, [carregarDados]);
 
   useEffect(() => {
-    const total = pendenciasAjuste + pendenciasAusencia;
+    const total = pendenciasAjuste + pendenciasAusencia + pendenciasHoraExtra;
     if (total > 0) {
       setNotificacaoVisivel(true);
       if (!somTocadoRef.current) {
@@ -221,7 +235,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       const timer = setTimeout(() => setNotificacaoVisivel(false), 8000);
       return () => clearTimeout(timer);
     }
-  }, [pendenciasAjuste, pendenciasAusencia]);
+  }, [pendenciasAjuste, pendenciasAusencia, pendenciasHoraExtra]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -370,11 +384,12 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       registros,
       usuarios,
       feriados,
-      feriadosParciais, 
+      feriadosParciais,
       dataInicio,
       dataFim,
+      horasExtrasAprovadas,
     });
-  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios]);
+  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas]);
 
   const configs = empresa.configuracoes || {};
 
@@ -396,6 +411,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     setNotificacaoVisivel,
     pendenciasAjuste,
     pendenciasAusencia,
+    pendenciasHoraExtra,
 
     filtroUsuario,
     setFiltroUsuario,

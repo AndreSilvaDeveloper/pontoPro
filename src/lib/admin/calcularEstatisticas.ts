@@ -111,8 +111,9 @@ export function calcularEstatisticas(args: {
   feriadosParciais?: Record<string, { inicio: string; fim: string }>;
   dataInicio: string;
   dataFim: string;
+  horasExtrasAprovadas?: Array<{ usuarioId: string; data: string; minutosExtra: number }>;
 }) {
-  const { filtroUsuario, registros, usuarios, feriados, feriadosParciais, dataInicio, dataFim } = args;
+  const { filtroUsuario, registros, usuarios, feriados, feriadosParciais, dataInicio, dataFim, horasExtrasAprovadas } = args;
 
   if (!filtroUsuario) return null;
 
@@ -535,7 +536,23 @@ export function calcularEstatisticas(args: {
       const meta = getMetaDoDia(loopData);
       const trabalhado = minutosPorDia[dataStr] || 0;
 
-      let saldoDia = trabalhado - meta;
+      // Cortar hora extra no saldo: se trabalhou além da meta + tolerância, corta no expediente
+      // A menos que haja aprovação explícita
+      const toleranciaHE = 10;
+      let trabalhadoEfetivo = trabalhado;
+
+      if (meta > 0 && trabalhado > meta + toleranciaHE) {
+        trabalhadoEfetivo = meta; // corta no expediente
+
+        const aprovada = horasExtrasAprovadas?.find(
+          h => h.usuarioId === filtroUsuario && h.data === dataStr
+        );
+        if (aprovada) {
+          trabalhadoEfetivo = meta + aprovada.minutosExtra;
+        }
+      }
+
+      let saldoDia = trabalhadoEfetivo - meta;
 
       if (Math.abs(saldoDia) <= 10) {
         saldoDia = 0;
