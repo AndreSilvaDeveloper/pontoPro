@@ -538,11 +538,16 @@ export function calcularEstatisticas(args: {
 
       // Cortar hora extra no saldo: se trabalhou além da meta + tolerância, corta no expediente
       // A menos que haja aprovação explícita
+      // Também corta quando dia é folga (meta=0) mas trabalhou
       const toleranciaHE = 10;
       let trabalhadoEfetivo = trabalhado;
 
-      if (meta > 0 && trabalhado > meta + toleranciaHE) {
-        trabalhadoEfetivo = meta; // corta no expediente
+      const temHoraExtra = meta > 0
+        ? trabalhado > meta + toleranciaHE
+        : trabalhado > toleranciaHE; // folga: qualquer trabalho é extra
+
+      if (temHoraExtra) {
+        trabalhadoEfetivo = meta; // corta no expediente (0 se folga)
 
         const aprovada = horasExtrasAprovadas?.find(
           h => h.usuarioId === filtroUsuario && h.data === dataStr

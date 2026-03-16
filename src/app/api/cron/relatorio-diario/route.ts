@@ -199,9 +199,15 @@ export async function GET(req: NextRequest) {
             }
           }
 
-          // Hora extra (trabalhou > meta + 10min) — cria registro pendente de aprovação
-          if (meta > 0 && minTrabalhados > meta + 10) {
-            const minutosExtra = minTrabalhados - meta;
+          // Hora extra — cria registro pendente de aprovação
+          // Caso 1: dia ativo e trabalhou além da meta + 10min
+          // Caso 2: dia de folga (meta=0) mas trabalhou mesmo assim
+          const ehHoraExtra = meta > 0
+            ? minTrabalhados > meta + 10
+            : minTrabalhados > 10; // folga: qualquer trabalho >10min é extra
+
+          if (ehHoraExtra) {
+            const minutosExtra = meta > 0 ? minTrabalhados - meta : minTrabalhados;
             horaExtra.push(
               `${func.nome} - trabalhou ${formatMinToHM(minTrabalhados)}, meta ${formatMinToHM(meta)} (+${minutosExtra}min)`,
             );
