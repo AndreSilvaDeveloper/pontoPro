@@ -49,6 +49,9 @@ export async function POST(req: Request) {
         cargo: true,
         empresaId: true,
         deveTrocarSenha: true,
+        deveCadastrarFoto: true,
+        assinaturaUrl: true,
+        deveDarCienciaCelular: true,
       },
     });
 
@@ -91,7 +94,12 @@ export async function POST(req: Request) {
 
       cargo: target.cargo,
       empresaId: target.empresaId ?? null,
-      deveTrocarSenha: target.deveTrocarSenha,
+
+      // Impersonate pula onboarding
+      deveTrocarSenha: false,
+      deveCadastrarFoto: false,
+      deveDarCienciaCelular: false,
+      temAssinatura: true,
 
       // ✅ marca
       impersonatedBy: superId,

@@ -13,6 +13,10 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
   useEffect(() => {
     if (status !== 'authenticated') return;
 
+    // SUPER_ADMIN ou impersonate pula todas as verificações de onboarding
+    // @ts-ignore
+    if (session?.user?.cargo === 'SUPER_ADMIN' || session?.user?.impersonatedBy) return;
+
     // Bloqueio financeiro
     if ((session as any)?.error === 'BILLING_BLOCK') {
       router.push('/acesso_bloqueado');

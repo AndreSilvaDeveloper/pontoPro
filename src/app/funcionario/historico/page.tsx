@@ -83,6 +83,7 @@ export default function MeuHistorico() {
 
   const [pontos, setPontos] = useState<any[]>([]);
   const [empresaNome, setEmpresaNome] = useState('Carregando...');
+  const [funcionarioNome, setFuncionarioNome] = useState('');
   const [jornada, setJornada] = useState<any>(null);
   const [feriados, setFeriados] = useState<string[]>([]);
   const [resumo, setResumo] = useState<{ total: string; saldo: string; saldoPositivo: boolean } | null>(null);
@@ -107,7 +108,7 @@ export default function MeuHistorico() {
   const [excluindo, setExcluindo] = useState(false);
 
   // Calendário
-  const [mostrarCalendario, setMostrarCalendario] = useState(true);
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
   const [mesCalendario, setMesCalendario] = useState(new Date());
 
   // Solicitação expandida
@@ -233,15 +234,40 @@ export default function MeuHistorico() {
       if (diaSemanaIndex === 6) {
         const configSab = jornadaConfig['sab'];
         const temConfiguracao = configSab && configSab.ativo;
+        const regra = configSab?.regra;
+        const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
+
+        // Sábados específicos do mês (ex: 1º e 3º)
+        if (temConfiguracao && regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0) {
+          const getNumSabNoMes = (d: Date) => {
+            if (getDay(d) !== 6) return 0;
+            let count = 0;
+            for (let day = 1; day <= d.getDate(); day++) {
+              if (new Date(d.getFullYear(), d.getMonth(), day).getDay() === 6) count++;
+            }
+            return count;
+          };
+          const numero = getNumSabNoMes(data);
+          if (numero === 0 || !quaisSab.includes(numero)) return 0;
+          return calcMinutosConfig(configSab) || 240;
+        }
+
+        // Sábado alternado
+        const isSabadoAlternado = configSab?.alternado === true;
+        if (isSabadoAlternado) {
+          const semanaISO = getISOWeek(data);
+          const paridade = typeof configSab?.paridadeSemanaISO === 'number' ? configSab.paridadeSemanaISO : 0;
+          if (semanaISO % 2 !== paridade) return 0; // folga — meta = 0
+          return temConfiguracao ? (calcMinutosConfig(configSab) || 240) : 240;
+        }
+
+        // Trabalhou sábado sem configuração: meta padrão 4h
         if (trabalhouSabado && !temConfiguracao) return 240;
 
         // Sábado regular configurado mas não trabalhado: meta = 0 (compensado nos dias úteis)
         if (temConfiguracao && !trabalhouSabado) {
-          const regra = configSab?.regra;
-          const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
-          const isAlternado = configSab?.alternado === true;
           const temRegraEfetiva = regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0;
-          if (!temRegraEfetiva && !isAlternado) return 0;
+          if (!temRegraEfetiva && !isSabadoAlternado) return 0;
         }
       }
 
@@ -343,6 +369,7 @@ export default function MeuHistorico() {
       if (resHistorico.data.pontos) {
         setPontos(resHistorico.data.pontos);
         setEmpresaNome(resHistorico.data.empresaNome);
+        setFuncionarioNome(resHistorico.data.funcionarioNome || '');
         setJornada(resHistorico.data.jornada);
         setFeriados(resHistorico.data.feriados);
         setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas));
@@ -364,7 +391,78 @@ export default function MeuHistorico() {
     carregar();
   }, [carregar]);
 
+  // === SUGESTÕES INTELIGENTES ===
+  type Sugestao = { data: string; tipo: string; horario: string; label: string };
+
+  const detectarPontosFaltantes = useCallback((): Sugestao[] => {
+    if (!jornada || !pontos) return [];
+
+    const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+    const hoje = new Date();
+    const sugestoes: Sugestao[] = [];
+
+    // Analisar últimos 7 dias (incluindo hoje)
+    for (let d = 0; d < 7; d++) {
+      const dia = new Date(hoje);
+      dia.setDate(dia.getDate() - d);
+      const diaStr = format(dia, 'yyyy-MM-dd');
+      const diaSemana = diasMap[getDay(dia)];
+      const configDia = jornada[diaSemana];
+
+      if (!configDia || !configDia.ativo) continue;
+      if (feriados.includes(diaStr)) continue;
+
+      // Pontos desse dia (excluindo ausências)
+      const pontosDoDia = pontos
+        .filter(p => p.tipo !== 'AUSENCIA' && format(new Date(p.dataHora), 'yyyy-MM-dd') === diaStr)
+        .sort((a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+
+      const tipos = pontosDoDia.map((p: any) => p.subTipo || p.tipo);
+
+      if (pontosDoDia.length === 0) {
+        // Dia sem nenhum ponto — sugerir entrada
+        if (d > 0 && configDia.e1) { // não sugere entrada para hoje (pode ainda não ter chegado)
+          sugestoes.push({ data: diaStr, tipo: 'ENTRADA', horario: configDia.e1, label: `Entrada em ${format(dia, 'dd/MM')}` });
+        }
+        continue;
+      }
+
+      const temEntrada = tipos.includes('ENTRADA');
+      const temSaidaAlmoco = tipos.includes('SAIDA_ALMOCO');
+      const temVoltaAlmoco = tipos.includes('VOLTA_ALMOCO');
+      const temSaida = tipos.includes('SAIDA');
+      const isHoje = d === 0;
+
+      // Jornada contínua (sem almoço)
+      const jornadaContinua = !configDia.s1 || !/^\d{2}:\d{2}$/.test(configDia.s1);
+
+      if (temEntrada && !temSaida && !isHoje) {
+        // Bateu entrada mas não bateu saída (dia passado)
+        sugestoes.push({ data: diaStr, tipo: 'SAIDA', horario: configDia.s2 || '18:00', label: `Saída em ${format(dia, 'dd/MM')}` });
+      }
+
+      if (!jornadaContinua) {
+        if (temEntrada && !temSaidaAlmoco && !temSaida && !isHoje) {
+          sugestoes.push({ data: diaStr, tipo: 'SAIDA_ALMOCO', horario: configDia.s1 || '12:00', label: `Almoço em ${format(dia, 'dd/MM')}` });
+        }
+
+        if (temSaidaAlmoco && !temVoltaAlmoco && !isHoje) {
+          sugestoes.push({ data: diaStr, tipo: 'VOLTA_ALMOCO', horario: configDia.e2 || '13:00', label: `Volta almoço em ${format(dia, 'dd/MM')}` });
+        }
+      }
+    }
+
+    return sugestoes.slice(0, 5); // máximo 5 sugestões
+  }, [pontos, jornada, feriados]);
+
   // === AÇÕES DO MODAL ===
+  const aplicarSugestao = (sug: Sugestao) => {
+    setDataNova(sug.data);
+    setTipoNovo(sug.tipo);
+    setHoraNova(sug.horario);
+    setMotivo('Esqueci de bater o ponto');
+  };
+
   const abrirInclusao = () => {
     setModoModal('INCLUSAO');
     setPontoSelecionado(null);
@@ -601,23 +699,24 @@ export default function MeuHistorico() {
 
             {/* Filtros */}
             <div className="bg-surface/60 backdrop-blur-md p-4 rounded-2xl border border-border-subtle space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">De</label>
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">De</span>
                   <input
                     type="date"
                     value={dataInicio}
                     onChange={e => setDataInicio(e.target.value)}
-                    className="w-full bg-input-solid/60 border border-border-default p-2.5 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 transition-colors text-center"
+                    className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Até</label>
+                <span className="text-text-dim text-xs hidden sm:block">até</span>
+                <div className="flex items-center gap-2 flex-1 border-t sm:border-t-0 border-border-subtle pt-2 sm:pt-0">
+                  <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">Até</span>
                   <input
                     type="date"
                     value={dataFim}
                     onChange={e => setDataFim(e.target.value)}
-                    className="w-full bg-input-solid/60 border border-border-default p-2.5 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 transition-colors text-center"
+                    className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
                   />
                 </div>
               </div>
@@ -642,7 +741,7 @@ export default function MeuHistorico() {
                       filtro={{
                         inicio: criarDataLocal(dataInicio),
                         fim: criarDataLocal(dataFim),
-                        usuario: 'Eu',
+                        usuario: funcionarioNome || 'Eu',
                       }}
                       resumoHoras={resumo}
                       nomeEmpresa={empresaNome}
@@ -879,14 +978,14 @@ export default function MeuHistorico() {
                               <div className={`w-full h-full rounded-full ${cfg.bg}`} />
                             </div>
 
-                            <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:bg-white/[0.02] ${cfg.border} ${cfg.bg}`}>
-                              {/* Ícone */}
-                              <div className={`p-2 rounded-lg bg-input-solid/40 shrink-0`}>
-                                <Icon size={16} className={cfg.cor} />
-                              </div>
+                            <div className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl border transition-all hover:bg-white/[0.02] ${cfg.border} ${cfg.bg}`}>
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                {/* Ícone */}
+                                <div className={`p-2 rounded-lg bg-input-solid/40 shrink-0`}>
+                                  <Icon size={16} className={cfg.cor} />
+                                </div>
 
-                              {/* Info */}
-                              <div className="flex-1 min-w-0">
+                                {/* Info */}
                                 <div className="flex items-center gap-2">
                                   <span className="text-lg font-bold text-text-primary font-mono tracking-tight">
                                     {format(new Date(ponto.dataHora), 'HH:mm')}
@@ -899,7 +998,7 @@ export default function MeuHistorico() {
 
                               {/* Ações */}
                               {ponto.tipo !== 'AUSENCIA' && (
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0 ml-auto">
                                   <button
                                     onClick={() => abrirEdicao(ponto)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-text-faint hover:text-purple-400 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all active:scale-95"
@@ -1087,34 +1186,85 @@ export default function MeuHistorico() {
                   </div>
                 )}
 
-                {modoModal === 'INCLUSAO' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Data</label>
-                      <input
-                        type="date"
-                        value={dataNova}
-                        onChange={e => setDataNova(e.target.value)}
-                        className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-sm text-center outline-none focus:border-purple-500 transition-colors"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Tipo</label>
-                      <select
-                        value={tipoNovo}
-                        onChange={e => setTipoNovo(e.target.value)}
-                        className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
-                      >
-                        <option value="ENTRADA">Entrada</option>
-                        <option value="SAIDA_INTERVALO">Saída Café</option>
-                        <option value="VOLTA_INTERVALO">Volta Café</option>
-                        <option value="SAIDA_ALMOCO">Saída Almoço</option>
-                        <option value="VOLTA_ALMOCO">Volta Almoço</option>
-                        <option value="SAIDA">Saída</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
+                {modoModal === 'INCLUSAO' && (() => {
+                  const sugestoes = detectarPontosFaltantes();
+                  const tipoLabels: Record<string, string> = {
+                    ENTRADA: 'Entrada',
+                    SAIDA: 'Saída',
+                    SAIDA_ALMOCO: 'Almoço',
+                    VOLTA_ALMOCO: 'Volta Almoço',
+                    SAIDA_INTERVALO: 'Saída Café',
+                    VOLTA_INTERVALO: 'Volta Café',
+                  };
+                  const tipoCores: Record<string, string> = {
+                    ENTRADA: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+                    SAIDA: 'text-red-400 border-red-500/30 bg-red-500/10',
+                    SAIDA_ALMOCO: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
+                    VOLTA_ALMOCO: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+                    SAIDA_INTERVALO: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+                    VOLTA_INTERVALO: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
+                  };
+
+                  return (
+                    <>
+                      {/* Sugestões inteligentes */}
+                      {sugestoes.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-[10px] text-text-faint font-bold uppercase ml-1">Pontos faltando</p>
+                          <div className="space-y-1.5">
+                            {sugestoes.map((sug, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => aplicarSugestao(sug)}
+                                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] hover:brightness-110 ${tipoCores[sug.tipo] || 'text-text-muted border-border-subtle bg-surface'}`}
+                              >
+                                <div className="flex-1 text-left">
+                                  <p className="text-xs font-bold">{sug.label}</p>
+                                  <p className="text-[10px] opacity-70">{tipoLabels[sug.tipo] || sug.tipo} - {sug.horario}</p>
+                                </div>
+                                <span className="text-[10px] font-bold opacity-60">Usar</span>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-3 py-1">
+                            <div className="flex-1 h-px bg-border-subtle" />
+                            <span className="text-[10px] text-text-dim">ou preencha manualmente</span>
+                            <div className="flex-1 h-px bg-border-subtle" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Campos manuais */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Data</label>
+                          <input
+                            type="date"
+                            value={dataNova}
+                            onChange={e => setDataNova(e.target.value)}
+                            className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-sm text-center outline-none focus:border-purple-500 transition-colors"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Tipo</label>
+                          <select
+                            value={tipoNovo}
+                            onChange={e => setTipoNovo(e.target.value)}
+                            className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
+                          >
+                            <option value="ENTRADA">Entrada</option>
+                            <option value="SAIDA_INTERVALO">Saída Café</option>
+                            <option value="VOLTA_INTERVALO">Volta Café</option>
+                            <option value="SAIDA_ALMOCO">Saída Almoço</option>
+                            <option value="VOLTA_ALMOCO">Volta Almoço</option>
+                            <option value="SAIDA">Saída</option>
+                          </select>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {modoModal === 'EDICAO' && (
                   <div className="bg-surface p-3 rounded-xl border border-border-subtle text-center">

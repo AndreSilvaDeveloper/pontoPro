@@ -8,6 +8,7 @@ import {
   AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock,
   PlusCircle, X, Save, HelpCircle, ShieldAlert, Briefcase, UtensilsCrossed, Pause
 } from 'lucide-react';
+import { format, getDay } from 'date-fns';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour';
@@ -328,14 +329,91 @@ export default function Home() {
   };
 
   // === FUNÇÕES DA NOVA MODAL DE INCLUSÃO ===
+  // === SUGESTÕES INTELIGENTES ===
+  type Sugestao = { data: string; tipo: string; horario: string; label: string };
+  const [sugestoes, setSugestoes] = useState<Sugestao[]>([]);
+  const [carregandoSugestoes, setCarregandoSugestoes] = useState(false);
+
+  const carregarSugestoes = async () => {
+    setCarregandoSugestoes(true);
+    try {
+      const hoje = new Date();
+      const inicio = new Date(hoje);
+      inicio.setDate(inicio.getDate() - 7);
+      const inicioStr = format(inicio, 'yyyy-MM-dd');
+      const fimStr = format(hoje, 'yyyy-MM-dd');
+
+      const res = await axios.get(`/api/funcionario/historico?inicio=${inicioStr}&fim=${fimStr}`);
+      const { pontos: registros, jornada: jornadaCompleta, feriados: feriadosList } = res.data;
+      if (!jornadaCompleta || !registros) { setSugestoes([]); return; }
+
+      const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+      const resultado: Sugestao[] = [];
+
+      for (let d = 1; d <= 7; d++) {
+        const dia = new Date(hoje);
+        dia.setDate(dia.getDate() - d);
+        const diaStr = format(dia, 'yyyy-MM-dd');
+        const diaSemana = diasMap[getDay(dia)];
+        const configDia = jornadaCompleta[diaSemana];
+
+        if (!configDia || !configDia.ativo) continue;
+        if (feriadosList?.includes(diaStr)) continue;
+
+        const pontosDoDia = (registros || [])
+          .filter((p: any) => p.tipo !== 'AUSENCIA' && format(new Date(p.dataHora), 'yyyy-MM-dd') === diaStr)
+          .sort((a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+
+        const tipos = pontosDoDia.map((p: any) => p.subTipo || p.tipo);
+
+        if (pontosDoDia.length === 0 && configDia.e1) {
+          resultado.push({ data: diaStr, tipo: 'ENTRADA', horario: configDia.e1, label: `Entrada em ${format(dia, 'dd/MM')}` });
+          continue;
+        }
+
+        const temEntrada = tipos.includes('ENTRADA');
+        const temSaidaAlmoco = tipos.includes('SAIDA_ALMOCO');
+        const temVoltaAlmoco = tipos.includes('VOLTA_ALMOCO');
+        const temSaida = tipos.includes('SAIDA');
+        const jornadaContinua = !configDia.s1 || !/^\d{2}:\d{2}$/.test(configDia.s1);
+
+        if (temEntrada && !temSaida) {
+          resultado.push({ data: diaStr, tipo: 'SAIDA', horario: configDia.s2 || '18:00', label: `Saída em ${format(dia, 'dd/MM')}` });
+        }
+        if (!jornadaContinua) {
+          if (temEntrada && !temSaidaAlmoco && !temSaida) {
+            resultado.push({ data: diaStr, tipo: 'SAIDA_ALMOCO', horario: configDia.s1 || '12:00', label: `Almoço em ${format(dia, 'dd/MM')}` });
+          }
+          if (temSaidaAlmoco && !temVoltaAlmoco) {
+            resultado.push({ data: diaStr, tipo: 'VOLTA_ALMOCO', horario: configDia.e2 || '13:00', label: `Volta almoço em ${format(dia, 'dd/MM')}` });
+          }
+        }
+      }
+
+      setSugestoes(resultado.slice(0, 5));
+    } catch {
+      setSugestoes([]);
+    } finally {
+      setCarregandoSugestoes(false);
+    }
+  };
+
+  const aplicarSugestao = (sug: Sugestao) => {
+    setDataNova(sug.data);
+    setTipoNovo(sug.tipo as TipoSolicitacao);
+    setHoraNova(sug.horario);
+    setMotivo('Esqueci de bater o ponto');
+  };
+
   const abrirModalInclusao = () => {
     const hoje = new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }).split('/').reverse().join('-');
     setDataNova(hoje);
     setHoraNova('');
     setTipoNovo('ENTRADA');
     setMotivo('');
-    setAvisoInclusao(null); // ✅ limpa avisos
+    setAvisoInclusao(null);
     setModalInclusaoAberto(true);
+    carregarSugestoes();
   };
 
   const enviarSolicitacaoInclusao = async () => {
@@ -1020,6 +1098,52 @@ export default function Home() {
               </button>
             )}
 
+            {/* Sugestões inteligentes */}
+            {carregandoSugestoes ? (
+              <div className="flex items-center justify-center gap-2 py-3 text-text-muted text-xs">
+                <Loader2 size={14} className="animate-spin" /> Verificando pontos faltantes...
+              </div>
+            ) : sugestoes.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] text-text-faint font-bold uppercase ml-1">Pontos faltando</p>
+                <div className="space-y-1.5">
+                  {sugestoes.map((sug, idx) => {
+                    const tipoCores: Record<string, string> = {
+                      ENTRADA: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+                      SAIDA: 'text-red-400 border-red-500/30 bg-red-500/10',
+                      SAIDA_ALMOCO: 'text-orange-400 border-orange-500/30 bg-orange-500/10',
+                      VOLTA_ALMOCO: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+                      SAIDA_INTERVALO: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+                      VOLTA_INTERVALO: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
+                    };
+                    const tipoLabels: Record<string, string> = {
+                      ENTRADA: 'Entrada', SAIDA: 'Saída', SAIDA_ALMOCO: 'Almoço',
+                      VOLTA_ALMOCO: 'Volta Almoço', SAIDA_INTERVALO: 'Saída Café', VOLTA_INTERVALO: 'Volta Café',
+                    };
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => aplicarSugestao(sug)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] hover:brightness-110 ${tipoCores[sug.tipo] || 'text-text-muted border-border-subtle bg-surface'}`}
+                      >
+                        <div className="flex-1 text-left">
+                          <p className="text-xs font-bold">{sug.label}</p>
+                          <p className="text-[10px] opacity-70">{tipoLabels[sug.tipo] || sug.tipo} - {sug.horario}</p>
+                        </div>
+                        <span className="text-[10px] font-bold opacity-60">Usar</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-3 py-1">
+                  <div className="flex-1 h-px bg-border-subtle" />
+                  <span className="text-[10px] text-text-dim">ou preencha manualmente</span>
+                  <div className="flex-1 h-px bg-border-subtle" />
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Data</label>
@@ -1027,21 +1151,16 @@ export default function Home() {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Tipo</label>
-
-                {/* ✅ agora com Saída Café / Volta Café (valores técnicos continuam) */}
                 <select
                   value={tipoNovo}
                   onChange={(e) => setTipoNovo(e.target.value as TipoSolicitacao)}
                   className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
                 >
                   <option value="ENTRADA">ENTRADA</option>
-
                   <option value="SAIDA_INTERVALO">SAÍDA CAFÉ</option>
                   <option value="VOLTA_INTERVALO">VOLTA CAFÉ</option>
-
                   <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
                   <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
-
                   <option value="SAIDA">SAÍDA</option>
                 </select>
               </div>

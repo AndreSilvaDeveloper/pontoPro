@@ -212,35 +212,33 @@ export default function RelatorioMensalPage() {
 
         {/* Filters */}
         <div className="bg-surface/60 backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="space-y-1.5 flex-1">
-              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 flex items-center gap-1">
-                <Calendar size={12} /> Data Inicio
-              </label>
-              <input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-4 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
-              />
-            </div>
-
-            <div className="space-y-1.5 flex-1">
-              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 flex items-center gap-1">
-                <Calendar size={12} /> Data Fim
-              </label>
-              <input
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-                className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-4 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">De</span>
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
+                />
+              </div>
+              <span className="text-text-dim text-xs hidden sm:block">até</span>
+              <div className="flex items-center gap-2 flex-1 border-t sm:border-t-0 border-border-subtle pt-2 sm:pt-0">
+                <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">Até</span>
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
+                />
+              </div>
             </div>
 
             <button
               onClick={gerarRelatorio}
               disabled={loading}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap"
+              className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

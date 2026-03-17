@@ -2,45 +2,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { getISOWeek, getYear, getDay } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
-interface JornadaDia {
-  ativo: boolean;
-  e1?: string;
-  s1?: string;
-  e2?: string;
-  s2?: string;
-}
-
-interface Jornada {
-  seg?: JornadaDia;
-  ter?: JornadaDia;
-  qua?: JornadaDia;
-  qui?: JornadaDia;
-  sex?: JornadaDia;
-  sab?: JornadaDia;
-  dom?: JornadaDia;
-  [key: string]: JornadaDia | undefined;
-}
-
 const DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+
+function isValidTimeHHMM(v: any): boolean {
+  return typeof v === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+}
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
-}
-
-function calcMetaMinutos(jornadaDia: JornadaDia | undefined): number {
-  if (!jornadaDia || !jornadaDia.ativo) return 0;
-  let total = 0;
-  if (jornadaDia.e1 && jornadaDia.s1) {
-    total += timeToMinutes(jornadaDia.s1) - timeToMinutes(jornadaDia.e1);
-  }
-  if (jornadaDia.e2 && jornadaDia.s2) {
-    total += timeToMinutes(jornadaDia.s2) - timeToMinutes(jornadaDia.e2);
-  }
-  return Math.max(0, total);
 }
 
 function formatMinutos(minutos: number): string {
@@ -59,6 +33,119 @@ function formatTime(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+function getNumeroDoSabadoNoMes(date: Date): number {
+  if (getDay(date) !== 6) return 0;
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  let count = 0;
+  for (let day = 1; day <= d; day++) {
+    if (new Date(y, m, day).getDay() === 6) count++;
+  }
+  return count;
+}
+
+// Calcula meta do dia considerando TODAS as regras de jornada
+function calcMetaDoDia(
+  date: Date,
+  jornada: any,
+  feriadoSet: Set<string>,
+  ausenciaSet: Set<string>,
+  semanasComSabado: Set<string>,
+): number {
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+  if (feriadoSet.has(dateStr)) return 0;
+  if (ausenciaSet.has(dateStr)) return 0;
+
+  const diaSemanaIndex = getDay(date);
+  const diaSemana = DIAS_SEMANA[diaSemanaIndex];
+  const config = jornada[diaSemana];
+
+  const calcDiff = (i: string, f: string) => {
+    if (!i || !f) return 0;
+    if (!isValidTimeHHMM(i) || !isValidTimeHHMM(f)) return 0;
+    let diff = timeToMinutes(f) - timeToMinutes(i);
+    if (diff < 0) diff += 1440;
+    return diff;
+  };
+
+  const calcMinutosConfig = (cfg: any): number => {
+    if (!cfg || !cfg.ativo) return 0;
+    const hS1 = isValidTimeHHMM(cfg.s1);
+    const hE2 = isValidTimeHHMM(cfg.e2);
+    // Jornada contínua (sem almoço)
+    if (!hS1 && !hE2 && isValidTimeHHMM(cfg.e1) && isValidTimeHHMM(cfg.s2)) {
+      return calcDiff(cfg.e1, cfg.s2);
+    }
+    return calcDiff(cfg.e1, cfg.s1) + calcDiff(cfg.e2, cfg.s2);
+  };
+
+  const chaveSemana = `${getYear(date)}-${getISOWeek(date)}`;
+  const trabalhouSabado = semanasComSabado.has(chaveSemana);
+
+  let minutosConfigurados = calcMinutosConfig(config);
+
+  // --- LÓGICA HÍBRIDA: sábado regular redistribui nos dias úteis ---
+  const configSab = jornada['sab'];
+  const sabTemRegraEspecifica = (() => {
+    const regra = configSab?.regra;
+    if (!regra?.tipo) return false;
+    if (regra.tipo === 'SABADOS_DO_MES') {
+      return Array.isArray(regra.quais) && regra.quais.length > 0;
+    }
+    return true;
+  })();
+  const sabRegular = configSab?.ativo && !sabTemRegraEspecifica && !(configSab?.alternado === true);
+  const metaSabRegular = sabRegular ? (calcMinutosConfig(configSab) || 240) : 0;
+
+  if (diaSemanaIndex >= 1 && diaSemanaIndex <= 5) {
+    if (trabalhouSabado) {
+      if (!minutosConfigurados) minutosConfigurados = 480;
+      else if (minutosConfigurados > 520) minutosConfigurados = 480;
+    } else if (sabRegular && metaSabRegular > 0) {
+      const sabadoDaSemana = new Date(date);
+      sabadoDaSemana.setDate(sabadoDaSemana.getDate() + (6 - diaSemanaIndex));
+      const hoje = new Date();
+      hoje.setHours(23, 59, 59, 999);
+      if (sabadoDaSemana <= hoje && !trabalhouSabado) {
+        minutosConfigurados += Math.round(metaSabRegular / 5);
+      }
+    }
+  }
+
+  // --- SÁBADO ---
+  if (diaSemanaIndex === 6) {
+    const temConfiguracao = configSab?.ativo;
+    const regra = configSab?.regra;
+    const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
+
+    // Sábados do mês (ex: 1º e 3º)
+    if (temConfiguracao && regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0) {
+      const numero = getNumeroDoSabadoNoMes(date);
+      if (numero === 0 || !quaisSab.includes(numero)) return 0;
+      return calcMinutosConfig(configSab) || 240;
+    }
+
+    // Sábado alternado
+    const isSabadoAlternado = configSab?.alternado === true;
+    if (isSabadoAlternado) {
+      const semanaISO = getISOWeek(date);
+      const paridade = typeof configSab?.paridadeSemanaISO === 'number' ? configSab.paridadeSemanaISO : 0;
+      if (semanaISO % 2 !== paridade) return 0;
+      return temConfiguracao ? (calcMinutosConfig(configSab) || 240) : 240;
+    }
+
+    // Sábado regular sem trabalho: meta = 0 (compensado nos dias úteis)
+    if (temConfiguracao && !trabalhouSabado && !sabTemRegraEspecifica && !isSabadoAlternado) return 0;
+
+    // Trabalhou sábado sem configuração: meta padrão 4h
+    if (trabalhouSabado && !temConfiguracao) return 240;
+  }
+
+  return minutosConfigurados;
+}
+
 function calcMinutosTrabalhados(pontos: { dataHora: Date; tipo: string; subTipo: string | null }[]): number {
   let total = 0;
   for (let i = 0; i < pontos.length; i++) {
@@ -73,6 +160,20 @@ function calcMinutosTrabalhados(pontos: { dataHora: Date; tipo: string; subTipo:
           const saida = new Date(pSaida.dataHora);
           const diff = Math.floor((saida.getTime() - entrada.getTime()) / 60000);
           if (diff > 0 && diff < 1440) total += diff;
+
+          // Crédito café (até 15min)
+          if (tipoSaida === 'SAIDA_INTERVALO') {
+            const pVolta = pontos[i + 2];
+            if (pVolta) {
+              const tipoVolta = pVolta.subTipo || pVolta.tipo;
+              if (['VOLTA_INTERVALO', 'PONTO'].includes(tipoVolta)) {
+                const volta = new Date(pVolta.dataHora);
+                const intervalo = Math.floor((volta.getTime() - saida.getTime()) / 60000);
+                if (intervalo > 0) total += Math.min(intervalo, 15);
+              }
+            }
+          }
+
           i++;
         }
       }
@@ -105,7 +206,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ erro: 'Data fim deve ser posterior a data inicio' }, { status: 400 });
   }
 
-  // Limit to 62 days max
   const diffDias = Math.ceil((dataFim.getTime() - dataInicio.getTime()) / (1000 * 60 * 60 * 24));
   if (diffDias > 62) {
     return NextResponse.json({ erro: 'Periodo maximo de 62 dias' }, { status: 400 });
@@ -127,40 +227,52 @@ export async function GET(req: Request) {
 
     const funcionarioIds = funcionarios.map((f) => f.id);
 
-    const todosPontos = await prisma.ponto.findMany({
-      where: {
-        usuarioId: { in: funcionarioIds },
-        dataHora: { gte: dataInicio, lte: dataFim },
-      },
-      select: { id: true, dataHora: true, tipo: true, subTipo: true, usuarioId: true },
-      orderBy: { dataHora: 'asc' },
-    });
+    // Expandir range para incluir sábados das semanas limítrofes (detecção de sábado trabalhado)
+    const rangeExpandido = new Date(dataInicio);
+    rangeExpandido.setDate(rangeExpandido.getDate() - 7);
 
-    const ausencias = await prisma.ausencia.findMany({
-      where: {
-        usuarioId: { in: funcionarioIds },
-        status: 'APROVADA',
-        dataInicio: { lte: dataFim },
-        dataFim: { gte: dataInicio },
-      },
-      select: { id: true, dataInicio: true, dataFim: true, tipo: true, usuarioId: true },
-    });
+    const [todosPontos, ausencias, feriados, horasExtrasAprovadas] = await Promise.all([
+      prisma.ponto.findMany({
+        where: {
+          usuarioId: { in: funcionarioIds },
+          dataHora: { gte: rangeExpandido, lte: dataFim },
+        },
+        select: { id: true, dataHora: true, tipo: true, subTipo: true, usuarioId: true },
+        orderBy: { dataHora: 'asc' },
+      }),
+      prisma.ausencia.findMany({
+        where: {
+          usuarioId: { in: funcionarioIds },
+          status: 'APROVADA',
+          dataInicio: { lte: dataFim },
+          dataFim: { gte: dataInicio },
+        },
+        select: { id: true, dataInicio: true, dataFim: true, tipo: true, usuarioId: true },
+      }),
+      prisma.feriado.findMany({
+        where: {
+          OR: [{ empresaId }, { empresaId: null }],
+          data: { gte: dataInicio, lte: dataFim },
+        },
+        select: { data: true, nome: true },
+      }),
+      prisma.horaExtra.findMany({
+        where: {
+          usuarioId: { in: funcionarioIds },
+          status: 'APROVADO',
+          data: { gte: dataInicioParam!, lte: dataFimParam! },
+        },
+        select: { usuarioId: true, data: true, minutosExtra: true },
+      }),
+    ]);
 
-    const feriados = await prisma.feriado.findMany({
-      where: {
-        OR: [{ empresaId }, { empresaId: null }],
-        data: { gte: dataInicio, lte: dataFim },
-      },
-      select: { data: true, nome: true },
-    });
-
-    const feriadoMap = new Map<string, string>();
+    const feriadoSet = new Set<string>();
     for (const f of feriados) {
       const d = new Date(f.data);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      feriadoMap.set(key, f.nome);
+      feriadoSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
     }
 
+    // Agrupar pontos por usuário e dia
     const pontosMap = new Map<string, typeof todosPontos>();
     for (const p of todosPontos) {
       const d = new Date(p.dataHora);
@@ -169,13 +281,28 @@ export async function GET(req: Request) {
       pontosMap.get(key)!.push(p);
     }
 
-    const ausenciaMap = new Map<string, typeof ausencias>();
-    for (const a of ausencias) {
-      if (!ausenciaMap.has(a.usuarioId)) ausenciaMap.set(a.usuarioId, []);
-      ausenciaMap.get(a.usuarioId)!.push(a);
+    // Horas extras aprovadas por usuário+dia
+    const heMap = new Map<string, number>();
+    for (const he of horasExtrasAprovadas) {
+      heMap.set(`${he.usuarioId}-${he.data}`, he.minutosExtra);
     }
 
-    // Iterate day by day through the range
+    // Ausências por usuário expandidas em dias
+    const ausenciasPorUsuario = new Map<string, Set<string>>();
+    for (const a of ausencias) {
+      if (!ausenciasPorUsuario.has(a.usuarioId)) ausenciasPorUsuario.set(a.usuarioId, new Set());
+      const set = ausenciasPorUsuario.get(a.usuarioId)!;
+      const cursor = new Date(a.dataInicio);
+      cursor.setHours(0, 0, 0, 0);
+      const fim = new Date(a.dataFim);
+      fim.setHours(0, 0, 0, 0);
+      while (cursor <= fim) {
+        set.add(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
+    // Dias do período
     const allDates: Date[] = [];
     const cursor = new Date(dataInicio);
     while (cursor <= dataFim) {
@@ -183,8 +310,24 @@ export async function GET(req: Request) {
       cursor.setDate(cursor.getDate() + 1);
     }
 
+    const hoje = new Date();
+    hoje.setHours(23, 59, 59, 999);
+
     const funcionariosResult = funcionarios.map((func) => {
-      const jornada = (func.jornada as Jornada) || {};
+      const jornada = (func.jornada as any) || {};
+      const ausenciaDias = ausenciasPorUsuario.get(func.id) || new Set();
+
+      // Detectar semanas com sábado trabalhado (para lógica híbrida)
+      const semanasComSabado = new Set<string>();
+      for (const [key] of pontosMap) {
+        if (!key.startsWith(func.id + '-')) continue;
+        const dateStr = key.substring(func.id.length + 1);
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        if (getDay(date) === 6) {
+          semanasComSabado.add(`${getYear(date)}-${getISOWeek(date)}`);
+        }
+      }
 
       let totalMinutosTrabalhados = 0;
       let totalMetaMinutos = 0;
@@ -193,30 +336,18 @@ export async function GET(req: Request) {
       let diasAtraso = 0;
       let diasAusenciaJustificada = 0;
       let diasFeriado = 0;
+      let saldoMinutos = 0;
 
-      const dias = [];
-
-      for (const date of allDates) {
-        const diaSemana = DIAS_SEMANA[date.getDay()];
+      const dias = allDates.map((date) => {
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        const diaSemana = DIAS_SEMANA[date.getDay()];
+        const isFeriado = feriadoSet.has(dateStr);
+        const temAusencia = ausenciaDias.has(dateStr);
 
-        const jornadaDia = jornada[diaSemana];
-        const isWorkingDay = jornadaDia?.ativo === true;
-        const isFeriado = feriadoMap.has(dateStr);
-
-        const userAusencias = ausenciaMap.get(func.id) || [];
-        const ausenciaDoDia = userAusencias.find((a) => {
-          const inicio = new Date(a.dataInicio);
-          inicio.setHours(0, 0, 0, 0);
-          const fim = new Date(a.dataFim);
-          fim.setHours(23, 59, 59, 999);
-          return date >= inicio && date <= fim;
-        });
+        const metaMinutos = calcMetaDoDia(date, jornada, feriadoSet, ausenciaDias, semanasComSabado);
 
         const pontosKey = `${func.id}-${dateStr}`;
         const pontosDia = pontosMap.get(pontosKey) || [];
-
-        const metaMinutos = isWorkingDay && !isFeriado && !ausenciaDoDia ? calcMetaMinutos(jornadaDia) : 0;
         const minutosTrabalhados = calcMinutosTrabalhados(pontosDia);
 
         let entrada: string | null = null;
@@ -229,51 +360,78 @@ export async function GET(req: Request) {
           }
           const ultimo = pontosDia[pontosDia.length - 1];
           const ultimoTipo = ultimo.subTipo || ultimo.tipo;
-          if (['SAIDA'].includes(ultimoTipo)) {
+          if (ultimoTipo === 'SAIDA') {
             saida = formatTime(new Date(ultimo.dataHora));
           }
         }
 
+        // Status do dia
         let status: string;
         if (isFeriado) {
           status = 'FERIADO';
           diasFeriado++;
-        } else if (ausenciaDoDia) {
+        } else if (temAusencia) {
           status = 'AUSENCIA';
           diasAusenciaJustificada++;
-        } else if (!isWorkingDay) {
+        } else if (metaMinutos === 0 && pontosDia.length === 0) {
+          // Meta 0 e sem ponto = folga (sábado alternado, domingo, etc.)
           status = 'FOLGA';
-        } else if (pontosDia.length === 0) {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          if (date <= today) {
+        } else if (pontosDia.length === 0 && metaMinutos > 0) {
+          // Dia ativo sem ponto
+          if (date <= hoje) {
             status = 'FALTA';
             diasFalta++;
           } else {
-            status = 'FOLGA';
+            status = 'FUTURO';
           }
         } else {
+          // Tem pontos
           let isAtraso = false;
-          if (jornadaDia?.e1 && entrada) {
+          const jornadaDia = jornada[diaSemana];
+          if (jornadaDia?.e1 && entrada && isValidTimeHHMM(jornadaDia.e1)) {
             const metaEntrada = timeToMinutes(jornadaDia.e1);
             const realEntrada = timeToMinutes(entrada);
             if (realEntrada > metaEntrada + 10) {
               isAtraso = true;
             }
           }
+
           if (isAtraso) {
             status = 'ATRASO';
             diasAtraso++;
           } else {
             status = 'NORMAL';
           }
-          diasTrabalhados++;
+          if (minutosTrabalhados > 0) diasTrabalhados++;
         }
 
         totalMinutosTrabalhados += minutosTrabalhados;
         totalMetaMinutos += metaMinutos;
 
-        dias.push({
+        // Saldo do dia com tolerância CLT de 10min e corte de hora extra
+        if (date <= hoje && status !== 'FOLGA' && status !== 'FUTURO') {
+          const tolerancia = 10;
+          let trabalhadoEfetivo = minutosTrabalhados;
+
+          const temHoraExtra = metaMinutos > 0
+            ? minutosTrabalhados > metaMinutos + tolerancia
+            : minutosTrabalhados > tolerancia;
+
+          if (temHoraExtra) {
+            trabalhadoEfetivo = metaMinutos;
+            const heKey = `${func.id}-${dateStr}`;
+            const minutosAprovados = heMap.get(heKey);
+            if (minutosAprovados !== undefined) {
+              trabalhadoEfetivo = metaMinutos + minutosAprovados;
+            }
+          }
+
+          let saldoDia = trabalhadoEfetivo - metaMinutos;
+          if (Math.abs(saldoDia) <= tolerancia) saldoDia = 0;
+          saldoMinutos += saldoDia;
+        }
+
+        return {
           data: dateStr,
           diaSemana,
           status,
@@ -282,10 +440,8 @@ export async function GET(req: Request) {
           minutosTrabalhados,
           metaMinutos,
           saldo: minutosTrabalhados - metaMinutos,
-        });
-      }
-
-      const saldoMinutos = totalMinutosTrabalhados - totalMetaMinutos;
+        };
+      });
 
       return {
         id: func.id,
@@ -310,10 +466,10 @@ export async function GET(req: Request) {
     });
 
     const totalFuncionarios = funcionariosResult.length;
-    const totalMinutosGeral = funcionariosResult.reduce((sum, f) => sum + f.resumo.totalMinutosTrabalhados, 0);
+    const totalMinutosGeral = funcionariosResult.reduce((s, f) => s + f.resumo.totalMinutosTrabalhados, 0);
     const mediaMinutos = totalFuncionarios > 0 ? Math.round(totalMinutosGeral / totalFuncionarios) : 0;
-    const totalFaltas = funcionariosResult.reduce((sum, f) => sum + f.resumo.diasFalta, 0);
-    const totalAtrasos = funcionariosResult.reduce((sum, f) => sum + f.resumo.diasAtraso, 0);
+    const totalFaltas = funcionariosResult.reduce((s, f) => s + f.resumo.diasFalta, 0);
+    const totalAtrasos = funcionariosResult.reduce((s, f) => s + f.resumo.diasAtraso, 0);
 
     return NextResponse.json({
       dataInicio: dataInicioParam,
