@@ -234,15 +234,40 @@ export default function MeuHistorico() {
       if (diaSemanaIndex === 6) {
         const configSab = jornadaConfig['sab'];
         const temConfiguracao = configSab && configSab.ativo;
+        const regra = configSab?.regra;
+        const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
+
+        // Sábados específicos do mês (ex: 1º e 3º)
+        if (temConfiguracao && regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0) {
+          const getNumSabNoMes = (d: Date) => {
+            if (getDay(d) !== 6) return 0;
+            let count = 0;
+            for (let day = 1; day <= d.getDate(); day++) {
+              if (new Date(d.getFullYear(), d.getMonth(), day).getDay() === 6) count++;
+            }
+            return count;
+          };
+          const numero = getNumSabNoMes(data);
+          if (numero === 0 || !quaisSab.includes(numero)) return 0;
+          return calcMinutosConfig(configSab) || 240;
+        }
+
+        // Sábado alternado
+        const isSabadoAlternado = configSab?.alternado === true;
+        if (isSabadoAlternado) {
+          const semanaISO = getISOWeek(data);
+          const paridade = typeof configSab?.paridadeSemanaISO === 'number' ? configSab.paridadeSemanaISO : 0;
+          if (semanaISO % 2 !== paridade) return 0; // folga — meta = 0
+          return temConfiguracao ? (calcMinutosConfig(configSab) || 240) : 240;
+        }
+
+        // Trabalhou sábado sem configuração: meta padrão 4h
         if (trabalhouSabado && !temConfiguracao) return 240;
 
         // Sábado regular configurado mas não trabalhado: meta = 0 (compensado nos dias úteis)
         if (temConfiguracao && !trabalhouSabado) {
-          const regra = configSab?.regra;
-          const quaisSab = regra?.tipo === 'SABADOS_DO_MES' && Array.isArray(regra?.quais) ? regra.quais : [];
-          const isAlternado = configSab?.alternado === true;
           const temRegraEfetiva = regra?.tipo === 'SABADOS_DO_MES' && quaisSab.length > 0;
-          if (!temRegraEfetiva && !isAlternado) return 0;
+          if (!temRegraEfetiva && !isSabadoAlternado) return 0;
         }
       }
 
