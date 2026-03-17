@@ -360,20 +360,26 @@ export default function AdminDashboard() {
 
             <div className="space-y-1.5">
               <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Período</label>
-              <div data-tour="admin-filter-period" className="flex gap-2 items-center bg-input-solid/50 border border-border-default rounded-xl p-1">
-                <input
-                  type="date"
-                  value={a.dataInicio}
-                  onChange={(e) => a.setDataInicio(e.target.value)}
-                  className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
-                />
-                <span className="text-text-dim text-xs">até</span>
-                <input
-                  type="date"
-                  value={a.dataFim}
-                  onChange={(e) => a.setDataFim(e.target.value)}
-                  className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
-                />
+              <div data-tour="admin-filter-period" className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">De</span>
+                  <input
+                    type="date"
+                    value={a.dataInicio}
+                    onChange={(e) => a.setDataInicio(e.target.value)}
+                    className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
+                  />
+                </div>
+                <span className="text-text-dim text-xs hidden sm:block">até</span>
+                <div className="flex items-center gap-2 flex-1 border-t sm:border-t-0 border-border-subtle pt-2 sm:pt-0">
+                  <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">Até</span>
+                  <input
+                    type="date"
+                    value={a.dataFim}
+                    onChange={(e) => a.setDataFim(e.target.value)}
+                    className="bg-transparent text-sm text-text-secondary outline-none p-2 w-full text-center cursor-pointer hover:text-text-primary transition-colors"
+                  />
+                </div>
               </div>
             </div>
           </div>

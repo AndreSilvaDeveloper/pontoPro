@@ -212,35 +212,39 @@ export default function RelatorioMensalPage() {
 
         {/* Filters */}
         <div className="bg-surface/60 backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="space-y-1.5 flex-1">
-              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 flex items-center gap-1">
-                <Calendar size={12} /> Data Inicio
-              </label>
-              <input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-4 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
-              />
-            </div>
+          <div className="space-y-4">
+            <div className="flex items-end gap-2">
+              <div className="space-y-1.5 flex-1">
+                <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 flex items-center gap-1">
+                  <Calendar size={12} /> De
+                </label>
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-3 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-center"
+                />
+              </div>
 
-            <div className="space-y-1.5 flex-1">
-              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 flex items-center gap-1">
-                <Calendar size={12} /> Data Fim
-              </label>
-              <input
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-                className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-4 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all"
-              />
+              <span className="text-text-dim text-xs pb-3">até</span>
+
+              <div className="space-y-1.5 flex-1">
+                <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 flex items-center gap-1">
+                  <Calendar size={12} /> Até
+                </label>
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-3 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-center"
+                />
+              </div>
             </div>
 
             <button
               onClick={gerarRelatorio}
               disabled={loading}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 whitespace-nowrap"
+              className="w-full sm:w-auto px-6 py-3 bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

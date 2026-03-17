@@ -76,6 +76,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
         pontos: listaUnificada,
         empresaNome: usuario?.empresa?.nome || 'Minha Empresa',
+        funcionarioNome: usuario?.nome || '',
         jornada: usuario?.jornada,
         feriados: usuario?.empresa?.feriados?.map(f => f.data.toISOString().split('T')[0]) || [],
         horasExtrasAprovadas: horasExtrasAprovadas.map(h => ({ data: h.data, minutosExtra: h.minutosExtra })),

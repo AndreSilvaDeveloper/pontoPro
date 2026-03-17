@@ -83,6 +83,7 @@ export default function MeuHistorico() {
 
   const [pontos, setPontos] = useState<any[]>([]);
   const [empresaNome, setEmpresaNome] = useState('Carregando...');
+  const [funcionarioNome, setFuncionarioNome] = useState('');
   const [jornada, setJornada] = useState<any>(null);
   const [feriados, setFeriados] = useState<string[]>([]);
   const [resumo, setResumo] = useState<{ total: string; saldo: string; saldoPositivo: boolean } | null>(null);
@@ -343,6 +344,7 @@ export default function MeuHistorico() {
       if (resHistorico.data.pontos) {
         setPontos(resHistorico.data.pontos);
         setEmpresaNome(resHistorico.data.empresaNome);
+        setFuncionarioNome(resHistorico.data.funcionarioNome || '');
         setJornada(resHistorico.data.jornada);
         setFeriados(resHistorico.data.feriados);
         setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas));
@@ -601,8 +603,8 @@ export default function MeuHistorico() {
 
             {/* Filtros */}
             <div className="bg-surface/60 backdrop-blur-md p-4 rounded-2xl border border-border-subtle space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
+              <div className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
                   <label className="text-[10px] text-text-faint font-bold uppercase ml-1">De</label>
                   <input
                     type="date"
@@ -611,7 +613,8 @@ export default function MeuHistorico() {
                     className="w-full bg-input-solid/60 border border-border-default p-2.5 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 transition-colors text-center"
                   />
                 </div>
-                <div className="space-y-1">
+                <span className="text-text-dim text-xs pb-3">até</span>
+                <div className="flex-1 space-y-1">
                   <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Até</label>
                   <input
                     type="date"
@@ -642,7 +645,7 @@ export default function MeuHistorico() {
                       filtro={{
                         inicio: criarDataLocal(dataInicio),
                         fim: criarDataLocal(dataFim),
-                        usuario: 'Eu',
+                        usuario: funcionarioNome || 'Eu',
                       }}
                       resumoHoras={resumo}
                       nomeEmpresa={empresaNome}
@@ -879,14 +882,14 @@ export default function MeuHistorico() {
                               <div className={`w-full h-full rounded-full ${cfg.bg}`} />
                             </div>
 
-                            <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all hover:bg-white/[0.02] ${cfg.border} ${cfg.bg}`}>
-                              {/* Ícone */}
-                              <div className={`p-2 rounded-lg bg-input-solid/40 shrink-0`}>
-                                <Icon size={16} className={cfg.cor} />
-                              </div>
+                            <div className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl border transition-all hover:bg-white/[0.02] ${cfg.border} ${cfg.bg}`}>
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                {/* Ícone */}
+                                <div className={`p-2 rounded-lg bg-input-solid/40 shrink-0`}>
+                                  <Icon size={16} className={cfg.cor} />
+                                </div>
 
-                              {/* Info */}
-                              <div className="flex-1 min-w-0">
+                                {/* Info */}
                                 <div className="flex items-center gap-2">
                                   <span className="text-lg font-bold text-text-primary font-mono tracking-tight">
                                     {format(new Date(ponto.dataHora), 'HH:mm')}
@@ -899,7 +902,7 @@ export default function MeuHistorico() {
 
                               {/* Ações */}
                               {ponto.tipo !== 'AUSENCIA' && (
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0 ml-auto">
                                   <button
                                     onClick={() => abrirEdicao(ponto)}
                                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-text-faint hover:text-purple-400 hover:bg-purple-500/10 border border-transparent hover:border-purple-500/20 transition-all active:scale-95"
