@@ -196,11 +196,17 @@ export async function GET(req: NextRequest) {
             const metaEntrada = parseHM(configDia.e1);
             const primeiroPonto = pontos[0];
             const horaPrimeiro = new Date(primeiroPonto.dataHora);
-            const minPrimeiro = horaPrimeiro.getHours() * 60 + horaPrimeiro.getMinutes();
+            // Usar horário de SP para comparar com a jornada
+            const partsSP = new Intl.DateTimeFormat('en-US', {
+              timeZone: 'America/Sao_Paulo', hour: 'numeric', minute: 'numeric', hour12: false,
+            }).formatToParts(horaPrimeiro);
+            const hSP = parseInt(partsSP.find(p => p.type === 'hour')?.value || '0');
+            const mSP = parseInt(partsSP.find(p => p.type === 'minute')?.value || '0');
+            const minPrimeiro = hSP * 60 + mSP;
 
             if (minPrimeiro > metaEntrada + 10) {
               const atrasoMin = minPrimeiro - metaEntrada;
-              const horaChegou = `${String(horaPrimeiro.getHours()).padStart(2, '0')}:${String(horaPrimeiro.getMinutes()).padStart(2, '0')}`;
+              const horaChegou = `${String(hSP).padStart(2, '0')}:${String(mSP).padStart(2, '0')}`;
               atrasados.push(`${func.nome} - chegou ${horaChegou} (atraso de ${atrasoMin}min)`);
             }
           }
