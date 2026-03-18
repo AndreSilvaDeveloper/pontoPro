@@ -590,6 +590,106 @@ export default function LandingPage() {
       {/* Pricing Section */}
       <PricingSection />
 
+      {/* Reseller Section */}
+      <section id="revenda" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
+        <div className="container mx-auto">
+          <div className="relative overflow-hidden rounded-3xl border border-purple-500/20 bg-gradient-to-br from-purple-950/40 via-indigo-950/30 to-purple-950/40 backdrop-blur-sm">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyMTYsMTgwLDI1NCwwLjA4KSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40" />
+
+            <div className="relative z-10 grid md:grid-cols-2 gap-8 md:gap-12 p-8 md:p-12 lg:p-16 items-center">
+              {/* Texto */}
+              <div className="space-y-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5">
+                  <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Programa de Revenda</span>
+                </div>
+
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
+                  Venda o WorkID com a{' '}
+                  <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                    sua marca
+                  </span>
+                </h2>
+
+                <p className="text-gray-400 text-base md:text-lg leading-relaxed">
+                  Tenha seu proprio sistema de ponto eletronico com o logo, nome e cores da sua empresa.
+                  Seus clientes nunca veem a marca WorkID — tudo com a sua identidade.
+                </p>
+
+                <div className="space-y-3">
+                  {[
+                    'Logo e nome personalizados em todo o sistema',
+                    'Painel exclusivo para gerenciar seus clientes',
+                    'Crie empresas ilimitadas dentro da sua marca',
+                    'Seus clientes pagam voce, voce paga a gente',
+                    'Suporte dedicado para revendedores',
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <span className="text-sm text-gray-300">{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <a
+                  href="https://wa.me/5532935005492?text=Ol%C3%A1%2C%20tenho%20interesse%20no%20programa%20de%20revenda%20White%20Label%20do%20WorkID"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-500 hover:shadow-purple-500/40 active:scale-95"
+                >
+                  Quero ser revendedor
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </a>
+              </div>
+
+              {/* Visual */}
+              <div className="flex items-center justify-center">
+                <div className="relative w-full max-w-sm">
+                  {/* Card mockup */}
+                  <div className="bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-6 shadow-2xl space-y-4">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-orange-500 flex items-center justify-center text-white font-bold text-lg">P</div>
+                      <div>
+                        <p className="text-white font-bold">SuaMarca RH</p>
+                        <p className="text-gray-500 text-[10px] uppercase tracking-widest">Painel do Revendedor</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-gray-800/80 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-white">12</p>
+                        <p className="text-[10px] text-gray-500 uppercase">Empresas</p>
+                      </div>
+                      <div className="bg-gray-800/80 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-emerald-400">148</p>
+                        <p className="text-[10px] text-gray-500 uppercase">Usuarios</p>
+                      </div>
+                      <div className="bg-gray-800/80 rounded-xl p-3 text-center">
+                        <p className="text-2xl font-bold text-purple-400">98%</p>
+                        <p className="text-[10px] text-gray-500 uppercase">Ativas</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      {['Padaria do Joao', 'Loja Fashion', 'Auto Center'].map((nome, i) => (
+                        <div key={i} className="flex items-center justify-between bg-gray-800/60 rounded-xl px-4 py-2.5">
+                          <span className="text-sm text-gray-300">{nome}</span>
+                          <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-lg">ATIVO</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Glow effect */}
+                  <div className="absolute -inset-4 bg-purple-500/5 rounded-3xl blur-xl -z-10" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* FAQ Section */}
       <FAQSection />
 

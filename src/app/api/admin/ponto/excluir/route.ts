@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
-import { format } from 'date-fns';
 import { registrarLog } from '@/lib/logger';
+import { formatInTimeZone } from 'date-fns-tz';
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
@@ -42,7 +42,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
     }
 
-    const dataHora = format(new Date(ponto.dataHora), 'dd/MM/yyyy HH:mm');
+    const dataHora = formatInTimeZone(new Date(ponto.dataHora), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
 
     const detalhes = [
       `Funcionário: ${ponto.usuario.nome}`,

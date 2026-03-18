@@ -127,6 +127,7 @@ export default function LoginPage() {
       toast.success('Login autorizado! Entrando...', { id: toastId });
 
       if (sessionData?.user?.cargo === 'SUPER_ADMIN') router.push('/saas');
+      else if (sessionData?.user?.cargo === 'REVENDEDOR') router.push('/revendedor');
       else if (sessionData?.user?.cargo === 'ADMIN') router.push('/admin');
       else router.push('/funcionario');
     } catch {

@@ -32,6 +32,7 @@ export async function GET() {
         cobrancaAtiva: true,
         billingAnchorAt: true,
         criadoEm: true,
+        dataUltimoPagamento: true,
         _count: { select: { usuarios: true } },
         filiais: {
           select: {
@@ -53,6 +54,7 @@ export async function GET() {
     let mrr = 0;
     let signupsRecentes = 0;
     const empresasRecentes: any[] = [];
+    const pagamentosRecentes: any[] = [];
 
     for (const emp of empresas) {
       // Contar funcionários (matriz + filiais)
@@ -61,6 +63,17 @@ export async function GET() {
         funcCount += f._count.usuarios;
       }
       totalFuncionarios += funcCount;
+
+      // Pagamento recente
+      if (emp.dataUltimoPagamento && new Date(emp.dataUltimoPagamento) >= seteDiasAtras) {
+        pagamentosRecentes.push({
+          id: emp.id,
+          nome: emp.nome,
+          plano: emp.plano,
+          pagoEm: emp.dataUltimoPagamento,
+          pagoAte: emp.pagoAte,
+        });
+      }
 
       // Signup recente
       if (emp.criadoEm >= seteDiasAtras) {
@@ -124,6 +137,7 @@ export async function GET() {
       mrr: Number(mrr.toFixed(2)),
       signupsRecentes,
       empresasRecentes,
+      pagamentosRecentes,
     });
   } catch (error) {
     console.error("Erro ao gerar dashboard stats:", error);

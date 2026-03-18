@@ -71,6 +71,14 @@ export function MobileMenu() {
             </Link>
 
             <Link
+              href="/#revenda"
+              onClick={close}
+              className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-white/5 hover:text-white"
+            >
+              Revenda
+            </Link>
+
+            <Link
               href="/#contact"
               onClick={close}
               className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-white/5 hover:text-white"

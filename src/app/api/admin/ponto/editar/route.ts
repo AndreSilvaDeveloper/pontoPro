@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
-import { format } from 'date-fns';
 import { registrarLog } from '@/lib/logger';
+import { formatInTimeZone } from 'date-fns-tz';
 
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
@@ -40,8 +40,8 @@ export async function PUT(request: Request) {
       return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
     }
 
-    const antes = format(new Date(ponto.dataHora), 'dd/MM/yyyy HH:mm');
-    const depois = format(new Date(novoHorario), 'dd/MM/yyyy HH:mm');
+    const antes = formatInTimeZone(new Date(ponto.dataHora), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
+    const depois = formatInTimeZone(new Date(novoHorario), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
 
     // Atualiza
     await prisma.ponto.update({

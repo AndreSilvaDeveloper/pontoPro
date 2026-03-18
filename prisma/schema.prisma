@@ -43,11 +43,8 @@ model Empresa {
   asaasCurrentPaymentId String?
   asaasCurrentDueDate DateTime?
 
-
-
-
-
-
+  revendedorId        String?
+  revendedor          Revendedor? @relation(fields: [revendedorId], references: [id])
 }
 
 model Usuario {
@@ -91,6 +88,9 @@ model Usuario {
   installPromptVisto      Boolean   @default(false)
   pushPromptVisto         Boolean   @default(false)
   pushSubscriptions       PushSubscription[]
+
+  revendedorId            String?
+  revendedor              Revendedor? @relation(fields: [revendedorId], references: [id])
 }
 
 model PushSubscription {
@@ -223,5 +223,28 @@ model HoraExtra {
   usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@unique([usuarioId, data])
+}
+
+model Revendedor {
+  id              String    @id @default(cuid())
+  nome            String
+  logoUrl         String?
+  nomeExibicao    String?   // nome que aparece no sistema (ex: "PontoMax")
+  corPrimaria     String?   @default("#7c3aed")
+  corSecundaria   String?   @default("#4f46e5")
+  dominio         String?   @unique // "pontomax.com.br"
+  ativo           Boolean   @default(true)
+  criadoEm        DateTime  @default(now())
+
+  // Billing por usuário ativo
+  minimoMensal    Float     @default(199.90)
+  faixa1Limite    Int       @default(50)    // até X usuários
+  faixa1Valor     Float     @default(6.00)  // R$/usuário
+  faixa2Limite    Int       @default(150)   // até X usuários
+  faixa2Valor     Float     @default(5.00)  // R$/usuário
+  faixa3Valor     Float     @default(4.00)  // R$/usuário (acima de faixa2Limite)
+
+  usuarios        Usuario[]
+  empresas        Empresa[]
 }
 

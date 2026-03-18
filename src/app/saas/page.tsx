@@ -10,6 +10,7 @@ import {
   UserPlus,
   Link as LinkIcon,
   Plus,
+  Handshake,
 } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
@@ -22,6 +23,7 @@ import ClientTable from "./components/ClientTable";
 import ModalEquipe from "./components/ModalEquipe";
 import ModalFatura from "./components/ModalFatura";
 import AlertNovaEmpresa from "./components/AlertNovaEmpresa";
+import AlertPagamento from "./components/AlertPagamento";
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -199,6 +201,9 @@ export default function SuperAdminPage() {
       {/* Alerta de novos cadastros */}
       <AlertNovaEmpresa empresasRecentes={stats?.empresasRecentes || []} />
 
+      {/* Alerta de pagamentos recebidos */}
+      <AlertPagamento pagamentosRecentes={stats?.pagamentosRecentes || []} />
+
       {/* Decorative blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
@@ -223,6 +228,13 @@ export default function SuperAdminPage() {
             >
               <FileText size={16} /> <span className="hidden sm:inline">Relatório PDF</span>
             </button>
+
+            <Link
+              href="/saas/revendedores"
+              className="flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+            >
+              <Handshake size={16} /> <span className="hidden sm:inline">Revendedores</span>
+            </Link>
 
             <Link
               href="/saas/venda"
