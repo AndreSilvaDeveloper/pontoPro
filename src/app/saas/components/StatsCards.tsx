@@ -12,6 +12,7 @@ export type DashboardStats = {
   mrr: number;
   signupsRecentes: number;
   empresasRecentes?: any[];
+  pagamentosRecentes?: any[];
 };
 
 type Props = {

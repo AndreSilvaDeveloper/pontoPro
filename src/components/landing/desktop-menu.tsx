@@ -35,6 +35,12 @@ export function DesktopMenu() {
         >
           Planos
         </a>
+        <a
+          href="#revenda"
+          className="cursor-pointer text-sm font-medium text-gray-300 transition-colors hover:text-white"
+        >
+          Revenda
+        </a>
         <Button
           variant="ghost"
           className="cursor-pointer text-sm font-medium text-gray-300 transition-colors hover:bg-transparent hover:text-white"

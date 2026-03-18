@@ -45,6 +45,7 @@ export const authOptions: NextAuthOptions = {
             senha: true,
             cargo: true,
             empresaId: true,
+            revendedorId: true,
             deveTrocarSenha: true,
             deveCadastrarFoto: true,
             deveDarCienciaCelular: true,
@@ -89,10 +90,28 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             cargo: user.cargo,
             empresaId: user.empresaId ?? null,
+            revendedorId: user.revendedorId ?? null,
             deveTrocarSenha: user.deveTrocarSenha,
             deveCadastrarFoto: user.deveCadastrarFoto,
             deveDarCienciaCelular: user.deveDarCienciaCelular,
             temAssinatura: !!user.assinaturaUrl,
+          } as any;
+        }
+
+        // (C2) REVENDEDOR
+        if (user.cargo === "REVENDEDOR") {
+          console.log("OK: REVENDEDOR");
+          return {
+            id: user.id,
+            name: user.nome,
+            email: user.email,
+            cargo: user.cargo,
+            empresaId: null,
+            revendedorId: user.revendedorId ?? null,
+            deveTrocarSenha: false,
+            deveCadastrarFoto: false,
+            deveDarCienciaCelular: false,
+            temAssinatura: true,
           } as any;
         }
 
@@ -213,6 +232,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id;
         token.cargo = (user as any).cargo;
         token.empresaId = (user as any).empresaId ?? null;
+        (token as any).revendedorId = (user as any).revendedorId ?? null;
         token.deveTrocarSenha = (user as any).deveTrocarSenha;
         token.deveCadastrarFoto = (user as any).deveCadastrarFoto;
         token.deveDarCienciaCelular = (user as any).deveDarCienciaCelular;
@@ -244,12 +264,18 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).deveCadastrarFoto = (token as any).deveCadastrarFoto;
         (session.user as any).deveDarCienciaCelular = (token as any).deveDarCienciaCelular;
         (session.user as any).temAssinatura = (token as any).temAssinatura;
+        (session.user as any).revendedorId = (token as any).revendedorId ?? null;
 
         // ✅ novo: expõe a marca de impersonação no session
         (session.user as any).impersonatedBy = (token as any).impersonatedBy ?? null;
 
         // SUPER_ADMIN não precisa buscar empresa e não bloqueia
         if ((session.user as any).cargo === "SUPER_ADMIN") {
+          return session;
+        }
+
+        // REVENDEDOR não tem empresa, não bloqueia
+        if ((session.user as any).cargo === "REVENDEDOR") {
           return session;
         }
 
