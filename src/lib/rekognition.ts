@@ -40,7 +40,7 @@ export async function compararRostos(fotoReferenciaUrl: string, fotoAtualBase64:
 
   } catch (error) {
     console.error("Erro na AWS Rekognition:", error);
-    // Se der erro técnico (ex: foto inacessível), libera o ponto para não bloquear funcionários
-    return { igual: true, confianca: 0 };
+    // Se der erro técnico, vamos bloquear por segurança
+    return { igual: false, confianca: 0 };
   }
 }
