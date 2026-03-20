@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import jsPDF from 'jspdf';
-import { put } from '@vercel/blob';
+import { storagePut } from '@/lib/storage';
 import { format } from 'date-fns';
 
 async function fetchImageAsDataUri(url: string): Promise<{ dataUri: string; formato: string } | null> {
@@ -226,9 +226,10 @@ export async function POST() {
       );
 
       const nomeArquivo = `ciencia-celular-${func.id}-${Date.now()}.pdf`;
-      const blob = await put(nomeArquivo, pdfBuffer, {
+      const blob = await storagePut(nomeArquivo, pdfBuffer, {
         access: 'public',
         contentType: 'application/pdf',
+        permanente: true,
       });
 
       await prisma.usuario.update({

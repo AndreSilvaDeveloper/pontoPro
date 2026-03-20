@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
-import { put } from '@vercel/blob';
+import { storagePut } from '@/lib/storage';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     // Upload via @vercel/blob
     const filename = `referencia-${usuario.email.replace('@', '-')}-${Date.now()}.jpg`;
-    const blob = await put(filename, buffer, { access: 'public' });
+    const blob = await storagePut(filename, buffer, { access: 'public', permanente: true });
 
     // Atualiza no banco
     await prisma.usuario.update({

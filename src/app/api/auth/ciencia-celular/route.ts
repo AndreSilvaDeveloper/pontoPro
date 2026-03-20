@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
 import jsPDF from 'jspdf';
-import { put } from '@vercel/blob';
+import { storagePut } from '@/lib/storage';
 import { format } from 'date-fns';
 
 export async function POST(request: Request) {
@@ -204,9 +204,10 @@ export async function POST(request: Request) {
     // Converter para Buffer e upload
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
     const nomeArquivo = `ciencia-celular-${session.user.id}-${Date.now()}.pdf`;
-    const blob = await put(nomeArquivo, pdfBuffer, {
+    const blob = await storagePut(nomeArquivo, pdfBuffer, {
       access: 'public',
       contentType: 'application/pdf',
+      permanente: true,
     });
 
     // Salvar no banco
