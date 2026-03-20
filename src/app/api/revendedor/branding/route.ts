@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { put } from '@vercel/blob';
+import { storagePut } from '@/lib/storage';
 
 // GET: Buscar configurações de branding
 export async function GET() {
@@ -49,9 +49,10 @@ export async function POST(request: Request) {
   if (corSecundaria) updateData.corSecundaria = corSecundaria;
 
   if (logoFile && logoFile.size > 0) {
-    const blob = await put(`revendedor/${revendedorId}/logo-${Date.now()}.png`, logoFile, {
+    const blob = await storagePut(`revendedor/${revendedorId}/logo-${Date.now()}.png`, logoFile, {
       access: 'public',
       contentType: logoFile.type,
+      permanente: true,
     });
     updateData.logoUrl = blob.url;
   }

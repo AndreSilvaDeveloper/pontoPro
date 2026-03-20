@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { put } from '@vercel/blob';
+import { storagePut } from '@/lib/storage';
 import { compararRostos } from '@/lib/rekognition'; 
 import { obterEndereco } from '@/utils/geocoding'; 
 
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         try {
             const buffer = Buffer.from(fotoBase64.replace(/^data:image\/\w+;base64,/, ""), 'base64');
             const filename = `ponto-${usuario.id}-${Date.now()}.jpg`;
-            const blob = await put(filename, buffer, { access: 'public', contentType: 'image/jpeg' });
+            const blob = await storagePut(filename, buffer, { access: 'public', contentType: 'image/jpeg' });
             fotoUrl = blob.url;
         } catch (e) {
             console.error("Erro upload:", e);

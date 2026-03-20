@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
-import { put, del } from '@vercel/blob';
+import { storagePut, storageDel } from '@/lib/storage';
 
 const criarDataAjustada = (dataString: string) => {
   if (!dataString) return new Date();
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     if (arquivo && arquivo.size > 0) {
       const extensao = arquivo.name.split('.').pop() || 'jpg';
       const filename = `atestado-${session.user.id}-${Date.now()}.${extensao}`;
-      const blob = await put(filename, arquivo, { access: 'public' });
+      const blob = await storagePut(filename, arquivo, { access: 'public' });
       comprovanteUrl = blob.url;
     }
 
@@ -121,11 +121,11 @@ export async function PUT(request: Request) {
 
     if (arquivo && arquivo.size > 0) {
       if (ausenciaAtual.comprovanteUrl) {
-        try { await del(ausenciaAtual.comprovanteUrl); } catch {}
+        try { await storageDel(ausenciaAtual.comprovanteUrl); } catch {}
       }
       const extensao = arquivo.name.split('.').pop() || 'jpg';
       const filename = `atestado-${session.user.id}-${Date.now()}.${extensao}`;
-      const blob = await put(filename, arquivo, { access: 'public' });
+      const blob = await storagePut(filename, arquivo, { access: 'public' });
       comprovanteUrl = blob.url;
     }
 
@@ -179,7 +179,7 @@ export async function DELETE(request: Request) {
     }
 
     if (ausencia.comprovanteUrl) {
-      try { await del(ausencia.comprovanteUrl); } catch {}
+      try { await storageDel(ausencia.comprovanteUrl); } catch {}
     }
 
     await prisma.ausencia.delete({ where: { id } });

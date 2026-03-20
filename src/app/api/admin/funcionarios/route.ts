@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { put } from '@vercel/blob';
+import { storagePut } from '@/lib/storage';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
 import { getPlanoConfig } from '@/config/planos';
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     let fotoPerfilUrl = null;
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
-      const blob = await put(filename, fotoArquivo, { access: 'public' });
+      const blob = await storagePut(filename, fotoArquivo, { access: 'public', permanente: true });
       fotoPerfilUrl = blob.url;
     }
 
@@ -278,7 +278,7 @@ export async function PUT(request: Request) {
 
     if (fotoArquivo && fotoArquivo.size > 0) {
       const filename = `referencia-${email.replace('@', '-')}-${Date.now()}.jpg`;
-      const blob = await put(filename, fotoArquivo, { access: 'public' });
+      const blob = await storagePut(filename, fotoArquivo, { access: 'public', permanente: true });
       dados.fotoPerfilUrl = blob.url;
       // Se admin enviou foto nova, não precisa mais exigir do funcionário
       dados.deveCadastrarFoto = false;

@@ -29,7 +29,7 @@ const cards = [
     format: (v: number) => String(v),
   },
   {
-    label: "Receita Mensal",
+    label: "MRR",
     key: "mrr" as const,
     icon: DollarSign,
     color: "purple",
