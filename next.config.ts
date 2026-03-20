@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.vercel-storage.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'ontimeia.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
     ],
   },
 
