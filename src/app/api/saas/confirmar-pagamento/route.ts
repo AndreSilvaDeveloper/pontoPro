@@ -172,6 +172,16 @@ async function handler(req: Request) {
       }
     }
 
+    // Analytics: rastrear conversão (trial → pago)
+    if (empresaAtual.trialAte && !empresaAtual.pagoAte) {
+      const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+      prisma.analitico.upsert({
+        where: { data: hoje },
+        create: { data: hoje, conversoes: 1 },
+        update: { conversoes: { increment: 1 } },
+      }).catch(() => {});
+    }
+
     return NextResponse.json({ ok: true, empresa, asaasConfirmado });
   } catch (e) {
     console.error("confirmar-pagamento error:", e);

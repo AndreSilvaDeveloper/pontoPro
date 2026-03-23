@@ -85,6 +85,14 @@ function SignupForm() {
     }
 
     window.addEventListener('beforeinstallprompt', handler)
+
+    // Analytics: rastrear visita na página de signup
+    fetch('/api/public/analitico', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'SIGNUP_VISIT' }),
+    }).catch(() => {})
+
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
@@ -153,7 +161,7 @@ function SignupForm() {
         return
       }
 
-      router.push('/admin')
+      router.push('/obrigado')
     } catch (err) {
       toast.error('Erro de conexão.', { id: t })
     } finally {

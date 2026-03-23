@@ -34,9 +34,20 @@ import { PricingSection } from "@/components/landing/pricing-section";
 
 import { LINKS, waLink } from '@/config/links'
 import { GalleryCarousel } from "@/components/landing/gallery-carousel";
+import WhatsAppFloat from "@/components/landing/WhatsAppFloat";
+import ExitIntentPopup from "@/components/landing/ExitIntentPopup";
 
 export default function LandingPage() {
   const router = useRouter();
+
+  // Analytics: rastrear visita na landing
+  useEffect(() => {
+    fetch('/api/public/analitico', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'LANDING' }),
+    }).catch(() => {});
+  }, []);
 
   // ========= Helpers (mobile/pwa-safe external open) =========
   const isMobile = () =>
@@ -906,6 +917,10 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Floating WhatsApp + Exit Intent */}
+      <WhatsAppFloat />
+      <ExitIntentPopup />
     </div>
   )
 }
