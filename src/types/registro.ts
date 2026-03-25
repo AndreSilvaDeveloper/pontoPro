@@ -9,7 +9,7 @@ export interface RegistroUsuario {
 export interface RegistroUnificado {
   id: string;
   dataHora: string;
-  tipo: 'PONTO' | 'AUSENCIA';
+  tipo: 'PONTO' | 'AUSENCIA' | 'AJUSTE_BANCO';
   subTipo: string;
   descricao: string;
   usuario: RegistroUsuario;
@@ -17,5 +17,10 @@ export interface RegistroUnificado {
     fotoUrl?: string | null;
     comprovanteUrl?: string | null;
     dataFim?: string | null;
+    minutos?: number;
+    adminNome?: string;
+    ajusteId?: string;
+    dataRef?: string;
+    dataFolga?: string;
   };
 }

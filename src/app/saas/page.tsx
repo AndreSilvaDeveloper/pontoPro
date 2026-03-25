@@ -24,6 +24,7 @@ import ModalEquipe from "./components/ModalEquipe";
 import ModalFatura from "./components/ModalFatura";
 import AlertNovaEmpresa from "./components/AlertNovaEmpresa";
 import AlertPagamento from "./components/AlertPagamento";
+import AnalyticsChart from "./components/AnalyticsChart";
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -257,6 +258,8 @@ export default function SuperAdminPage() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 relative z-10">
         <StatsCards stats={stats} loading={loadingStats} />
+
+        <AnalyticsChart analitico={stats?.analitico} loading={loadingStats} />
 
         <ClientTable
           empresas={empresas}

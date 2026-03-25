@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import Image from 'next/image'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type Slide = {
@@ -239,12 +240,13 @@ export function GalleryCarousel({ slides, autoPlay = true, intervalMs = 2000 }: 
                   "
                 >
                   <div className="relative aspect-[4/5] w-full">
-                    <img
+                    <Image
                       src={s.src}
                       alt={s.alt}
+                      width={800}
+                      height={1000}
                       className="h-full w-full object-cover"
                       loading="lazy"
-                      decoding="async"
                       draggable={false}
                     />
                     {/* overlay vidro */}

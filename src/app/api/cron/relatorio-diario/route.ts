@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
       const ausenciasOntem = await prisma.ausencia.findMany({
         where: {
           usuarioId: { in: funcionarioIds },
-          status: 'APROVADA',
+          status: { in: ['APROVADO', 'APROVADA'] },
           dataInicio: { lte: fimOntem },
           dataFim: { gte: inicioOntem },
         },

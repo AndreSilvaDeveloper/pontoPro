@@ -135,6 +135,14 @@ export async function POST(req: Request) {
       return { empresaId: empresa.id, usuarioId: usuario.id };
     });
 
+    // Analytics: rastrear signup completo
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    prisma.analitico.upsert({
+      where: { data: hoje },
+      create: { data: hoje, signups: 1 },
+      update: { signups: { increment: 1 } },
+    }).catch(() => {});
+
     return NextResponse.json({ ok: true, ...result });
   } catch (e: any) {
     if (e?.code === "P2002") {

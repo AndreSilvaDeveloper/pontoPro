@@ -13,6 +13,13 @@ export type DashboardStats = {
   signupsRecentes: number;
   empresasRecentes?: any[];
   pagamentosRecentes?: any[];
+  analitico?: Array<{
+    data: string;
+    visitasLanding: number;
+    visitasSignup: number;
+    signups: number;
+    conversoes: number;
+  }>;
 };
 
 type Props = {

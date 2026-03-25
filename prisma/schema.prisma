@@ -91,6 +91,7 @@ model Usuario {
 
   revendedorId            String?
   revendedor              Revendedor? @relation(fields: [revendedorId], references: [id])
+  ajustesBancoHoras       AjusteBancoHoras[]
 }
 
 model PushSubscription {
@@ -246,5 +247,36 @@ model Revendedor {
 
   usuarios        Usuario[]
   empresas        Empresa[]
+}
+
+model Analitico {
+  id                String   @id @default(cuid())
+  data              String   @unique   // "YYYY-MM-DD" (timezone SP)
+  visitasLanding    Int      @default(0)
+  visitasSignup     Int      @default(0)
+  signups           Int      @default(0)
+  conversoes        Int      @default(0)
+  visitantesUnicos  Json?    // hashes de IP para dedup diário
+  criadoEm          DateTime @default(now())
+
+  @@index([data])
+  @@map("analitico")
+}
+
+model AjusteBancoHoras {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  data          String   // "YYYY-MM-DD" - data de referência (para débito no saldo)
+  dataFolga     String?  // "YYYY-MM-DD" - data da folga (só para COMPENSACAO_FOLGA, reduz meta do dia)
+  minutos       Int      // positivo = crédito, negativo = débito
+  tipo          String   // PAGAMENTO_HE | COMPENSACAO_FOLGA | CORRECAO_MANUAL
+  motivo        String
+  adminId       String
+  adminNome     String
+  criadoEm      DateTime @default(now())
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([data])
 }
 

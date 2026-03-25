@@ -138,6 +138,13 @@ export async function GET() {
       signupsRecentes,
       empresasRecentes,
       pagamentosRecentes,
+      analitico: await prisma.analitico.findMany({
+        where: {
+          data: { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) },
+        },
+        orderBy: { data: 'asc' },
+        select: { data: true, visitasLanding: true, visitasSignup: true, signups: true, conversoes: true },
+      }),
     });
   } catch (error) {
     console.error("Erro ao gerar dashboard stats:", error);
