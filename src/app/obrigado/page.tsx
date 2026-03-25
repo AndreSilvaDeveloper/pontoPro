@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, MessageCircle, ArrowRight, Smartphone, Users, Clock } from 'lucide-react';
+import { CheckCircle2, MessageCircle, ArrowRight, Calendar } from 'lucide-react';
 import { LINKS, waLink } from '@/config/links';
 
 export default function ObrigadoPage() {
@@ -63,6 +63,19 @@ export default function ObrigadoPage() {
           </div>
         </div>
 
+        {/* CTA Demo */}
+        <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/20 border border-purple-500/20 rounded-2xl p-5 text-center space-y-2">
+          <Calendar size={24} className="text-purple-400 mx-auto" />
+          <h2 className="text-base font-bold text-white">Quer ver o sistema funcionando ao vivo?</h2>
+          <p className="text-xs text-gray-400">Demonstracao gratuita de 20 min. Mostramos tudo e tiramos suas duvidas.</p>
+          <Link
+            href="/agendar-demo"
+            className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-lg shadow-purple-500/30 mt-1"
+          >
+            <Calendar size={14} /> Agendar demonstracao
+          </Link>
+        </div>
+
         {/* CTAs */}
         <div className="space-y-3">
           <Link
@@ -81,11 +94,6 @@ export default function ObrigadoPage() {
             <MessageCircle size={16} /> Preciso de ajuda para configurar
           </a>
         </div>
-
-        {/* Dica */}
-        <p className="text-gray-600 text-xs">
-          Precisa de ajuda? Estamos no WhatsApp para te guiar na configuracao.
-        </p>
       </div>
     </div>
   );

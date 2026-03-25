@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { AboutModal } from "@/components/landing/about-modal";
 import { PillarsModal } from "@/components/landing/pillars-modal";
@@ -41,6 +42,12 @@ export function DesktopMenu() {
         >
           Revenda
         </a>
+        <Link
+          href="/blog"
+          className="cursor-pointer text-sm font-medium text-gray-300 transition-colors hover:text-white"
+        >
+          Blog
+        </Link>
         <Button
           variant="ghost"
           className="cursor-pointer text-sm font-medium text-gray-300 transition-colors hover:bg-transparent hover:text-white"

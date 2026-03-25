@@ -37,6 +37,7 @@ import { LINKS, waLink } from '@/config/links'
 import { GalleryCarousel } from "@/components/landing/gallery-carousel";
 import WhatsAppFloat from "@/components/landing/WhatsAppFloat";
 import ExitIntentPopup from "@/components/landing/ExitIntentPopup";
+import { getLatestPosts } from "@/data/blog-posts";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -255,13 +256,14 @@ export default function LandingPage() {
                 </Button>
 
                 <Button
-                  type="button"
+                  asChild
                   size="lg"
                   variant="outline"
                   className="w-full border-2 border-purple-500/30 bg-transparent font-bold text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white sm:w-auto"
-                  onClick={() => openExternal(LINKS.demoVideo.shortUrl)}
                 >
-                  Ver demonstracao
+                  <Link href="/agendar-demo">
+                    Agendar demonstracao
+                  </Link>
                 </Button>
               </div>
 
@@ -709,6 +711,9 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Blog Section */}
+      <BlogPreviewSection />
+
       {/* FAQ Section */}
       <FAQSection />
 
@@ -742,13 +747,14 @@ export default function LandingPage() {
                 </Button>
 
                 <Button
-                  type="button"
+                  asChild
                   size="lg"
                   variant="outline"
                   className="border-2 border-purple-500/30 bg-transparent font-medium text-white hover:border-purple-500/50 hover:bg-purple-950/30 hover:text-white"
-                  onClick={() => openWhatsApp(waLink(LINKS.whatsapp.messages.agendarDemo))}
                 >
-                  Falar com consultor
+                  <Link href="/agendar-demo">
+                    Agendar demonstracao
+                  </Link>
                 </Button>
               </div>
 
@@ -936,6 +942,71 @@ export default function LandingPage() {
       <ExitIntentPopup />
     </div>
   )
+}
+
+// ========= Blog Preview Section Component =========
+function BlogPreviewSection() {
+  const latestPosts = getLatestPosts(3);
+
+  return (
+    <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
+      <div className="container mx-auto">
+        <div className="mb-12 text-center">
+          <Badge variant="outline" className="mb-4 border-purple-500/30 bg-purple-500/10 text-purple-400">
+            Blog
+          </Badge>
+          <h2 className="mb-4 text-3xl font-bold text-white md:text-4xl">
+            Conteúdo para sua{" "}
+            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              gestão
+            </span>
+          </h2>
+          <p className="mx-auto max-w-2xl text-gray-400">
+            Artigos sobre ponto digital, legislação e gestão de equipes para ajudar sua empresa a crescer.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {latestPosts.map((post) => (
+            <Link
+              key={post.slug}
+              href={`/blog/${post.slug}`}
+              className="group overflow-hidden rounded-2xl border border-purple-500/20 bg-[#0f1333]/50 p-6 transition-all hover:border-purple-500/40 hover:shadow-lg hover:shadow-purple-500/10"
+            >
+              <span className="mb-3 inline-block rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-400">
+                {post.category}
+              </span>
+              <h3 className="mb-2 text-lg font-semibold text-white transition-colors group-hover:text-purple-400">
+                {post.title}
+              </h3>
+              <p className="mb-4 line-clamp-2 text-sm text-gray-400">
+                {post.description}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock className="h-3 w-3" />
+                  {post.readTime}
+                </span>
+                <span className="text-sm font-medium text-purple-400 transition-colors group-hover:text-purple-300">
+                  Ler mais →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-8 text-center">
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-6 py-3 text-sm font-medium text-purple-400 transition-colors hover:bg-purple-500/20"
+          >
+            Ver todos os artigos
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 // ========= FAQ Section Component =========
