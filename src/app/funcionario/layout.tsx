@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import BottomNav from '@/components/funcionario/BottomNav';
 import NotificacaoSolicitacao from '@/components/funcionario/NotificacaoSolicitacao';
+import ModalNovidades from '@/components/ModalNovidades';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -47,6 +48,7 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
   return (
     <>
       <NotificacaoSolicitacao />
+      <ModalNovidades tipo="FUNCIONARIO" />
       {children}
       <BottomNav />
     </>

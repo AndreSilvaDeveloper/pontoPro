@@ -83,6 +83,10 @@ export function useAdminDashboard() {
   const [pendenciasAusencia, setPendenciasAusencia] = useState(0);
   const [pendenciasHoraExtra, setPendenciasHoraExtra] = useState(0);
   const [horasExtrasAprovadas, setHorasExtrasAprovadas] = useState<Array<{ usuarioId: string; data: string; minutosExtra: number }>>([]);
+  const [ajustesBanco, setAjustesBanco] = useState<Array<{ usuarioId: string; data: string; dataFolga?: string; minutos: number; tipo?: string }>>([]);
+
+  const [modalAjusteBancoAberto, setModalAjusteBancoAberto] = useState(false);
+  const [bancoRefreshKey, setBancoRefreshKey] = useState(0);
 
   // ✅ NOVO: Billing status central
   const [billing, setBilling] = useState<BillingStatus | null>(null);
@@ -91,6 +95,7 @@ export function useAdminDashboard() {
   const somTocadoRef = useRef(false);
 
   const [filtroUsuario, setFiltroUsuario] = useState('');
+  const [filtroPonto, setFiltroPonto] = useState('');  // '' = todos, ENTRADA, SAIDA, etc.
   const [dataInicio, setDataInicio] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFim, setDataFim] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -131,6 +136,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         resBilling,
         resHEAprovadas,
         resHEPendentes,
+        resAjustesBanco,
       ] = await Promise.all([
         axios.get('/api/admin/pontos-todos'),
         axios.get('/api/admin/ausencias-aprovadas'),
@@ -142,6 +148,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         axios.get('/api/empresa/billing-status').catch(() => ({ data: null })),
         axios.get('/api/admin/horas-extras?status=APROVADO').catch(() => ({ data: [] })),
         axios.get('/api/admin/horas-extras?status=PENDENTE').catch(() => ({ data: [] })),
+        axios.get('/api/admin/ajuste-banco').catch(() => ({ data: [] })),
       ]);
 
       setUsuarios(resUsers.data);
@@ -172,6 +179,15 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
           usuarioId: h.usuarioId,
           data: h.data,
           minutosExtra: h.minutosExtra,
+        }))
+      );
+      setAjustesBanco(
+        (resAjustesBanco.data || []).map((a: any) => ({
+          usuarioId: a.usuarioId,
+          data: a.data,
+          dataFolga: a.dataFolga || undefined,
+          minutos: a.minutos,
+          tipo: a.tipo,
         }))
       );
 
@@ -206,6 +222,21 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
           descricao: a.motivo,
           usuario: a.usuario,
           extra: { comprovanteUrl: a.comprovanteUrl, dataFim: a.dataFim },
+        });
+      });
+
+      // Adicionar ajustes de banco de horas na lista unificada
+      (resAjustesBanco.data || []).forEach((a: any) => {
+        // Para COMPENSACAO_FOLGA: mostrar no dia da folga. Outros: no dia da data de referência.
+        const diaExibir = a.tipo === 'COMPENSACAO_FOLGA' && a.dataFolga ? a.dataFolga : a.data;
+        listaUnificada.push({
+          id: `ajuste-${a.id}`,
+          dataHora: `${diaExibir}T12:00:00`,
+          tipo: 'AJUSTE_BANCO',
+          subTipo: a.tipo,
+          descricao: a.motivo,
+          usuario: a.usuario || { id: a.usuarioId, nome: a.adminNome || 'Admin' },
+          extra: { minutos: a.minutos, adminNome: a.adminNome, ajusteId: a.id, dataRef: a.data, dataFolga: a.dataFolga },
         });
       });
 
@@ -320,6 +351,23 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     [carregarDados],
   );
 
+  const excluirAjuste = useCallback(
+    async (reg: any) => {
+      if (!confirm('Excluir este ajuste de banco de horas?')) return;
+      const ajusteId = reg.extra?.ajusteId || reg.id?.replace('ajuste-', '');
+      if (!ajusteId) return;
+      try {
+        await axios.delete('/api/admin/ajuste-banco', { data: { id: ajusteId } });
+        alert('Ajuste excluído.');
+        setBancoRefreshKey(k => k + 1);
+        carregarDados();
+      } catch {
+        alert('Erro ao excluir ajuste.');
+      }
+    },
+    [carregarDados],
+  );
+
   const abrirModalAusencia = useCallback(() => {
     setAusenciaUser('');
     setAusenciaTipo('FERIAS');
@@ -354,17 +402,24 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     return registros.filter((r) => {
       if (filtroUsuario && r.usuario.id !== filtroUsuario) return false;
       if (r.tipo === 'PONTO') {
+        if (filtroPonto && r.subTipo !== filtroPonto) return false;
         const diaPonto = format(new Date(r.dataHora), 'yyyy-MM-dd');
         return diaPonto >= dataInicio && diaPonto <= dataFim;
       }
       if (r.tipo === 'AUSENCIA') {
+        if (filtroPonto) return false; // se filtrando por tipo de ponto, esconde ausências
         const iniAus = format(new Date(r.dataHora), 'yyyy-MM-dd');
         const fimAus = r.extra?.dataFim ? format(new Date(r.extra.dataFim), 'yyyy-MM-dd') : iniAus;
         return iniAus <= dataFim && fimAus >= dataInicio;
       }
+      if (r.tipo === 'AJUSTE_BANCO') {
+        if (filtroPonto) return false;
+        const dia = format(new Date(r.dataHora), 'yyyy-MM-dd');
+        return dia >= dataInicio && dia <= dataFim;
+      }
       return false;
     });
-  }, [dataFim, dataInicio, filtroUsuario, registros]);
+  }, [dataFim, dataInicio, filtroUsuario, filtroPonto, registros]);
 
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter((u) => {
@@ -388,8 +443,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       dataInicio,
       dataFim,
       horasExtrasAprovadas,
+      ajustesBanco,
     });
-  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas]);
+  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas, ajustesBanco]);
 
   const configs = empresa.configuracoes || {};
 
@@ -412,9 +468,15 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     pendenciasAjuste,
     pendenciasAusencia,
     pendenciasHoraExtra,
+    modalAjusteBancoAberto,
+    setModalAjusteBancoAberto,
+    bancoRefreshKey,
+    setBancoRefreshKey,
 
     filtroUsuario,
     setFiltroUsuario,
+    filtroPonto,
+    setFiltroPonto,
     dataInicio,
     setDataInicio,
     dataFim,
@@ -467,6 +529,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     registrosFiltrados,
     excluirPonto,
     excluirAusencia,
+    excluirAjuste,
     stats,
   };
 }

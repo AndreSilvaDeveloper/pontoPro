@@ -91,6 +91,7 @@ model Usuario {
 
   revendedorId            String?
   revendedor              Revendedor? @relation(fields: [revendedorId], references: [id])
+  ajustesBancoHoras       AjusteBancoHoras[]
 }
 
 model PushSubscription {
@@ -260,5 +261,22 @@ model Analitico {
 
   @@index([data])
   @@map("analitico")
+}
+
+model AjusteBancoHoras {
+  id            String   @id @default(cuid())
+  usuarioId     String
+  data          String   // "YYYY-MM-DD" - data de referência (para débito no saldo)
+  dataFolga     String?  // "YYYY-MM-DD" - data da folga (só para COMPENSACAO_FOLGA, reduz meta do dia)
+  minutos       Int      // positivo = crédito, negativo = débito
+  tipo          String   // PAGAMENTO_HE | COMPENSACAO_FOLGA | CORRECAO_MANUAL
+  motivo        String
+  adminId       String
+  adminNome     String
+  criadoEm      DateTime @default(now())
+  usuario       Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([data])
 }
 

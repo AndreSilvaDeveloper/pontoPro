@@ -243,7 +243,7 @@ export async function GET(req: Request) {
       prisma.ausencia.findMany({
         where: {
           usuarioId: { in: funcionarioIds },
-          status: 'APROVADA',
+          status: { in: ['APROVADO', 'APROVADA'] },
           dataInicio: { lte: dataFim },
           dataFim: { gte: dataInicio },
         },

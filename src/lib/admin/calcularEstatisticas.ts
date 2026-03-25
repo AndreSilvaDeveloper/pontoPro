@@ -112,8 +112,9 @@ export function calcularEstatisticas(args: {
   dataInicio: string;
   dataFim: string;
   horasExtrasAprovadas?: Array<{ usuarioId: string; data: string; minutosExtra: number }>;
+  ajustesBanco?: Array<{ usuarioId: string; data: string; dataFolga?: string; minutos: number; tipo?: string }>;
 }) {
-  const { filtroUsuario, registros, usuarios, feriados, feriadosParciais, dataInicio, dataFim, horasExtrasAprovadas } = args;
+  const { filtroUsuario, registros, usuarios, feriados, feriadosParciais, dataInicio, dataFim, horasExtrasAprovadas, ajustesBanco } = args;
 
   if (!filtroUsuario) return null;
 
@@ -530,11 +531,30 @@ export function calcularEstatisticas(args: {
   let loopData = criarDataLocal(dataInicio);
   const fimData = criarDataLocal(dataFim);
 
+  // Pré-calcular compensações de folga por dia (reduzem a meta)
+  // Usa dataFolga se existir, senão data (compatibilidade com registros antigos)
+  const compensacoesPorDia: Record<string, number> = {};
+  if (ajustesBanco) {
+    for (const ajuste of ajustesBanco) {
+      if (ajuste.usuarioId === filtroUsuario && ajuste.tipo === 'COMPENSACAO_FOLGA') {
+        const absMin = Math.abs(ajuste.minutos);
+        const diaFolga = ajuste.dataFolga || ajuste.data;
+        compensacoesPorDia[diaFolga] = (compensacoesPorDia[diaFolga] || 0) + absMin;
+      }
+    }
+  }
+
   while (loopData <= fimData) {
     if (loopData <= agora) {
       const dataStr = format(loopData, 'yyyy-MM-dd');
-      const meta = getMetaDoDia(loopData);
+      let meta = getMetaDoDia(loopData);
       const trabalhado = minutosPorDia[dataStr] || 0;
+
+      // Reduzir meta se tem compensação de folga neste dia
+      const compensacao = compensacoesPorDia[dataStr] || 0;
+      if (compensacao > 0) {
+        meta = Math.max(0, meta - compensacao);
+      }
 
       // Cortar hora extra no saldo: se trabalhou além da meta + tolerância, corta no expediente
       // A menos que haja aprovação explícita
@@ -566,6 +586,17 @@ export function calcularEstatisticas(args: {
       saldoMinutosBanco += saldoDia;
     }
     loopData.setDate(loopData.getDate() + 1);
+  }
+
+  // Aplicar ajustes manuais do banco de horas
+  // COMPENSACAO_FOLGA: debita do saldo via data (mês ref), reduz meta via dataFolga (já feito acima)
+  // Outros tipos: debita/credita via data
+  if (ajustesBanco) {
+    for (const ajuste of ajustesBanco) {
+      if (ajuste.usuarioId === filtroUsuario && ajuste.data >= dataInicio && ajuste.data <= dataFim) {
+        saldoMinutosBanco += ajuste.minutos;
+      }
+    }
   }
 
   const formatarHoras = (min: number) => {

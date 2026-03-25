@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,34 +140,34 @@ export default function LandingPage() {
   // ========= Gallery slides =========
   const gallerySlides = [
     {
-      src: "/images/gallery/clockin-mobile.jpg",
-      alt: "Pessoa batendo ponto no celular",
+      src: "/images/gallery/clockin-mobile.webp",
+      alt: "Funcionário batendo ponto digital no celular com GPS",
       title: "Bater ponto no celular",
-      subtitle: "Rapido, seguro e intuitivo.",
+      subtitle: "Rápido, seguro e intuitivo.",
     },
     {
-      src: "/images/gallery/clockin-face.jpg",
-      alt: "Pessoa batendo ponto por reconhecimento facial",
+      src: "/images/gallery/clockin-face.webp",
+      alt: "Reconhecimento facial para registro de ponto biométrico",
       title: "Reconhecimento facial",
-      subtitle: "Mais seguranca no registro.",
+      subtitle: "Mais segurança no registro.",
     },
     {
-      src: "/images/gallery/reports.jpg",
-      alt: "Relatorios e indicadores do ponto",
-      title: "Relatorios completos",
-      subtitle: "Exportacao e insights.",
+      src: "/images/gallery/reports.webp",
+      alt: "Relatórios de ponto e espelho de ponto em PDF",
+      title: "Relatórios completos",
+      subtitle: "Exportação e insights.",
     },
     {
-      src: "/images/gallery/admin-dashboard.jpg",
-      alt: "Painel administrativo do WorkID",
+      src: "/images/gallery/admin-dashboard.webp",
+      alt: "Painel administrativo do sistema de ponto WorkID",
       title: "Painel administrativo",
       subtitle: "Controle total em tempo real.",
     },
     {
-      src: "/images/gallery/team-management.jpg",
-      alt: "Tela de gestao de equipe no WorkID",
-      title: "Gestao de equipe",
-      subtitle: "Cadastros, ajustes e permissoes.",
+      src: "/images/gallery/team-management.webp",
+      alt: "Gestão de equipe e funcionários no WorkID",
+      title: "Gestão de equipe",
+      subtitle: "Cadastros, ajustes e permissões.",
     },
   ];
 
@@ -179,7 +180,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-purple-500/10 bg-[#0a0e27]/80 backdrop-blur-xl">
         <nav className="container mx-auto flex items-center justify-center px-4 py-3 md:justify-between md:px-6 md:py-4">
           <Link href="/" className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-80">
-            <img src="/logo.png" alt="WorkID" className="size-10 rounded-xl object-contain" />
+            <Image src="/logo.png" alt="WorkID" width={40} height={40} className="rounded-xl object-contain" />
             <span className="text-xl font-extrabold text-white md:text-2xl">WorkID</span>
           </Link>
 
@@ -275,9 +276,12 @@ export default function LandingPage() {
 
               <div className="relative z-10 rounded-3xl bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20 p-2 shadow-2xl shadow-purple-500/50 backdrop-blur-sm">
                 <div className="relative overflow-hidden rounded-2xl ring-1 ring-purple-500/30">
-                  <img
-                    src="/images/phone-preview.jpeg"
-                    alt="WorkID App Preview"
+                  <Image
+                    src="/images/phone-preview.webp"
+                    alt="Tela do aplicativo WorkID de ponto digital no celular"
+                    width={400}
+                    height={800}
+                    priority
                     className="w-full max-w-xs transition-transform duration-500 hover:scale-105 sm:max-w-sm md:max-w-md"
                   />
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent" />
@@ -523,9 +527,11 @@ export default function LandingPage() {
             <MobileCarousel>
               <div className="relative">
                 <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
-                <img
-                  src="/images/mobile-dark.jpeg"
-                  alt="Experiencia Mobile"
+                <Image
+                  src="/images/mobile-dark.webp"
+                  alt="App WorkID para funcionários no celular"
+                  width={800}
+                  height={600}
                   className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
                 />
                 <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
@@ -561,9 +567,11 @@ export default function LandingPage() {
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
-              <img
-                src="/images/laptop-preview.jpeg"
-                alt="Experiencia Desktop"
+              <Image
+                src="/images/laptop-preview.webp"
+                alt="Painel administrativo WorkID no computador"
+                width={900}
+                height={600}
                 className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
               />
               <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
@@ -784,7 +792,7 @@ export default function LandingPage() {
                 href={LINKS.instagram.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-purple-950/50 p-2.5 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                className="rounded-lg bg-purple-950/50 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
               >
                 <Instagram className="size-5" />
               </a>
@@ -792,13 +800,13 @@ export default function LandingPage() {
                 href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-lg bg-purple-950/50 p-2.5 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                className="rounded-lg bg-purple-950/50 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
               >
                 <MessageCircle className="size-5" />
               </a>
               <a
                 href={`mailto:${LINKS.email.address}`}
-                className="rounded-lg bg-purple-950/50 p-2.5 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                className="rounded-lg bg-purple-950/50 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
               >
                 <Mail className="size-5" />
               </a>
@@ -912,6 +920,11 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-8 border-t border-purple-500/10 pt-8 text-center text-sm text-gray-400">
+              <div className="flex items-center justify-center gap-4 mb-2">
+                <Link href="/termos" className="hover:text-white transition-colors">Termos de Uso</Link>
+                <span className="text-gray-600">|</span>
+                <Link href="/privacidade" className="hover:text-white transition-colors">Política de Privacidade</Link>
+              </div>
               <p>&copy; 2026 WorkID. Todos os direitos reservados.</p>
             </div>
           </div>
@@ -982,7 +995,8 @@ function FAQSection() {
                 <button
                   type="button"
                   onClick={() => setOpenIndex(isOpen ? null : i)}
-                  className="flex w-full items-center justify-between gap-4 p-5 text-left"
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center justify-between gap-4 p-5 text-left min-h-[48px]"
                 >
                   <span className="text-sm font-medium text-white md:text-base">{faq.question}</span>
                   <ChevronDown

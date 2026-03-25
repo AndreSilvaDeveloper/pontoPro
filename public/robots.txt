@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /funcionario
+Disallow: /api
+Disallow: /login
+Disallow: /signup
+Disallow: /trocar-senha
+Disallow: /cadastrar-assinatura
+Disallow: /cadastrar-foto
+Disallow: /ciencia-celular
+
+Sitemap: https://ontimeia.com/sitemap.xml

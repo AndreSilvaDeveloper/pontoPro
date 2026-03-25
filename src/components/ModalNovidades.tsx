@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Sparkles, Clock, Bell, BarChart3, FileText, CheckSquare, Calendar, TrendingUp, AlertTriangle, Coffee, UtensilsCrossed, ExternalLink } from 'lucide-react';
+import { X, Sparkles, Clock, Bell, BarChart3, FileText, CheckSquare, Calendar, TrendingUp, AlertTriangle, Coffee, UtensilsCrossed, ExternalLink, Scale, Timer, Shield, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { usePromptStatus } from '@/hooks/usePromptStatus';
 
-const VERSAO_NOVIDADES = 'v2.5.0';
+const VERSAO_NOVIDADES = 'v3.0.0';
 
 interface Novidade {
   icon: any;
@@ -22,81 +22,73 @@ interface Props {
 
 const novidadesAdmin: Novidade[] = [
   {
-    icon: AlertTriangle,
+    icon: Shield,
     cor: 'text-red-400',
     bg: 'bg-red-500/10',
-    titulo: 'Alertas Inteligentes',
-    descricao: 'Atrasos, ausências sem justificativa, hora extra excessiva e padrões recorrentes — tudo na Visão Geral.',
-    link: '/admin/dashboard',
+    titulo: 'Controle de Horas Extras',
+    descricao: 'O sistema agora detecta automaticamente horas extras e cria pendências para você aprovar ou rejeitar. Sem aprovação, a hora extra não conta no banco.',
+    link: '/admin/solicitacoes',
   },
   {
-    icon: BarChart3,
+    icon: Users,
     cor: 'text-purple-400',
     bg: 'bg-purple-500/10',
-    titulo: 'Gráfico de Tendências',
-    descricao: 'Veja a presença da equipe nas últimas 4 semanas com gráfico e resumo semanal.',
-    link: '/admin/dashboard',
+    titulo: 'Banco de Horas da Equipe',
+    descricao: 'Veja o saldo de banco de horas de todos os funcionários em um só lugar. Filtre por mês ou veja o acumulado. O cálculo considera até o dia anterior para evitar valores parciais.',
   },
   {
-    icon: FileText,
+    icon: Scale,
     cor: 'text-blue-400',
     bg: 'bg-blue-500/10',
-    titulo: 'Folha de Ponto',
-    descricao: 'Relatório por período personalizado com exportação PDF, pronto para enviar ao contador.',
-    link: '/admin/relatorio-mensal',
+    titulo: 'Gerenciar Horas Extras',
+    descricao: 'Pague horas extras em dinheiro, dê folga como compensação ou faça correções manuais. Selecione vários funcionários de uma vez. Tudo fica registrado na auditoria.',
   },
   {
-    icon: CheckSquare,
-    cor: 'text-emerald-400',
-    bg: 'bg-emerald-500/10',
-    titulo: 'Aprovação em Lote',
-    descricao: 'Selecione várias solicitações e aprove ou rejeite todas de uma vez.',
+    icon: Timer,
+    cor: 'text-orange-400',
+    bg: 'bg-orange-500/10',
+    titulo: 'Aprovação de Horas Extras',
+    descricao: 'Na tela de Pendências, uma nova aba "Horas Extras" mostra todas as horas extras pendentes com detalhes de meta, trabalhado e extra. Aprove individualmente ou em lote.',
     link: '/admin/solicitacoes',
   },
   {
     icon: Bell,
     cor: 'text-amber-400',
     bg: 'bg-amber-500/10',
-    titulo: 'Notificações por Email',
-    descricao: 'Receba email quando um funcionário criar uma solicitação. Funcionários são notificados quando você aprovar ou rejeitar.',
+    titulo: 'Push de Horas Extras',
+    descricao: 'Você recebe notificação push quando há horas extras pendentes de aprovação. Nada passa despercebido.',
   },
   {
-    icon: TrendingUp,
-    cor: 'text-orange-400',
-    bg: 'bg-orange-500/10',
-    titulo: 'Relatório Diário Automático',
-    descricao: 'Todo dia às 19h você recebe por email o resumo: faltas, atrasos, hora extra e saídas antecipadas.',
+    icon: Calendar,
+    cor: 'text-emerald-400',
+    bg: 'bg-emerald-500/10',
+    titulo: 'Filtro por Tipo de Registro',
+    descricao: 'Novo filtro na tabela de pontos: veja apenas entradas, saídas, almoços ou todos os registros de uma vez.',
   },
 ];
 
 const novidadesFuncionario: Novidade[] = [
   {
-    icon: Clock,
+    icon: Shield,
+    cor: 'text-red-400',
+    bg: 'bg-red-500/10',
+    titulo: 'Horas Extras Controladas',
+    descricao: 'Suas horas extras agora precisam da aprovação do gestor para contar no banco. Isso garante que o saldo está sempre correto.',
+  },
+  {
+    icon: Scale,
     cor: 'text-purple-400',
     bg: 'bg-purple-500/10',
-    titulo: 'Progresso do Dia',
-    descricao: 'Agora você vê uma barra mostrando quanto já trabalhou e quanto falta para completar sua jornada.',
+    titulo: 'Ajustes no Histórico',
+    descricao: 'Pagamentos de horas extras, folgas de compensação e correções do gestor agora aparecem direto no seu histórico de pontos.',
+    link: '/funcionario/historico',
   },
   {
-    icon: TrendingUp,
+    icon: Clock,
     cor: 'text-blue-400',
     bg: 'bg-blue-500/10',
-    titulo: 'Previsão de Saída',
-    descricao: 'O sistema calcula automaticamente seu horário previsto de saída baseado na sua entrada.',
-  },
-  {
-    icon: Coffee,
-    cor: 'text-amber-400',
-    bg: 'bg-amber-500/10',
-    titulo: 'Alerta de Café',
-    descricao: 'Receba um aviso quando sua pausa para café ultrapassar 15 minutos.',
-  },
-  {
-    icon: UtensilsCrossed,
-    cor: 'text-orange-400',
-    bg: 'bg-orange-500/10',
-    titulo: 'Alerta de Almoço',
-    descricao: 'Aviso quando seu horário de almoço exceder o tempo configurado.',
+    titulo: 'Progresso do Dia',
+    descricao: 'Barra de progresso mostrando quanto já trabalhou e quanto falta para completar sua jornada.',
   },
   {
     icon: Calendar,
@@ -108,10 +100,10 @@ const novidadesFuncionario: Novidade[] = [
   },
   {
     icon: Bell,
-    cor: 'text-red-400',
-    bg: 'bg-red-500/10',
-    titulo: 'Email de Aprovação',
-    descricao: 'Agora você recebe um email quando sua solicitação de ajuste é aprovada ou rejeitada.',
+    cor: 'text-amber-400',
+    bg: 'bg-amber-500/10',
+    titulo: 'Notificações',
+    descricao: 'Receba notificações push e email sobre aprovações, rejeições e lembretes de pausa.',
   },
 ];
 
@@ -155,7 +147,14 @@ export default function ModalNovidades({ tipo }: Props) {
     window.addEventListener('push-prompt-done', onPushDone);
     window.addEventListener('install-prompt-done', onInstallDone);
 
+    // Fallback: se os eventos não dispararem em 5s, abre o modal mesmo assim
+    const fallback = setTimeout(() => {
+      promptsReady = true; pushDone = true; installDone = true;
+      tentarAbrir();
+    }, 5000);
+
     return () => {
+      clearTimeout(fallback);
       window.removeEventListener('prompts-ready', onReady);
       window.removeEventListener('push-prompt-done', onPushDone);
       window.removeEventListener('install-prompt-done', onInstallDone);

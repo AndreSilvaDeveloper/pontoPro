@@ -57,6 +57,19 @@ export async function GET(request: Request) {
         }
     });
 
+    // Buscar ajustes de banco de horas do funcionário
+    const ajustesBanco = await prisma.ajusteBancoHoras.findMany({
+      where: {
+        usuarioId: session.user.id,
+        OR: [
+          { data: { gte: inicio, lte: fim } },
+          { dataFolga: { gte: inicio, lte: fim } },
+        ],
+      },
+      select: { id: true, data: true, dataFolga: true, minutos: true, tipo: true, motivo: true, adminNome: true, criadoEm: true },
+      orderBy: { criadoEm: 'desc' },
+    });
+
     // Buscar horas extras aprovadas do funcionário
     const horasExtrasAprovadas = await prisma.horaExtra.findMany({
       where: {
@@ -80,6 +93,7 @@ export async function GET(request: Request) {
         jornada: usuario?.jornada,
         feriados: usuario?.empresa?.feriados?.map(f => f.data.toISOString().split('T')[0]) || [],
         horasExtrasAprovadas: horasExtrasAprovadas.map(h => ({ data: h.data, minutosExtra: h.minutosExtra })),
+        ajustesBanco: ajustesBanco.map(a => ({ data: a.data, dataFolga: a.dataFolga, minutos: a.minutos, tipo: a.tipo, motivo: a.motivo, adminNome: a.adminNome })),
     });
 
   } catch (error) {

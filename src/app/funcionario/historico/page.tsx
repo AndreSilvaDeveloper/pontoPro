@@ -42,6 +42,7 @@ import {
   FileText,
   Trash2,
   ShieldAlert,
+  Scale,
 } from 'lucide-react';
 import BotaoRelatorio from '@/components/BotaoRelatorio';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -87,6 +88,7 @@ export default function MeuHistorico() {
   const [jornada, setJornada] = useState<any>(null);
   const [feriados, setFeriados] = useState<string[]>([]);
   const [resumo, setResumo] = useState<{ total: string; saldo: string; saldoPositivo: boolean } | null>(null);
+  const [ajustesBancoLista, setAjustesBancoLista] = useState<any[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -121,7 +123,7 @@ export default function MeuHistorico() {
   const ajustarId = searchParams.get('ajustar');
 
   // === CÁLCULO INTELIGENTE (COM TOLERÂNCIA CLT DE 10 MINUTOS) ===
-  const calcularHorasAvancado = (listaRegistros: any[], jornadaConfig: any, listaFeriados: string[], heAprovadas?: Array<{ data: string; minutosExtra: number }>) => {
+  const calcularHorasAvancado = (listaRegistros: any[], jornadaConfig: any, listaFeriados: string[], heAprovadas?: Array<{ data: string; minutosExtra: number }>, ajustesBanco?: Array<{ data: string; dataFolga?: string; minutos: number; tipo?: string }>) => {
     if (!listaRegistros) return { total: '0h 0m', saldo: '0h 0m', saldoPositivo: true };
 
     const agora = new Date();
@@ -277,13 +279,30 @@ export default function MeuHistorico() {
     let saldoTotalBanco = 0;
     let minutosTotalTrabalhado = 0;
 
+    // Pré-calcular compensações de folga por dia (usa dataFolga se existir)
+    const compensacoesPorDia: Record<string, number> = {};
+    if (ajustesBanco) {
+      for (const aj of ajustesBanco) {
+        if (aj.tipo === 'COMPENSACAO_FOLGA') {
+          const diaFolga = aj.dataFolga || aj.data;
+          compensacoesPorDia[diaFolga] = (compensacoesPorDia[diaFolga] || 0) + Math.abs(aj.minutos);
+        }
+      }
+    }
+
     let loopData = criarDataLocal(dataInicio);
     const fimData = criarDataLocal(dataFim);
 
     while (loopData <= fimData) {
       if (loopData <= agora) {
         const diaStr = toDateStr(loopData);
-        const metaDia = getMetaDoDia(loopData);
+        let metaDia = getMetaDoDia(loopData);
+
+        // Reduzir meta se tem compensação de folga neste dia
+        const compensacao = compensacoesPorDia[diaStr] || 0;
+        if (compensacao > 0) {
+          metaDia = Math.max(0, metaDia - compensacao);
+        }
 
         let trabalhadoDia = 0;
         const pontosDia = pontosPorDia[diaStr] || [];
@@ -347,6 +366,16 @@ export default function MeuHistorico() {
       loopData.setDate(loopData.getDate() + 1);
     }
 
+    // Aplicar ajustes manuais do banco de horas
+    // COMPENSACAO_FOLGA: debita do saldo via data (mês ref), reduz meta via dataFolga (já feito acima)
+    if (ajustesBanco) {
+      for (const ajuste of ajustesBanco) {
+        if (ajuste.data >= dataInicio && ajuste.data <= dataFim) {
+          saldoTotalBanco += ajuste.minutos;
+        }
+      }
+    }
+
     const formatarHoras = (min: number) => {
       const sinal = min < 0 ? '-' : '';
       const absMin = Math.abs(min);
@@ -372,7 +401,8 @@ export default function MeuHistorico() {
         setFuncionarioNome(resHistorico.data.funcionarioNome || '');
         setJornada(resHistorico.data.jornada);
         setFeriados(resHistorico.data.feriados);
-        setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas));
+        setAjustesBancoLista(resHistorico.data.ajustesBanco || []);
+        setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas, resHistorico.data.ajustesBanco));
       } else {
         setPontos(resHistorico.data);
       }
@@ -593,6 +623,19 @@ export default function MeuHistorico() {
     acc[dia].push(ponto);
     return acc;
   }, {});
+
+  // Agrupar ajustes de banco por data (compensação usa dataFolga para exibição)
+  const ajustesPorData: Record<string, any[]> = {};
+  ajustesBancoLista.forEach((aj: any) => {
+    const diaExibir = aj.tipo === 'COMPENSACAO_FOLGA' && aj.dataFolga ? aj.dataFolga : aj.data;
+    if (!ajustesPorData[diaExibir]) ajustesPorData[diaExibir] = [];
+    ajustesPorData[diaExibir].push(aj);
+  });
+
+  // Garantir que dias com ajustes apareçam mesmo sem pontos
+  Object.keys(ajustesPorData).forEach(dia => {
+    if (!pontosPorData[dia]) pontosPorData[dia] = [];
+  });
 
   // Ordenar datas (mais recente primeiro)
   const datasOrdenadas = Object.keys(pontosPorData).sort((a, b) => b.localeCompare(a));
@@ -1013,6 +1056,43 @@ export default function MeuHistorico() {
                                   </button>
                                 </div>
                               )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Ajustes de banco de horas neste dia */}
+                      {(ajustesPorData[dia] || []).map((aj: any, idx: number) => {
+                        const h = Math.floor(Math.abs(aj.minutos) / 60);
+                        const m = Math.abs(aj.minutos) % 60;
+                        const tipoLabels: Record<string, string> = {
+                          PAGAMENTO_HE: 'Pagamento de Horas Extras',
+                          COMPENSACAO_FOLGA: 'Compensação com Folga',
+                          CORRECAO_MANUAL: 'Correção Manual',
+                        };
+                        const isNeg = aj.minutos < 0;
+                        return (
+                          <div key={`aj-${dia}-${idx}`} className="relative">
+                            <div className="absolute -left-[1.625rem] top-3 w-3 h-3 rounded-full border-2 border-page bg-purple-500/20 border-purple-500/30">
+                              <div className="w-full h-full rounded-full bg-purple-500/20" />
+                            </div>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-xl border border-purple-500/20 bg-purple-500/5 transition-all">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <div className="p-2 rounded-lg bg-input-solid/40 shrink-0">
+                                  <Scale size={16} className="text-purple-400" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`text-sm font-bold font-mono ${isNeg ? 'text-red-400' : 'text-emerald-400'}`}>
+                                      {isNeg ? '-' : '+'}{h}h{String(m).padStart(2, '0')}
+                                    </span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">
+                                      {tipoLabels[aj.tipo] || aj.tipo}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-text-dim mt-0.5 truncate">{aj.motivo}</p>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         );

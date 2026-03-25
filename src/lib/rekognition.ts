@@ -14,8 +14,11 @@ export async function compararRostos(fotoReferenciaUrl: string, fotoAtualBase64:
     const base64Data = fotoAtualBase64.replace(/^data:image\/\w+;base64,/, "");
     const fotoAtualBuffer = Buffer.from(base64Data, 'base64');
 
-    // 2. Baixar a foto de referência (que está no Vercel Blob)
-    const responseRef = await fetch(fotoReferenciaUrl);
+    // 2. Baixar a foto de referência
+    const urlAbsoluta = fotoReferenciaUrl.startsWith('/')
+      ? `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${fotoReferenciaUrl}`
+      : fotoReferenciaUrl;
+    const responseRef = await fetch(urlAbsoluta);
     if (!responseRef.ok) throw new Error("Não consegui baixar a foto de referência");
     const fotoRefBuffer = Buffer.from(await responseRef.arrayBuffer());
 

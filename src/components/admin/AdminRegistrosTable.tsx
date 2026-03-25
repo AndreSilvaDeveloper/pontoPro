@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns';
 import Image from 'next/image';
-import { Calendar, FileText, Filter, Trash2, User, Edit2 } from 'lucide-react';
+import { Calendar, FileText, Filter, Trash2, User, Edit2, Scale } from 'lucide-react';
 import type { RegistroUnificado } from '@/types/registro';
 
 export default function AdminRegistrosTable(props: {
@@ -10,8 +10,9 @@ export default function AdminRegistrosTable(props: {
   abrirModalEdicao: (reg: RegistroUnificado) => void;
   excluirPonto: (reg: RegistroUnificado) => void;
   excluirAusencia: (reg: RegistroUnificado) => void;
+  excluirAjuste?: (reg: RegistroUnificado) => void;
 }) {
-  const { registrosFiltrados, abrirModalEdicao, excluirPonto, excluirAusencia } = props;
+  const { registrosFiltrados, abrirModalEdicao, excluirPonto, excluirAusencia, excluirAjuste } = props;
 
   const isFolgaParcial = (reg: any) => {
     if (!reg || reg.tipo !== 'AUSENCIA') return false;
@@ -49,12 +50,16 @@ export default function AdminRegistrosTable(props: {
             <div
               key={reg.id}
               className={`p-4 flex flex-col md:grid md:grid-cols-5 md:items-center gap-3 transition-all hover:bg-white/[0.02] group ${
-                reg.tipo === 'AUSENCIA' ? 'bg-yellow-900/5 hover:bg-yellow-900/10' : ''
+                reg.tipo === 'AUSENCIA' ? 'bg-yellow-900/5 hover:bg-yellow-900/10' : reg.tipo === 'AJUSTE_BANCO' ? 'bg-purple-900/5 hover:bg-purple-900/10' : ''
               }`}
             >
               {/* User */}
               <div className="flex items-center gap-3 pl-2">
-                {reg.usuario.fotoPerfilUrl ? (
+                {reg.tipo === 'AJUSTE_BANCO' ? (
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg bg-purple-500/20 text-purple-300">
+                    <Scale size={16} />
+                  </div>
+                ) : reg.usuario.fotoPerfilUrl ? (
                   <Image
                     src={reg.usuario.fotoPerfilUrl}
                     alt={reg.usuario.nome}
@@ -94,7 +99,36 @@ export default function AdminRegistrosTable(props: {
 
               {/* Hora / Tipo */}
               <div className="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
-                {reg.tipo === 'PONTO' ? (
+                {reg.tipo === 'AJUSTE_BANCO' ? (
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-bold font-mono px-2 py-0.5 rounded border ${
+                      (reg.extra?.minutos || 0) < 0
+                        ? 'text-red-400 bg-red-900/20 border-red-500/20'
+                        : 'text-emerald-400 bg-emerald-900/20 border-emerald-500/20'
+                    }`}>
+                      {(() => {
+                        const min = reg.extra?.minutos || 0;
+                        const h = Math.floor(Math.abs(min) / 60);
+                        const m = Math.abs(min) % 60;
+                        return `${min < 0 ? '-' : '+'}${h}h${String(m).padStart(2, '0')}`;
+                      })()}
+                    </span>
+                    <span className="text-[9px] font-bold text-purple-400 uppercase tracking-wide">
+                      {reg.subTipo === 'COMPENSACAO_FOLGA' ? 'Compensação' : reg.subTipo === 'PAGAMENTO_HE' ? 'Pagamento HE' : 'Correção'}
+                    </span>
+                    {excluirAjuste && (
+                      <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
+                        <button
+                          onClick={() => excluirAjuste(reg)}
+                          className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors text-xs font-bold md:p-1"
+                          title="Excluir ajuste"
+                        >
+                          <Trash2 size={14} /> <span className="md:hidden">Excluir</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : reg.tipo === 'PONTO' ? (
                   <>
                     <span className="text-sm font-bold text-emerald-400 font-mono bg-emerald-900/20 px-2 py-0.5 rounded border border-emerald-500/20">
                       {format(new Date(reg.dataHora), 'HH:mm')}

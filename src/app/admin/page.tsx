@@ -30,11 +30,14 @@ import DashboardGraficos from '@/components/DashboardGraficos';
 import SeletorLoja from '@/components/SeletorLoja';
 import ModalEditarJornada from '@/components/ModalEditarJornada';
 import ModalLancarAusencia from '@/components/ModalLancarAusencia';
+import ModalAjusteBancoHoras from '@/components/admin/ModalAjusteBancoHoras';
 
 import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
+import BancoHorasEquipe from '@/components/admin/BancoHorasEquipe';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
 import CienciaCelularAlertModal from '@/components/admin/CienciaCelularAlertModal';
+import ModalNovidades from '@/components/ModalNovidades';
 import ActionCard from '@/components/admin/ActionCard';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
@@ -59,6 +62,7 @@ export default function AdminDashboard() {
 
       <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
       <CienciaCelularAlertModal />
+      <ModalNovidades tipo="ADMIN" />
 
       {/* Toast de Pendências */}
       {a.notificacaoVisivel && (
@@ -252,8 +256,8 @@ export default function AdminDashboard() {
 
         {/* === FILTROS === */}
         <div className="relative z-20 bg-surface/60 backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">
-          <div className="w-full lg:flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+          <div className="w-full lg:flex-1 flex flex-col md:flex-row gap-4">
+            <div className="space-y-1.5 md:flex-[2]">
               <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Funcionário</label>
 
               <div className="flex gap-2">
@@ -359,7 +363,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 md:flex-[2]">
               <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Período</label>
               <div data-tour="admin-filter-period" className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
                 <div className="flex items-center gap-2 flex-1">
@@ -382,6 +386,23 @@ export default function AdminDashboard() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-1.5 md:flex-1">
+              <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Registro</label>
+              <select
+                value={a.filtroPonto}
+                onChange={(e) => a.setFiltroPonto(e.target.value)}
+                className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-3 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all appearance-none"
+              >
+                <option value="">Todos os registros</option>
+                <option value="ENTRADA">Entrada</option>
+                <option value="SAIDA_ALMOCO">Saída Almoço</option>
+                <option value="VOLTA_ALMOCO">Volta Almoço</option>
+                <option value="SAIDA_INTERVALO">Saída Café</option>
+                <option value="VOLTA_INTERVALO">Volta Café</option>
+                <option value="SAIDA">Saída</option>
+              </select>
             </div>
           </div>
 
@@ -476,12 +497,16 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {/* === BANCO DE HORAS DA EQUIPE === */}
+        <BancoHorasEquipe onAjustar={() => a.setModalAjusteBancoAberto(true)} refreshKey={a.bancoRefreshKey} />
+
         {/* === TABELA (SEPARADA) === */}
         <AdminRegistrosTable
           registrosFiltrados={a.registrosFiltrados}
           abrirModalEdicao={a.abrirModalEdicao}
           excluirPonto={a.excluirPonto}
           excluirAusencia={a.excluirAusencia}
+          excluirAjuste={a.excluirAjuste}
         />
 
         <div className="mt-8">
@@ -568,6 +593,14 @@ export default function AdminDashboard() {
 
           salvando={a.salvandoAusencia}
           onConfirmar={a.salvarAusenciaAdmin}
+        />
+
+        {/* === MODAL AJUSTE BANCO DE HORAS === */}
+        <ModalAjusteBancoHoras
+          aberto={a.modalAjusteBancoAberto}
+          onClose={() => a.setModalAjusteBancoAberto(false)}
+          usuarios={a.usuarios}
+          onConfirmar={() => { a.setBancoRefreshKey((k: number) => k + 1); a.carregarDados(); }}
         />
 
         {/* === MODAL EDITAR JORNADA (já separado) === */}
