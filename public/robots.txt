@@ -4,7 +4,6 @@ Disallow: /admin
 Disallow: /funcionario
 Disallow: /api
 Disallow: /login
-Disallow: /signup
 Disallow: /trocar-senha
 Disallow: /cadastrar-assinatura
 Disallow: /cadastrar-foto
