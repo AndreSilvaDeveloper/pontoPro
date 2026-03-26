@@ -27,10 +27,21 @@ export async function GET() {
     // Se for null/undefined, assumimos true por segurança
     const fluxoEstrito = usuario.empresa.fluxoEstrito !== false;
 
-    // 3. Mistura tudo num objeto só para o Front
+    // 3. Dados de geofence do funcionário
+    const geofence = {
+        latitudeBase: (usuario as any).latitudeBase || 0,
+        longitudeBase: (usuario as any).longitudeBase || 0,
+        raioPermitido: (usuario as any).raioPermitido || 100,
+        pontoLivre: (usuario as any).pontoLivre || false,
+        modoValidacaoPonto: (usuario as any).modoValidacaoPonto || 'GPS',
+        locaisAdicionais: (usuario as any).locaisAdicionais || null,
+    };
+
+    // 4. Mistura tudo num objeto só para o Front
     return NextResponse.json({
         ...configsJSON, // Espalha: exigirFoto, bloquearRaio, etc.
-        fluxoEstrito    // Adiciona: true ou false
+        fluxoEstrito,   // Adiciona: true ou false
+        ...geofence,    // Adiciona: latitudeBase, longitudeBase, raioPermitido, etc.
     });
 
   } catch (error) {

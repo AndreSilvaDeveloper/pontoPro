@@ -37,6 +37,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const mesParam = searchParams.get('mes'); // "2026-03"
+    const inicioParam = searchParams.get('inicio'); // "2026-03-10" (data início do acumulado)
 
     const agora = new Date();
     // Usar ontem como data fim para evitar saldo parcial do dia corrente
@@ -54,6 +55,10 @@ export async function GET(request: Request) {
       const ultimoDia = new Date(ano, mes, 0).getDate();
       const fimMes = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`;
       dataFim = fimMes < ontemStr ? fimMes : ontemStr;
+    } else if (inicioParam && /^\d{4}-\d{2}-\d{2}$/.test(inicioParam)) {
+      // Acumulado com data início personalizada
+      dataInicio = inicioParam;
+      dataFim = ontemStr;
     } else {
       // Acumulado: dataInicio será calculado por funcionário (criadoEm)
       dataInicio = '2020-01-01';

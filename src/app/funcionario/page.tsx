@@ -14,6 +14,12 @@ import { useRouter } from 'next/navigation';
 import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour';
 import ThemeToggle from '@/components/ThemeToggle';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import dynamic from 'next/dynamic';
+
+const MapaGeofence = dynamic(() => import('@/components/MapaGeofence'), {
+  ssr: false,
+  loading: () => <div className="w-full h-[200px] rounded-xl bg-elevated-solid animate-pulse" />,
+});
 
 // ✅ TIPAGEM DOS TIPOS (para não errar string)
 type TipoSolicitacao =
@@ -74,6 +80,9 @@ export default function Home() {
     texto: string;
     pontoIdSugerido?: string | null;
   } | null>(null);
+
+  // === MAPA GEOFENCE ===
+  const [mapaGeofenceAberto, setMapaGeofenceAberto] = useState(false);
 
   // === CONFIRMAÇÃO DE AÇÃO CRÍTICA ===
   const [modalConfirmacao, setModalConfirmacao] = useState<{
@@ -851,6 +860,34 @@ export default function Home() {
             <div className={`p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top-2 ${statusMsg.tipo === 'erro' ? 'bg-red-500/20 text-red-200 border border-red-500/30' : statusMsg.tipo === 'sucesso' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
               {statusMsg.tipo === 'erro' ? <AlertCircle size={18} /> : statusMsg.tipo === 'sucesso' ? <CheckCircle2 size={18} /> : <RefreshCcw size={18} className="animate-spin" />}
               {statusMsg.texto}
+            </div>
+          )}
+
+          {/* Mapa Geofence */}
+          {location && !carregandoStatus && configs.modoValidacaoPonto === 'GPS' && !configs.pontoLivre && configs.latitudeBase !== 0 && configs.longitudeBase !== 0 && (
+            <div className="animate-in fade-in slide-in-from-top-2">
+              <button
+                type="button"
+                onClick={() => setMapaGeofenceAberto(!mapaGeofenceAberto)}
+                className="w-full flex items-center justify-between text-xs text-text-muted font-bold uppercase tracking-wider mb-2 px-1 hover:text-text-secondary transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={13} /> Zona permitida
+                </span>
+                <span className="text-text-faint text-[10px] font-medium">
+                  {mapaGeofenceAberto ? 'ocultar' : 'mostrar'}
+                </span>
+              </button>
+              {mapaGeofenceAberto && (
+                <MapaGeofence
+                  latBase={configs.latitudeBase}
+                  lngBase={configs.longitudeBase}
+                  raio={configs.raioPermitido}
+                  latAtual={location.lat}
+                  lngAtual={location.lng}
+                  locaisAdicionais={configs.locaisAdicionais || undefined}
+                />
+              )}
             </div>
           )}
 

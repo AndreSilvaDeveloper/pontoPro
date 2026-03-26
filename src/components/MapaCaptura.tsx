@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { Search, MapPin } from 'lucide-react';
@@ -34,13 +34,20 @@ function CliqueMapa({ setPos }: { setPos: (lat: number, lng: number) => void }) 
   return null;
 }
 
-export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar }: any) {
+interface MapaCapturaProps {
+  latInicial: string | number;
+  lngInicial: string | number;
+  aoSelecionar: (lat: number, lng: number) => void;
+  raio?: number;
+}
+
+export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar, raio }: MapaCapturaProps) {
   // Posição inicial (Se não tiver, usa o centro do Brasil ou SP)
-  const [posicao, setPosicao] = useState({ 
-    lat: Number(latInicial) || -23.55052, 
-    lng: Number(lngInicial) || -46.63330 
+  const [posicao, setPosicao] = useState({
+    lat: Number(latInicial) || -23.55052,
+    lng: Number(lngInicial) || -46.63330
   });
-  
+
   const [busca, setBusca] = useState('');
   const [carregando, setCarregando] = useState(false);
 
@@ -58,12 +65,12 @@ export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar }: an
       // Usa API gratuita do OpenStreetMap (Nominatim)
       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(busca)}`);
       const data = await res.json();
-      
+
       if (data && data.length > 0) {
         const novaLat = parseFloat(data[0].lat);
         const novaLng = parseFloat(data[0].lon);
         const novaPos = { lat: novaLat, lng: novaLng };
-        
+
         setPosicao(novaPos);
         aoSelecionar(novaLat, novaLng); // Manda pro formulário pai
       } else {
@@ -76,14 +83,16 @@ export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar }: an
     }
   };
 
+  const raioNumero = raio && raio > 0 ? raio : 0;
+
   return (
     <div className="space-y-2">
         {/* BARRA DE BUSCA */}
         <div className="flex gap-2">
             <div className="relative flex-1">
-                <input 
-                    type="text" 
-                    placeholder="Digite o endereço (Ex: Av Paulista, 1000)" 
+                <input
+                    type="text"
+                    placeholder="Digite o endereço (Ex: Av Paulista, 1000)"
                     className="w-full bg-slate-800 border border-slate-700 p-2.5 pl-10 rounded-lg text-white text-sm focus:border-purple-500 outline-none"
                     value={busca}
                     onChange={(e) => setBusca(e.target.value)}
@@ -91,9 +100,9 @@ export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar }: an
                 />
                 <MapPin className="absolute left-3 top-3 text-slate-500" size={16} />
             </div>
-            <button 
-                type="button" 
-                onClick={buscarEndereco} 
+            <button
+                type="button"
+                onClick={buscarEndereco}
                 disabled={carregando}
                 className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-lg text-sm font-bold flex items-center gap-2"
             >
@@ -102,13 +111,26 @@ export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar }: an
         </div>
 
         {/* MAPA */}
-        <div className="h-64 w-full rounded-xl overflow-hidden border-2 border-slate-700 relative z-0">
+        <div className="w-full rounded-xl overflow-hidden border-2 border-slate-700 relative z-0" style={{ height: '350px' }}>
             <MapContainer center={[posicao.lat, posicao.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
                 <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; OpenStreetMap contributors'
                 />
                 <Marker position={[posicao.lat, posicao.lng]} icon={icon} />
+                {raioNumero > 0 && (
+                    <Circle
+                        center={[posicao.lat, posicao.lng]}
+                        radius={raioNumero}
+                        pathOptions={{
+                            color: '#7c3aed',
+                            fillColor: '#7c3aed',
+                            fillOpacity: 0.2,
+                            opacity: 0.6,
+                            weight: 2,
+                        }}
+                    />
+                )}
                 <MoverMapa coords={posicao} />
                 <CliqueMapa setPos={(lat, lng) => {
                     setPosicao({ lat, lng });

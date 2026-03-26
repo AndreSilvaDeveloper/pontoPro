@@ -948,7 +948,7 @@ export default function ModalFuncionario({
 
                         {mostrarMapaPrincipal && (
                           <div className="pt-2">
-                            <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} />
+                            <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} raio={Number(raio) || 0} />
                             <p className="text-[10px] text-text-faint mt-2">
                               Use CEP + número para máxima precisão, e ajuste clicando no mapa se necessário.
                             </p>
@@ -1113,6 +1113,7 @@ export default function ModalFuncionario({
                                 latInicial={novoLocal.lat}
                                 lngInicial={novoLocal.lng}
                                 aoSelecionar={aoClicarNoMapa}
+                                raio={Number(novoLocal.raio) || 0}
                               />
                               <div className="flex justify-end pt-2">
                                 <button
@@ -1133,6 +1134,7 @@ export default function ModalFuncionario({
                               latInicial={String(locaisExtras[modoMapaExtra]?.lat || '')}
                               lngInicial={String(locaisExtras[modoMapaExtra]?.lng || '')}
                               aoSelecionar={aoClicarNoMapa}
+                              raio={Number(locaisExtras[modoMapaExtra]?.raio) || 0}
                             />
                             <div className="flex justify-end pt-2">
                               <button
