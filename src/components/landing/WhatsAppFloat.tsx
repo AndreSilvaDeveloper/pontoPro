@@ -14,7 +14,7 @@ export default function WhatsAppFloat() {
         <div className="relative bg-white text-gray-800 px-4 py-2.5 rounded-2xl rounded-br-md shadow-xl text-sm font-medium max-w-[220px] animate-in fade-in slide-in-from-bottom-4 duration-500">
           <button
             onClick={() => setTooltip(false)}
-            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-200 text-gray-500 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors"
+            className="absolute -top-3 -right-3 w-8 h-8 min-w-[44px] min-h-[44px] bg-gray-200 text-gray-500 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors"
           >
             <X size={10} />
           </button>

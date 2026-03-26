@@ -284,6 +284,7 @@ export default function LandingPage() {
                     width={400}
                     height={800}
                     priority
+                    sizes="(max-width: 640px) 280px, (max-width: 768px) 384px, 448px"
                     className="w-full max-w-xs transition-transform duration-500 hover:scale-105 sm:max-w-sm md:max-w-md"
                   />
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent" />
@@ -534,6 +535,7 @@ export default function LandingPage() {
                   alt="App WorkID para funcionários no celular"
                   width={800}
                   height={600}
+                  sizes="(max-width: 768px) 100vw, 50vw"
                   className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
                 />
                 <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
@@ -574,6 +576,7 @@ export default function LandingPage() {
                 alt="Painel administrativo WorkID no computador"
                 width={900}
                 height={600}
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
               />
               <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
@@ -841,7 +844,7 @@ export default function LandingPage() {
                     href={LINKS.instagram.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-lg bg-purple-950/50 p-2 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                    className="rounded-lg bg-purple-950/50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
                   >
                     <Instagram className="size-4" />
                   </a>
@@ -849,13 +852,13 @@ export default function LandingPage() {
                     href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-lg bg-purple-950/50 p-2 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                    className="rounded-lg bg-purple-950/50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
                   >
                     <MessageCircle className="size-4" />
                   </a>
                   <a
                     href={`mailto:${LINKS.email.address}`}
-                    className="rounded-lg bg-purple-950/50 p-2 text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
+                    className="rounded-lg bg-purple-950/50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
                   >
                     <Mail className="size-4" />
                   </a>
@@ -864,23 +867,23 @@ export default function LandingPage() {
 
               <div>
                 <h3 className="mb-4 font-bold text-white">Produto</h3>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li><a href="#features" className="transition-colors hover:text-white">Recursos</a></li>
-                  <li><a href="#pricing" className="transition-colors hover:text-white">Planos e precos</a></li>
-                  <li><a href="#gallery" className="transition-colors hover:text-white">Galeria</a></li>
-                  <li><a href="#faq" className="transition-colors hover:text-white">Perguntas frequentes</a></li>
+                <ul className="space-y-1 text-sm text-gray-400">
+                  <li><a href="#features" className="block py-2 transition-colors hover:text-white">Recursos</a></li>
+                  <li><a href="#pricing" className="block py-2 transition-colors hover:text-white">Planos e precos</a></li>
+                  <li><a href="#gallery" className="block py-2 transition-colors hover:text-white">Galeria</a></li>
+                  <li><a href="#faq" className="block py-2 transition-colors hover:text-white">Perguntas frequentes</a></li>
                 </ul>
               </div>
 
               <div>
                 <h3 className="mb-4 font-bold text-white">Empresa</h3>
-                <ul className="space-y-2 text-sm text-gray-400">
+                <ul className="space-y-1 text-sm text-gray-400">
                   <li>
                     <a
                       href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="transition-colors hover:text-white"
+                      className="block py-2 transition-colors hover:text-white"
                     >
                       Contato via WhatsApp
                     </a>
@@ -888,7 +891,7 @@ export default function LandingPage() {
                   <li>
                     <a
                       href={`mailto:${LINKS.email.address}`}
-                      className="transition-colors hover:text-white"
+                      className="block py-2 transition-colors hover:text-white"
                     >
                       {LINKS.email.address}
                     </a>
@@ -898,7 +901,7 @@ export default function LandingPage() {
                       href={LINKS.instagram.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="transition-colors hover:text-white"
+                      className="block py-2 transition-colors hover:text-white"
                     >
                       {LINKS.instagram.handle}
                     </a>
@@ -908,18 +911,16 @@ export default function LandingPage() {
 
               <div>
                 <h3 className="mb-4 font-bold text-white">Comece agora</h3>
-                <ul className="space-y-2 text-sm text-gray-400">
-                  <li><Link href="/signup" className="transition-colors hover:text-white">Criar conta gratis</Link></li>
-                  <li><Link href="/login" className="transition-colors hover:text-white">Fazer login</Link></li>
+                <ul className="space-y-1 text-sm text-gray-400">
+                  <li><Link href="/signup" className="block py-2 transition-colors hover:text-white">Criar conta gratis</Link></li>
+                  <li><Link href="/login" className="block py-2 transition-colors hover:text-white">Fazer login</Link></li>
                   <li>
-                    <a
-                      href={LINKS.demoVideo.shortUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="transition-colors hover:text-white"
+                    <Link
+                      href="/agendar-demo"
+                      className="block py-2 transition-colors hover:text-white"
                     >
-                      Ver demonstracao
-                    </a>
+                      Agendar demonstracao
+                    </Link>
                   </li>
                 </ul>
               </div>
