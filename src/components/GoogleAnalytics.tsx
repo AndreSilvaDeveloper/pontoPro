@@ -21,6 +21,7 @@ export default function GoogleAnalytics() {
           gtag('config', '${GA_ID}', {
             page_path: window.location.pathname,
           });
+          gtag('config', 'AW-18042969179');
         `}
       </Script>
     </>

@@ -1,10 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, MessageCircle, ArrowRight, Calendar } from 'lucide-react';
 import { LINKS, waLink } from '@/config/links';
 
+declare global {
+  interface Window { gtag?: (...args: any[]) => void; }
+}
+
 export default function ObrigadoPage() {
+  useEffect(() => {
+    // Google Ads conversion tracking
+    window.gtag?.('event', 'conversion', { send_to: 'AW-18042969179/signup' });
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-purple-950/20 to-gray-950 flex items-center justify-center p-4">
       {/* Decorative */}
