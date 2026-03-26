@@ -28,6 +28,10 @@ export const metadata: Metadata = {
   },
   description: 'Controle de ponto digital para empresas. Registro por GPS, reconhecimento facial, relatórios automáticos, banco de horas e espelho de ponto. Teste grátis 14 dias.',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-touch-icon.png',
+  },
   keywords: [
     'ponto digital', 'controle de ponto', 'ponto eletrônico', 'registro de ponto',
     'ponto por GPS', 'reconhecimento facial ponto', 'sistema de ponto', 'ponto online',
