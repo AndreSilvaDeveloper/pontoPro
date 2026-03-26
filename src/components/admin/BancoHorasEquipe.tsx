@@ -38,18 +38,22 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
   const [mostrarTodos, setMostrarTodos] = useState(false);
   const [filtro, setFiltro] = useState<Filtro>('acumulado');
   const [mesSelecionado, setMesSelecionado] = useState(format(new Date(), 'yyyy-MM'));
+  const [dataInicioAcumulado, setDataInicioAcumulado] = useState('');
 
   const meses = getMesesDisponiveis();
 
   const carregar = useCallback(() => {
     setLoading(true);
-    const params = filtro === 'mes' ? `?mes=${mesSelecionado}` : '';
+    let params = filtro === 'mes' ? `?mes=${mesSelecionado}` : '';
+    if (filtro === 'acumulado' && dataInicioAcumulado) {
+      params = `?inicio=${dataInicioAcumulado}`;
+    }
     axios.get(`/api/admin/banco-horas-equipe${params}`)
       .then(res => setData(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro, mesSelecionado, refreshKey]);
+  }, [filtro, mesSelecionado, dataInicioAcumulado, refreshKey]);
 
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -97,7 +101,12 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
           <div className="text-left">
             <p className="text-sm font-bold text-text-primary">Banco de Horas da Equipe</p>
             <p className="text-[11px] text-text-faint">
-              {filtro === 'acumulado' ? 'Saldo acumulado (até ontem)' : `Mês ${meses.find(m => m.value === mesSelecionado)?.label} (até ontem)`} · {funcionarios.length} funcionários
+              {filtro === 'acumulado'
+                ? dataInicioAcumulado
+                  ? `Acumulado a partir de ${dataInicioAcumulado.split('-').reverse().join('/')} (até ontem)`
+                  : 'Saldo acumulado (até ontem)'
+                : `Mês ${meses.find(m => m.value === mesSelecionado)?.label} (até ontem)`
+              } · {funcionarios.length} funcionários
             </p>
           </div>
         </div>
@@ -116,45 +125,66 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
       {aberto && (
         <div className="mt-2 bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle overflow-hidden">
           {/* Filtros */}
-          <div className="px-4 py-3 border-b border-border-subtle flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setFiltro('acumulado')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtro === 'acumulado'
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                  : 'text-text-muted hover:text-text-primary hover:bg-hover-bg border border-transparent'
-              }`}
-            >
-              Acumulado
-            </button>
-            <button
-              onClick={() => setFiltro('mes')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtro === 'mes'
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                  : 'text-text-muted hover:text-text-primary hover:bg-hover-bg border border-transparent'
-              }`}
-            >
-              Por mês
-            </button>
-            {filtro === 'mes' && (
-              <select
-                value={mesSelecionado}
-                onChange={e => setMesSelecionado(e.target.value)}
-                className="bg-input-solid/50 border border-border-default rounded-lg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-purple-500 appearance-none"
-              >
-                {meses.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            )}
-            {onAjustar && (
+          <div className="px-4 py-3 border-b border-border-subtle flex flex-col gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={onAjustar}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all active:scale-95"
+                onClick={() => setFiltro('acumulado')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filtro === 'acumulado'
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    : 'text-text-muted hover:text-text-primary hover:bg-hover-bg border border-transparent'
+                }`}
               >
-                <Scale size={14} /> Gerenciar Horas Extras
+                Acumulado
               </button>
+              <button
+                onClick={() => setFiltro('mes')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  filtro === 'mes'
+                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    : 'text-text-muted hover:text-text-primary hover:bg-hover-bg border border-transparent'
+                }`}
+              >
+                Por mês
+              </button>
+              {filtro === 'mes' && (
+                <select
+                  value={mesSelecionado}
+                  onChange={e => setMesSelecionado(e.target.value)}
+                  className="bg-input-solid/50 border border-border-default rounded-lg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-purple-500 appearance-none"
+                >
+                  {meses.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              )}
+              {onAjustar && (
+                <button
+                  onClick={onAjustar}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all active:scale-95"
+                >
+                  <Scale size={14} /> Gerenciar Horas Extras
+                </button>
+              )}
+            </div>
+            {filtro === 'acumulado' && (
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-[10px] text-text-faint font-bold uppercase whitespace-nowrap">A partir de:</span>
+                <input
+                  type="date"
+                  value={dataInicioAcumulado}
+                  onChange={e => setDataInicioAcumulado(e.target.value)}
+                  className="bg-input-solid/50 border border-border-default rounded-lg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-purple-500 flex-1"
+                />
+                {dataInicioAcumulado && (
+                  <button
+                    onClick={() => setDataInicioAcumulado('')}
+                    className="text-[10px] text-purple-400 hover:text-purple-300 font-bold whitespace-nowrap"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
