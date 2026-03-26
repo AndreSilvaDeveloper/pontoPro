@@ -44,7 +44,7 @@ export default function ExitIntentPopup() {
         {/* Fechar */}
         <button
           onClick={() => setVisible(false)}
-          className="absolute top-4 right-4 text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+          className="absolute top-3 right-3 text-gray-500 hover:text-white p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
         >
           <X size={20} />
         </button>

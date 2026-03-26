@@ -53,14 +53,18 @@ export function MobileCarousel({ children, autoplay = true, interval = 3000 }: M
         {children.map((_, index) => (
           <button
             key={index}
-            className={`size-2 rounded-full transition-all ${
-              index === currentIndex 
-                ? 'w-8 bg-purple-500' 
-                : 'bg-purple-500/30'
+            className={`h-3 rounded-full transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
+              index === currentIndex
+                ? 'bg-transparent'
+                : 'bg-transparent'
             }`}
             onClick={() => setCurrentIndex(index)}
-            aria-label={`Go to slide ${index + 1}`}
-          />
+            aria-label={`Ir para slide ${index + 1}`}
+          >
+            <span className={`block h-2 rounded-full transition-all ${
+              index === currentIndex ? 'w-8 bg-purple-500' : 'w-2 bg-purple-500/30'
+            }`} />
+          </button>
         ))}
       </div>
     </div>
