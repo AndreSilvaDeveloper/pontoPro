@@ -12,7 +12,11 @@ declare global {
 export default function ObrigadoPage() {
   useEffect(() => {
     // Google Ads conversion tracking
-    window.gtag?.('event', 'conversion', { send_to: 'AW-18042969179/signup' });
+    window.gtag?.('event', 'conversion', {
+      send_to: 'AW-18042969179/sKFbCIb-_o8cENu4x5tD',
+      value: 1.0,
+      currency: 'BRL',
+    });
   }, []);
 
   return (
