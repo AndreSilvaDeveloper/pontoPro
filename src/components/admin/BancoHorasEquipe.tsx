@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
-import { TrendingUp, TrendingDown, Minus, Clock, ChevronDown, ChevronUp, Users, RefreshCw, Scale, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Clock, ChevronDown, ChevronUp, Users, RefreshCw, Scale, Trash2, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type Filtro = 'acumulado' | 'mes';
 
@@ -39,8 +40,20 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
   const [filtro, setFiltro] = useState<Filtro>('acumulado');
   const [mesSelecionado, setMesSelecionado] = useState(format(new Date(), 'yyyy-MM'));
   const [dataInicioAcumulado, setDataInicioAcumulado] = useState('');
+  const [calAberto, setCalAberto] = useState(false);
+  const [calMes, setCalMes] = useState(new Date());
+  const calRef = useRef<HTMLDivElement>(null);
 
   const meses = getMesesDisponiveis();
+
+  // Fechar calendário ao clicar fora
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (calRef.current && !calRef.current.contains(e.target as Node)) setCalAberto(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const carregar = useCallback(() => {
     setLoading(true);
@@ -169,19 +182,92 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
             </div>
             {filtro === 'acumulado' && (
               <div className="flex items-center gap-2 px-1">
-                <span className="text-[10px] text-text-faint font-bold uppercase whitespace-nowrap">A partir de:</span>
-                <input
-                  type="date"
-                  value={dataInicioAcumulado}
-                  onChange={e => setDataInicioAcumulado(e.target.value)}
-                  className="bg-input-solid/50 border border-border-default rounded-lg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-purple-500 flex-1"
-                />
+                <span className="text-[10px] text-text-faint font-bold uppercase whitespace-nowrap">Acumulado a partir de:</span>
+                <div className="relative" ref={calRef}>
+                  <button
+                    onClick={() => setCalAberto(!calAberto)}
+                    className="flex items-center gap-1.5 bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-lg px-2.5 py-1.5 text-xs text-text-primary transition-colors"
+                  >
+                    <Calendar size={12} className="text-purple-400" />
+                    {dataInicioAcumulado
+                      ? dataInicioAcumulado.split('-').reverse().join('/')
+                      : 'Selecionar data'}
+                  </button>
+
+                  {calAberto && (() => {
+                    const inicio = startOfMonth(calMes);
+                    const fim = endOfMonth(calMes);
+                    const dias = eachDayOfInterval({ start: inicio, end: fim });
+                    const primeiroDiaSemana = getDay(inicio);
+
+                    return (
+                      <div className="absolute top-full left-0 mt-1 z-50 bg-surface-solid border border-border-default rounded-xl shadow-2xl p-3 w-[260px] animate-in fade-in slide-in-from-top-2 duration-200">
+                        {/* Header mês */}
+                        <div className="flex items-center justify-between mb-2">
+                          <button
+                            onClick={() => setCalMes(subMonths(calMes, 1))}
+                            className="p-1.5 hover:bg-hover-bg rounded-lg transition-colors"
+                          >
+                            <ChevronLeft size={14} className="text-text-muted" />
+                          </button>
+                          <span className="text-xs font-bold text-text-primary capitalize">
+                            {format(calMes, 'MMMM yyyy', { locale: ptBR })}
+                          </span>
+                          <button
+                            onClick={() => setCalMes(addMonths(calMes, 1))}
+                            className="p-1.5 hover:bg-hover-bg rounded-lg transition-colors"
+                          >
+                            <ChevronRight size={14} className="text-text-muted" />
+                          </button>
+                        </div>
+
+                        {/* Dias da semana */}
+                        <div className="grid grid-cols-7 gap-0.5 mb-1">
+                          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+                            <div key={i} className="text-center text-[9px] font-bold text-text-dim py-1">{d}</div>
+                          ))}
+                        </div>
+
+                        {/* Dias */}
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {Array.from({ length: primeiroDiaSemana }).map((_, i) => (
+                            <div key={`e-${i}`} className="aspect-square" />
+                          ))}
+                          {dias.map(dia => {
+                            const diaStr = format(dia, 'yyyy-MM-dd');
+                            const selecionado = dataInicioAcumulado === diaStr;
+                            const hoje = isSameDay(dia, new Date());
+                            return (
+                              <button
+                                key={diaStr}
+                                onClick={() => {
+                                  setDataInicioAcumulado(diaStr);
+                                  setCalAberto(false);
+                                }}
+                                className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-medium transition-all ${
+                                  selecionado
+                                    ? 'bg-purple-600 text-white font-bold'
+                                    : hoje
+                                      ? 'ring-1 ring-purple-500 text-purple-400'
+                                      : 'text-text-muted hover:bg-hover-bg hover:text-text-primary'
+                                }`}
+                              >
+                                {format(dia, 'd')}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
                 {dataInicioAcumulado && (
                   <button
                     onClick={() => setDataInicioAcumulado('')}
-                    className="text-[10px] text-purple-400 hover:text-purple-300 font-bold whitespace-nowrap"
+                    className="p-1 text-text-dim hover:text-red-400 transition-colors"
+                    title="Limpar data"
                   >
-                    Limpar
+                    <X size={14} />
                   </button>
                 )}
               </div>
