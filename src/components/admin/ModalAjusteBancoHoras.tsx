@@ -173,7 +173,7 @@ export default function ModalAjusteBancoHoras({ aberto, onClose, usuarios, onCon
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
-      <div className="bg-surface-solid border border-border-default w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+      <div className="bg-surface-solid border border-border-default w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-border-subtle p-5">
           <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">

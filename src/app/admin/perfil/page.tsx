@@ -19,7 +19,14 @@ import {
   CreditCard,
   Receipt,
   QrCode,
+  Camera,
+  Edit3,
+  Phone,
+  Building2,
+  X,
 } from "lucide-react";
+import { toast } from 'sonner';
+import Image from 'next/image';
 import { useSession } from "next-auth/react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -441,7 +448,7 @@ export default function PerfilAdmin() {
 
     if (b.code === "DUE_SOON") {
       return (
-        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 border border-yellow-500/20">
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 border border-amber-500/20">
           <Clock size={14} />
           {b.days === 0 ? "Vence hoje" : `Vence em ${b.days}d`}
         </div>
@@ -459,7 +466,7 @@ export default function PerfilAdmin() {
 
     if (b.code === "PENDING_FIRST_INVOICE" && b.showAlert) {
       return (
-        <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-3 py-1.5 text-xs font-bold text-yellow-400 border border-yellow-500/20">
+        <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-400 border border-amber-500/20">
           <Clock size={14} />
           Fatura em {b.days ?? 0}d
         </div>
@@ -522,14 +529,14 @@ export default function PerfilAdmin() {
     // PENDING_FIRST_INVOICE — só mostra se showAlert (≤3 dias)
     if (b.code === "PENDING_FIRST_INVOICE" && b.showAlert) {
       return (
-        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5">
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-5">
           <div className="flex items-center gap-4">
-            <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
+            <div className="shrink-0 rounded-xl bg-amber-500/10 p-3 text-amber-400">
               <Clock size={22} />
             </div>
             <div>
-              <p className="font-bold text-yellow-400">Fatura a caminho</p>
-              <p className="text-sm text-yellow-200/60">{b.message}</p>
+              <p className="font-bold text-amber-400">Fatura a caminho</p>
+              <p className="text-sm text-amber-200/60">{b.message}</p>
             </div>
           </div>
         </div>
@@ -577,14 +584,14 @@ export default function PerfilAdmin() {
     // DUE_SOON
     if (b.code === "DUE_SOON") {
       return (
-        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/20 p-5">
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/20 p-5">
           <div className="flex items-center gap-4">
-            <div className="shrink-0 rounded-xl bg-yellow-500/10 p-3 text-yellow-400">
+            <div className="shrink-0 rounded-xl bg-amber-500/10 p-3 text-amber-400">
               <Clock size={22} />
             </div>
             <div>
-              <p className="font-bold text-yellow-400">Fatura em aberto</p>
-              <p className="text-sm text-yellow-200/60">{b.message}</p>
+              <p className="font-bold text-amber-400">Fatura em aberto</p>
+              <p className="text-sm text-amber-200/60">{b.message}</p>
             </div>
           </div>
         </div>
@@ -595,6 +602,95 @@ export default function PerfilAdmin() {
   };
 
   const cargo = (session?.user as any)?.cargo ?? "";
+
+  // === PERFIL EDITÁVEL ===
+  const [editandoPerfil, setEditandoPerfil] = useState(false);
+  const [perfilNome, setPerfilNome] = useState('');
+  const [perfilEmail, setPerfilEmail] = useState('');
+  const [perfilTelefone, setPerfilTelefone] = useState('');
+  const [perfilCnpj, setPerfilCnpj] = useState('');
+  const [perfilEmpresa, setPerfilEmpresa] = useState('');
+  const [perfilFoto, setPerfilFoto] = useState<string | null>(null);
+  const [salvandoPerfil, setSalvandoPerfil] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
+
+  useEffect(() => {
+    if (session?.user) {
+      setPerfilNome((session.user as any).nome || session.user.name || '');
+      setPerfilEmail(session.user.email || '');
+      setPerfilFoto((session.user as any).fotoPerfilUrl || null);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    axios.get('/api/admin/empresa').then(res => {
+      if (res.data) {
+        setPerfilEmpresa(res.data.nome || '');
+        setPerfilCnpj(res.data.cnpj || '');
+        setPerfilTelefone(res.data.cobrancaWhatsapp || '');
+      }
+    }).catch(() => {});
+  }, []);
+
+  const formatarTelPerfil = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    if (d.length <= 2) return d;
+    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+
+  const formatarCnpjPerfil = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 14);
+    if (d.length <= 2) return d;
+    if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+    if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+    if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  };
+
+  const salvarPerfil = async () => {
+    setSalvandoPerfil(true);
+    try {
+      // Atualizar dados do admin via formData
+      const fd = new FormData();
+      fd.append('id', (session?.user as any)?.id || '');
+      fd.append('nome', perfilNome);
+      fd.append('email', perfilEmail);
+      await axios.put('/api/admin/funcionarios', fd);
+
+      // Atualizar dados da empresa
+      await axios.put('/api/admin/empresa', {
+        nome: perfilEmpresa,
+        cnpj: perfilCnpj.replace(/\D/g, ''),
+        cobrancaWhatsapp: perfilTelefone.replace(/\D/g, ''),
+      });
+      toast.success('Perfil atualizado!');
+      setEditandoPerfil(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.erro || 'Erro ao salvar');
+    } finally {
+      setSalvandoPerfil(false);
+    }
+  };
+
+  const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('foto', file);
+      formData.append('id', (session?.user as any)?.id || '');
+      const res = await axios.post('/api/admin/funcionarios/foto', formData);
+      setPerfilFoto(res.data.fotoPerfilUrl);
+      toast.success('Foto atualizada!');
+    } catch {
+      toast.error('Erro ao enviar foto');
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-page text-text-primary">
@@ -611,7 +707,7 @@ export default function PerfilAdmin() {
         mode={payMode}
       />
 
-      <div className="mx-auto max-w-3xl px-4 py-6 md:px-6 md:py-8 space-y-6">
+      <div className="mx-auto max-w-3xl p-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Link
@@ -621,30 +717,113 @@ export default function PerfilAdmin() {
             <ArrowLeft size={18} />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold tracking-tight">Minha Conta</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Minha Conta</h1>
             <p className="text-xs text-text-faint">Perfil, assinatura e segurança</p>
           </div>
           {!loadingFatura && renderBillingBadge()}
         </div>
 
         {/* User Card */}
-        <div className="rounded-2xl border border-border-input bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
-          <div className="flex items-center gap-4">
-            <div className="shrink-0 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600/20 to-purple-800/20 ring-1 ring-purple-500/20">
-              <User size={28} className="text-purple-400" />
+        <div className="rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-6">
+          <div className="flex items-start gap-4">
+            {/* Foto */}
+            <div className="shrink-0 relative group">
+              <label className="cursor-pointer block">
+                <div className="size-20 rounded-2xl bg-gradient-to-br from-purple-600/20 to-purple-800/20 ring-1 ring-purple-500/20 overflow-hidden flex items-center justify-center">
+                  {perfilFoto ? (
+                    <Image src={perfilFoto} alt="" width={80} height={80} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera size={22} className="text-purple-400" />
+                      <span className="text-[9px] text-purple-400/70 font-bold">Foto</span>
+                    </div>
+                  )}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera size={20} className="text-white" />
+                </div>
+                <input type="file" accept="image/*" onChange={handleUploadFoto} className="hidden" />
+              </label>
+              {uploadingFoto && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded-2xl">
+                  <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
             </div>
+
             <div className="min-w-0 flex-1">
-              <h2 className="truncate text-lg font-bold">{session?.user?.name}</h2>
-              <div className="mt-1 flex items-center gap-2 text-sm text-text-muted">
-                <Mail size={14} className="shrink-0" />
-                <span className="truncate">{session?.user?.email}</span>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-500/10 px-2.5 py-1 text-[11px] font-bold uppercase text-purple-300 border border-purple-500/20">
-                  <Shield size={12} />
-                  {cargo}
-                </span>
-              </div>
+              {editandoPerfil ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-dim font-bold uppercase">Nome</label>
+                      <input value={perfilNome} onChange={e => setPerfilNome(e.target.value)} className="w-full bg-page border border-border-input p-2.5 rounded-xl text-sm text-text-primary outline-none focus:border-purple-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-dim font-bold uppercase">Email</label>
+                      <input value={perfilEmail} onChange={e => setPerfilEmail(e.target.value)} type="email" className="w-full bg-page border border-border-input p-2.5 rounded-xl text-sm text-text-primary outline-none focus:border-purple-500" />
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-dim font-bold uppercase">Empresa</label>
+                      <input value={perfilEmpresa} onChange={e => setPerfilEmpresa(e.target.value)} className="w-full bg-page border border-border-input p-2.5 rounded-xl text-sm text-text-primary outline-none focus:border-purple-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-dim font-bold uppercase">CNPJ</label>
+                      <input value={perfilCnpj} onChange={e => setPerfilCnpj(formatarCnpjPerfil(e.target.value))} className="w-full bg-page border border-border-input p-2.5 rounded-xl text-sm text-text-primary outline-none focus:border-purple-500" />
+                    </div>
+                  </div>
+                  <div className="sm:w-1/2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-text-dim font-bold uppercase">WhatsApp</label>
+                      <input value={perfilTelefone} onChange={e => setPerfilTelefone(formatarTelPerfil(e.target.value))} type="tel" className="w-full bg-page border border-border-input p-2.5 rounded-xl text-sm text-text-primary outline-none focus:border-purple-500" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={salvarPerfil} disabled={salvandoPerfil} className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50">
+                      {salvandoPerfil ? 'Salvando...' : <><Save size={14} /> Salvar</>}
+                    </button>
+                    <button onClick={() => setEditandoPerfil(false)} className="flex items-center gap-1.5 px-4 py-2 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl text-xs font-bold transition-all">
+                      <X size={14} /> Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="truncate text-lg font-bold">{session?.user?.name}</h2>
+                      <div className="mt-1 flex items-center gap-2 text-sm text-text-muted">
+                        <Mail size={14} className="shrink-0" />
+                        <span className="truncate">{session?.user?.email}</span>
+                      </div>
+                      {perfilTelefone && (
+                        <div className="mt-1 flex items-center gap-2 text-sm text-text-muted">
+                          <Phone size={14} className="shrink-0" />
+                          <span>{formatarTelPerfil(perfilTelefone)}</span>
+                        </div>
+                      )}
+                      {perfilEmpresa && (
+                        <div className="mt-1 flex items-center gap-2 text-sm text-text-muted">
+                          <Building2 size={14} className="shrink-0" />
+                          <span>{perfilEmpresa}</span>
+                          {perfilCnpj && <span className="text-text-dim text-xs">· {formatarCnpjPerfil(perfilCnpj)}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={() => setEditandoPerfil(true)} className="p-2 text-text-dim hover:text-purple-400 hover:bg-purple-500/10 rounded-xl transition-all" title="Editar perfil">
+                      <Edit3 size={16} />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-purple-500/10 px-2.5 py-1 text-[11px] font-bold uppercase text-purple-300 border border-purple-500/20">
+                      <Shield size={12} />
+                      {cargo}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -654,7 +833,7 @@ export default function PerfilAdmin() {
 
         {/* Realizar Pagamento — mostra sempre que não for trial nem cartão */}
         {!loadingFatura && fatura && fatura.billing.phase !== "TRIAL" && fatura.billingMethod !== "CREDIT_CARD" && (
-          <div className="rounded-2xl border border-border-input bg-gradient-to-br from-slate-900 to-slate-900/50 p-6">
+          <div className="rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
                 <CreditCard size={16} className="text-emerald-400" />
@@ -724,7 +903,7 @@ export default function PerfilAdmin() {
         <div className="grid gap-3 sm:grid-cols-3">
           <Link
             href="/admin/perfil/plano"
-            className="group flex items-center gap-3 rounded-2xl border border-border-input bg-surface p-4 transition-all hover:border-purple-500/30 hover:bg-surface-solid"
+            className="group flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-4 transition-all hover:border-purple-500/30 hover:bg-surface-solid"
           >
             <div className="shrink-0 rounded-xl bg-purple-500/10 p-2.5 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
               <Crown size={18} />
@@ -738,21 +917,21 @@ export default function PerfilAdmin() {
 
           <Link
             href="/admin/perfil/pagamento"
-            className="group flex items-center gap-3 rounded-2xl border border-border-input bg-surface p-4 transition-all hover:border-emerald-500/30 hover:bg-surface-solid"
+            className="group flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-4 transition-all hover:border-emerald-500/30 hover:bg-surface-solid"
           >
             <div className="shrink-0 rounded-xl bg-emerald-500/10 p-2.5 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
               <CreditCard size={18} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm">Pagamento</p>
-              <p className="text-[15px] text-text-faint">Ciclo e método</p>
+              <p className="text-[11px] text-text-faint">Ciclo e método</p>
             </div>
             <ChevronRight size={16} className="shrink-0 text-text-dim group-hover:text-emerald-400 transition-colors" />
           </Link>
 
           <Link
             href="/admin/perfil/historico"
-            className="group flex items-center gap-3 rounded-2xl border border-border-input bg-surface p-4 transition-all hover:border-border-input hover:bg-surface-solid"
+            className="group flex items-center gap-3 rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-4 transition-all hover:border-border-default hover:bg-surface-solid"
           >
             <div className="shrink-0 rounded-xl bg-elevated-solid p-2.5 text-text-muted group-hover:bg-elevated-solid transition-colors">
               <Receipt size={18} />
@@ -766,14 +945,14 @@ export default function PerfilAdmin() {
         </div>
 
         {/* Alterar Senha */}
-        <div className="rounded-2xl border border-border-input bg-surface p-6">
+        <div className="rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-6">
           <h3 className="mb-5 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
             <Lock size={16} className="text-yellow-500" />
             Segurança da Conta
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-text-faint">
                   Nova senha
@@ -817,7 +996,7 @@ export default function PerfilAdmin() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-500 disabled:opacity-50"
             >
               {loading ? (
                 "Salvando..."
@@ -829,7 +1008,102 @@ export default function PerfilAdmin() {
             </button>
           </form>
         </div>
+
+        {/* Zona de Perigo */}
+        <ExcluirContaSection />
       </div>
+    </div>
+  );
+}
+
+function ExcluirContaSection() {
+  const [aberto, setAberto] = useState(false);
+  const [senha, setSenha] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
+  const [excluindo, setExcluindo] = useState(false);
+
+  const podeExcluir = confirmacao === 'EXCLUIR MINHA CONTA' && senha.length >= 1;
+
+  const excluir = async () => {
+    if (!podeExcluir) return;
+    setExcluindo(true);
+    try {
+      const res = await axios.delete('/api/admin/excluir-conta', {
+        data: { confirmacao, senha },
+      });
+      if (res.data.ok) {
+        alert('Conta excluída com sucesso. Você será redirecionado.');
+        window.location.href = '/';
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.erro || 'Erro ao excluir conta');
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+      <button
+        onClick={() => setAberto(!aberto)}
+        className="flex items-center gap-3 w-full text-left"
+      >
+        <div className="bg-red-500/10 p-2 rounded-xl">
+          <AlertTriangle size={20} className="text-red-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-red-400">Zona de Perigo</p>
+          <p className="text-[11px] text-text-dim">Excluir conta e todos os dados da empresa</p>
+        </div>
+        <ChevronRight size={16} className={`text-red-400 transition-transform ${aberto ? 'rotate-90' : ''}`} />
+      </button>
+
+      {aberto && (
+        <div className="mt-4 space-y-4 pt-4 border-t border-red-500/10">
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
+            <p className="text-sm text-red-300 font-bold mb-1">Esta ação é irreversível!</p>
+            <p className="text-xs text-red-300/70">
+              Ao excluir sua conta, todos os dados serão permanentemente removidos: empresa, funcionários, registros de ponto, relatórios, ausências e configurações. Não é possível recuperar.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">
+                Digite sua senha para confirmar
+              </label>
+              <input
+                type="password"
+                value={senha}
+                onChange={e => setSenha(e.target.value)}
+                placeholder="Sua senha atual"
+                className="w-full bg-page border border-red-500/20 p-3 rounded-xl text-text-primary text-sm outline-none focus:border-red-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">
+                Digite <span className="text-red-400">EXCLUIR MINHA CONTA</span> para confirmar
+              </label>
+              <input
+                type="text"
+                value={confirmacao}
+                onChange={e => setConfirmacao(e.target.value)}
+                placeholder="EXCLUIR MINHA CONTA"
+                className="w-full bg-page border border-red-500/20 p-3 rounded-xl text-text-primary text-sm outline-none focus:border-red-500"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={excluir}
+            disabled={!podeExcluir || excluindo}
+            className="w-full py-3 bg-red-600 hover:bg-red-500 disabled:bg-elevated-solid disabled:text-text-faint text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+          >
+            {excluindo ? 'Excluindo...' : <><AlertTriangle size={16} /> Excluir minha conta permanentemente</>}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

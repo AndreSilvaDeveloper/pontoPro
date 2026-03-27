@@ -126,15 +126,16 @@ export default function ModalNovidades({ tipo }: Props) {
     let promptsReady = !!w.__promptsReady;
     let pushDone = !!w.__pushDone;
     let installDone = !!w.__installDone;
+    let cadastroOk = !!w.__cadastroCompleto;
 
     const tentarAbrir = () => {
-      if (promptsReady && pushDone && installDone) {
+      if (promptsReady && pushDone && installDone && cadastroOk) {
         setTimeout(() => setAberto(true), 500);
       }
     };
 
     // Checa se já resolveram antes
-    if (promptsReady && pushDone && installDone) {
+    if (promptsReady && pushDone && installDone && cadastroOk) {
       tentarAbrir();
       return;
     }
@@ -142,22 +143,25 @@ export default function ModalNovidades({ tipo }: Props) {
     const onReady = () => { promptsReady = true; tentarAbrir(); };
     const onPushDone = () => { pushDone = true; tentarAbrir(); };
     const onInstallDone = () => { installDone = true; tentarAbrir(); };
+    const onCadastro = () => { cadastroOk = true; w.__cadastroCompleto = true; tentarAbrir(); };
 
     window.addEventListener('prompts-ready', onReady);
     window.addEventListener('push-prompt-done', onPushDone);
     window.addEventListener('install-prompt-done', onInstallDone);
+    window.addEventListener('cadastro-completo', onCadastro);
 
-    // Fallback: se os eventos não dispararem em 5s, abre o modal mesmo assim
+    // Fallback: se os eventos não dispararem em 8s, abre o modal mesmo assim
     const fallback = setTimeout(() => {
-      promptsReady = true; pushDone = true; installDone = true;
+      promptsReady = true; pushDone = true; installDone = true; cadastroOk = true;
       tentarAbrir();
-    }, 5000);
+    }, 8000);
 
     return () => {
       clearTimeout(fallback);
       window.removeEventListener('prompts-ready', onReady);
       window.removeEventListener('push-prompt-done', onPushDone);
       window.removeEventListener('install-prompt-done', onInstallDone);
+      window.removeEventListener('cadastro-completo', onCadastro);
     };
   }, [statusLoading, status]);
 

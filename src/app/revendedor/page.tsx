@@ -152,7 +152,7 @@ export default function RevendedorDashboard() {
         </div>
 
         {/* Lista de empresas */}
-        <div className="bg-surface/60 backdrop-blur-xl border border-border-subtle rounded-3xl shadow-xl overflow-hidden">
+        <div className="bg-page backdrop-blur-xl border border-border-subtle rounded-3xl shadow-xl overflow-hidden">
           <div className="p-4 border-b border-border-subtle">
             <h3 className="text-sm font-bold text-text-primary">Suas Empresas</h3>
           </div>

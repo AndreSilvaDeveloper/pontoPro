@@ -54,12 +54,12 @@ export default function SuperAdminPage() {
 
         {/* RESULTADO (SUCESSO) */}
         {resultado && (
-          <div className="bg-green-900/30 border border-green-500 p-6 rounded-xl animate-pulse">
-            <div className="flex items-center gap-2 text-green-400 mb-4">
+          <div className="bg-emerald-900/30 border border-emerald-500 p-6 rounded-xl animate-pulse">
+            <div className="flex items-center gap-2 text-emerald-400 mb-4">
               <CheckCircle size={24} />
               <h2 className="text-xl font-bold">Venda Realizada!</h2>
             </div>
-            <div className="bg-black p-4 rounded text-sm font-mono space-y-2 border border-green-900">
+            <div className="bg-black p-4 rounded text-sm font-mono space-y-2 border border-emerald-900">
               <p><span className="text-gray-500">Cliente:</span> {resultado.dados.empresa}</p>
               <p><span className="text-gray-500">Login:</span> <span className="text-white select-all">{resultado.dados.login}</span></p>
               <p><span className="text-gray-500">Senha:</span> <span className="text-white select-all">{resultado.dados.senha}</span></p>
@@ -133,7 +133,7 @@ export default function SuperAdminPage() {
 
             <button 
               disabled={loading}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50"
+              className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50"
             >
               {loading ? 'Criando...' : 'CRIAR ACESSO'}
             </button>

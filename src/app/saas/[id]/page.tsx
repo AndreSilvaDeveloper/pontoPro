@@ -620,7 +620,7 @@ export default function ConfigEmpresaPage() {
             <button
               onClick={salvarPlano}
               disabled={!!busy}
-              className="w-full bg-purple-600 hover:bg-purple-700 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-colors disabled:opacity-50"
+              className="w-full bg-purple-600 hover:bg-purple-500 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-colors disabled:opacity-50"
             >
               {busy === 'plano' ? 'Salvando...' : <><Save size={18} /> Salvar Plano e Cobrança</>}
             </button>
@@ -704,7 +704,7 @@ export default function ConfigEmpresaPage() {
             <button
               onClick={salvarConfigs}
               disabled={!!busy}
-              className="w-full bg-purple-600 hover:bg-purple-700 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-colors disabled:opacity-50"
+              className="w-full bg-purple-600 hover:bg-purple-500 py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-colors disabled:opacity-50"
             >
               {busy === 'configs' ? 'Salvando...' : <><Save size={18} /> Salvar Configurações</>}
             </button>
@@ -732,7 +732,7 @@ export default function ConfigEmpresaPage() {
                 <button
                   onClick={vincularMatriz}
                   disabled={!matrizAlvoId || !!busy}
-                  className="bg-purple-600 hover:bg-purple-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                  className="bg-purple-600 hover:bg-purple-500 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
                 >
                   {busy === 'vincular' ? 'Vinculando...' : 'Vincular'}
                 </button>
@@ -758,7 +758,7 @@ export default function ConfigEmpresaPage() {
                 <button
                   onClick={excluirEmpresa}
                   disabled={confirmDelete !== 'DELETAR' || !!busy}
-                  className="bg-red-600 hover:bg-red-700 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:bg-red-600/30 shrink-0"
+                  className="bg-red-600 hover:bg-red-500 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:bg-red-600/30 shrink-0"
                 >
                   {busy === 'excluir' ? 'Excluindo...' : <span className="flex items-center gap-2"><Trash2 size={16} /> Excluir Empresa</span>}
                 </button>

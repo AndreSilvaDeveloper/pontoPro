@@ -48,7 +48,7 @@ function badge(status?: string | null) {
     },
     PENDING: {
       label: "Pendente",
-      className: "bg-yellow-900/20 border-yellow-500/30 text-yellow-300",
+      className: "bg-amber-500/10 border-amber-500/20 text-amber-400",
     },
     OVERDUE: {
       label: "Vencido",
@@ -113,33 +113,32 @@ export default function HistoricoFaturasPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-page text-text-primary p-6">
+    <div className="min-h-screen bg-page text-text-primary p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-border-input pb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-purple-400">Histórico de faturas</h1>
-            <p className="text-text-muted text-sm">
-              Últimas cobranças 
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={load}
-              className="inline-flex items-center gap-2 bg-elevated-solid hover:bg-elevated-solid text-text-secondary border border-border-input px-4 py-2 rounded-lg font-bold text-xs"
-            >
-              <RefreshCw size={16} />
-              ATUALIZAR
-            </button>
-
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Link
               href="/admin/perfil"
-              className="inline-flex items-center gap-2 text-text-muted hover:text-text-primary"
+              className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
+              title="Voltar"
             >
-              <ArrowLeft size={18} />
-              Voltar
+              <ArrowLeft size={20} />
             </Link>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Histórico de faturas</h1>
+              <p className="text-text-muted text-sm">
+                Últimas cobranças
+              </p>
+            </div>
           </div>
+
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary border border-border-subtle px-4 py-2 rounded-xl font-bold text-xs transition-all active:scale-95"
+          >
+            <RefreshCw size={16} />
+            ATUALIZAR
+          </button>
         </div>
 
         {err && (
@@ -148,18 +147,18 @@ export default function HistoricoFaturasPage() {
           </div>
         )}
 
-        <div className="bg-surface-solid border border-border-input rounded-xl p-4">
+        <div className="bg-surface backdrop-blur-sm border border-border-subtle rounded-2xl p-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <div className="text-text-secondary text-sm">
+            <div className="text-sm text-text-secondary">
               Total listado: <b className="text-text-primary">{formatBRL(total)}</b>
             </div>
-            <div className="text-text-muted text-xs">
+            <div className="text-xs text-text-faint">
               Obs: valores podem incluir cobranças reusadas/reemissões.
             </div>
           </div>
         </div>
 
-        <div className="bg-surface-solid border border-border-input rounded-xl overflow-hidden">
+        <div className="bg-surface backdrop-blur-sm border border-border-subtle rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-border-input flex items-center justify-between">
             <h2 className="font-bold text-text-primary flex items-center gap-2">
               <FileText size={18} />
@@ -211,7 +210,7 @@ export default function HistoricoFaturasPage() {
                             href={it.invoiceUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold"
+                            className="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold"
                           >
                             BOLETO Pix <ExternalLink size={14} />
                           </a>

@@ -273,7 +273,7 @@ export default function PaymentModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 bg-input-solid/50 border-t border-border-input flex gap-3">
+        <div className="px-5 py-4 bg-page border-t border-border-input flex gap-3">
           <button
             onClick={onRefresh}
             disabled={loading}

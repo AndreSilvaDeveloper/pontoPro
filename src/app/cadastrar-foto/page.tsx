@@ -25,11 +25,14 @@ export default function CadastrarFotoPage() {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
-    if (status === 'authenticated' && !session?.user?.deveCadastrarFoto) {
-      if (session?.user?.deveDarCienciaCelular) {
-        router.push('/ciencia-celular');
-      } else {
-        router.push('/funcionario');
+    if (status === 'authenticated') {
+      const user = session?.user as any;
+      if (user?.impersonatedBy || user?.cargo === 'SUPER_ADMIN') {
+        window.location.href = '/funcionario';
+        return;
+      }
+      if (!user?.deveCadastrarFoto) {
+        window.location.href = user?.deveDarCienciaCelular ? '/ciencia-celular' : '/funcionario';
       }
     }
   }, [status, session, router]);
@@ -161,7 +164,7 @@ export default function CadastrarFotoPage() {
               {!cameraErro && (
                 <button
                   onClick={tirarFoto}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95"
                 >
                   <Camera size={20} />
                   Tirar Foto
@@ -191,7 +194,7 @@ export default function CadastrarFotoPage() {
               <button
                 onClick={confirmarESalvar}
                 disabled={loading}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98]"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
               >
                 {loading ? (
                   <>

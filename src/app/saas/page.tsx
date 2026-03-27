@@ -239,7 +239,7 @@ export default function SuperAdminPage() {
 
             <Link
               href="/saas/venda"
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
             >
               <Plus size={16} /> <span className="hidden sm:inline">Nova Venda</span>
             </Link>
@@ -328,7 +328,7 @@ export default function SuperAdminPage() {
               <button
                 onClick={salvarVinculo}
                 disabled={loadingVinculo || !matrizAlvoId}
-                className="w-full bg-yellow-600 hover:bg-yellow-700 py-3 rounded-lg font-bold text-black disabled:opacity-50"
+                className="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold text-black disabled:opacity-50 transition-all active:scale-95"
               >
                 {loadingVinculo ? <Loader2 className="animate-spin mx-auto" size={18} /> : "CONFIRMAR"}
               </button>
@@ -373,7 +373,7 @@ export default function SuperAdminPage() {
               />
               <button
                 disabled={loadingAdmin}
-                className="w-full bg-green-600 hover:bg-green-700 py-3 rounded font-bold mt-2 disabled:opacity-50"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded font-bold mt-2 disabled:opacity-50 transition-all active:scale-95"
               >
                 {loadingAdmin ? <Loader2 className="animate-spin mx-auto" size={18} /> : "CRIAR"}
               </button>

@@ -160,18 +160,19 @@ export default function PagamentoPage() {
   const valorPrevisto = isYearly ? totalAnual : totalMensal;
 
   return (
-    <div className="min-h-screen bg-page text-text-primary p-4 md:p-6">
+    <div className="min-h-screen bg-page text-text-primary p-4 md:p-8">
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-border-input pb-4">
+        <div className="flex items-center gap-3">
           <Link
             href="/admin/perfil"
-            className="rounded-lg bg-elevated-solid p-2 text-text-muted hover:bg-elevated-solid hover:text-text-primary"
+            className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
+            title="Voltar"
           >
             <ArrowLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-xl font-bold">Pagamento</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Pagamento</h1>
             <p className="text-sm text-text-muted">
               Gerencie seu ciclo de cobrança e método de pagamento
             </p>
@@ -185,13 +186,13 @@ export default function PagamentoPage() {
         )}
 
         {/* Seção 1 — Ciclo de Cobrança */}
-        <div className="rounded-2xl border border-border-input bg-surface p-6 space-y-4">
+        <div className="bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle p-6 space-y-4">
           <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
             <Calendar size={16} className="text-purple-400" />
             Ciclo de Cobrança
           </h3>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3" >
             {/* Mensal */}
             <button
               onClick={() => setSelectedCycle("MONTHLY")}
@@ -199,7 +200,7 @@ export default function PagamentoPage() {
               className={`rounded-xl border p-4 text-left transition-all ${
                 !isYearly
                   ? "border-purple-500/50 bg-purple-950/30 ring-1 ring-purple-500/30"
-                  : "border-border-input bg-surface hover:border-border-input"
+                  : "border-border-subtle bg-surface hover:border-border-default"
               }`}
             >
               <p className="font-bold text-sm">Mensal</p>
@@ -216,7 +217,7 @@ export default function PagamentoPage() {
               className={`relative rounded-xl border p-4 text-left transition-all ${
                 isYearly
                   ? "border-emerald-500/50 bg-emerald-950/30 ring-1 ring-emerald-500/30"
-                  : "border-border-input bg-surface hover:border-border-input"
+                  : "border-border-subtle bg-surface hover:border-border-default"
               }`}
             >
               <div className="absolute -top-2.5 right-3">
@@ -239,7 +240,7 @@ export default function PagamentoPage() {
             <button
               onClick={salvarCiclo}
               disabled={saving || data.isFilial}
-              className="w-full rounded-xl bg-purple-600 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+              className="w-full rounded-xl bg-purple-600 py-3 text-sm font-bold text-white transition-colors hover:bg-purple-500 disabled:opacity-50"
             >
               {saving ? "Salvando..." : `Alterar para ${isYearly ? "Anual" : "Mensal"}`}
             </button>
@@ -247,7 +248,7 @@ export default function PagamentoPage() {
         </div>
 
         {/* Seção 2 — Método de Pagamento */}
-        <div className="rounded-2xl border border-border-input bg-surface p-6 space-y-4">
+        <div className="bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle p-6 space-y-4">
           <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
             <CreditCard size={16} className="text-purple-400" />
             Método de Pagamento
@@ -311,7 +312,7 @@ export default function PagamentoPage() {
         </div>
 
         {/* Seção 3 — Próxima Cobrança */}
-        <div className="rounded-2xl border border-border-input bg-surface p-6 space-y-3">
+        <div className="bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle p-6 space-y-3">
           <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
             <Receipt size={16} className="text-purple-400" />
             Próxima Cobrança

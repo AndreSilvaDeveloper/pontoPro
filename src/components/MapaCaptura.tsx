@@ -104,7 +104,7 @@ export default function MapaCaptura({ latInicial, lngInicial, aoSelecionar, raio
                 type="button"
                 onClick={buscarEndereco}
                 disabled={carregando}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-4 rounded-lg text-sm font-bold flex items-center gap-2"
+                className="bg-purple-600 hover:bg-purple-500 text-white px-4 rounded-lg text-sm font-bold flex items-center gap-2"
             >
                 <Search size={16} /> {carregando ? '...' : 'Buscar'}
             </button>

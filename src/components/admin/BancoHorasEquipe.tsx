@@ -164,7 +164,7 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
                 <select
                   value={mesSelecionado}
                   onChange={e => setMesSelecionado(e.target.value)}
-                  className="bg-input-solid/50 border border-border-default rounded-lg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-purple-500 appearance-none"
+                  className="bg-page border border-border-default rounded-lg px-2 py-1.5 text-xs text-text-primary outline-none focus:border-purple-500 appearance-none"
                 >
                   {meses.map(m => (
                     <option key={m.value} value={m.value}>{m.label}</option>
@@ -186,7 +186,7 @@ export default function BancoHorasEquipe({ onAjustar, refreshKey }: { onAjustar?
                 <div className="relative" ref={calRef}>
                   <button
                     onClick={() => setCalAberto(!calAberto)}
-                    className="flex items-center gap-1.5 bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-lg px-2.5 py-1.5 text-xs text-text-primary transition-colors"
+                    className="flex items-center gap-1.5 bg-page border border-border-default hover:border-purple-500/50 rounded-lg px-2.5 py-1.5 text-xs text-text-primary transition-colors"
                   >
                     <Calendar size={12} className="text-purple-400" />
                     {dataInicioAcumulado

@@ -154,7 +154,7 @@ export default function DashboardPresenca() {
         <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
         <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
-        <div className="max-w-6xl mx-auto p-4 md:p-8 pb-8 space-y-8 relative z-10">
+        <div className="max-w-6xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
             <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
@@ -164,7 +164,7 @@ export default function DashboardPresenca() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="p-5 rounded-2xl border border-border-subtle bg-surface">
                 <div className="flex justify-between items-start mb-3">
@@ -199,7 +199,7 @@ export default function DashboardPresenca() {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-6xl mx-auto p-4 md:p-8 pb-8 space-y-6 md:space-y-8 relative z-10">
+      <div className="max-w-6xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
 
         {/* CABEÇALHO */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -211,9 +211,9 @@ export default function DashboardPresenca() {
               <LayoutDashboard size={24} className="text-purple-400" />
             </div>
             <div>
-              <h1 className="text-xl md:text-3xl font-bold text-text-primary tracking-tight">Visão Geral</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Visão Geral</h1>
               <p className="text-text-muted text-xs md:text-sm flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Atualizado às {ultimaAtualizacao.toLocaleTimeString()}
               </p>
             </div>
@@ -242,7 +242,7 @@ export default function DashboardPresenca() {
         </div>
 
         {/* CARDS DE RESUMO */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
           <CardResumo
             icone={<Users size={20} />}
             titulo="Equipe"
@@ -285,10 +285,10 @@ export default function DashboardPresenca() {
             porcentagem={porcentagem(resumo.cafe)}
             ativo={filtroStatus === 'CAFE'}
             onClick={() => toggleFiltro('CAFE')}
-            corFundo="bg-yellow-500/10"
-            corBordaAtiva="border-yellow-500/40"
-            corTexto="text-yellow-400"
-            corIcone="text-yellow-400"
+            corFundo="bg-amber-500/10"
+            corBordaAtiva="border-amber-500/40"
+            corTexto="text-amber-400"
+            corIcone="text-amber-400"
           />
           <CardResumo
             icone={<LogOut size={20} />}
@@ -316,12 +316,12 @@ export default function DashboardPresenca() {
           />
         </div>
 
-        {/* ALERTAS */}
-        {alertas.length > 0 && (
+        {/* ALERTAS — mostra apenas faltas, hora extra e saiu cedo (sem atrasos) */}
+        {alertas.filter((a: any) => a.tipo !== 'ATRASO' && a.tipo !== 'PADRAO_ATRASO').length > 0 && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '150ms' }}>
             <button
               onClick={() => setAlertasAberto(!alertasAberto)}
-              className="w-full flex items-center justify-between bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-2xl p-4 transition-colors"
+              className="w-full flex items-center justify-between bg-red-500/10 hover:bg-red-500/15 border border-red-500/20 rounded-2xl p-4 transition-all"
             >
               <div className="flex items-center gap-3">
                 <div className="bg-red-500/20 p-2 rounded-xl">
@@ -329,15 +329,13 @@ export default function DashboardPresenca() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-bold text-red-400">
-                    {alertas.length} {alertas.length === 1 ? 'Alerta' : 'Alertas'}
+                    {alertas.filter((a: any) => a.tipo !== 'ATRASO' && a.tipo !== 'PADRAO_ATRASO').length} {alertas.filter((a: any) => a.tipo !== 'ATRASO' && a.tipo !== 'PADRAO_ATRASO').length === 1 ? 'Alerta' : 'Alertas'}
                   </p>
                   <p className="text-[11px] text-red-400/60">
                     {[
-                      resumoAlertas.atrasos > 0 && `${resumoAlertas.atrasos} atraso${resumoAlertas.atrasos > 1 ? 's' : ''}`,
                       resumoAlertas.ausenciasSemJustificativa > 0 && `${resumoAlertas.ausenciasSemJustificativa} falta${resumoAlertas.ausenciasSemJustificativa > 1 ? 's' : ''}`,
                       resumoAlertas.horaExtra > 0 && `${resumoAlertas.horaExtra} com hora extra`,
                       resumoAlertas.saiuCedo > 0 && `${resumoAlertas.saiuCedo} saiu cedo`,
-                      resumoAlertas.padroesAtraso > 0 && `${resumoAlertas.padroesAtraso} atraso${resumoAlertas.padroesAtraso > 1 ? 's' : ''} recorrente${resumoAlertas.padroesAtraso > 1 ? 's' : ''}`,
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -347,7 +345,7 @@ export default function DashboardPresenca() {
 
             {alertasAberto && (
               <div className="mt-2 space-y-2">
-                {alertas.map((alerta: any, idx: number) => (
+                {alertas.filter((a: any) => a.tipo !== 'ATRASO' && a.tipo !== 'PADRAO_ATRASO').map((alerta: any, idx: number) => (
                   <AlertaItem key={idx} alerta={alerta} />
                 ))}
               </div>
@@ -389,7 +387,7 @@ export default function DashboardPresenca() {
                 value={buscaNome}
                 onChange={(e) => setBuscaNome(e.target.value)}
                 placeholder="Buscar funcionário..."
-                className="w-full bg-input-solid/50 border border-border-default hover:border-white/20 focus:border-purple-500/60 outline-none rounded-xl py-2.5 pl-10 pr-10 text-sm text-text-secondary placeholder:text-text-dim transition-colors"
+                className="w-full bg-page border border-border-input hover:border-white/20 focus:border-purple-500 outline-none rounded-xl py-2.5 pl-10 pr-10 text-sm text-text-secondary placeholder:text-text-dim transition-colors"
               />
               {buscaNome.trim() && (
                 <button
@@ -659,7 +657,7 @@ function getCardBg(status: string): string {
   switch (status) {
     case 'TRABALHANDO': return 'bg-emerald-500/5 border-emerald-500/10';
     case 'ALMOCO': return 'bg-orange-500/5 border-orange-500/10';
-    case 'CAFE': return 'bg-yellow-500/5 border-yellow-500/10';
+    case 'CAFE': return 'bg-amber-500/5 border-amber-500/10';
     case 'CAFE_EXCEDIDO': return 'bg-red-500/5 border-red-500/10';
     case 'ENCERROU': return 'bg-blue-500/5 border-blue-500/10';
     default: return 'bg-white/[0.02] border-border-subtle';
@@ -670,7 +668,7 @@ function StatusDot({ status }: { status: string }) {
   const cor = {
     TRABALHANDO: 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]',
     ALMOCO: 'bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.4)]',
-    CAFE: 'bg-yellow-500 shadow-[0_0_6px_rgba(234,179,8,0.4)]',
+    CAFE: 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]',
     CAFE_EXCEDIDO: 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.5)]',
     ENCERROU: 'bg-blue-500',
     OFFLINE: 'bg-slate-600',
@@ -685,7 +683,7 @@ function StatusBadge({ status, statusLabel, tempo, compact }: { status: string; 
   const configs: Record<string, { bg: string; text: string; label: string }> = {
     TRABALHANDO: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', label: 'EM SERVIÇO' },
     ALMOCO: { bg: 'bg-orange-500/20', text: 'text-orange-400', label: 'ALMOÇO' },
-    CAFE: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', label: 'CAFÉ' },
+    CAFE: { bg: 'bg-amber-500/20', text: 'text-amber-400', label: 'CAFÉ' },
     CAFE_EXCEDIDO: { bg: 'bg-red-500/20', text: 'text-red-400', label: 'CAFÉ EXCEDIDO' },
     ENCERROU: { bg: 'bg-blue-500/20', text: 'text-blue-400', label: 'ENCERROU' },
     OFFLINE: { bg: 'bg-border-input/50', text: 'text-text-faint', label: 'OFFLINE' },
@@ -779,7 +777,7 @@ function AlertaItem({ alerta }: { alerta: any }) {
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border} cursor-pointer active:scale-[0.98] transition-all`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.bg} ${cfg.border} cursor-pointer active:scale-95 transition-all`}
       onClick={() => setExpandido(!expandido)}
     >
       <div className={`p-1.5 rounded-lg ${cfg.bg} shrink-0`}>

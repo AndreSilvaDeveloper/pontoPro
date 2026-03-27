@@ -216,7 +216,7 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
         <div className="p-4 md:p-6 border-b border-border-subtle flex justify-between items-center bg-surface-solid/80 backdrop-blur-sm md:rounded-t-2xl sticky top-0 z-10 flex-shrink-0" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}>
           <h2 className="text-lg md:text-xl font-bold text-text-primary flex items-center gap-3">
             <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
-              <FileSpreadsheet size={18} className="text-green-400" />
+              <FileSpreadsheet size={18} className="text-emerald-400" />
             </div>
             Importar Funcionários
           </h2>
@@ -236,8 +236,8 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
             <div className="space-y-4">
               <div className="bg-surface p-5 rounded-2xl border border-border-subtle space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="bg-green-500/10 p-2.5 rounded-xl">
-                    <Download size={20} className="text-green-400" />
+                  <div className="bg-emerald-500/10 p-2.5 rounded-xl">
+                    <Download size={20} className="text-emerald-400" />
                   </div>
                   <div>
                     <p className="font-bold text-text-primary text-sm">1. Baixe o modelo</p>
@@ -248,7 +248,7 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
                 </div>
                 <button
                   onClick={baixarModelo}
-                  className="w-full py-3 bg-green-600/10 text-green-400 border border-green-500/20 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-green-600/20 transition-colors active:scale-[0.98]"
+                  className="w-full py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-emerald-600/20 transition-all active:scale-95"
                 >
                   <Download size={16} /> Baixar Modelo CSV
                 </button>
@@ -314,9 +314,9 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
                   <p className="text-2xl font-bold text-text-primary">{resultados.length}</p>
                   <p className="text-[10px] text-text-faint uppercase font-bold">Total</p>
                 </div>
-                <div className="bg-green-900/10 p-4 rounded-xl border border-green-500/20 text-center">
-                  <p className="text-2xl font-bold text-green-400">{validos}</p>
-                  <p className="text-[10px] text-green-300/70 uppercase font-bold">Válidos</p>
+                <div className="bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/20 text-center">
+                  <p className="text-2xl font-bold text-emerald-400">{validos}</p>
+                  <p className="text-[10px] text-emerald-300/70 uppercase font-bold">Válidos</p>
                 </div>
                 {invalidos > 0 && (
                   <div className="bg-red-900/10 p-4 rounded-xl border border-red-500/20 text-center">
@@ -376,7 +376,7 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
                           <td className="p-3 text-text-muted font-mono">{funcionarios[i]?.sabado || '-'}</td>
                           <td className="p-3">
                             {r.valido ? (
-                              <span className="flex items-center gap-1 text-green-400">
+                              <span className="flex items-center gap-1 text-emerald-400">
                                 <CheckCircle2 size={12} /> OK
                               </span>
                             ) : (
@@ -393,9 +393,9 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
               </div>
 
               {invalidos > 0 && (
-                <div className="bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-3 flex items-start gap-2">
-                  <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-yellow-200">
+                <div className="bg-amber-900/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+                  <AlertTriangle size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-200">
                     {invalidos} registro(s) com erro serão ignorados. Apenas os {validos} válidos serão importados.
                   </p>
                 </div>
@@ -406,37 +406,37 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
           {/* ETAPA 3: Resultado */}
           {etapa === 'resultado' && (
             <div className="space-y-4">
-              <div className="bg-green-900/10 border border-green-500/20 rounded-2xl p-6 text-center space-y-3">
-                <div className="w-16 h-16 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
-                  <Users size={32} className="text-green-400" />
+              <div className="bg-emerald-900/10 border border-emerald-500/20 rounded-2xl p-6 text-center space-y-3">
+                <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto">
+                  <Users size={32} className="text-emerald-400" />
                 </div>
-                <p className="text-xl font-bold text-green-400">{criados} funcionário(s) importado(s)!</p>
+                <p className="text-xl font-bold text-emerald-400">{criados} funcionário(s) importado(s)!</p>
                 <p className="text-xs text-text-muted">
                   Todos receberam email de boas-vindas com senha <strong>1234</strong>.
                 </p>
               </div>
 
               {/* Pendências */}
-              <div className="bg-yellow-900/10 border border-yellow-500/20 rounded-2xl p-4 space-y-3">
+              <div className="bg-amber-900/10 border border-amber-500/20 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle size={16} className="text-yellow-400" />
-                  <p className="text-sm font-bold text-yellow-300">Configurações pendentes</p>
+                  <AlertTriangle size={16} className="text-amber-400" />
+                  <p className="text-sm font-bold text-amber-400">Configurações pendentes</p>
                 </div>
-                <p className="text-xs text-yellow-200/80">
+                <p className="text-xs text-amber-200/80">
                   Os funcionários foram criados com as informações da planilha, mas alguns itens precisam ser configurados individualmente. Edite cada funcionário para completar:
                 </p>
-                <ul className="text-xs text-yellow-200/70 space-y-1.5 list-none">
+                <ul className="text-xs text-amber-200/70 space-y-1.5 list-none">
                   <li className="flex items-start gap-2">
-                    <span className="text-yellow-400 mt-0.5">•</span>
+                    <span className="text-amber-400 mt-0.5">•</span>
                     <span><strong>Localização GPS</strong> — definir a sede/local de trabalho no mapa</span>
                   </li>
                   
                   <li className="flex items-start gap-2">
-                    <span className="text-yellow-400 mt-0.5">•</span>
+                    <span className="text-amber-400 mt-0.5">•</span>
                     <span><strong>Sábados do mês</strong> — marcar quais sábados trabalha (1º, 2º, etc.)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-yellow-400 mt-0.5">•</span>
+                    <span className="text-amber-400 mt-0.5">•</span>
                     <span><strong>Modo de validação</strong> — trocar para IP fixo se necessário</span>
                   </li>
                 </ul>
@@ -462,7 +462,7 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
           {etapa === 'upload' && (
             <button
               onClick={fechar}
-              className="w-full py-3.5 bg-hover-bg text-text-secondary rounded-2xl font-bold text-sm hover:bg-hover-bg-strong transition-colors active:scale-[0.98]"
+              className="w-full py-3.5 bg-hover-bg text-text-secondary rounded-2xl font-bold text-sm hover:bg-hover-bg-strong transition-all active:scale-95"
             >
               Cancelar
             </button>
@@ -472,14 +472,14 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
             <div className="flex gap-3">
               <button
                 onClick={resetar}
-                className="flex-1 py-3.5 bg-hover-bg text-text-secondary rounded-2xl font-bold text-sm hover:bg-hover-bg-strong transition-colors active:scale-[0.98]"
+                className="flex-1 py-3.5 bg-hover-bg text-text-secondary rounded-2xl font-bold text-sm hover:bg-hover-bg-strong transition-all active:scale-95"
               >
                 Voltar
               </button>
               <button
                 onClick={confirmarImportacao}
                 disabled={loading || validos === 0}
-                className="flex-1 py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-colors active:scale-[0.98] disabled:opacity-50"
+                className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 disabled:opacity-50"
               >
                 {loading ? (
                   <RefreshCw size={18} className="animate-spin" />
@@ -495,7 +495,7 @@ Pedro Alves,pedro@empresa.com,11977776666,Operador,06:00-14:00,`;
           {etapa === 'resultado' && (
             <button
               onClick={fechar}
-              className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-sm transition-colors active:scale-[0.98]"
+              className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl font-bold text-sm transition-all active:scale-95"
             >
               Fechar
             </button>

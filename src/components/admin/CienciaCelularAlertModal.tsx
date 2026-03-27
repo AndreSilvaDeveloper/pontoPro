@@ -23,8 +23,8 @@ export default function CienciaCelularAlertModal() {
     const w = window as any;
     if (w.__billingDone) { setBillingDone(true); return; }
     const handler = () => setBillingDone(true);
-    window.addEventListener('billing-modal-closed', handler);
-    return () => window.removeEventListener('billing-modal-closed', handler);
+    window.addEventListener('billing-alert-done', handler);
+    return () => window.removeEventListener('billing-alert-done', handler);
   }, []);
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function CienciaCelularAlertModal() {
               <button
                 onClick={aplicarParaTodos}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-4 py-2.5 text-sm font-bold text-white transition-colors disabled:opacity-50"
               >
                 <Users size={16} />
                 {loading ? 'Aplicando...' : 'Exigir de todos os funcionários'}

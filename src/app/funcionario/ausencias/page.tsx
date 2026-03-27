@@ -28,7 +28,8 @@ type AvisoType = { tipo: 'sucesso' | 'erro'; texto: string } | null;
 
 const TIPO_CONFIG: Record<string, { label: string; cor: string; bg: string; border: string; icon: any }> = {
   ATESTADO: { label: 'Atestado Médico', cor: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: Stethoscope },
-  FALTA_JUSTIFICADA: { label: 'Falta Justificada', cor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: FileCheck },
+  FALTA_JUSTIFICADA: { label: 'Atestado Médico', cor: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: Stethoscope },
+  FOLGA: { label: 'Folga / Abono', cor: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20', icon: FileCheck },
   FERIAS: { label: 'Férias', cor: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', icon: Palmtree },
 };
 
@@ -233,7 +234,7 @@ export default function MinhasAusencias() {
         {/* === BOTÃO NOVA === */}
         <button
           onClick={abrirModalNovo}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-900/20 active:scale-[0.98] mb-5"
+          className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-900/20 active:scale-95 mb-5"
         >
           <PlusCircle size={20} /> Nova Justificativa / Atestado
         </button>
@@ -378,9 +379,9 @@ export default function MinhasAusencias() {
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalAberto(false)} />
 
-            <div className="relative z-10 w-full max-w-sm bg-page border border-border-input rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="relative z-10 w-full max-w-sm bg-page border border-border-default rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
               {/* Header */}
-              <div className="bg-surface/60 border-b border-border-subtle px-6 py-4 flex justify-between items-center">
+              <div className="bg-page border-b border-border-subtle px-6 py-4 flex justify-between items-center">
                 <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   <FileText size={18} className="text-purple-400" />
                   {idEdicao ? 'Editar Solicitação' : 'Nova Justificativa'}
@@ -558,7 +559,7 @@ export default function MinhasAusencias() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="py-4 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-900/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="py-4 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {loading ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

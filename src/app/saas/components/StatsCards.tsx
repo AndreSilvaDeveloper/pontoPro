@@ -77,7 +77,7 @@ const colorMap: Record<string, { icon: string; text: string; bg: string }> = {
   emerald: { icon: "text-emerald-400", text: "text-emerald-400", bg: "bg-emerald-500/10" },
   purple: { icon: "text-purple-400", text: "text-purple-400", bg: "bg-purple-500/10" },
   blue: { icon: "text-blue-400", text: "text-blue-400", bg: "bg-blue-500/10" },
-  yellow: { icon: "text-yellow-400", text: "text-yellow-400", bg: "bg-yellow-500/10" },
+  yellow: { icon: "text-amber-400", text: "text-amber-400", bg: "bg-amber-500/10" },
   indigo: { icon: "text-indigo-400", text: "text-indigo-400", bg: "bg-indigo-500/10" },
   red: { icon: "text-red-400", text: "text-red-400", bg: "bg-red-500/10" },
 };

@@ -119,7 +119,7 @@ export default function RevendedorEmpresas() {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalAberto(false)} />
           <div className="relative z-10 w-full max-w-md bg-page border border-border-input rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div className="bg-surface/60 border-b border-border-subtle px-6 py-4 flex justify-between items-center">
+            <div className="bg-page border-b border-border-subtle px-6 py-4 flex justify-between items-center">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <PlusCircle size={18} className="text-purple-400" /> Nova Empresa
               </h3>
@@ -132,19 +132,19 @@ export default function RevendedorEmpresas() {
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome da Empresa *</label>
                 <input type="text" value={nomeEmpresa} onChange={e => setNomeEmpresa(e.target.value)} placeholder="Ex: Padaria do Joao"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">CNPJ (opcional)</label>
                 <input type="text" value={cnpj} onChange={e => setCnpj(e.target.value)} placeholder="00.000.000/0000-00"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Plano</label>
                 <select value={plano} onChange={e => setPlano(e.target.value)}
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500 appearance-none">
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500 appearance-none">
                   <option value="STARTER">Starter</option>
                   <option value="PROFESSIONAL">Professional</option>
                   <option value="ENTERPRISE">Enterprise</option>
@@ -157,19 +157,19 @@ export default function RevendedorEmpresas() {
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome *</label>
                 <input type="text" value={nomeAdmin} onChange={e => setNomeAdmin(e.target.value)} placeholder="Nome completo"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Email *</label>
                 <input type="email" value={emailAdmin} onChange={e => setEmailAdmin(e.target.value)} placeholder="admin@empresa.com"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Senha *</label>
                 <input type="text" value={senhaAdmin} onChange={e => setSenhaAdmin(e.target.value)} placeholder="Senha inicial"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
             </div>
 
@@ -177,7 +177,7 @@ export default function RevendedorEmpresas() {
               <button
                 onClick={criarEmpresa}
                 disabled={salvando}
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
               >
                 {salvando ? 'Criando...' : <><Save size={18} /> Criar Empresa</>}
               </button>

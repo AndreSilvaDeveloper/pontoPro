@@ -34,7 +34,7 @@ function classificarStatus(emp: any): StatusTag {
 const statusConfig: Record<StatusTag, { label: string; cls: string }> = {
   ATIVO: { label: "Ativo", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
   TRIAL: { label: "Trial", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-  INADIMPLENTE: { label: "Inadimplente", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
+  INADIMPLENTE: { label: "Inadimplente", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
   BLOQUEADO: { label: "Bloqueado", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
 };
 
@@ -165,7 +165,7 @@ export default function ClientRow({
               <button
                 onClick={() => onConfirmarPagamento(empresa.id)}
                 disabled={loadingPagamento === empresa.id}
-                className="p-1.5 text-slate-400 hover:bg-green-600/20 hover:text-green-400 rounded transition-colors"
+                className="p-1.5 text-slate-400 hover:bg-emerald-600/20 hover:text-emerald-400 rounded transition-colors"
                 title="Confirmar Pagamento"
               >
                 {loadingPagamento === empresa.id ? (
@@ -175,7 +175,7 @@ export default function ClientRow({
                 )}
               </button>
             )}
-            <button onClick={() => onVincular(empresa)} className="p-1.5 text-yellow-400 hover:bg-yellow-600/20 rounded transition-colors" title="Vincular Matriz">
+            <button onClick={() => onVincular(empresa)} className="p-1.5 text-amber-400 hover:bg-amber-600/20 rounded transition-colors" title="Vincular Matriz">
               <LinkIcon size={14} />
             </button>
             <Link href={`/saas/${empresa.id}`} className="p-1.5 text-purple-400 hover:bg-purple-600/20 rounded transition-colors" title="Config Empresa">
@@ -183,7 +183,7 @@ export default function ClientRow({
             </Link>
             <button
               onClick={() => onAlternarStatus(empresa.id, empresa.nome, empresa.status)}
-              className={`p-1.5 rounded transition-colors ${empresa.status === "ATIVO" ? "text-orange-400 hover:bg-orange-600/20" : "text-green-400 hover:bg-green-600/20"}`}
+              className={`p-1.5 rounded transition-colors ${empresa.status === "ATIVO" ? "text-orange-400 hover:bg-orange-600/20" : "text-emerald-400 hover:bg-emerald-600/20"}`}
               title={empresa.status === "ATIVO" ? "Bloquear" : "Ativar"}
             >
               {empresa.status === "ATIVO" ? <Ban size={14} /> : <PlayCircle size={14} />}

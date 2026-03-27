@@ -12,7 +12,7 @@ type Props = {
 };
 
 const BILLING_CLOSED_KEY = "ui:billing-modal-closed:v1";
-const BILLING_EVENT = "billing-modal-closed";
+const BILLING_EVENT = "billing-alert-done";
 
 // ─── Helpers de storage para controle de frequência ───
 
@@ -118,19 +118,19 @@ function fireBillingDone() {
 
 export default function BillingAlertModal({ empresa, billing }: Props) {
   const [open, setOpen] = useState(false);
-  const [tourDone, setTourDone] = useState(false);
+  const [cadastroDone, setCadastroDone] = useState(false);
 
-  // Espera o tour terminar antes de avaliar
+  // Espera o cadastro-completo antes de avaliar — sem fallback, espera indefinidamente
   useEffect(() => {
     const w = window as any;
-    if (w.__tourDone) { setTourDone(true); return; }
-    const handler = () => setTourDone(true);
-    window.addEventListener('tour-done', handler);
-    return () => window.removeEventListener('tour-done', handler);
+    if (w.__cadastroCompleto) { setCadastroDone(true); return; }
+    const handler = () => setCadastroDone(true);
+    window.addEventListener('cadastro-completo', handler);
+    return () => { window.removeEventListener('cadastro-completo', handler); };
   }, []);
 
   useEffect(() => {
-    if (!tourDone) return;
+    if (!cadastroDone) return;
     if (!billing) {
       fireBillingDone();
       return;
@@ -141,7 +141,7 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
     } else {
       fireBillingDone();
     }
-  }, [tourDone, billing, empresa?.id]);
+  }, [cadastroDone, billing, empresa?.id]);
 
   const closeModal = () => {
     setOpen(false);
@@ -207,10 +207,10 @@ export default function BillingAlertModal({ empresa, billing }: Props) {
 
   const btn =
     ui.tone === "danger"
-      ? "bg-red-600 hover:bg-red-700 text-white"
+      ? "bg-red-600 hover:bg-red-500 text-white"
       : ui.tone === "warn"
-      ? "bg-yellow-500 hover:bg-yellow-600 text-black"
-      : "bg-amber-500 hover:bg-amber-600 text-black";
+      ? "bg-amber-500 hover:bg-amber-400 text-black"
+      : "bg-amber-500 hover:bg-amber-400 text-black";
 
   return (
     <div

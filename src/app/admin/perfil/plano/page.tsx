@@ -108,19 +108,20 @@ export default function PlanoPage() {
   const isYearly = billingCycle === "YEARLY";
 
   return (
-    <div className="min-h-screen bg-page text-text-primary p-4 md:p-6">
+    <div className="min-h-screen bg-page text-text-primary p-4 md:p-8">
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border-input pb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
               href="/admin/perfil"
-              className="rounded-lg bg-elevated-solid p-2 text-text-muted hover:bg-elevated-solid hover:text-text-primary"
+              className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
+              title="Voltar"
             >
               <ArrowLeft size={20} />
             </Link>
             <div>
-              <h1 className="text-xl font-bold">Meu Plano</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Meu Plano</h1>
               <p className="text-sm text-text-muted">
                 Gerencie sua assinatura e veja seu consumo
               </p>
@@ -136,7 +137,7 @@ export default function PlanoPage() {
         )}
 
         {/* Plano atual + consumo */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2">
           {/* Card plano atual */}
           <div className="rounded-2xl border border-purple-500/30 bg-gradient-to-b from-purple-950/40 to-slate-900/50 p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -179,7 +180,7 @@ export default function PlanoPage() {
           </div>
 
           {/* Card consumo */}
-          <div className="space-y-3 rounded-2xl border border-border-input bg-surface p-6">
+          <div className="space-y-3 rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-6">
             <h3 className="text-sm font-medium text-text-muted">Consumo atual</h3>
 
             <div className="space-y-3">
@@ -212,7 +213,7 @@ export default function PlanoPage() {
             Planos disponíveis
           </h2>
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             {planos.map((p) => {
               const isCurrent = p.id === planoAtual;
               return (
@@ -221,7 +222,7 @@ export default function PlanoPage() {
                   className={`relative rounded-2xl border p-5 transition-all ${
                     isCurrent
                       ? "border-purple-500/50 bg-purple-950/30 ring-1 ring-purple-500/30"
-                      : "border-border-input bg-surface hover:border-border-input"
+                      : "border-border-subtle bg-surface hover:border-border-default"
                   }`}
                 >
                   {isCurrent && (

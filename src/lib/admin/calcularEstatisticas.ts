@@ -69,7 +69,8 @@ function getWorkWindowsFromConfig(configDia: any): Array<{ start: number; end: n
 }
 
 function isFolgaParcial(aus: any) {
-  if (aus?.subTipo !== 'FOLGA') return false;
+  // Reconhece qualquer ausência parcial: FOLGA, ATESTADO, FERIAS, etc.
+  if (!aus?.subTipo) return false;
 
   const ini = new Date(aus.dataHora);
   const fim = aus.extra?.dataFim ? new Date(aus.extra.dataFim) : ini;

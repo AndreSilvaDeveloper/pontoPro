@@ -629,7 +629,7 @@ export default function Home() {
           <button onClick={() => setTipoManual('ENTRADA')} className={`${btnFlex} ${tipoManual === 'ENTRADA' ? 'bg-emerald-600 border-emerald-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><LogIn size={16} /> Entrada</button>
           <button onClick={() => setTipoManual('SAIDA_ALMOCO')} className={`${btnFlex} ${tipoManual === 'SAIDA_ALMOCO' ? 'bg-orange-600 border-orange-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><CupSoda size={16} /> Almoço</button>
           <button onClick={() => setTipoManual('VOLTA_ALMOCO')} className={`${btnFlex} ${tipoManual === 'VOLTA_ALMOCO' ? 'bg-blue-600 border-blue-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><ArrowRightCircle size={16} /> Volta</button>
-          <button onClick={() => setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'SAIDA_INTERVALO' ? 'bg-yellow-600 border-yellow-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><Coffee size={16} /> Café</button>
+          <button onClick={() => setTipoManual('SAIDA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'SAIDA_INTERVALO' ? 'bg-amber-600 border-amber-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><Coffee size={16} /> Café</button>
           <button onClick={() => setTipoManual('VOLTA_INTERVALO')} className={`${btnFlex} ${tipoManual === 'VOLTA_INTERVALO' ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><ArrowRightCircle size={16} /> Volta</button>
           <button onClick={() => setTipoManual('SAIDA')} className={`${btnFlex} ${tipoManual === 'SAIDA' ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-elevated-solid border-border-input text-text-muted'}`}><LogOut size={16} /> Saída</button>
         </div>
@@ -654,13 +654,13 @@ export default function Home() {
         {/* CABEÇALHO */}
         <div
           data-tour="emp-header"
-          className="flex justify-between items-center bg-surface/60 backdrop-blur-xl p-5 rounded-3xl border border-border-default shadow-2xl">
+          className="flex justify-between items-center bg-page backdrop-blur-xl p-5 rounded-2xl border border-border-default shadow-2xl">
           <div className="flex items-center gap-4">
             <div className="relative">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
                 {session?.user?.name?.charAt(0) || <User />}
               </div>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-page rounded-full"></div>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-page rounded-full"></div>
             </div>
             <div>
               <p className="text-xs text-text-muted font-bold uppercase tracking-widest mb-0.5">Olá, {session?.user?.name?.split(' ')[0]}</p>
@@ -750,7 +750,7 @@ export default function Home() {
           const faltamM = Math.max(0, faltam) % 60;
 
           return (
-            <div className="bg-surface/60 backdrop-blur-md rounded-2xl border border-border-subtle p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
+            <div className="bg-page backdrop-blur-md rounded-2xl border border-border-subtle p-4 space-y-3 animate-in fade-in slide-in-from-top-2">
               {/* Barra de progresso */}
               <div className="flex items-center justify-between text-xs">
                 <span className="text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
@@ -854,7 +854,7 @@ export default function Home() {
         })()}
 
         {/* ÁREA PRINCIPAL (CÂMERA/STATUS E AÇÃO) */}
-        <div data-tour="emp-main" className="bg-surface/60 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-border-subtle p-5 space-y-5">
+        <div data-tour="emp-main" className="bg-page backdrop-blur-md rounded-[2rem] shadow-2xl overflow-hidden border border-border-subtle p-5 space-y-5">
 
           {statusMsg && (
             <div className={`p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-3 shadow-lg animate-in slide-in-from-top-2 ${statusMsg.tipo === 'erro' ? 'bg-red-500/20 text-red-200 border border-red-500/30' : statusMsg.tipo === 'sucesso' ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-200 border border-blue-500/30'}`}>
@@ -1020,7 +1020,7 @@ export default function Home() {
       {modalConfirmacao && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalConfirmacao(null)} />
-          <div className="relative z-10 w-full max-w-sm bg-page border border-red-500/20 shadow-2xl shadow-red-500/10 rounded-3xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
+          <div className="relative z-10 w-full max-w-sm bg-page border border-red-500/20 shadow-2xl shadow-red-500/10 rounded-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
             {/* Header */}
             <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-5 flex items-center gap-4">
               <div className="p-3 bg-red-500/20 rounded-2xl">
@@ -1056,7 +1056,7 @@ export default function Home() {
               </button>
               <button
                 onClick={confirmarAcaoCritica}
-                className="py-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30 transition-all active:scale-95"
+                className="py-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 transition-all active:scale-95"
               >
                 Sim, encerrar
               </button>
@@ -1084,8 +1084,8 @@ export default function Home() {
               data-tour="emp-modal-incluir"
               className="
                 relative z-10 w-full md:max-w-sm
-                bg-page border border-border-input shadow-2xl
-                rounded-3xl
+                bg-page border border-border-default shadow-2xl
+                rounded-2xl
                 px-6 pt-6
                 pb-[calc(1.5rem+env(safe-area-inset-bottom))]
                 max-h-[90dvh] overflow-y-auto
@@ -1094,7 +1094,7 @@ export default function Home() {
               "
             >
 
-            <div data-tour="emp-header" className="flex justify-between items-center bg-surface/60 backdrop-blur-xl p-5 rounded-3xl border border-border-default shadow-2xl">
+            <div data-tour="emp-header" className="flex justify-between items-center bg-page backdrop-blur-xl p-5 rounded-2xl border border-border-default shadow-2xl">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <PlusCircle size={20} className="text-emerald-400" /> Incluir Registro
               </h3>
@@ -1129,7 +1129,7 @@ export default function Home() {
                   const id = avisoInclusao.pontoIdSugerido!;
                   router.push(`/funcionario/historico?ajustar=${id}`);
                 }}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <History size={18} /> Ir para o Histórico e solicitar ajuste
               </button>
@@ -1162,7 +1162,7 @@ export default function Home() {
                         key={idx}
                         type="button"
                         onClick={() => aplicarSugestao(sug)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] hover:brightness-110 ${tipoCores[sug.tipo] || 'text-text-muted border-border-subtle bg-surface'}`}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 hover:brightness-110 ${tipoCores[sug.tipo] || 'text-text-muted border-border-subtle bg-surface'}`}
                       >
                         <div className="flex-1 text-left">
                           <p className="text-xs font-bold">{sug.label}</p>
@@ -1205,13 +1205,13 @@ export default function Home() {
 
             <div className="space-y-1">
               <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Novo Horário</label>
-              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20" />
+              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-colors" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Justificativa (Obrigatório)</label>
               <textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex: Esqueci de bater, estava em reunião..." className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm h-24 resize-none outline-none focus:border-purple-500 transition-colors" />
             </div>
-            <button data-tour="emp-send-request" onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <button data-tour="emp-send-request" onClick={enviarSolicitacaoInclusao} className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
               <Save size={18} /> Enviar Solicitação
             </button>
           </div>

@@ -71,7 +71,7 @@ export default function FinanceAlertBanner({
         href={linkPagamento}
         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
           invert
-            ? 'bg-black text-yellow-400 hover:bg-gray-800'
+            ? 'bg-black text-amber-400 hover:bg-gray-800'
             : 'bg-white text-slate-900 hover:bg-slate-100'
         }`}
       >
@@ -84,7 +84,7 @@ export default function FinanceAlertBanner({
         rel="noreferrer"
         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
           invert
-            ? 'bg-white/10 text-yellow-100 hover:bg-white/15'
+            ? 'bg-white/10 text-amber-100 hover:bg-white/15'
             : 'bg-black/10 text-white hover:bg-black/20'
         }`}
       >
@@ -149,7 +149,7 @@ export default function FinanceAlertBanner({
       )}
 
       {alertaFinanceiro.tipo === 'PROXIMO' && (
-        <div className="bg-yellow-500 text-black p-3 flex flex-col md:flex-row items-center justify-center gap-3 shadow-xl">
+        <div className="bg-amber-500 text-black p-3 flex flex-col md:flex-row items-center justify-center gap-3 shadow-xl">
           <div className="flex items-center gap-2">
             <Clock size={20} />
             <span className="font-bold text-sm uppercase">Fatura em aberto</span>

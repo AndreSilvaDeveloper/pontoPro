@@ -162,25 +162,25 @@ export default function LogsAuditoria() {
 
       <div className="max-w-6xl mx-auto space-y-6 relative z-10">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-subtle pb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border-subtle pb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex items-center gap-4">
-                <div className="bg-surface-solid p-3 rounded-2xl border border-border-default shadow-xl">
-                    <ShieldCheck className="text-emerald-400" size={32} />
+                <div className="bg-hover-bg p-2 rounded-xl border border-border-default">
+                    <ShieldCheck className="text-emerald-400" size={24} />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-text-primary tracking-tight">Auditoria & Logs</h1>
+                    <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Auditoria & Logs</h1>
                     <p className="text-sm text-text-muted">Rastreabilidade completa de todas as ações do sistema.</p>
                 </div>
             </div>
-            <Link href="/admin" className="px-5 py-2.5 bg-elevated-solid hover:bg-elevated-solid border border-border-subtle rounded-xl text-sm font-bold transition-all flex items-center gap-2 active:scale-95">
-                <ArrowLeft size={18}/> Voltar
+            <Link href="/admin" className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95" title="Voltar">
+                <ArrowLeft size={20}/>
             </Link>
         </div>
 
         {/* BARRA DE FILTROS */}
-        <div className="bg-surface/60 backdrop-blur-md border border-border-subtle p-5 rounded-2xl shadow-xl flex flex-col lg:flex-row gap-4 items-end">
+        <div className="bg-page backdrop-blur-md border border-border-subtle p-5 rounded-2xl shadow-xl flex flex-col lg:flex-row gap-4 items-end animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '50ms' }}>
             
-            <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="w-full grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
                     <label className="text-[10px] uppercase font-bold text-text-faint ml-1">De</label>
                     <div className="flex items-center gap-2 bg-page border border-border-default rounded-xl px-3 py-2.5">
@@ -236,17 +236,18 @@ export default function LogsAuditoria() {
         </div>
 
         {/* TABELA DE RESULTADOS */}
-        <div className="bg-surface/40 backdrop-blur-md rounded-2xl border border-border-subtle overflow-hidden shadow-2xl">
+        <div className="bg-surface/40 backdrop-blur-md rounded-2xl border border-border-subtle overflow-hidden shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
             {loading ? (
-                <div className="p-12 flex flex-col items-center justify-center text-text-faint gap-3">
-                    <div className="w-8 h-8 border-4 border-border-input border-t-emerald-500 rounded-full animate-spin"></div>
-                    <p className="text-sm">Buscando na auditoria...</p>
+                <div className="p-4 space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="h-16 bg-hover-bg rounded-2xl animate-pulse" />
+                    ))}
                 </div>
             ) : (
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-input-solid/50 border-b border-border-subtle text-[10px] uppercase tracking-widest text-text-muted font-bold">
+                            <tr className="bg-page border-b border-border-subtle text-[10px] uppercase tracking-widest text-text-muted font-bold">
                                 <th className="p-5">Data e Hora</th>
                                 <th className="p-5">Responsável / Autor</th>
                                 <th className="p-5">Ação Realizada</th>

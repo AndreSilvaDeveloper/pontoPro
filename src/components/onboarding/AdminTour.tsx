@@ -234,7 +234,27 @@ export default function AdminTour() {
       d.drive();
     };
 
-    timerRef.current = setTimeout(launchTour, forced ? 300 : 1500);
+    const iniciarQuandoPronto = () => {
+      timerRef.current = setTimeout(launchTour, forced ? 300 : 1000);
+    };
+
+    // Esperar billing-alert-done antes de iniciar o tour — sem fallback
+    const w = window as any;
+    if (w.__billingDone) {
+      iniciarQuandoPronto();
+    } else {
+      const onBillingDone = () => {
+        window.removeEventListener('billing-alert-done', onBillingDone);
+        iniciarQuandoPronto();
+      };
+      window.addEventListener('billing-alert-done', onBillingDone);
+
+      return () => {
+        window.removeEventListener('billing-alert-done', onBillingDone);
+        destroyDriver();
+      };
+    }
+
     return () => destroyDriver();
   }, [pathname, status, session, searchParams]);
 

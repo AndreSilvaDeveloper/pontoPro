@@ -45,9 +45,24 @@ export default function ConfiguracoesEmpresa() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-page text-text-primary flex items-center justify-center gap-3">
-      <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-      Carregando...
+    <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+      <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
+      <div className="max-w-2xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
+          <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
+          <div className="space-y-2 flex-1">
+            <div className="h-6 w-56 bg-hover-bg rounded-lg animate-pulse" />
+            <div className="h-4 w-40 bg-hover-bg rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-hover-bg rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 
@@ -57,7 +72,7 @@ export default function ConfiguracoesEmpresa() {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-2xl mx-auto p-4 md:p-8 pb-8 space-y-8 relative z-10">
+      <div className="max-w-2xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
 
         {/* CABEÇALHO */}
         <div className="flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -79,7 +94,7 @@ export default function ConfiguracoesEmpresa() {
 
           <div className="bg-surface backdrop-blur-sm p-5 rounded-2xl border border-border-subtle flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '50ms' }}>
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-full ${configs.ocultarSaldoHoras ? 'bg-yellow-900/30 text-yellow-400' : 'bg-elevated-solid text-text-faint'}`}>
+              <div className={`p-3 rounded-full ${configs.ocultarSaldoHoras ? 'bg-amber-900/30 text-amber-400' : 'bg-elevated-solid text-text-faint'}`}>
                 <EyeOff size={24} />
               </div>
               <div>
@@ -134,14 +149,14 @@ export default function ConfiguracoesEmpresa() {
 
           <div className="bg-surface backdrop-blur-sm p-5 rounded-2xl border border-border-subtle flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-full ${configs.permitirEdicaoFunc ? 'bg-green-900/30 text-green-400' : 'bg-elevated-solid text-text-faint'}`}>
+              <div className={`p-3 rounded-full ${configs.permitirEdicaoFunc ? 'bg-emerald-900/30 text-emerald-400' : 'bg-elevated-solid text-text-faint'}`}>
                 <UserCog size={24} />
               </div>
               <div>
                 <h3 className="font-bold text-lg">Auto-Gestão</h3>
                 <p className="text-xs text-text-muted max-w-sm">
                   Permitir que o funcionário edite seu próprio ponto (apenas se esqueceu).
-                  <span className="block text-yellow-500 mt-1">Recomendado: Desativado (Apenas Admin edita).</span>
+                  <span className="block text-amber-400 mt-1">Recomendado: Desativado (Apenas Admin edita).</span>
                 </p>
               </div>
             </div>
@@ -152,7 +167,7 @@ export default function ConfiguracoesEmpresa() {
 
         </div>
 
-        <button onClick={salvar} disabled={salvando} className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-green-900/20 transition-all active:scale-[0.98] animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '250ms' }}>
+        <button onClick={salvar} disabled={salvando} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '250ms' }}>
           {salvando ? 'Salvando...' : <><Save size={20}/> Salvar Preferências</>}
         </button>
 

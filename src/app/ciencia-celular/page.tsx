@@ -8,7 +8,13 @@ import { Smartphone, Building2, FileCheck, AlertTriangle } from 'lucide-react';
 
 export default function CienciaCelularPage() {
   const router = useRouter();
-  const { update } = useSession();
+  const { data: session, update } = useSession();
+
+  // Impersonate pula onboarding
+  if ((session?.user as any)?.impersonatedBy || (session?.user as any)?.cargo === 'SUPER_ADMIN') {
+    if (typeof window !== 'undefined') window.location.href = '/funcionario';
+    return null;
+  }
 
   const [cpf, setCpf] = useState('');
   const [opcao, setOpcao] = useState<'PROPRIO' | 'EMPRESA' | null>(null);
@@ -134,7 +140,7 @@ export default function CienciaCelularPage() {
 
         {/* Mensagem */}
         {msg && (
-          <div className={`text-center font-bold text-sm mb-4 ${msg.includes('sucesso') ? 'text-green-400' : 'text-red-400'}`}>
+          <div className={`text-center font-bold text-sm mb-4 ${msg.includes('sucesso') ? 'text-emerald-400' : 'text-red-400'}`}>
             {msg}
           </div>
         )}
@@ -143,7 +149,7 @@ export default function CienciaCelularPage() {
         <button
           onClick={handleSubmit}
           disabled={!formValido || loading}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Gerando documento...' : 'Confirmar e Gerar Documento'}
         </button>

@@ -76,13 +76,24 @@ export async function PUT(request: Request) {
 
     try {
         const body = await request.json();
-        
-        // Atualiza apenas o JSON de configurações
+
+        // Se tem campos diretos (nome, cnpj, cobrancaWhatsapp), atualiza eles
+        const updateData: any = {};
+        if (body.nome !== undefined) updateData.nome = body.nome;
+        if (body.cnpj !== undefined) updateData.cnpj = body.cnpj || null;
+        if (body.cobrancaWhatsapp !== undefined) updateData.cobrancaWhatsapp = body.cobrancaWhatsapp || null;
+
+        // Se tem outros campos, trata como configurações
+        const configKeys = Object.keys(body).filter(k => !['nome', 'cnpj', 'cobrancaWhatsapp'].includes(k));
+        if (configKeys.length > 0) {
+            const configBody: any = {};
+            configKeys.forEach(k => { configBody[k] = body[k]; });
+            updateData.configuracoes = configBody;
+        }
+
         await prisma.empresa.update({
             where: { id: session.user.empresaId },
-            data: {
-                configuracoes: body 
-            }
+            data: updateData,
         });
 
         return NextResponse.json({ success: true });

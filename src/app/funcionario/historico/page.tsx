@@ -67,7 +67,7 @@ const TIPO_CONFIG: Record<string, { label: string; cor: string; bg: string; bord
   SAIDA_INTERVALO: { label: 'Café', cor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: Coffee },
   SAIDA: { label: 'Saída', cor: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', icon: LogOut },
   PONTO: { label: 'Ponto', cor: 'text-text-muted', bg: 'bg-slate-500/10', border: 'border-border-input/20', icon: Clock },
-  AUSENCIA: { label: 'Ausência', cor: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', icon: AlertTriangle },
+  AUSENCIA: { label: 'Ausência', cor: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: AlertTriangle },
 };
 
 const getTipoConfig = (tipo: string) => TIPO_CONFIG[tipo] || TIPO_CONFIG.PONTO;
@@ -146,13 +146,59 @@ export default function MeuHistorico() {
     });
 
     const diasIsentos = new Set<string>();
+    const ausenciaParcialMinutosPorDia: Record<string, number> = {};
     const ausencias = listaRegistros.filter(p => p.tipo === 'AUSENCIA');
     ausencias.forEach(aus => {
       const inicio = new Date(aus.dataHora);
       const fim = aus.extra?.dataFim ? new Date(aus.extra.dataFim) : inicio;
-      try {
-        eachDayOfInterval({ start: inicio, end: fim }).forEach(d => diasIsentos.add(toDateStr(d)));
-      } catch {}
+
+      // Verificar se é ausência parcial (mesmo dia, horários diferentes)
+      const mesmoDia = toDateStr(inicio) === toDateStr(fim);
+      const iniMin = inicio.getHours() * 60 + inicio.getMinutes();
+      const fimMin = fim.getHours() * 60 + fim.getMinutes();
+      const ehParcial = mesmoDia && fimMin > iniMin && iniMin !== fimMin;
+
+      if (ehParcial) {
+        // Ausência parcial: abona as horas dentro da jornada
+        const diaStr = toDateStr(inicio);
+        const diaSemanaIdx = getDay(inicio);
+        const diaSemana = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'][diaSemanaIdx];
+        const configDia = jornadaConfig?.[diaSemana];
+
+        let abonar = 0;
+        if (configDia && configDia.ativo) {
+          // Calcular overlap entre ausência e jornada
+          const parseHM = (h: string) => {
+            if (!h || !/^\d{2}:\d{2}$/.test(h)) return 0;
+            const [hh, mm] = h.split(':').map(Number);
+            return hh * 60 + mm;
+          };
+          const overlapMin = (aS: number, aE: number, bS: number, bE: number) => Math.max(0, Math.min(aE, bE) - Math.max(aS, bS));
+
+          const hasS1 = configDia.s1 && /^\d{2}:\d{2}$/.test(configDia.s1);
+          const hasE2 = configDia.e2 && /^\d{2}:\d{2}$/.test(configDia.e2);
+
+          if (!hasS1 && !hasE2 && configDia.e1 && configDia.s2) {
+            // Jornada contínua
+            abonar = overlapMin(iniMin, fimMin, parseHM(configDia.e1), parseHM(configDia.s2));
+          } else {
+            // Dois blocos
+            if (configDia.e1 && configDia.s1) abonar += overlapMin(iniMin, fimMin, parseHM(configDia.e1), parseHM(configDia.s1));
+            if (configDia.e2 && configDia.s2) abonar += overlapMin(iniMin, fimMin, parseHM(configDia.e2), parseHM(configDia.s2));
+          }
+        } else {
+          abonar = fimMin - iniMin;
+        }
+
+        if (abonar > 0) {
+          ausenciaParcialMinutosPorDia[diaStr] = (ausenciaParcialMinutosPorDia[diaStr] || 0) + abonar;
+        }
+      } else {
+        // Ausência integral
+        try {
+          eachDayOfInterval({ start: inicio, end: fim }).forEach(d => diasIsentos.add(toDateStr(d)));
+        } catch {}
+      }
     });
 
     const semanasComSabado = new Set<string>();
@@ -297,6 +343,12 @@ export default function MeuHistorico() {
       if (loopData <= agora) {
         const diaStr = toDateStr(loopData);
         let metaDia = getMetaDoDia(loopData);
+
+        // Reduzir meta se tem ausência parcial neste dia (atestado, folga parcial)
+        const abonoParcial = ausenciaParcialMinutosPorDia[diaStr] || 0;
+        if (abonoParcial > 0) {
+          metaDia = Math.max(0, metaDia - abonoParcial);
+        }
 
         // Reduzir meta se tem compensação de folga neste dia
         const compensacao = compensacoesPorDia[diaStr] || 0;
@@ -668,7 +720,7 @@ export default function MeuHistorico() {
         </div>
 
         {/* === TABS === */}
-        <div className="bg-surface/60 backdrop-blur p-1 rounded-2xl flex gap-1 border border-border-subtle mb-5">
+        <div className="bg-page backdrop-blur p-1 rounded-2xl flex gap-1 border border-border-subtle mb-5">
           <button
             onClick={() => setAbaAtiva('PONTO')}
             className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
@@ -703,7 +755,7 @@ export default function MeuHistorico() {
             {/* Resumo */}
             {resumo && (
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-surface/60 backdrop-blur border border-purple-500/20 p-4 rounded-2xl">
+                <div className="bg-page backdrop-blur border border-purple-500/20 p-4 rounded-2xl">
                   <div className="flex items-center gap-2 mb-2">
                     <Clock size={14} className="text-purple-400" />
                     <span className="text-[10px] text-purple-300/70 uppercase font-bold tracking-widest">Trabalhado</span>
@@ -735,14 +787,14 @@ export default function MeuHistorico() {
             {/* Botão Esqueci */}
             <button
               onClick={abrirInclusao}
-              className="w-full bg-surface/40 hover:bg-elevated/60 border border-dashed border-border-input hover:border-purple-500/30 py-4 rounded-2xl font-bold text-sm text-text-secondary flex items-center justify-center gap-2 transition-all hover:text-text-primary active:scale-[0.98]"
+              className="w-full bg-surface/40 hover:bg-elevated/60 border border-dashed border-border-input hover:border-purple-500/30 py-4 rounded-2xl font-bold text-sm text-text-secondary flex items-center justify-center gap-2 transition-all hover:text-text-primary active:scale-95"
             >
               <PlusCircle size={18} className="text-purple-400" /> Esqueci de Bater o Ponto
             </button>
 
             {/* Filtros */}
-            <div className="bg-surface/60 backdrop-blur-md p-4 rounded-2xl border border-border-subtle space-y-3">
-              <div className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
+            <div className="bg-page backdrop-blur-md p-4 rounded-2xl border border-border-subtle space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center bg-page border border-border-default rounded-xl p-2 sm:p-1">
                 <div className="flex items-center gap-2 flex-1">
                   <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">De</span>
                   <input
@@ -768,7 +820,7 @@ export default function MeuHistorico() {
                 <button
                   onClick={carregar}
                   disabled={loading}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                 >
                   {loading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -1236,9 +1288,9 @@ export default function MeuHistorico() {
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalAberto(false)} />
 
-            <div className="relative z-10 w-full max-w-sm bg-page border border-border-input rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="relative z-10 w-full max-w-sm bg-page border border-border-default rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
               {/* Header do modal */}
-              <div className="bg-surface/60 border-b border-border-subtle px-6 py-4 flex justify-between items-center">
+              <div className="bg-page border-b border-border-subtle px-6 py-4 flex justify-between items-center">
                 <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   {modoModal === 'EDICAO' ? (
                     <><Edit3 size={18} className="text-purple-400" /> Ajustar Horário</>
@@ -1297,7 +1349,7 @@ export default function MeuHistorico() {
                                 key={idx}
                                 type="button"
                                 onClick={() => aplicarSugestao(sug)}
-                                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-[0.98] hover:brightness-110 ${tipoCores[sug.tipo] || 'text-text-muted border-border-subtle bg-surface'}`}
+                                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all active:scale-95 hover:brightness-110 ${tipoCores[sug.tipo] || 'text-text-muted border-border-subtle bg-surface'}`}
                               >
                                 <div className="flex-1 text-left">
                                   <p className="text-xs font-bold">{sug.label}</p>
@@ -1361,7 +1413,7 @@ export default function MeuHistorico() {
                     type="time"
                     value={horaNova}
                     onChange={e => setHoraNova(e.target.value)}
-                    className="w-full bg-input-solid/60 border border-border-default p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-all focus:ring-2 focus:ring-purple-500/20"
+                    className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-colors"
                   />
                 </div>
 
@@ -1380,7 +1432,7 @@ export default function MeuHistorico() {
               <div className="px-6 pb-6 pt-2">
                 <button
                   onClick={enviarSolicitacao}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                  className="w-full bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-xl font-bold text-sm shadow-lg shadow-purple-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
                   <Save size={18} /> Enviar Solicitação
                 </button>
@@ -1394,7 +1446,7 @@ export default function MeuHistorico() {
           <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => !excluindo && setPontoParaExcluir(null)} />
 
-            <div className="relative z-10 w-full max-w-sm bg-page border border-red-500/20 rounded-3xl shadow-2xl shadow-red-500/10 overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
+            <div className="relative z-10 w-full max-w-sm bg-page border border-red-500/20 rounded-2xl shadow-2xl shadow-red-500/10 overflow-hidden animate-in slide-in-from-bottom-10 fade-in zoom-in-95 duration-300">
               {/* Header */}
               <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-5 flex items-center gap-4">
                 <div className="p-3 bg-red-500/20 rounded-2xl">
@@ -1408,7 +1460,7 @@ export default function MeuHistorico() {
 
               {/* Detalhes do ponto */}
               <div className="px-6 py-5 space-y-4">
-                <div className="bg-surface/60 border border-border-subtle rounded-xl p-4">
+                <div className="bg-page border border-border-subtle rounded-xl p-4">
                   <div className="flex items-center gap-3">
                     {(() => {
                       const tipo = pontoParaExcluir.subTipo || pontoParaExcluir.tipo;
@@ -1454,7 +1506,7 @@ export default function MeuHistorico() {
                 <button
                   onClick={confirmarExclusao}
                   disabled={excluindo}
-                  className="py-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/30 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="py-4 rounded-xl font-bold text-sm bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-900/30 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {excluindo ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

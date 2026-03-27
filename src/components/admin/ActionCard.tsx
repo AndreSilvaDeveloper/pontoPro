@@ -24,7 +24,7 @@ export default function ActionCard({ icon, label, href, onClick, badge, accent, 
     ? `hover:border-${accent}-500/30`
     : 'hover:border-border-default';
 
-  const baseClassName = `flex flex-col items-center justify-center gap-2 p-4 bg-elevated hover:bg-elevated-solid text-text-secondary border border-border-subtle rounded-2xl transition-all ${hoverBorder} hover:-translate-y-1 relative group ${className}`;
+  const baseClassName = `flex flex-col items-center justify-center gap-2 p-4 bg-elevated hover:bg-elevated-solid text-text-secondary border border-border-subtle rounded-2xl transition-all ${hoverBorder} hover:-translate-y-1 hover:shadow-md cursor-pointer relative group ${className}`;
 
   const content = (
     <>

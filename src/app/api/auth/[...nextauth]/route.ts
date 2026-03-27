@@ -260,14 +260,23 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).empresaId =
           ((token as any).empresaId as string | null) ?? null;
 
-        (session.user as any).deveTrocarSenha = (token as any).deveTrocarSenha;
-        (session.user as any).deveCadastrarFoto = (token as any).deveCadastrarFoto;
-        (session.user as any).deveDarCienciaCelular = (token as any).deveDarCienciaCelular;
-        (session.user as any).temAssinatura = (token as any).temAssinatura;
         (session.user as any).revendedorId = (token as any).revendedorId ?? null;
 
-        // ✅ novo: expõe a marca de impersonação no session
+        // ✅ expõe a marca de impersonação no session
         (session.user as any).impersonatedBy = (token as any).impersonatedBy ?? null;
+
+        // ✅ Impersonate: forçar flags para pular todo onboarding
+        if ((token as any).impersonatedBy) {
+          (session.user as any).deveTrocarSenha = false;
+          (session.user as any).deveCadastrarFoto = false;
+          (session.user as any).deveDarCienciaCelular = false;
+          (session.user as any).temAssinatura = true;
+        } else {
+          (session.user as any).deveTrocarSenha = (token as any).deveTrocarSenha;
+          (session.user as any).deveCadastrarFoto = (token as any).deveCadastrarFoto;
+          (session.user as any).deveDarCienciaCelular = (token as any).deveDarCienciaCelular;
+          (session.user as any).temAssinatura = (token as any).temAssinatura;
+        }
 
         // SUPER_ADMIN não precisa buscar empresa e não bloqueia
         if ((session.user as any).cargo === "SUPER_ADMIN") {

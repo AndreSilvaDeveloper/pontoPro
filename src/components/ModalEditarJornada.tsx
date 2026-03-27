@@ -307,9 +307,9 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
 
           {/* Validação */}
           {Object.keys(errosJornada).length > 0 && (
-            <div className="flex items-start gap-2 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-3">
-              <AlertTriangle className="text-yellow-300 mt-0.5" size={16} />
-              <div className="text-xs text-yellow-100">
+            <div className="flex items-start gap-2 bg-amber-900/10 border border-amber-500/20 rounded-xl p-3">
+              <AlertTriangle className="text-amber-400 mt-0.5" size={16} />
+              <div className="text-xs text-amber-100">
                 Existem horários inválidos em alguns dias. Corrija para evitar inconsistências no ponto.
               </div>
             </div>
@@ -335,7 +335,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                   >
                     <span className="font-bold text-sm text-text-secondary flex items-center gap-2">
                       {diaLabel[dia.chave]}
-                      {jornada[dia.chave]?.ativo && <CheckCircle2 size={12} className="text-green-500" />}
+                      {jornada[dia.chave]?.ativo && <CheckCircle2 size={12} className="text-emerald-500" />}
                     </span>
 
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -358,7 +358,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                             type="time"
                             value={jornada[dia.chave].e1}
                             onChange={(e) => updateJornada(dia.chave, 'e1', e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                            className="w-full bg-page border border-border-input rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
                           />
                         </div>
                         <div>
@@ -367,7 +367,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                             type="time"
                             value={jornada[dia.chave].s1}
                             onChange={(e) => updateJornada(dia.chave, 's1', e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                            className="w-full bg-page border border-border-input rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
                           />
                         </div>
                         <div>
@@ -376,7 +376,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                             type="time"
                             value={jornada[dia.chave].e2}
                             onChange={(e) => updateJornada(dia.chave, 'e2', e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                            className="w-full bg-page border border-border-input rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
                           />
                         </div>
                         <div>
@@ -385,14 +385,14 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                             type="time"
                             value={jornada[dia.chave].s2}
                             onChange={(e) => updateJornada(dia.chave, 's2', e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
+                            className="w-full bg-page border border-border-input rounded-xl p-2 text-text-primary text-xs font-mono text-center outline-none focus:border-purple-500 transition-colors"
                           />
                         </div>
                       </div>
 
                       {/* Regra do sábado (sábados do mês) */}
                       {dia.chave === 'sab' && (
-                        <div className="mt-2 bg-input-solid/50 border border-border-default rounded-xl p-3 space-y-2">
+                        <div className="mt-2 bg-page border border-border-input rounded-xl p-3 space-y-2">
                           <div className="flex items-center justify-between">
                             <p className="text-[10px] text-text-faint font-bold uppercase">
                               Sábados do mês que trabalha
@@ -430,7 +430,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
                       )}
 
                       {diaErros.length > 0 && (
-                        <div className="text-[10px] text-yellow-200 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-2">
+                        <div className="text-[10px] text-amber-200 bg-amber-900/10 border border-amber-500/20 rounded-xl p-2">
                           {diaErros.map((m, i) => (
                             <div key={i}>• {m}</div>
                           ))}
@@ -449,7 +449,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
           <button
             onClick={salvar}
             disabled={loading}
-            className="w-full py-4 rounded-2xl font-bold text-text-primary shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base active:scale-[0.98] bg-blue-600 hover:bg-blue-700 shadow-blue-900/30"
+            className="w-full py-4 rounded-2xl font-bold text-text-primary shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base active:scale-95 bg-blue-600 hover:bg-blue-500 shadow-blue-900/30"
           >
             {loading ? (
               <RefreshCw className="animate-spin" size={20} />

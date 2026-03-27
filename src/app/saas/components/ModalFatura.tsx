@@ -39,7 +39,7 @@ type FaturaInfo = {
 };
 
 const statusLabels: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: "Pendente", cls: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30" },
+  PENDING: { label: "Pendente", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
   OVERDUE: { label: "Vencida", cls: "bg-red-500/20 text-red-400 border-red-500/30" },
   RECEIVED: { label: "Pago", cls: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
   CONFIRMED: { label: "Confirmado", cls: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" },
@@ -125,7 +125,7 @@ export default function ModalFatura({ open, onOpenChange, empresa }: Props) {
         <p className="text-sm text-gray-400 mb-4">
           {empresa.nome}
           {info?.isFilial && (
-            <span className="text-xs text-yellow-400 ml-2">(cobra via {info.billingEmpresaNome})</span>
+            <span className="text-xs text-amber-400 ml-2">(cobra via {info.billingEmpresaNome})</span>
           )}
         </p>
 
@@ -204,7 +204,7 @@ export default function ModalFatura({ open, onOpenChange, empresa }: Props) {
                     {payment.pix.payload && (
                       <button
                         onClick={() => copyPix(payment.pix!.payload!)}
-                        className="mt-3 flex items-center gap-2 mx-auto text-sm bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
+                        className="mt-3 flex items-center gap-2 mx-auto text-sm bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg transition-colors"
                       >
                         {copied ? <><Check size={14} /> Copiado!</> : <><Copy size={14} /> Copiar código PIX</>}
                       </button>
@@ -268,7 +268,7 @@ export default function ModalFatura({ open, onOpenChange, empresa }: Props) {
                   )}
                 </button>
                 {!info.hasAsaas && (
-                  <p className="text-xs text-yellow-400 mt-2">
+                  <p className="text-xs text-amber-400 mt-2">
                     Cliente ainda não tem cadastro no Asaas. Será criado automaticamente.
                   </p>
                 )}

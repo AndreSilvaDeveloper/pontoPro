@@ -155,7 +155,7 @@ export default function ModalEquipe({
                   </button>
                   <button
                     onClick={() => resetarSenha(user)}
-                    className="p-2 bg-yellow-900/20 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded"
+                    className="p-2 bg-amber-900/20 text-amber-400 hover:bg-amber-600 hover:text-white rounded"
                     title="Resetar Senha"
                   >
                     <KeyRound size={16} />

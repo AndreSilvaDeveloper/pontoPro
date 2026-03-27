@@ -294,7 +294,7 @@ export default function LoginPage() {
       )}
 
       {/* CARD PRINCIPAL */}
-      <div className="w-full max-w-md p-6 sm:p-8 bg-surface/60 backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
+      <div className="w-full max-w-md p-6 sm:p-8 bg-page backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
         {/* CABEÇALHO */}
         <div className="text-center mb-8">
           <img
@@ -325,7 +325,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim hover:border-border-input"
+                  className="w-full bg-page border border-border-input text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim hover:border-border-input"
                   placeholder="exemplo@workid.com"
                   required
                 />
@@ -342,7 +342,7 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim hover:border-border-input"
+                  className="w-full bg-page border border-border-input text-text-primary p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim hover:border-border-input"
                   placeholder="••••••••"
                   required
                 />
@@ -369,7 +369,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-purple-900/20 active:scale-[0.98] mt-2 group"
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-purple-900/20 active:scale-95 mt-2 group"
             >
               {loading ? (
                 <Loader2 size={20} className="animate-spin" />
@@ -399,7 +399,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim hover:border-border-input"
+                  className="w-full bg-page border border-border-input text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim hover:border-border-input"
                   placeholder="Digite seu e-mail..."
                   autoFocus
                   required
@@ -410,7 +410,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg active:scale-[0.98] mt-2"
+              className="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg active:scale-95 mt-2"
             >
               {loading ? <Loader2 size={20} className="animate-spin" /> : 'ENVIAR LINK DE RECUPERAÇÃO'}
             </button>

@@ -458,12 +458,12 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
 
   return (
     <div className="relative flex gap-2">
-        <button onClick={visualizarPDF} disabled={loading} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg shadow-purple-900/20">
+        <button onClick={visualizarPDF} disabled={loading} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition-all active:scale-95 shadow-lg shadow-purple-900/20">
             <Eye size={18} /> {loading ? 'Gerando...' : 'Ver'}
         </button>
 
         <div className="relative">
-            <button onClick={() => setMenuAberto(!menuAberto)} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition-all shadow-lg shadow-green-900/20">
+            <button onClick={() => setMenuAberto(!menuAberto)} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-bold text-sm transition-all active:scale-95 shadow-lg shadow-emerald-900/20">
                 <Printer size={18} /> Exportar <ChevronDown size={14} className={`transition-transform ${menuAberto ? 'rotate-180' : ''}`}/>
             </button>
 
@@ -471,10 +471,10 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
                 <div className="absolute right-0 mt-2 w-56 bg-elevated-solid border border-border-input rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="p-2 space-y-1">
                         <button onClick={baixarPDF} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileText size={16} className="text-red-400"/> PDF (Baixar)</button>
-                        <button onClick={gerarExcel} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileJson size={16} className="text-green-400"/> Excel (.xlsx)</button>
+                        <button onClick={gerarExcel} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileJson size={16} className="text-emerald-400"/> Excel (.xlsx)</button>
                         <div className="h-px bg-border-input my-1"></div>
                         <button onClick={baixarAFD} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-blue-400"/> Arquivo AFD (.txt)</button>
-                        <button onClick={baixarAFDT} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-yellow-400"/> Arquivo AFDT (.txt)</button>
+                        <button onClick={baixarAFDT} className="w-full flex items-center gap-3 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-elevated-solid rounded-lg text-xs font-bold transition-colors"><FileCode size={16} className="text-amber-400"/> Arquivo AFDT (.txt)</button>
                     </div>
                 </div>
             )}

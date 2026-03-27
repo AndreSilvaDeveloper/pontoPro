@@ -64,8 +64,8 @@ function ResetPasswordForm() {
   if (sucesso) {
       return (
         <div className="text-center animate-in zoom-in duration-300">
-            <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle2 size={32} className="text-green-500" />
+            <div className="mx-auto w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle2 size={32} className="text-emerald-500" />
             </div>
             <h2 className="text-2xl font-bold text-text-primary mb-2">Senha Atualizada!</h2>
             <p className="text-text-muted mb-6">Você será redirecionado para o login em instantes...</p>
@@ -95,7 +95,7 @@ function ResetPasswordForm() {
               type="password" 
               value={novaSenha}
               onChange={(e) => setNovaSenha(e.target.value)}
-              className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim"
+              className="w-full bg-page border border-border-input text-text-primary p-3.5 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim"
               placeholder="••••••••"
               required
             />
@@ -107,7 +107,7 @@ function ResetPasswordForm() {
               type="password" 
               value={confirmar}
               onChange={(e) => setConfirmar(e.target.value)}
-              className="w-full bg-input-solid/50 border border-border-input/50 text-text-primary p-3.5 rounded-xl focus:border-purple-500/50 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all placeholder:text-text-dim"
+              className="w-full bg-page border border-border-input text-text-primary p-3.5 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim"
               placeholder="••••••••"
               required
             />
@@ -116,7 +116,7 @@ function ResetPasswordForm() {
         <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 active:scale-[0.98]"
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 active:scale-95"
         >
             {loading ? <Loader2 size={20} className="animate-spin" /> : 'DEFINIR NOVA SENHA'}
         </button>
@@ -142,7 +142,7 @@ export default function RedefinirSenhaPage() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[120px] pointer-events-none" />
 
       {/* Card */}
-      <div className="w-full max-w-md p-8 bg-surface/60 backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10">
+      <div className="w-full max-w-md p-8 bg-page backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10">
         <Suspense fallback={<div className="text-center text-text-primary">Carregando formulário...</div>}>
             <ResetPasswordForm />
         </Suspense>

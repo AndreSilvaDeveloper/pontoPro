@@ -121,7 +121,7 @@ export default function AssinaturaDigital() {
                       <button
                           onClick={salvar}
                           disabled={loading}
-                          className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-all active:scale-95 disabled:opacity-50"
+                          className="flex-[2] bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-all active:scale-95 disabled:opacity-50"
                       >
                           {loading ? 'Salvando...' : <><Save size={20} /> Salvar Assinatura</>}
                       </button>
