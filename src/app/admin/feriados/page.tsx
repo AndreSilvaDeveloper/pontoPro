@@ -53,6 +53,7 @@ export default function GestaoFeriados() {
   const [data, setData] = useState('');
   const [nome, setNome] = useState('');
   const [loading, setLoading] = useState(false);
+  const [carregandoInicial, setCarregandoInicial] = useState(true);
   const [importando, setImportando] = useState(false);
 
   const [parcial, setParcial] = useState(false);
@@ -68,8 +69,12 @@ export default function GestaoFeriados() {
   }, []);
 
   const carregar = async () => {
-    const res = await axios.get<FeriadoDTO[]>('/api/admin/feriados');
-    setFeriados(res.data);
+    try {
+      const res = await axios.get<FeriadoDTO[]>('/api/admin/feriados');
+      setFeriados(res.data);
+    } finally {
+      setCarregandoInicial(false);
+    }
   };
 
   const salvar = async (e: React.FormEvent) => {
@@ -168,7 +173,7 @@ export default function GestaoFeriados() {
                 Deseja importar automaticamente os feriados nacionais de <strong>{anoAtual}</strong> e <strong>{anoAtual + 1}</strong>?
               </p>
               <div className="flex gap-2">
-                <button onClick={importarAutomatico} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                <button onClick={importarAutomatico} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors">
                   <DownloadCloud size={18} /> Sim, importar
                 </button>
                 <button onClick={() => setConfirmandoImportacao(false)} className="px-4 py-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-xl font-bold text-sm transition-colors">
@@ -199,7 +204,7 @@ export default function GestaoFeriados() {
                 <input
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  className="w-full bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
+                  className="w-full bg-page border border-border-input p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                   required
                 />
               </div>
@@ -210,14 +215,14 @@ export default function GestaoFeriados() {
                   type="date"
                   value={data}
                   onChange={(e) => setData(e.target.value)}
-                  className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
+                  className="bg-page border border-border-input p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                   required
                 />
               </div>
 
               <button
                 disabled={loading}
-                className="bg-green-600 hover:bg-green-700 text-white p-2.5 rounded-xl flex items-center gap-2 font-bold transition-colors active:scale-95"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 rounded-xl flex items-center gap-2 font-bold transition-all active:scale-95"
                 title="Adicionar"
               >
                 <Plus size={20} />
@@ -244,7 +249,7 @@ export default function GestaoFeriados() {
                       type="time"
                       value={horaInicio}
                       onChange={(e) => setHoraInicio(e.target.value)}
-                      className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
+                      className="bg-page border border-border-input p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                       required
                     />
                   </div>
@@ -255,7 +260,7 @@ export default function GestaoFeriados() {
                       type="time"
                       value={horaFim}
                       onChange={(e) => setHoraFim(e.target.value)}
-                      className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
+                      className="bg-page border border-border-input p-2.5 rounded-xl text-text-primary focus:border-purple-500 outline-none transition-colors"
                       required
                     />
                   </div>
@@ -269,7 +274,15 @@ export default function GestaoFeriados() {
 
         {/* Lista de feriados */}
         <div className="space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '150ms' }}>
-          {feriados.map((f) => {
+          {carregandoInicial && (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-16 bg-hover-bg rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          )}
+
+          {!carregandoInicial && feriados.map((f) => {
             const parsed = parseParcialFromNome(f.nome);
             const d = dateFromISO(f.dataISO);
 
@@ -279,7 +292,7 @@ export default function GestaoFeriados() {
                   <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center justify-between gap-3">
                     <p className="text-sm text-red-300">Excluir este feriado?</p>
                     <div className="flex gap-2">
-                      <button onClick={() => excluir(f.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors">Sim</button>
+                      <button onClick={() => excluir(f.id)} className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-colors">Sim</button>
                       <button onClick={() => setConfirmandoExclusao(null)} className="px-3 py-1.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-xl text-xs font-bold transition-colors">Não</button>
                     </div>
                   </div>
@@ -295,7 +308,7 @@ export default function GestaoFeriados() {
                         <span className="font-bold text-lg block text-text-primary">
                           {parsed.baseNome || f.nome}
                           {parsed.horaInicio && parsed.horaFim && (
-                            <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-yellow-600/20 text-yellow-300 border border-yellow-600/30">
+                            <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                               Parcial {parsed.horaInicio}–{parsed.horaFim}
                             </span>
                           )}
@@ -317,7 +330,7 @@ export default function GestaoFeriados() {
             );
           })}
 
-          {feriados.length === 0 && <p className="text-center text-text-faint py-4">Nenhum feriado cadastrado.</p>}
+          {!carregandoInicial && feriados.length === 0 && <p className="text-center text-text-faint py-4">Nenhum feriado cadastrado.</p>}
         </div>
       </div>
     </div>

@@ -60,9 +60,24 @@ export default function GestaoPendencias() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-page text-text-primary flex items-center justify-center gap-3">
-        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-        Carregando...
+      <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+        <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
+        <div className="max-w-4xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
+            <div className="w-10 h-10 bg-hover-bg rounded-xl animate-pulse" />
+            <div className="space-y-2 flex-1">
+              <div className="h-6 w-48 bg-hover-bg rounded-lg animate-pulse" />
+              <div className="h-4 w-32 bg-hover-bg rounded-lg animate-pulse" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-hover-bg rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -73,7 +88,7 @@ export default function GestaoPendencias() {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto p-4 md:p-8 pb-8 space-y-8 relative z-10">
+      <div className="max-w-4xl mx-auto p-4 md:p-8 pb-8 space-y-6 relative z-10">
 
         {/* HEADER ÚNICO (bug fix: removido header duplicado) */}
         <div className="flex items-center justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -97,9 +112,9 @@ export default function GestaoPendencias() {
             <p className="font-semibold">Nenhuma pendência de ausência no momento.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
             {pendencias.map((p) => (
-              <div key={p.id} className="bg-surface backdrop-blur-sm p-5 rounded-2xl border border-border-subtle shadow-xl space-y-4">
+              <div key={p.id} className="bg-surface backdrop-blur-sm p-5 rounded-2xl border border-border-subtle shadow-lg hover:border-border-default hover:shadow-xl transition-all space-y-4">
                 <p className="text-lg font-bold text-purple-400 border-b border-border-subtle pb-2 flex items-center gap-2">
                   <User size={18} /> {p.usuario.nome}
                 </p>
@@ -112,7 +127,7 @@ export default function GestaoPendencias() {
                     <Calendar size={16} />
                     <span className="text-text-primary">De {formatarData(p.dataInicio)} a {formatarData(p.dataFim)}</span>
                   </p>
-                  <div className="bg-input-solid/50 p-3 rounded-xl border border-border-subtle mt-2">
+                  <div className="bg-page p-3 rounded-xl border border-border-subtle mt-2">
                     <p className="text-xs text-text-faint uppercase font-bold mb-1">Motivo:</p>
                     <p className="text-text-secondary italic">&quot;{p.motivo}&quot;</p>
                   </div>
@@ -137,7 +152,7 @@ export default function GestaoPendencias() {
                     <button
                       onClick={() => handleAprovarRejeitar(p.id, 'APROVADO')}
                       disabled={!!acaoEmAndamento}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-1"
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-1"
                     >
                       {acaoEmAndamento === p.id ? <Loader size={16} className="animate-spin" /> : <CheckCircle size={16} />}
                       Aprovar

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (!usuarioId || !dataInicio || !tipo)
       return NextResponse.json({ erro: 'Preencha os campos obrigatórios.' }, { status: 400 });
 
-    const isFolgaParcial = tipo === 'FOLGA' && isValidTimeHHMM(horaInicio) && isValidTimeHHMM(horaFim);
+    const isFolgaParcial = (tipo === 'FOLGA' || tipo === 'ATESTADO') && isValidTimeHHMM(horaInicio) && isValidTimeHHMM(horaFim);
 
     let inicio: Date;
     let fim: Date;

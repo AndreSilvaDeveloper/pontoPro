@@ -247,7 +247,7 @@ export default function LandingPage() {
                 <Button
                   asChild
                   size="lg"
-                  className="group w-full animate-pulse bg-purple-600 px-8 font-bold text-white shadow-xl shadow-purple-500/50 transition-all hover:animate-none hover:bg-purple-700 hover:shadow-purple-500/70 sm:w-auto [animation-duration:2s]"
+                  className="group w-full bg-purple-600 px-8 font-bold text-white shadow-xl shadow-purple-500/50 transition-all hover:bg-purple-700 hover:shadow-purple-500/70 sm:w-auto"
                 >
                   <Link href="/signup">
                     Testar gratis por 14 dias
@@ -273,8 +273,7 @@ export default function LandingPage() {
             </div>
 
             <div className="relative hidden items-center justify-center lg:order-last lg:flex">
-              <div className="absolute inset-0 animate-pulse bg-purple-600/20 blur-[100px]" />
-              <div className="absolute inset-0 animate-pulse bg-purple-500/30 blur-[120px] [animation-delay:500ms]" />
+              <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
 
               <div className="relative z-10 rounded-3xl bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20 p-2 shadow-2xl shadow-purple-500/50 backdrop-blur-sm">
                 <div className="relative overflow-hidden rounded-2xl ring-1 ring-purple-500/30">
@@ -558,28 +557,29 @@ export default function LandingPage() {
 
           {/* Desktop Grid */}
           <div className="hidden gap-12 md:grid md:grid-cols-2">
-            <div className="relative">
-              <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
-              <img
-                src="/images/mobile-dark.jpeg"
-                alt="Experiencia Mobile"
-                className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
+            <div>
+              <Image
+                src="/images/mobile-dark.webp"
+                alt="App WorkID para funcionários no celular"
+                width={800}
+                height={600}
+                sizes="50vw"
+                className="rounded-2xl shadow-2xl shadow-purple-500/30"
               />
-              <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
+              <p className="mt-4 text-center text-sm font-medium text-gray-300">
                 App para funcionarios - rapido e intuitivo
               </p>
             </div>
-            <div className="relative">
-              <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
+            <div>
               <Image
                 src="/images/laptop-preview.webp"
                 alt="Painel administrativo WorkID no computador"
                 width={900}
                 height={600}
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
+                sizes="50vw"
+                className="rounded-2xl shadow-2xl shadow-purple-500/30"
               />
-              <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
+              <p className="mt-4 text-center text-sm font-medium text-gray-300">
                 Painel administrativo completo
               </p>
             </div>
@@ -741,7 +741,7 @@ export default function LandingPage() {
                 <Button
                   asChild
                   size="lg"
-                  className="animate-pulse bg-purple-600 px-8 font-bold text-white shadow-xl shadow-purple-500/50 transition-all hover:animate-none hover:bg-purple-700 hover:shadow-purple-500/70 [animation-duration:2s]"
+                  className="bg-purple-600 px-8 font-bold text-white shadow-xl shadow-purple-500/50 transition-all hover:bg-purple-700 hover:shadow-purple-500/70"
                 >
                   <Link href="/signup">
                     Comece seu teste gratuito

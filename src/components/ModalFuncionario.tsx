@@ -569,7 +569,7 @@ export default function ModalFuncionario({
               {funcionarioEdicao ? (
                 <Pencil size={18} className="text-blue-400" />
               ) : (
-                <UserPlus size={18} className="text-green-400" />
+                <UserPlus size={18} className="text-emerald-400" />
               )}
             </div>
             {funcionarioEdicao ? 'Editar Funcionário' : 'Novo Cadastro'}
@@ -597,7 +597,7 @@ export default function ModalFuncionario({
                     Nome Completo
                   </label>
                   <input
-                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
@@ -611,14 +611,14 @@ export default function ModalFuncionario({
                   </label>
                   <input
                     type="email"
-                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="email@exemplo.com"
                   />
                   {emailSuspeito && (
-                    <div className="mt-2 flex items-start gap-2 bg-yellow-900/30 border border-yellow-600/40 rounded-lg p-3 text-yellow-300 text-xs leading-relaxed">
+                    <div className="mt-2 flex items-start gap-2 bg-amber-900/30 border border-amber-500/20 rounded-lg p-3 text-amber-400 text-xs leading-relaxed">
                       <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                       <span>
                         Se este email não for real, o funcionário <strong>não receberá</strong> o email de boas-vindas e <strong>não conseguirá</strong> recuperar a senha sozinho. O admin terá que resetar a senha manualmente.
@@ -635,7 +635,7 @@ export default function ModalFuncionario({
                   </label>
                   <input
                     type="tel"
-                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
                     value={telefone}
                     onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
                     placeholder="(00) 00000-0000"
@@ -648,7 +648,7 @@ export default function ModalFuncionario({
                   </label>
                   <input
                     placeholder="Ex: Vendedor"
-                    className="w-full bg-input-solid/50 border border-border-default p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
+                    className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors"
                     value={tituloCargo}
                     onChange={(e) => setTituloCargo(e.target.value)}
                   />
@@ -673,7 +673,7 @@ export default function ModalFuncionario({
 
               {Object.keys(errosJornada).length > 0 && (
                 <div className="flex items-start gap-2 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-3">
-                  <AlertTriangle className="text-yellow-300 mt-0.5" size={16} />
+                  <AlertTriangle className="text-amber-400 mt-0.5" size={16} />
                   <div className="text-xs text-yellow-100">
                     Existem horários inválidos em alguns dias. Corrija para evitar inconsistências no ponto.
                   </div>
@@ -726,7 +726,7 @@ export default function ModalFuncionario({
                                 type="time"
                                 value={jornada[dia].e1}
                                 onChange={(e) => updateJornada(dia, 'e1', e.target.value)}
-                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                                className="w-full bg-page border border-border-input text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
                               />
                             </div>
                             <div className="space-y-1">
@@ -735,7 +735,7 @@ export default function ModalFuncionario({
                                 type="time"
                                 value={jornada[dia].s1}
                                 onChange={(e) => updateJornada(dia, 's1', e.target.value)}
-                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                                className="w-full bg-page border border-border-input text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
                               />
                             </div>
                             <div className="space-y-1">
@@ -744,7 +744,7 @@ export default function ModalFuncionario({
                                 type="time"
                                 value={jornada[dia].e2}
                                 onChange={(e) => updateJornada(dia, 'e2', e.target.value)}
-                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                                className="w-full bg-page border border-border-input text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
                               />
                             </div>
                             <div className="space-y-1">
@@ -753,14 +753,14 @@ export default function ModalFuncionario({
                                 type="time"
                                 value={jornada[dia].s2}
                                 onChange={(e) => updateJornada(dia, 's2', e.target.value)}
-                                className="w-full bg-input-solid/50 border border-border-default text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
+                                className="w-full bg-page border border-border-input text-text-primary text-sm font-mono text-center outline-none py-2.5 rounded-xl focus:border-purple-500 transition-colors"
                               />
                             </div>
                           </div>
 
                           {/* Regra do sábado (sábados do mês) */}
                           {dia === 'sab' && (
-                            <div className="mt-2 bg-input-solid/50 border border-border-default rounded-xl p-3 space-y-2">
+                            <div className="mt-2 bg-page border border-border-input rounded-xl p-3 space-y-2">
                               <div className="flex items-center justify-between">
                                 <p className="text-[10px] text-text-faint font-bold uppercase">
                                   Sábados do mês que trabalha
@@ -911,12 +911,12 @@ export default function ModalFuncionario({
                             placeholder="Ex: Av. Brasil, 123 - Centro"
                             value={enderecoPrincipal}
                             onChange={(e) => setEnderecoPrincipal(e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
+                            className="w-full bg-page border border-border-input p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
                         </div>
 
                         {!!enderecoConferidoPrincipal && (
-                          <div className="bg-input-solid/50 border border-border-default rounded-xl p-3">
+                          <div className="bg-page border border-border-input rounded-xl p-3">
                             <p className="text-[10px] text-text-faint font-bold uppercase">Endereço conferido</p>
                             <p className="text-xs text-text-secondary mt-1">{enderecoConferidoPrincipal}</p>
                           </div>
@@ -927,20 +927,20 @@ export default function ModalFuncionario({
                             placeholder="Lat"
                             value={lat}
                             onChange={(e) => setLat(e.target.value)}
-                            className="bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
+                            className="bg-page border border-border-input p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
                           <input
                             placeholder="Lng"
                             value={lng}
                             onChange={(e) => setLng(e.target.value)}
-                            className="bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
+                            className="bg-page border border-border-input p-3 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                           />
                           <div className="relative">
                             <input
                               type="number"
                               value={raio}
                               onChange={(e) => setRaio(e.target.value)}
-                              className="w-full bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary pl-12 focus:border-purple-500 outline-none transition-colors"
+                              className="w-full bg-page border border-border-input p-3 rounded-xl text-xs text-text-primary pl-12 focus:border-purple-500 outline-none transition-colors"
                             />
                             <span className="absolute left-3 top-3.5 text-xs text-text-faint">Raio:</span>
                           </div>
@@ -961,7 +961,7 @@ export default function ModalFuncionario({
                         <p className="text-xs font-bold text-text-muted uppercase">Locais Extras</p>
 
                         {locaisExtras.map((loc, idx) => (
-                          <div key={idx} className="bg-input-solid/50 p-3 rounded-xl border border-border-default space-y-2">
+                          <div key={idx} className="bg-page p-3 rounded-xl border border-border-input space-y-2">
                             <div className="flex justify-between items-center">
                               <span className="text-xs font-bold text-text-primary">{loc.nome}</span>
                               <div className="flex gap-2">
@@ -1002,7 +1002,7 @@ export default function ModalFuncionario({
                                   nova[idx] = { ...nova[idx], lat: e.target.value };
                                   setLocaisExtras(nova);
                                 }}
-                                className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
+                                className="bg-page border border-border-input p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                               />
                               <input
                                 placeholder="Lng"
@@ -1012,7 +1012,7 @@ export default function ModalFuncionario({
                                   nova[idx] = { ...nova[idx], lng: e.target.value };
                                   setLocaisExtras(nova);
                                 }}
-                                className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
+                                className="bg-page border border-border-input p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                               />
                               <input
                                 placeholder="Raio (m)"
@@ -1023,14 +1023,14 @@ export default function ModalFuncionario({
                                   nova[idx] = { ...nova[idx], raio: e.target.value };
                                   setLocaisExtras(nova);
                                 }}
-                                className="bg-input-solid/50 border border-border-default p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
+                                className="bg-page border border-border-input p-2.5 rounded-xl text-xs text-text-primary focus:border-purple-500 outline-none transition-colors"
                               />
                             </div>
                           </div>
                         ))}
 
                         {/* Novo Local Extra */}
-                        <div className="mt-3 p-3 rounded-xl border border-border-default bg-input-solid/50 space-y-2">
+                        <div className="mt-3 p-3 rounded-xl border border-border-input bg-page space-y-2">
                           <p className="text-[10px] text-text-faint font-bold uppercase">Adicionar novo local</p>
 
                           <input
@@ -1101,7 +1101,7 @@ export default function ModalFuncionario({
                                 setNovoLocalEndereco('');
                                 setModoMapaExtra('NONE');
                               }}
-                              className="bg-green-600/20 text-green-400 p-2.5 rounded-xl border border-green-500/20 font-bold text-xs hover:bg-green-600/30 transition-colors active:scale-95"
+                              className="bg-emerald-600/20 text-emerald-400 p-2.5 rounded-xl border border-emerald-500/20 font-bold text-xs hover:bg-emerald-600/30 transition-all active:scale-95"
                             >
                               ADD
                             </button>
@@ -1172,7 +1172,7 @@ export default function ModalFuncionario({
                         placeholder="Ex: 191.23.45.67"
                         value={ipsPermitidos}
                         onChange={(e) => setIpsPermitidos(e.target.value)}
-                        className="flex-1 bg-input-solid/50 border border-border-default p-3 rounded-xl text-xs text-text-primary font-mono focus:border-purple-500 outline-none transition-colors"
+                        className="flex-1 bg-page border border-border-input p-3 rounded-xl text-xs text-text-primary font-mono focus:border-purple-500 outline-none transition-colors"
                       />
                       <button
                         type="button"
@@ -1286,7 +1286,7 @@ export default function ModalFuncionario({
                 </label>
               ) : (
                 <div className="flex items-center gap-2 bg-green-900/20 border border-green-500/20 p-3 rounded-xl">
-                  <CheckCircle2 size={16} className="text-green-400 flex-shrink-0" />
+                  <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
                   <span className="text-sm text-green-300">Foto de referência cadastrada</span>
                 </div>
               )}
@@ -1332,8 +1332,8 @@ export default function ModalFuncionario({
           <button
             onClick={salvar}
             disabled={loading}
-            className={`w-full py-4 rounded-2xl font-bold text-text-primary shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base active:scale-[0.98] ${
-              funcionarioEdicao ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/30' : 'bg-green-600 hover:bg-green-700 shadow-green-900/30'
+            className={`w-full py-4 rounded-2xl font-bold text-text-primary shadow-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base active:scale-95 ${
+              funcionarioEdicao ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/30' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/30'
             }`}
           >
             {loading ? (

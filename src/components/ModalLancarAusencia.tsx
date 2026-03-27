@@ -80,14 +80,14 @@ export default function ModalLancarAusencia({
 }: Props) {
   if (!aberto) return null;
 
-  const isFolga = ausenciaTipo === 'FOLGA';
+  const suportaParcial = ausenciaTipo === 'FOLGA' || ausenciaTipo === 'ATESTADO';
   const hasTimeSupport = Boolean(setAusenciaHoraInicio && setAusenciaHoraFim);
 
   const iniMin = timeToMinutes(ausenciaHoraInicio);
   const fimMin = timeToMinutes(ausenciaHoraFim);
 
   const folgaHorarioInvalido =
-    isFolga &&
+    suportaParcial &&
     hasTimeSupport &&
     (
       !ausenciaHoraInicio ||
@@ -99,11 +99,11 @@ export default function ModalLancarAusencia({
 
   const bloquearConfirmar =
     salvando ||
-    (isFolga && hasTimeSupport && folgaHorarioInvalido);
+    (suportaParcial && hasTimeSupport && folgaHorarioInvalido);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
-      <div className="bg-surface-solid border border-border-default w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">
+      <div className="bg-surface-solid border border-border-default w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex justify-between items-center border-b border-border-subtle pb-4">
           <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
             <Plane size={20} className="text-blue-400" /> Lançar Ausência
@@ -141,9 +141,9 @@ export default function ModalLancarAusencia({
               onChange={(e) => setAusenciaTipo(e.target.value)}
               className="w-full bg-page border border-border-input p-2.5 rounded-xl text-text-primary text-xs"
             >
-              <option value="FERIAS">Férias</option>
               <option value="FOLGA">Folga / Abono</option>
-              <option value="FALTA_JUSTIFICADA">Atestado Médico</option>
+              <option value="ATESTADO">Atestado Médico</option>
+              <option value="FERIAS">Férias</option>
               <option value="SUSPENSAO">Suspensão</option>
             </select>
           </div>
@@ -174,7 +174,7 @@ export default function ModalLancarAusencia({
         </div>
 
         {/* ✅ NOVO: Horário (somente para FOLGA) */}
-        {isFolga && hasTimeSupport && (
+        {suportaParcial && hasTimeSupport && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs text-text-muted uppercase tracking-wider font-bold">

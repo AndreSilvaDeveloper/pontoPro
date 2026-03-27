@@ -132,7 +132,7 @@ export default function NovaVendaPage() {
                 </button>
                 <button
                   onClick={criarOutro}
-                  className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl text-sm font-medium transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl text-sm font-medium transition-colors"
                 >
                   <Plus size={16} /> Criar Outro
                 </button>
@@ -246,7 +246,7 @@ export default function NovaVendaPage() {
 
                   <button
                     disabled={loading}
-                    className="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full bg-purple-600 hover:bg-purple-500 py-3 rounded-xl font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {loading ? (
                       <>

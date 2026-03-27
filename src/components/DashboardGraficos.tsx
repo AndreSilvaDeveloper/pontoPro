@@ -68,11 +68,11 @@ export default function DashboardGraficos({ registros }: { registros: any[] }) {
   if (registros.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
       
       {/* GRÁFICO 1: BARRAS (Ocupa 2 colunas) */}
-      <div className="bg-surface-solid p-4 rounded-xl border border-border-input col-span-1 md:col-span-2 shadow-lg">
-        <h3 className="text-text-muted text-xs font-bold uppercase mb-4 tracking-wider">Produtividade (Últimos 7 dias)</h3>
+      <div className="bg-surface backdrop-blur-sm p-4 rounded-2xl border border-border-subtle col-span-1 md:col-span-2 shadow-lg">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-4">Produtividade (Últimos 7 dias)</h3>
         <div className="h-[250px] w-full text-xs">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={dadosBarras}>
@@ -91,8 +91,8 @@ export default function DashboardGraficos({ registros }: { registros: any[] }) {
       </div>
 
       {/* GRÁFICO 2: PIZZA (Ocupa 1 coluna) */}
-      <div className="bg-surface-solid p-4 rounded-xl border border-border-input shadow-lg flex flex-col">
-        <h3 className="text-text-muted text-xs font-bold uppercase mb-4 tracking-wider">Motivos de Ausência</h3>
+      <div className="bg-surface backdrop-blur-sm p-4 rounded-2xl border border-border-subtle shadow-lg flex flex-col">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-text-muted mb-4">Motivos de Ausência</h3>
         <div className="h-[250px] w-full text-xs flex-1">
             {dadosPizza.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">

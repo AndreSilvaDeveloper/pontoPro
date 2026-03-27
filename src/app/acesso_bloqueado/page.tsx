@@ -276,7 +276,7 @@ export default function BloqueadoPage() {
 
                 <Button
                   type="button"
-                  className="w-full h-11 text-sm font-medium bg-green-600/10 text-green-400 border border-green-500/20 hover:bg-green-600/20 rounded-xl transition-all"
+                  className="w-full h-11 text-sm font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 rounded-xl transition-all"
                   onClick={() => openInNewTab(whatsappSuporte)}
                 >
                   Para falar com suporte via WhatsApp
@@ -297,7 +297,7 @@ export default function BloqueadoPage() {
                 : "Verificacao automatica a cada 10s. Acesso liberado = redirecionamento automatico."}
             </p>
 
-            <Button asChild className="w-full bg-purple-600 hover:bg-purple-700 rounded-xl">
+            <Button asChild className="w-full bg-purple-600 hover:bg-purple-500 rounded-xl">
               <Link href="/login">Voltar ao login</Link>
             </Button>
 

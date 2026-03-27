@@ -125,7 +125,7 @@ export default function ConfiguracoesBranding() {
             value={nomeExibicao}
             onChange={e => setNomeExibicao(e.target.value)}
             placeholder="Ex: PontoMax"
-            className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500 transition-all"
+            className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500 transition-all"
           />
         </div>
 
@@ -140,14 +140,14 @@ export default function ConfiguracoesBranding() {
               <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Primaria</label>
               <div className="flex items-center gap-3">
                 <input type="color" value={corPrimaria} onChange={e => setCorPrimaria(e.target.value)} className="w-10 h-10 rounded-lg border border-border-default cursor-pointer" />
-                <input type="text" value={corPrimaria} onChange={e => setCorPrimaria(e.target.value)} className="flex-1 bg-input-solid/50 border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary font-mono outline-none focus:border-purple-500" />
+                <input type="text" value={corPrimaria} onChange={e => setCorPrimaria(e.target.value)} className="flex-1 bg-page border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary font-mono outline-none focus:border-purple-500" />
               </div>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Secundaria</label>
               <div className="flex items-center gap-3">
                 <input type="color" value={corSecundaria} onChange={e => setCorSecundaria(e.target.value)} className="w-10 h-10 rounded-lg border border-border-default cursor-pointer" />
-                <input type="text" value={corSecundaria} onChange={e => setCorSecundaria(e.target.value)} className="flex-1 bg-input-solid/50 border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary font-mono outline-none focus:border-purple-500" />
+                <input type="text" value={corSecundaria} onChange={e => setCorSecundaria(e.target.value)} className="flex-1 bg-page border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary font-mono outline-none focus:border-purple-500" />
               </div>
             </div>
           </div>
@@ -178,7 +178,7 @@ export default function ConfiguracoesBranding() {
         <button
           onClick={salvar}
           disabled={salvando}
-          className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+          className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
         >
           {salvando ? 'Salvando...' : <><Save size={18} /> Salvar Marca Branca</>}
         </button>

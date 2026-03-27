@@ -217,17 +217,17 @@ export default function RevendedoresPage() {
                         <div className="space-y-1">
                           <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome</label>
                           <input type="text" value={editNome} onChange={e => setEditNome(e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary outline-none focus:border-purple-500" />
+                            className="w-full bg-page border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary outline-none focus:border-purple-500" />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome exibicao</label>
                           <input type="text" value={editNomeExibicao} onChange={e => setEditNomeExibicao(e.target.value)}
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary outline-none focus:border-purple-500" />
+                            className="w-full bg-page border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary outline-none focus:border-purple-500" />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Dominio</label>
                           <input type="text" value={editDominio} onChange={e => setEditDominio(e.target.value)} placeholder="empresa.com.br"
-                            className="w-full bg-input-solid/50 border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary outline-none focus:border-purple-500" />
+                            className="w-full bg-page border border-border-default rounded-xl py-2 px-3 text-sm text-text-primary outline-none focus:border-purple-500" />
                         </div>
                       </div>
                       <div className="flex gap-2 justify-end">
@@ -304,7 +304,7 @@ export default function RevendedoresPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-overlay backdrop-blur-sm" onClick={() => setModalAberto(false)} />
           <div className="relative z-10 w-full max-w-md bg-page border border-border-input rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in duration-300">
-            <div className="bg-surface/60 border-b border-border-subtle px-6 py-4 flex justify-between items-center">
+            <div className="bg-page border-b border-border-subtle px-6 py-4 flex justify-between items-center">
               <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                 <Handshake size={18} className="text-purple-400" /> Novo Revendedor
               </h3>
@@ -319,19 +319,19 @@ export default function RevendedoresPage() {
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome *</label>
                 <input type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: PontoMax"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome de exibicao</label>
                 <input type="text" value={nomeExibicao} onChange={e => setNomeExibicao(e.target.value)} placeholder="Ex: PontoMax RH"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Dominio (opcional)</label>
                 <input type="text" value={dominio} onChange={e => setDominio(e.target.value)} placeholder="pontomax.com.br"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <hr className="border-border-subtle" />
@@ -340,25 +340,25 @@ export default function RevendedoresPage() {
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Nome *</label>
                 <input type="text" value={nomeUsuario} onChange={e => setNomeUsuario(e.target.value)} placeholder="Nome do responsavel"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Email *</label>
                 <input type="email" value={emailUsuario} onChange={e => setEmailUsuario(e.target.value)} placeholder="contato@pontomax.com.br"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
 
               <div className="space-y-1">
                 <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Senha *</label>
                 <input type="text" value={senhaUsuario} onChange={e => setSenhaUsuario(e.target.value)} placeholder="Senha de acesso"
-                  className="w-full bg-input-solid/50 border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
+                  className="w-full bg-page border border-border-default rounded-xl py-3 px-4 text-sm text-text-primary outline-none focus:border-purple-500" />
               </div>
             </div>
 
             <div className="px-6 pb-6 pt-2">
               <button onClick={criar} disabled={salvando}
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
+                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
                 {salvando ? 'Criando...' : <><Save size={18} /> Criar Revendedor</>}
               </button>
             </div>

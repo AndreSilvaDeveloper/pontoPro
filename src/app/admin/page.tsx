@@ -36,8 +36,7 @@ import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import BancoHorasEquipe from '@/components/admin/BancoHorasEquipe';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
-import CienciaCelularAlertModal from '@/components/admin/CienciaCelularAlertModal';
-import ModalNovidades from '@/components/ModalNovidades';
+import ModalCompletarCadastro from '@/components/admin/ModalCompletarCadastro';
 import ActionCard from '@/components/admin/ActionCard';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
@@ -48,9 +47,29 @@ export default function AdminDashboard() {
 
   if (a.loading)
     return (
-      <div className="min-h-screen bg-page flex items-center justify-center text-text-muted gap-3">
-        <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-        Carregando painel...
+      <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
+        <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
+        <div className="max-w-7xl mx-auto p-4 md:p-8 pb-8 relative z-10 space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-hover-bg rounded-lg animate-pulse" />
+            <div className="space-y-2 flex-1">
+              <div className="h-7 w-48 bg-hover-bg rounded-lg animate-pulse" />
+              <div className="h-3 w-32 bg-hover-bg rounded-lg animate-pulse" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="h-24 bg-hover-bg rounded-2xl animate-pulse" />
+            ))}
+          </div>
+          <div className="h-32 bg-hover-bg rounded-3xl animate-pulse" />
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-hover-bg rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
 
@@ -61,8 +80,7 @@ export default function AdminDashboard() {
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
-      <CienciaCelularAlertModal />
-      <ModalNovidades tipo="ADMIN" />
+      <ModalCompletarCadastro empresa={a.empresa} onComplete={a.carregarDados} />
 
       {/* Toast de Pendências */}
       {a.notificacaoVisivel && (
@@ -134,16 +152,16 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className={`max-w-7xl mx-auto p-4 md:p-8 pb-8 relative z-10 space-y-8 ${a.billingEmpresa ? 'mt-10' : ''}`}>
+      <div className={`max-w-7xl mx-auto p-4 md:p-8 pb-8 relative z-10 space-y-6 ${a.billingEmpresa ? 'mt-10' : ''}`}>
         {/* === CABEÇALHO === */}
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
               <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
-                <LayoutDashboard size={20} className="text-purple-400" />
+                <LayoutDashboard size={24} className="text-purple-400" />
               </div>
               <div>
-                <h1 data-tour="admin-title" className="text-3xl font-bold text-text-primary tracking-tight">
+                <h1 data-tour="admin-title" className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">
                   {a.empresa.nome}
                 </h1>
                 <p className="text-text-muted text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
@@ -213,9 +231,9 @@ export default function AdminDashboard() {
               <ActionCard
                 dataTour="admin-atestados"
                 href="/admin/pendencias"
-                icon={<ShieldAlert size={20} className="text-yellow-400" />}
+                icon={<ShieldAlert size={20} className="text-amber-400" />}
                 label="Atestados"
-                accent="yellow"
+                accent="amber"
                 badge={a.pendenciasAusencia}
               />
             )}
@@ -255,7 +273,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* === FILTROS === */}
-        <div className="relative z-20 bg-surface/60 backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">
+        <div className="relative z-20 bg-page backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">
           <div className="w-full lg:flex-1 flex flex-col md:flex-row gap-4">
             <div className="space-y-1.5 md:flex-[2]">
               <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Funcionário</label>
@@ -271,7 +289,7 @@ export default function AdminDashboard() {
                     data-tour="admin-filter-user"
                     type="button"
                     onClick={() => a.setDropdownAberto((v) => !v)}
-                    className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-10 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all text-left cursor-pointer"
+                    className="w-full bg-page border border-border-input hover:border-purple-500/50 rounded-xl py-3 pl-10 pr-10 text-sm text-text-secondary outline-none focus:border-purple-500 transition-all text-left cursor-pointer"
                     title="Selecionar funcionário"
                   >
                     <span className="block truncate">
@@ -303,7 +321,7 @@ export default function AdminDashboard() {
                           value={a.buscaFuncionario}
                           onChange={(e) => a.setBuscaFuncionario(e.target.value)}
                           placeholder="Digite o nome ou email..."
-                          className="w-full bg-surface/60 border border-border-default rounded-xl px-3 py-2 text-sm text-text-secondary outline-none focus:border-purple-500/60"
+                          className="w-full bg-page border border-border-input rounded-xl px-3 py-2 text-sm text-text-secondary outline-none focus:border-purple-500"
                         />
                       </div>
 
@@ -365,7 +383,7 @@ export default function AdminDashboard() {
 
             <div className="space-y-1.5 md:flex-[2]">
               <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1">Período</label>
-              <div data-tour="admin-filter-period" className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
+              <div data-tour="admin-filter-period" className="flex flex-col sm:flex-row gap-2 sm:items-center bg-page border border-border-input rounded-xl p-2 sm:p-1">
                 <div className="flex items-center gap-2 flex-1">
                   <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">De</span>
                   <input
@@ -393,7 +411,7 @@ export default function AdminDashboard() {
               <select
                 value={a.filtroPonto}
                 onChange={(e) => a.setFiltroPonto(e.target.value)}
-                className="w-full bg-input-solid/50 border border-border-default hover:border-purple-500/50 rounded-xl py-3 px-3 text-sm text-text-secondary outline-none focus:ring-2 focus:ring-purple-500/20 transition-all appearance-none"
+                className="w-full bg-page border border-border-input hover:border-purple-500/50 rounded-xl py-3 px-3 text-sm text-text-secondary outline-none focus:border-purple-500 transition-all appearance-none"
               >
                 <option value="">Todos os registros</option>
                 <option value="ENTRADA">Entrada</option>
@@ -426,7 +444,7 @@ export default function AdminDashboard() {
 
         {/* === CARDS === */}
         {a.stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div
               className={`p-5 rounded-2xl border backdrop-blur-md shadow-lg transition-all ${
                 a.stats.status.includes('Trabalhando') || a.stats.status.includes('Pausa Café (Pago)')
@@ -516,7 +534,7 @@ export default function AdminDashboard() {
         {/* === MODAL EDITAR PONTO (mantido aqui por segurança) === */}
         {a.modalEdicaoAberto && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
-            <div className="bg-surface-solid border border-border-default w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4">
+            <div className="bg-surface-solid border border-border-default w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
               <div className="flex justify-between items-center border-b border-border-subtle pb-4">
                 <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   <Edit2 size={20} className="text-purple-400" /> Editar Horário

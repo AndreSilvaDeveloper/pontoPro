@@ -197,7 +197,7 @@ export default function SolicitacoesAjuste() {
         </div>
 
         {/* ABAS */}
-        <div className="flex gap-2 bg-surface/60 backdrop-blur-sm p-1.5 rounded-2xl border border-border-subtle">
+        <div className="flex gap-2 bg-page backdrop-blur-sm p-1.5 rounded-2xl border border-border-subtle">
           <button
             onClick={() => setAba('ajustes')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -234,9 +234,10 @@ export default function SolicitacoesAjuste() {
 
         {/* CONTEÚDO */}
         {loading ? (
-          <div className="flex items-center justify-center gap-3 py-20 text-text-muted">
-            <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            Carregando...
+          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-16 bg-hover-bg rounded-2xl animate-pulse" />
+            ))}
           </div>
         ) : listaAtual.length === 0 ? (
           <div className="text-center py-10 bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -245,11 +246,11 @@ export default function SolicitacoesAjuste() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
+          <div className="grid gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
 
             {/* === ABA AJUSTES === */}
             {aba === 'ajustes' && solicitacoes.map((sol) => (
-              <div key={sol.id} className={`bg-surface backdrop-blur-sm p-6 rounded-2xl border flex flex-col md:flex-row gap-6 items-start md:items-center transition-colors ${selecionados.has(sol.id) ? 'border-purple-500/60 bg-purple-500/5' : 'border-border-subtle'}`}>
+              <div key={sol.id} className={`bg-surface backdrop-blur-sm p-6 rounded-2xl border flex flex-col md:flex-row gap-6 items-start md:items-center transition-all hover:shadow-md ${selecionados.has(sol.id) ? 'border-purple-500/60 bg-purple-500/5' : 'border-border-subtle hover:border-border-default'}`}>
 
                 <button
                   onClick={() => toggleSelecionado(sol.id)}
@@ -265,7 +266,7 @@ export default function SolicitacoesAjuste() {
                     {!sol.pontoId ? (
                       <span className="bg-blue-600 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase">NOVO PONTO</span>
                     ) : (
-                      <span className="bg-yellow-600 text-white px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase">AJUSTE</span>
+                      <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase">AJUSTE</span>
                     )}
                     <span className="text-[10px] text-text-dim font-mono ml-auto">
                       Solicitado em {format(new Date(sol.criadoEm), 'dd/MM/yyyy HH:mm')}
@@ -291,14 +292,14 @@ export default function SolicitacoesAjuste() {
                     <div>
                       <p className="text-[10px] uppercase text-text-muted">Novo horário ({sol.tipo || sol.ponto?.tipo})</p>
                       {editandoId === sol.id ? (
-                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-input-solid/50 border border-purple-500 rounded-xl px-2 py-1 text-text-primary font-bold focus:border-purple-400 outline-none"/>
+                        <input type="time" value={horarioAdmin} onChange={e => setHorarioAdmin(e.target.value)} className="bg-page border border-purple-500 rounded-xl px-2 py-1 text-text-primary font-bold focus:border-purple-400 outline-none"/>
                       ) : (
-                        <p className="font-mono text-green-400 font-bold text-lg">{format(new Date(sol.novoHorario), 'HH:mm')}</p>
+                        <p className="font-mono text-emerald-400 font-bold text-lg">{format(new Date(sol.novoHorario), 'HH:mm')}</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="bg-input-solid/50 p-3 rounded-xl border border-border-subtle mt-2">
+                  <div className="bg-page p-3 rounded-xl border border-border-subtle mt-2">
                     <p className="text-xs text-text-faint italic">&quot; {sol.motivo} &quot;</p>
                   </div>
                 </div>
@@ -314,7 +315,7 @@ export default function SolicitacoesAjuste() {
                           responderSolicitacao(sol.id, 'APROVAR', final);
                         }}
                         disabled={!!processando}
-                        className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors"
                       >
                         Confirmar Edição
                       </button>
@@ -322,7 +323,7 @@ export default function SolicitacoesAjuste() {
                     </>
                   ) : (
                     <>
-                      <button onClick={() => responderSolicitacao(sol.id, 'APROVAR')} disabled={!!processando} className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors">
+                      <button onClick={() => responderSolicitacao(sol.id, 'APROVAR')} disabled={!!processando} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors">
                         <Check size={16} /> Aceitar
                       </button>
 
@@ -332,7 +333,7 @@ export default function SolicitacoesAjuste() {
                           setHorarioAdmin(format(new Date(sol.novoHorario), 'HH:mm'));
                         }}
                         disabled={!!processando}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
                       >
                         <Clock size={16} /> Editar Horário
                       </button>
@@ -353,7 +354,7 @@ export default function SolicitacoesAjuste() {
               const trabalhado = meta + item.minutosExtra;
 
               return (
-                <div key={item.id} className={`bg-surface backdrop-blur-sm p-6 rounded-2xl border flex flex-col md:flex-row gap-6 items-start md:items-center transition-colors ${selecionados.has(item.id) ? 'border-purple-500/60 bg-purple-500/5' : 'border-border-subtle'}`}>
+                <div key={item.id} className={`bg-surface backdrop-blur-sm p-6 rounded-2xl border flex flex-col md:flex-row gap-6 items-start md:items-center transition-all hover:shadow-md ${selecionados.has(item.id) ? 'border-purple-500/60 bg-purple-500/5' : 'border-border-subtle hover:border-border-default'}`}>
 
                   <button
                     onClick={() => toggleSelecionado(item.id)}
@@ -394,7 +395,7 @@ export default function SolicitacoesAjuste() {
                     <button
                       onClick={() => responderHoraExtra(item.id, 'APROVAR')}
                       disabled={!!processando}
-                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                      className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
                     >
                       <Check size={16} /> Aprovar
                     </button>
@@ -440,13 +441,13 @@ export default function SolicitacoesAjuste() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => processarLote('APROVAR')}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors active:scale-95"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors active:scale-95"
                 >
                   <Check size={16} /> Aprovar Selecionados
                 </button>
                 <button
                   onClick={() => processarLote('REJEITAR')}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors active:scale-95"
+                  className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-colors active:scale-95"
                 >
                   <X size={16} /> Rejeitar Selecionados
                 </button>

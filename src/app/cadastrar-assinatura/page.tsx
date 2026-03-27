@@ -16,14 +16,30 @@ export default function CadastrarAssinaturaPage() {
   const [erro, setErro] = useState('');
   const [sucesso, setSucesso] = useState(false);
 
+  const [shouldShow, setShouldShow] = useState(false);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login');
+      router.replace('/login');
+      return;
     }
-    if (status === 'authenticated' && session?.user?.temAssinatura) {
-      router.push('/funcionario');
+    if (status === 'authenticated') {
+      fetch('/api/auth/session')
+        .then(r => r.json())
+        .then(s => {
+          const user = s?.user;
+          if (!user) return;
+          // Impersonate, SUPER_ADMIN, ou já tem assinatura: sai daqui
+          if (user.impersonatedBy || user.cargo === 'SUPER_ADMIN' || user.temAssinatura) {
+            const dest = user.cargo === 'ADMIN' ? '/admin' : '/funcionario';
+            window.location.href = dest; // Hard redirect para quebrar qualquer loop
+            return;
+          }
+          setShouldShow(true);
+        })
+        .catch(() => setShouldShow(true));
     }
-  }, [status, session, router]);
+  }, [status, router]);
 
   const limpar = () => {
     sigCanvas.current.clear();
@@ -66,7 +82,7 @@ export default function CadastrarAssinaturaPage() {
     }
   };
 
-  if (status === 'loading') {
+  if (status === 'loading' || !shouldShow) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-page">
         <RefreshCw className="animate-spin text-purple-400" size={32} />
@@ -141,7 +157,7 @@ export default function CadastrarAssinaturaPage() {
               <button
                 onClick={salvar}
                 disabled={loading}
-                className="flex-[2] bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-all active:scale-95 disabled:opacity-50"
+                className="flex-[2] bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 transition-all active:scale-95 disabled:opacity-50"
               >
                 {loading ? (
                   <>

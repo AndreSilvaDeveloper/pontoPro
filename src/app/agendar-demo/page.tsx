@@ -262,7 +262,7 @@ export default function AgendarDemo() {
 
               <button
                 onClick={enviar}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/30"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/30"
               >
                 <Send size={18} /> Confirmar pelo WhatsApp
               </button>

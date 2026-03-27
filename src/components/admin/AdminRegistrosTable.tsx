@@ -16,7 +16,7 @@ export default function AdminRegistrosTable(props: {
 
   const isFolgaParcial = (reg: any) => {
     if (!reg || reg.tipo !== 'AUSENCIA') return false;
-    if (reg.subTipo !== 'FOLGA') return false;
+    if (!reg.subTipo) return false;
     if (!reg.extra?.dataFim) return false;
 
     const ini = new Date(reg.dataHora);
@@ -36,7 +36,7 @@ export default function AdminRegistrosTable(props: {
 
   return (
     <div className="bg-surface/40 backdrop-blur-xl rounded-3xl border border-border-subtle overflow-hidden shadow-2xl">
-      <div className="hidden md:grid grid-cols-5 bg-input-solid/50 p-4 text-[10px] font-bold text-text-faint uppercase tracking-widest border-b border-border-subtle">
+      <div className="hidden md:grid grid-cols-5 bg-page p-4 text-[10px] font-bold text-text-faint uppercase tracking-widest border-b border-border-subtle">
         <div className="pl-2">Funcionário</div>
         <div>Data</div>
         <div>Hora / Tipo</div>
@@ -71,7 +71,7 @@ export default function AdminRegistrosTable(props: {
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${
                       reg.tipo === 'AUSENCIA'
-                        ? 'bg-yellow-500/20 text-yellow-500'
+                        ? 'bg-amber-500/20 text-amber-400'
                         : 'bg-purple-500/20 text-purple-300'
                     }`}
                   >
@@ -162,12 +162,12 @@ export default function AdminRegistrosTable(props: {
                   <div className="flex items-center gap-2">
                     {/* ✅ NOVO: mostrar HH:mm–HH:mm quando for FOLGA parcial */}
                     {isFolgaParcial(reg) && (
-                      <span className="text-sm font-bold text-yellow-300 font-mono bg-yellow-900/20 px-2 py-0.5 rounded border border-yellow-600/20">
+                      <span className="text-sm font-bold text-amber-400 font-mono bg-amber-900/20 px-2 py-0.5 rounded border border-amber-500/20">
                         {format(new Date(reg.dataHora), 'HH:mm')}–{format(new Date(reg.extra.dataFim!), 'HH:mm')}
                       </span>
                     )}
 
-                    <span className="text-xs font-bold bg-yellow-600/20 text-yellow-500 border border-yellow-600/30 px-2 py-1 rounded uppercase tracking-wider">
+                    <span className="text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-1 rounded uppercase tracking-wider">
                       {reg.subTipo?.replace('_', ' ')}
                     </span>
 

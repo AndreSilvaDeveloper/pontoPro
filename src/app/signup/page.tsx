@@ -248,81 +248,10 @@ function SignupForm() {
 
             <CardContent className="space-y-4">
               <form onSubmit={onSubmit} className="space-y-4">
-                {/* Seletor de Plano */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-text-secondary">PLANO</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PLANOS_ORDER.map((pid) => {
-                      const p = PLANOS[pid]
-                      const selected = plano === pid
-                      return (
-                        <button
-                          key={pid}
-                          type="button"
-                          onClick={() => setPlano(pid)}
-                          className={`relative rounded-xl border p-3 text-center transition-all ${
-                            selected
-                              ? 'border-purple-500 bg-purple-950/50 ring-1 ring-purple-500/50'
-                              : 'border-purple-500/20 bg-page/50 hover:border-purple-500/40'
-                          }`}
-                        >
-                          {selected && (
-                            <div className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-purple-600">
-                              <Check className="size-3 text-white" />
-                            </div>
-                          )}
-                          <div className="text-xs font-bold text-text-primary">{p.nome}</div>
-                          <div className="mt-1 text-xs text-text-muted">
-                            R$ {p.preco.toFixed(2).replace('.', ',')}/mês
-                          </div>
-                          <div className="mt-0.5 text-[10px] text-emerald-400/70">
-                            R$ {getPrecoAnual(p).mensalEquivalente.toFixed(2).replace('.', ',')}/mês no anual
-                          </div>
-                          <div className="mt-0.5 text-[10px] text-text-faint">
-                            até {p.maxFuncionarios} func.
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Empresa */}
-                <div className="space-y-2">
-                  <Label htmlFor="empresa" className="text-sm font-medium text-text-secondary">
-                    EMPRESA
-                  </Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
-                    <Input
-                      id="empresa"
-                      value={empresaNome}
-                      onChange={(e) => setEmpresaNome(e.target.value)}
-                      placeholder="Ex: WorkID Tecnologia"
-                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* CNPJ opcional */}
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj" className="text-sm font-medium text-text-secondary">
-                    CNPJ (OPCIONAL)
-                  </Label>
-                  <Input
-                    id="cnpj"
-                    value={cnpj}
-                    onChange={(e) => setCnpj(e.target.value)}
-                    placeholder="00.000.000/0000-00"
-                    className="border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
-                  />
-                </div>
-
                 {/* Nome */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="name" className="text-sm font-medium text-text-secondary">
-                    NOME COMPLETO
+                    SEU NOME
                   </Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
@@ -334,12 +263,31 @@ function SignupForm() {
                       placeholder="Seu nome completo"
                       className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {/* Empresa */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="empresa" className="text-sm font-medium text-text-secondary">
+                    NOME DA EMPRESA
+                  </Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
+                    <Input
+                      id="empresa"
+                      value={empresaNome}
+                      onChange={(e) => setEmpresaNome(e.target.value)}
+                      placeholder="Ex: Padaria do João"
+                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
+                      required
                     />
                   </div>
                 </div>
 
                 {/* Email */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-sm font-medium text-text-secondary">
                     EMAIL
                   </Label>
@@ -350,33 +298,15 @@ function SignupForm() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
-                      placeholder="exemplo@ontimeia.com"
+                      placeholder="seu@email.com"
                       className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
                     />
                   </div>
                 </div>
 
-                {/* Telefone / WhatsApp */}
-                <div className="space-y-2">
-                  <Label htmlFor="telefone" className="text-sm font-medium text-text-secondary">
-                    CELULAR / WHATSAPP
-                  </Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
-                    <Input
-                      id="telefone"
-                      value={telefone}
-                      onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
-                      type="tel"
-                      placeholder="(00) 00000-0000"
-                      className="pl-10 border-purple-500/20 bg-page/50 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
-                    />
-                  </div>
-                </div>
-
                 {/* Senha */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="password" className="text-sm font-medium text-text-secondary">
                     SENHA
                   </Label>
@@ -385,11 +315,12 @@ function SignupForm() {
                     <Input
                       id="password"
                       value={senha}
-                      onChange={(e) => setSenha(e.target.value)}
+                      onChange={(e) => { setSenha(e.target.value); setSenha2(e.target.value); }}
                       type={showSenha ? 'text' : 'password'}
-                      placeholder="••••••••"
+                      placeholder="Mínimo 8 caracteres"
                       className="pl-10 border-purple-500/20 bg-page/50 pr-10 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
                       required
+                      minLength={8}
                     />
                     <button
                       type="button"
@@ -399,43 +330,6 @@ function SignupForm() {
                       {showSenha ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                     </button>
                   </div>
-                  <p className="text-xs text-text-faint">Mínimo de 8 caracteres.</p>
-                </div>
-
-                {/* Confirmar senha */}
-                <div className="space-y-2">
-                  <Label htmlFor="password2" className="text-sm font-medium text-text-secondary">
-                    CONFIRMAR SENHA
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
-                    <Input
-                      id="password2"
-                      value={senha2}
-                      onChange={(e) => setSenha2(e.target.value)}
-                      type={showSenha2 ? 'text' : 'password'}
-                      placeholder="••••••••"
-                      className={`pl-10 pr-10 bg-page/50 text-text-primary placeholder:text-text-faint focus:ring-purple-500/50 ${
-                        !senha2
-                          ? 'border-purple-500/20 focus:border-purple-500/50'
-                          : senhaOk
-                            ? 'border-emerald-500/30 focus:border-emerald-500/60'
-                            : 'border-red-500/30 focus:border-red-500/60'
-                      }`}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSenha2((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
-                    >
-                      {showSenha2 ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
-                    </button>
-                  </div>
-
-                  {!!senha2 && !senhaOk && (
-                    <p className="text-xs text-red-300">As senhas não conferem ou têm menos de 8 caracteres.</p>
-                  )}
                 </div>
 
                 {/* Termos */}
@@ -469,14 +363,19 @@ function SignupForm() {
                   </span>
                 </label>
 
-
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-purple-600 py-6 text-base font-bold text-white shadow-lg shadow-purple-500/50 transition-all hover:bg-purple-700 hover:shadow-purple-500/70 disabled:opacity-70"
+                  className="w-full bg-purple-600 py-6 text-base font-bold text-white shadow-lg shadow-purple-500/50 transition-all hover:bg-purple-500 hover:shadow-purple-500/70 disabled:opacity-70"
                 >
-                  {loading ? 'CRIANDO...' : 'CRIAR CONTA →'}
+                  {loading ? 'CRIANDO...' : 'COMEÇAR GRÁTIS →'}
                 </Button>
+
+                <div className="flex items-center justify-center gap-4 text-[10px] text-text-dim">
+                  <span className="flex items-center gap-1"><CheckCircle2 className="size-3 text-emerald-500" /> 14 dias grátis</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="size-3 text-emerald-500" /> Sem cartão</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 className="size-3 text-emerald-500" /> Cancele quando quiser</span>
+                </div>
               </form>
 
               {/* Opções do App */}

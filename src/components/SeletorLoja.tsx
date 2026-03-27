@@ -103,7 +103,7 @@ export default function SeletorLoja({ empresaAtualId, empresaAtualNome }: Seleto
             <div className="bg-surface-solid border border-border-input w-full max-w-sm rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
                 
                 {/* Header */}
-                <div className="flex justify-between items-center p-4 border-b border-border-input bg-input-solid/50">
+                <div className="flex justify-between items-center p-4 border-b border-border-input bg-page">
                     <h3 className="font-bold text-text-primary flex items-center gap-2">
                         <Store size={18} className="text-purple-500"/> Selecionar Unidade
                     </h3>
@@ -136,7 +136,7 @@ export default function SeletorLoja({ empresaAtualId, empresaAtualNome }: Seleto
                                         <button 
                                             disabled={loadingDelete}
                                             onClick={() => excluirLoja(loja.id)} 
-                                            className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 flex items-center justify-center gap-1"
+                                            className="flex-1 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-500 flex items-center justify-center gap-1"
                                         >
                                             {loadingDelete ? <Loader2 size={12} className="animate-spin"/> : 'Confirmar'}
                                         </button>
@@ -192,7 +192,7 @@ export default function SeletorLoja({ empresaAtualId, empresaAtualNome }: Seleto
                             />
                             <div className="flex gap-2">
                                 <button onClick={() => setCriando(false)} className="flex-1 py-2 bg-elevated-solid text-text-secondary rounded-lg text-xs font-bold hover:bg-elevated-solid">Cancelar</button>
-                                <button onClick={criarNovaLoja} disabled={!novoNome.trim()} className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 disabled:opacity-50">Confirmar</button>
+                                <button onClick={criarNovaLoja} disabled={!novoNome.trim()} className="flex-1 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-500 disabled:opacity-50">Confirmar</button>
                             </div>
                         </div>
                     )}

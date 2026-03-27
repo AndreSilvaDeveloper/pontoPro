@@ -190,30 +190,31 @@ export default function RelatorioMensalPage() {
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto p-4 md:p-8 pb-8 relative z-10 space-y-8">
+      <div className="max-w-7xl mx-auto p-4 md:p-8 pb-8 relative z-10 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 bg-surface hover:bg-elevated-solid border border-border-subtle rounded-xl text-text-muted hover:text-text-primary transition-all"
+            className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
+            title="Voltar"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-3">
             <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
-              <FileText size={20} className="text-purple-400" />
+              <FileText size={24} className="text-purple-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary tracking-tight">Folha de Ponto</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Folha de Ponto</h1>
               <p className="text-text-muted text-xs font-medium uppercase tracking-widest">Relatorio por periodo</p>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-surface/60 backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl">
+        <div className="bg-page backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '50ms' }}>
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center bg-input-solid/50 border border-border-default rounded-xl p-2 sm:p-1">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center bg-page border border-border-default rounded-xl p-2 sm:p-1">
               <div className="flex items-center gap-2 flex-1">
                 <span className="text-text-dim text-[10px] uppercase font-bold sm:hidden ml-1 w-6">De</span>
                 <input
@@ -285,9 +286,9 @@ export default function RelatorioMensalPage() {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-surface backdrop-blur-md p-5 rounded-2xl border border-border-subtle shadow-lg">
-                <h3 className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-2">Funcionarios</h3>
+                <h3 className="text-[10px] text-text-dim font-bold uppercase tracking-wider mb-2">Funcionarios</h3>
                 <p className="text-2xl font-bold text-text-primary">{relatorio.resumoGeral.totalFuncionarios}</p>
               </div>
               <div className="bg-surface backdrop-blur-md p-5 rounded-2xl border border-border-subtle shadow-lg">
@@ -321,7 +322,7 @@ export default function RelatorioMensalPage() {
             </div>
 
             {/* Employees Table */}
-            <div className="bg-surface/60 backdrop-blur-xl border border-border-subtle rounded-3xl shadow-xl overflow-hidden">
+            <div className="bg-page backdrop-blur-xl border border-border-subtle rounded-3xl shadow-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

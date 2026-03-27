@@ -26,7 +26,7 @@ const statusTabs: { key: StatusFilter; label: string; color: string }[] = [
   { key: "TODOS", label: "Todos", color: "text-text-muted border-border-input" },
   { key: "ATIVO", label: "Ativos", color: "text-emerald-400 border-emerald-400" },
   { key: "TRIAL", label: "Trial", color: "text-blue-400 border-blue-400" },
-  { key: "INADIMPLENTE", label: "Inadimplentes", color: "text-yellow-400 border-yellow-400" },
+  { key: "INADIMPLENTE", label: "Inadimplentes", color: "text-amber-400 border-amber-400" },
   { key: "BLOQUEADO", label: "Bloqueados", color: "text-red-400 border-red-400" },
 ];
 
@@ -256,7 +256,7 @@ export default function ClientTable({
             const sCfg = {
               ATIVO: { label: "Ativo", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
               TRIAL: { label: "Trial", cls: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-              INADIMPLENTE: { label: "Inadimplente", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
+              INADIMPLENTE: { label: "Inadimplente", cls: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
               BLOQUEADO: { label: "Bloqueado", cls: "bg-red-500/15 text-red-400 border-red-500/30" },
             }[status];
             const { calcularFinanceiro } = require("@/lib/saas-financeiro");

@@ -60,13 +60,13 @@
   --color-text-dim: #cbd5e1;
 
   /* Bordas */
-  --color-border-subtle: rgba(0, 0, 0, 0.05);
-  --color-border-default: rgba(0, 0, 0, 0.08);
+  --color-border-subtle: rgba(0, 0, 0, 0.10);
+  --color-border-default: rgba(0, 0, 0, 0.15);
   --color-border-input: #cbd5e1;
 
   /* Hover / interação */
-  --color-hover-bg: rgba(0, 0, 0, 0.03);
-  --color-hover-bg-strong: rgba(0, 0, 0, 0.06);
+  --color-hover-bg: rgba(0, 0, 0, 0.05);
+  --color-hover-bg-strong: rgba(0, 0, 0, 0.08);
 
   /* Overlay */
   --color-overlay: rgba(0, 0, 0, 0.5);
