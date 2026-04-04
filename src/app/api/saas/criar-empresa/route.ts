@@ -5,6 +5,7 @@ import { hash } from "bcryptjs";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { enviarEmailSeguro } from "@/lib/email";
+import { validarCNPJ } from "@/utils/cnpj";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,10 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial, plano } = body;
+
+    if (cnpj && !validarCNPJ(String(cnpj))) {
+      return NextResponse.json({ erro: "CNPJ inválido." }, { status: 400 });
+    }
 
     const userExistente = await prisma.usuario.findUnique({
       where: { email: emailDono },

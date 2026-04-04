@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { PLANOS, PLANO_DEFAULT, type PlanoId } from "@/config/planos";
+import { validarCNPJ } from "@/utils/cnpj";
 
 export const runtime = "nodejs";
 
@@ -65,11 +66,11 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (cnpj && cnpj.length !== 14) {
+    if (cnpj && !validarCNPJ(cnpj)) {
       return NextResponse.json(
         {
           ok: false,
-          erro: "CNPJ inválido. Informe 14 dígitos ou deixe em branco.",
+          erro: "CNPJ inválido. Verifique os dígitos ou deixe em branco.",
         },
         { status: 400 }
       );

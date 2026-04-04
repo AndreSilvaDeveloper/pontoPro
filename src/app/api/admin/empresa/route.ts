@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db'; // Confirme se o caminho é @/lib/db ou @/lib/prisma no seu projeto
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { validarCNPJ } from '@/utils/cnpj';
 
 // GET: Busca dados da empresa, configurações E dados financeiros/contagem
 export async function GET() {
@@ -80,7 +81,12 @@ export async function PUT(request: Request) {
         // Se tem campos diretos (nome, cnpj, cobrancaWhatsapp), atualiza eles
         const updateData: any = {};
         if (body.nome !== undefined) updateData.nome = body.nome;
-        if (body.cnpj !== undefined) updateData.cnpj = body.cnpj || null;
+        if (body.cnpj !== undefined) {
+            if (body.cnpj && !validarCNPJ(String(body.cnpj))) {
+                return NextResponse.json({ erro: 'CNPJ inválido.' }, { status: 400 });
+            }
+            updateData.cnpj = body.cnpj || null;
+        }
         if (body.cobrancaWhatsapp !== undefined) updateData.cobrancaWhatsapp = body.cobrancaWhatsapp || null;
 
         // Se tem outros campos, trata como configurações

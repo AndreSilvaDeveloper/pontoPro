@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 
 import { PLANOS, PLANO_DEFAULT, getPrecoAnual, type PlanoId } from '@/config/planos'
+import { validarCNPJ } from '@/utils/cnpj'
 
 const PLANOS_ORDER: PlanoId[] = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE']
 
@@ -117,6 +118,12 @@ function SignupForm() {
     }
     if (!aceitar) {
       toast.warning('Você precisa aceitar os termos para continuar.')
+      return
+    }
+
+    const cnpjDigits = cnpj.replace(/\D/g, '')
+    if (cnpjDigits && !validarCNPJ(cnpjDigits)) {
+      toast.warning('CNPJ inválido. Verifique os dígitos ou deixe em branco.')
       return
     }
 

@@ -32,6 +32,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format, isValid, addDays } from "date-fns";
 import type { BillingStatus } from "@/lib/billing";
+import { validarCNPJ } from "@/utils/cnpj";
 
 import PaymentModal, { AsaasBundle, type PayMode } from "@/components/billing/PaymentModal";
 
@@ -650,6 +651,11 @@ export default function PerfilAdmin() {
   };
 
   const salvarPerfil = async () => {
+    const cnpjDigits = perfilCnpj.replace(/\D/g, '');
+    if (cnpjDigits && !validarCNPJ(cnpjDigits)) {
+      toast.error('CNPJ inválido. Verifique os dígitos.');
+      return;
+    }
     setSalvandoPerfil(true);
     try {
       // Atualizar dados do admin via formData
