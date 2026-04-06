@@ -37,8 +37,33 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [restaurando, setRestaurando] = useState(true);
 
   const [showRecovery, setShowRecovery] = useState(false);
+
+  // Tentar restaurar sessão via refresh token antes de mostrar login
+  useEffect(() => {
+    const rt = localStorage.getItem('workid_rt');
+    if (!rt) { setRestaurando(false); return; }
+
+    fetch('/api/auth/auto-login', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          // Sessão restaurada — redirecionar
+          const dest = data.cargo === 'ADMIN' ? '/admin' : '/funcionario';
+          window.location.href = dest;
+        } else {
+          localStorage.removeItem('workid_rt');
+          setRestaurando(false);
+        }
+      })
+      .catch(() => setRestaurando(false));
+  }, []);
 
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
@@ -176,6 +201,15 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (restaurando) {
+    return (
+      <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-page gap-3">
+        <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-text-muted">Entrando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-4 relative overflow-hidden bg-page selection:bg-purple-500/30" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
