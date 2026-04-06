@@ -19,8 +19,6 @@ export async function GET(request: Request) {
   const busca = searchParams.get('busca'); // Nome do funcionário ou detalhe
 
 
-  const tresHoras = 3 * 60 * 60 * 1000; // 3 horas em milissegundos
-
   // Construir o filtro dinâmico
   const whereClause: any = {
     // @ts-ignore
@@ -30,9 +28,11 @@ export async function GET(request: Request) {
   };
 
   if (inicio && fim) {
+    const fimDate = new Date(`${fim}T23:59:59`);
+    fimDate.setHours(fimDate.getHours() + 3); // Ajuste para fuso horário SP
     whereClause.dataHora = {
       gte: new Date(`${inicio}T00:00:00`),
-      lte: new Date(`${fim}T23:59:59 + ${tresHoras}`) // Ajuste para considerar o fuso horário,
+      lte: fimDate,
     };
   }
 

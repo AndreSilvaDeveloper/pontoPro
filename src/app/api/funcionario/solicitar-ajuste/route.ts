@@ -215,15 +215,27 @@ export async function POST(request: Request) {
       },
     });
 
+    const fmtSP = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    const tipoNome = (tipoEfetivo || tipo || '').replace(/_/g, ' ');
+    let logDetalhes: string;
+
+    if (pontoId) {
+      // Ajuste: mostra horário original → novo
+      const pontoOriginal = await prisma.ponto.findUnique({ where: { id: pontoId }, select: { dataHora: true } });
+      const horaOriginal = pontoOriginal ? fmtSP(new Date(pontoOriginal.dataHora)) : '?';
+      logDetalhes = `Solicitou ajuste de ${tipoNome} no dia ${fmtSP(novoHorarioDate).split(',')[0]}: de ${horaOriginal.split(', ')[1] || horaOriginal} para ${fmtSP(novoHorarioDate).split(', ')[1] || fmtSP(novoHorarioDate)} | Motivo: "${motivo}"`;
+    } else {
+      // Inclusão: mostra data, horário e tipo
+      logDetalhes = `Solicitou inclusão de ${tipoNome} para ${fmtSP(novoHorarioDate)} | Motivo: "${motivo}"`;
+    }
+
     await registrarLog({
       // @ts-ignore
       empresaId: session.user.empresaId,
       usuarioId: session.user.id,
       autor: session.user.name || 'Funcionário',
       acao: pontoId ? 'SOLICITACAO_EDICAO' : 'SOLICITACAO_INCLUSAO',
-      detalhes: `Solicitou ${pontoId ? 'ajuste' : 'inclusão'} para: ${new Date(novoHorario).toLocaleString(
-        'pt-BR', { timeZone: 'America/Sao_Paulo' }
-      )}${tipo ? ` (${tipo.replace(/_/g, ' ')})` : ''} - Motivo: ${motivo}`,
+      detalhes: logDetalhes,
     });
 
     // Notificar todos os admins da empresa por e-mail
