@@ -9,6 +9,7 @@ import ThemeSyncer from "@/components/ThemeSyncer";
 import OnboardingMount from "@/components/onboarding/OnboardingMount";
 import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
+import AutoLoginRestore from "@/components/AutoLoginRestore";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 
@@ -92,6 +93,7 @@ export default function RootLayout({
           <Provider>
             <ThemeSyncer />
             <ServiceWorkerRegistrar />
+            <AutoLoginRestore />
             <Suspense fallback={null}>
               <OnboardingMount />
             </Suspense>

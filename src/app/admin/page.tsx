@@ -194,7 +194,7 @@ export default function AdminDashboard() {
                 </Link>
                 <ThemeToggle />
                 <button
-                  onClick={() => signOut({ callbackUrl: '/login' })}
+                  onClick={() => { localStorage.removeItem('workid_rt'); signOut({ callbackUrl: '/login' }); }}
                   className="p-2.5 hover:bg-red-500/20 text-text-muted hover:text-red-400 rounded-lg transition-colors"
                   title="Sair"
                 >

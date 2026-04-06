@@ -108,6 +108,22 @@ export default function LoginPage() {
       const sessionRes = await fetch('/api/auth/session');
       const sessionData = await sessionRes.json();
 
+      // Salvar refresh token para auto-login no iOS PWA
+      try {
+        if (sessionData?.user?.id) {
+          const rtRes = await fetch('/api/auth/auto-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: sessionData.user.id }),
+          });
+          const rtData = await rtRes.json();
+          if (rtData.refreshToken) {
+            localStorage.setItem('workid_rt', rtData.refreshToken);
+          }
+        }
+      } catch {}
+
+
       // Verifica bloqueio financeiro após login (sessão já criada)
       if (sessionData?.error === 'BILLING_BLOCK') {
         const blockPayload = base64UrlEncodeUtf8({
