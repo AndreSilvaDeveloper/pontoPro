@@ -222,8 +222,8 @@ export async function POST(request: Request) {
       autor: session.user.name || 'Funcionário',
       acao: pontoId ? 'SOLICITACAO_EDICAO' : 'SOLICITACAO_INCLUSAO',
       detalhes: `Solicitou ${pontoId ? 'ajuste' : 'inclusão'} para: ${new Date(novoHorario).toLocaleString(
-        'pt-BR'
-      )} - Motivo: ${motivo}`,
+        'pt-BR', { timeZone: 'America/Sao_Paulo' }
+      )}${tipo ? ` (${tipo.replace(/_/g, ' ')})` : ''} - Motivo: ${motivo}`,
     });
 
     // Notificar todos os admins da empresa por e-mail
