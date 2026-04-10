@@ -23,11 +23,13 @@ export default function InstallPrompt() {
     if (!isRunningStandalone) {
       const ua = window.navigator.userAgent.toLowerCase();
       const isIos = /iphone|ipad|ipod/.test(ua);
+      // iPadOS 13+ reporta como Mac — detectar pelo touch
+      const isIpadOS = !isIos && /macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+      const isApple = isIos || isIpadOS;
       const isAndroid = /android/.test(ua);
 
-      if (isIos) {
-        // No iOS, Chrome/Firefox/etc não suportam instalar PWA — só Safari
-        const isSafari = /safari/.test(ua) && !/crios|fxios|opios|edgios/.test(ua);
+      if (isApple) {
+        const isSafari = /safari/.test(ua) && !/crios|fxios|opios|edgios|chrome/.test(ua);
         setBrowserInfo(isSafari ? 'safari' : 'chrome-ios');
       } else if (isAndroid) {
         setBrowserInfo('android');
