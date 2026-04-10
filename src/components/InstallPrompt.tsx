@@ -23,15 +23,17 @@ export default function InstallPrompt() {
     if (!isRunningStandalone) {
       const ua = window.navigator.userAgent.toLowerCase();
       const isIos = /iphone|ipad|ipod/.test(ua);
-      const isSafari = isIos && /safari/.test(ua) && !/crios|fxios|opios|edgios/.test(ua);
-      const isChromeIos = isIos && /crios/.test(ua);
       const isAndroid = /android/.test(ua);
 
-      if (isSafari) setBrowserInfo('safari');
-      else if (isChromeIos) setBrowserInfo('chrome-ios');
-      else if (isAndroid) setBrowserInfo('android');
-      else if (!isIos) setBrowserInfo('desktop');
-      else setBrowserInfo('outro');
+      if (isIos) {
+        // No iOS, Chrome/Firefox/etc não suportam instalar PWA — só Safari
+        const isSafari = /safari/.test(ua) && !/crios|fxios|opios|edgios/.test(ua);
+        setBrowserInfo(isSafari ? 'safari' : 'chrome-ios');
+      } else if (isAndroid) {
+        setBrowserInfo('android');
+      } else {
+        setBrowserInfo('desktop');
+      }
     }
 
     const handleBeforeInstallPrompt = (e: any) => {
@@ -96,10 +98,50 @@ export default function InstallPrompt() {
         setDeferredPrompt(null);
         fechar();
       }
+    } else if (browserInfo === 'safari') {
+      // Safari: mostrar passos direto no modal principal (sem tela extra)
+      setShowInstrucoes(true);
     } else {
       setShowInstrucoes(true);
     }
   };
+
+  // Safari no iOS: mostrar passos direto no primeiro modal
+  if (browserInfo === 'safari' && !showInstrucoes) {
+    return (
+      <div className="fixed inset-0 z-[190] flex items-end justify-center bg-overlay backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="bg-page border border-border-default w-full max-w-sm rounded-3xl relative shadow-2xl animate-in slide-in-from-bottom-10 duration-300 max-h-[85dvh] flex flex-col overflow-hidden mb-[env(safe-area-inset-bottom)]">
+          <button
+            onClick={fechar}
+            className="absolute top-4 right-4 z-10 text-white/60 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 text-center shrink-0">
+            <div className="mx-auto w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
+              <Smartphone size={28} className="text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Instale o WorkID</h3>
+            <p className="text-white/70 text-sm mt-1">3 passos simples</p>
+          </div>
+
+          <div className="overflow-y-auto flex-1 px-6 py-5">
+            <PassosSafari />
+          </div>
+
+          <div className="px-6 py-4 border-t border-border-subtle shrink-0">
+            <button
+              onClick={fechar}
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-bold text-sm transition-all active:scale-95 shadow-lg"
+            >
+              Entendi!
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!mostrar) return null;
 
@@ -169,7 +211,7 @@ export default function InstallPrompt() {
               </div>
             )}
 
-            {(browserInfo === 'desktop' || browserInfo === 'outro') && (
+            {browserInfo === 'desktop' && (
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-center">
                 <Monitor size={32} className="text-blue-400 mx-auto mb-2" />
                 <p className="text-sm text-text-muted">
