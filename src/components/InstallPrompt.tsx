@@ -48,24 +48,16 @@ export default function InstallPrompt() {
   useEffect(() => {
     if (statusLoading || !status) return;
 
-    // Não mostra se já está no PWA standalone
+    // Não mostra se já está no PWA standalone (já instalou)
     if (isStandalone) {
       (window as any).__installDone = true; window.dispatchEvent(new Event('install-prompt-done'));
       return;
     }
 
-    // Se já dispensou, mostra de novo a cada 7 dias
-    if (status.installPromptVisto) {
-      try {
-        const ultimaVez = localStorage.getItem('workid_install_dismiss');
-        if (ultimaVez) {
-          const diff = Date.now() - parseInt(ultimaVez);
-          if (diff < 7 * 24 * 60 * 60 * 1000) {
-            (window as any).__installDone = true; window.dispatchEvent(new Event('install-prompt-done'));
-            return;
-          }
-        }
-      } catch {}
+    // Não mostra se dispensou nesta sessão
+    if (sessionStorage.getItem('workid_install_dismiss_session')) {
+      (window as any).__installDone = true; window.dispatchEvent(new Event('install-prompt-done'));
+      return;
     }
 
     // Espera o push prompt terminar primeiro
@@ -84,8 +76,8 @@ export default function InstallPrompt() {
 
   const fechar = () => {
     setMostrar(false);
-    markSeen('installPromptVisto', true);
-    try { localStorage.setItem('workid_install_dismiss', String(Date.now())); } catch {}
+    // Só guarda nesta sessão — volta a aparecer no próximo acesso
+    sessionStorage.setItem('workid_install_dismiss_session', '1');
     (window as any).__installDone = true;
     window.dispatchEvent(new Event('install-prompt-done'));
   };
