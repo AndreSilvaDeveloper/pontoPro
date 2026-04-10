@@ -100,6 +100,8 @@ export default function InstallPrompt() {
     }
   };
 
+  if (!mostrar) return null;
+
   // Safari no iOS: mostrar passos direto no primeiro modal
   if (browserInfo === 'safari' && !showInstrucoes) {
     return (
@@ -136,8 +138,6 @@ export default function InstallPrompt() {
       </div>
     );
   }
-
-  if (!mostrar) return null;
 
   // Modal de instruções detalhadas
   if (showInstrucoes) {
