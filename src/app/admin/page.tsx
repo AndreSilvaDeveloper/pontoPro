@@ -39,6 +39,7 @@ import BillingAlertModal from '@/components/admin/BillingAlertModal';
 import ModalCompletarCadastro from '@/components/admin/ModalCompletarCadastro';
 import ActionCard from '@/components/admin/ActionCard';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import InstallPrompt from '@/components/InstallPrompt';
 import { ADMIN_TOUR_RESTART_EVENT } from '@/components/onboarding/AdminTour';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -206,6 +207,7 @@ export default function AdminDashboard() {
         </div>
 
         <PushNotificationPrompt />
+        <InstallPrompt />
 
         {/* === AÇÕES RÁPIDAS === */}
         <div>

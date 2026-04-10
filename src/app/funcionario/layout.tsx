@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import BottomNav from '@/components/funcionario/BottomNav';
 import NotificacaoSolicitacao from '@/components/funcionario/NotificacaoSolicitacao';
+import InstallPrompt from '@/components/InstallPrompt';
+import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -70,6 +72,8 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
   return (
     <>
       <NotificacaoSolicitacao />
+      <PushNotificationPrompt />
+      <InstallPrompt />
       {children}
       <BottomNav />
     </>
