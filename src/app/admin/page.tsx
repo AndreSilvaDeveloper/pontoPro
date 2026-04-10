@@ -23,6 +23,8 @@ import {
   Lock,
   AlertTriangle,
   Edit2,
+  Megaphone,
+  FileText,
 } from 'lucide-react';
 
 import BotaoRelatorio from '@/components/BotaoRelatorio';
@@ -270,6 +272,19 @@ export default function AdminDashboard() {
               label="Feriados"
             />
 
+            <ActionCard
+              href="/admin/comunicados"
+              icon={<Megaphone size={20} className="text-purple-400 group-hover:text-purple-300" />}
+              label="Comunicados"
+              accent="purple"
+            />
+
+            <ActionCard
+              href="/admin/contracheques"
+              icon={<FileText size={20} className="text-purple-400 group-hover:text-purple-300" />}
+              label="Contracheques"
+              accent="purple"
+            />
 
           </div>
         </div>

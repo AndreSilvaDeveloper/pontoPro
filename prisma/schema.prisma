@@ -26,6 +26,7 @@ model Empresa {
   filiais             Empresa[]   @relation("MatrizFilial")
   feriados            Feriado[]
   usuarios            Usuario[]
+  comunicados         Comunicado[]
 
   cobrancaAtiva      Boolean  @default(false)
   trialAte           DateTime?
@@ -92,6 +93,7 @@ model Usuario {
   revendedorId            String?
   revendedor              Revendedor? @relation(fields: [revendedorId], references: [id])
   ajustesBancoHoras       AjusteBancoHoras[]
+  contracheques           Contracheque[]
 }
 
 model PushSubscription {
@@ -280,3 +282,55 @@ model AjusteBancoHoras {
   @@index([data])
 }
 
+model Contracheque {
+  id             String    @id @default(cuid())
+  empresaId      String
+  usuarioId      String
+  mes            String    // "2026-03" format
+  arquivoUrl     String    // URL do PDF
+  nomeArquivo    String
+  enviadoPorId   String
+  enviadoPorNome String
+  criadoEm       DateTime  @default(now())
+  visualizado    Boolean   @default(false)
+  visualizadoEm  DateTime?
+  assinado       Boolean   @default(false)
+  assinadoEm     DateTime?
+  assinaturaUrl  String?   // URL da assinatura digital do funcionário no momento da confirmação
+
+  usuario        Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, mes])
+  @@index([empresaId])
+  @@index([usuarioId])
+}
+
+model Comunicado {
+  id             String   @id @default(cuid())
+  empresaId      String
+  autorId        String
+  autorNome      String
+  titulo         String
+  mensagem       String
+  tipo           String   @default("AVISO") // AVISO | URGENTE | INFORMATIVO
+  destinatarios  Json?    // null = todos, ["id1","id2"] = específicos
+  criadoEm       DateTime @default(now())
+
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  leituras    LeituraComunicado[]
+
+  @@index([empresaId])
+  @@index([criadoEm])
+}
+
+model LeituraComunicado {
+  id           String   @id @default(cuid())
+  comunicadoId String
+  usuarioId    String
+  lidoEm       DateTime @default(now())
+
+  comunicado   Comunicado @relation(fields: [comunicadoId], references: [id], onDelete: Cascade)
+
+  @@unique([comunicadoId, usuarioId])
+  @@index([usuarioId])
+}

@@ -7,6 +7,7 @@ import BottomNav from '@/components/funcionario/BottomNav';
 import NotificacaoSolicitacao from '@/components/funcionario/NotificacaoSolicitacao';
 import InstallPrompt from '@/components/InstallPrompt';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import BannerNovidades from '@/components/funcionario/BannerNovidades';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -74,6 +75,7 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
       <NotificacaoSolicitacao />
       <PushNotificationPrompt />
       <InstallPrompt />
+      <BannerNovidades />
       {children}
       <BottomNav />
     </>
