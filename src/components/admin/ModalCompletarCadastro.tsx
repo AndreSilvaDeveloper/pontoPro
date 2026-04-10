@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Building2, Phone, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { validarCNPJ } from '@/utils/cnpj';
 
 interface Props {
   empresa: any;
@@ -53,8 +54,8 @@ export default function ModalCompletarCadastro({ empresa, onComplete }: Props) {
     const cnpjLimpo = cnpj.replace(/\D/g, '');
     const telLimpo = telefone.replace(/\D/g, '');
 
-    if (cnpjLimpo.length !== 14) {
-      toast.error('CNPJ deve ter 14 dígitos');
+    if (!validarCNPJ(cnpjLimpo)) {
+      toast.error('CNPJ inválido. Verifique os dígitos.');
       return;
     }
 

@@ -374,7 +374,7 @@ export const authOptions: NextAuthOptions = {
 
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 dias
+    maxAge: 90 * 24 * 60 * 60, // 90 dias
   },
   cookies: {
     sessionToken: {
@@ -383,10 +383,10 @@ export const authOptions: NextAuthOptions = {
         : 'next-auth.session-token',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' as const : 'lax' as const,
         path: '/',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 30 * 24 * 60 * 60, // 30 dias — persiste mesmo fechando o app
+        maxAge: 90 * 24 * 60 * 60, // 90 dias
       },
     },
   },

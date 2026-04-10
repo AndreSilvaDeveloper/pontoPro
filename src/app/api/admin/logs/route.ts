@@ -13,10 +13,11 @@ export async function GET(request: Request) {
 
   // Pegar filtros da URL
   const { searchParams } = new URL(request.url);
-  const inicio = searchParams.get('inicio');
+  const inicio = searchParams.get('inicio'); 
   const fim = searchParams.get('fim');
   const tipo = searchParams.get('tipo'); // Ex: APROVACAO, EDICAO
   const busca = searchParams.get('busca'); // Nome do funcionário ou detalhe
+
 
   // Construir o filtro dinâmico
   const whereClause: any = {
@@ -27,9 +28,11 @@ export async function GET(request: Request) {
   };
 
   if (inicio && fim) {
+    const fimDate = new Date(`${fim}T23:59:59`);
+    fimDate.setHours(fimDate.getHours() + 3); // Ajuste para fuso horário SP
     whereClause.dataHora = {
       gte: new Date(`${inicio}T00:00:00`),
-      lte: new Date(`${fim}T23:59:59`),
+      lte: fimDate,
     };
   }
 

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import { getPlanoConfig } from '@/config/planos';
+import { validarCNPJ } from '@/utils/cnpj';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
 
   try {
     const { nome, cnpj } = await request.json();
+
+    if (cnpj && !validarCNPJ(String(cnpj))) {
+      return NextResponse.json({ erro: 'CNPJ inválido.' }, { status: 400 });
+    }
 
     if (!nome?.trim()) {
       return NextResponse.json({ erro: 'Nome é obrigatório' }, { status: 400 });
