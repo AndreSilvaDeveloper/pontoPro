@@ -149,9 +149,9 @@ export default function BancoHorasEquipe({
       </div>
 
       {aberto && (
-        <div className="mt-2 bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle overflow-hidden">
+        <div className="mt-2 bg-surface rounded-2xl border border-border-subtle relative">
           {/* Abas */}
-          <div className="flex border-b border-border-subtle">
+          <div className="flex border-b border-border-subtle rounded-t-2xl overflow-hidden">
             {([
               { key: 'saldo' as Aba, label: 'Saldo Atual' },
               { key: 'mes' as Aba, label: 'Por Mês' },
