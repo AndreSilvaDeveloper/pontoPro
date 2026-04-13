@@ -1205,7 +1205,7 @@ export default function Home() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Data</label>
                 <input type="date" value={dataNova} onChange={e => setDataNova(e.target.value)} className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm text-center outline-none focus:border-purple-500 transition-colors" />
@@ -1215,21 +1215,33 @@ export default function Home() {
                 <select
                   value={tipoNovo}
                   onChange={(e) => setTipoNovo(e.target.value as TipoSolicitacao)}
-                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
+                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 appearance-none"
                 >
-                  <option value="ENTRADA">ENTRADA</option>
-                  <option value="SAIDA_INTERVALO">SAÍDA CAFÉ</option>
-                  <option value="VOLTA_INTERVALO">VOLTA CAFÉ</option>
-                  <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
-                  <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
-                  <option value="SAIDA">SAÍDA</option>
+                  <option value="ENTRADA">Entrada</option>
+                  <option value="SAIDA_INTERVALO">Saída Café</option>
+                  <option value="VOLTA_INTERVALO">Volta Café</option>
+                  <option value="SAIDA_ALMOCO">Saída Almoço</option>
+                  <option value="VOLTA_ALMOCO">Volta Almoço</option>
+                  <option value="SAIDA">Saída</option>
                 </select>
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Novo Horário</label>
-              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-colors" />
+              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Novo Horário (HH:MM)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="00:00"
+                value={horaNova}
+                onChange={e => {
+                  let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2);
+                  setHoraNova(v);
+                }}
+                className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center font-mono tracking-widest outline-none focus:border-purple-500 transition-colors"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Justificativa (Obrigatório)</label>

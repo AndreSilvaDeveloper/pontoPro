@@ -92,6 +92,7 @@ export default function MeuHistorico() {
   const [toleranciaMin, setToleranciaMin] = useState(10);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [paginaSolicitacoes, setPaginaSolicitacoes] = useState(1);
+  const [pontosUltimos7, setPontosUltimos7] = useState<any[]>([]);
   const [ajustesBancoLista, setAjustesBancoLista] = useState<any[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -498,7 +499,7 @@ export default function MeuHistorico() {
   type Sugestao = { data: string; tipo: string; horario: string; label: string };
 
   const detectarPontosFaltantes = useCallback((): Sugestao[] => {
-    if (!jornada || !pontos) return [];
+    if (!jornada || !pontosUltimos7) return [];
 
     const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
     const hoje = new Date();
@@ -516,7 +517,7 @@ export default function MeuHistorico() {
       if (feriados.includes(diaStr)) continue;
 
       // Pontos desse dia (excluindo ausências)
-      const pontosDoDia = pontos
+      const pontosDoDia = pontosUltimos7
         .filter(p => p.tipo !== 'AUSENCIA' && format(new Date(p.dataHora), 'yyyy-MM-dd') === diaStr)
         .sort((a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
@@ -556,7 +557,16 @@ export default function MeuHistorico() {
     }
 
     return sugestoes.slice(0, 5); // máximo 5 sugestões
-  }, [pontos, jornada, feriados]);
+  }, [pontosUltimos7, jornada, feriados]);
+
+  const carregarPontosUltimos7 = useCallback(async () => {
+    try {
+      const fim = format(new Date(), 'yyyy-MM-dd');
+      const inicio = format(new Date(Date.now() - 7 * 86400000), 'yyyy-MM-dd');
+      const res = await axios.get(`/api/funcionario/historico?inicio=${inicio}&fim=${fim}`);
+      setPontosUltimos7(res.data.pontos || []);
+    } catch {}
+  }, []);
 
   // === AÇÕES DO MODAL ===
   const aplicarSugestao = (sug: Sugestao) => {
@@ -575,6 +585,7 @@ export default function MeuHistorico() {
     setMotivo('');
     setAvisoModal(null);
     setModalAberto(true);
+    carregarPontosUltimos7();
   };
 
   const abrirEdicao = useCallback((ponto: any) => {
@@ -1509,7 +1520,7 @@ export default function MeuHistorico() {
                       )}
 
                       {/* Campos manuais */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Data</label>
                           <input
@@ -1524,7 +1535,7 @@ export default function MeuHistorico() {
                           <select
                             value={tipoNovo}
                             onChange={e => setTipoNovo(e.target.value)}
-                            className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
+                            className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 appearance-none"
                           >
                             <option value="ENTRADA">Entrada</option>
                             <option value="SAIDA_INTERVALO">Saída Café</option>
@@ -1549,12 +1560,19 @@ export default function MeuHistorico() {
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Novo Horário</label>
+                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Novo Horário (HH:MM)</label>
                   <input
-                    type="time"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={5}
+                    placeholder="00:00"
                     value={horaNova}
-                    onChange={e => setHoraNova(e.target.value)}
-                    className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-colors"
+                    onChange={e => {
+                      let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2);
+                      setHoraNova(v);
+                    }}
+                    className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center font-mono tracking-widest outline-none focus:border-purple-500 transition-colors"
                   />
                 </div>
 
