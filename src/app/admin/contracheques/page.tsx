@@ -62,6 +62,8 @@ export default function ContrachequeAdmin() {
   const [usuarioSelecionado, setUsuarioSelecionado] = useState('');
   const [mesSelecionado, setMesSelecionado] = useState('');
   const [arquivo, setArquivo] = useState<File | null>(null);
+  const [orientacao, setOrientacao] = useState<'RETRATO' | 'PAISAGEM'>('RETRATO');
+  const [bulkOrientacao, setBulkOrientacao] = useState<'RETRATO' | 'PAISAGEM'>('RETRATO');
   const [enviando, setEnviando] = useState(false);
   const [buscaFunc, setBuscaFunc] = useState('');
   const [dropdownAberto, setDropdownAberto] = useState(false);
@@ -132,6 +134,7 @@ export default function ContrachequeAdmin() {
       formData.append('file', arquivo);
       formData.append('usuarioId', usuarioSelecionado);
       formData.append('mes', mesSelecionado);
+      formData.append('orientacao', orientacao);
 
       await axios.post('/api/admin/contracheques', formData);
       toast.success('Contracheque enviado com sucesso');
@@ -166,6 +169,7 @@ export default function ContrachequeAdmin() {
         formData.append('file', file);
         formData.append('usuarioId', usuarioId);
         formData.append('mes', bulkMes);
+        formData.append('orientacao', bulkOrientacao);
         await axios.post('/api/admin/contracheques', formData);
         sucesso++;
       } catch {
@@ -364,6 +368,40 @@ export default function ContrachequeAdmin() {
                   className="w-full bg-page border border-border-input rounded-xl py-2.5 px-3 text-sm text-text-secondary file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-purple-500/20 file:text-purple-300 hover:file:bg-purple-500/30 transition-all"
                 />
               </div>
+
+              {/* Orientação */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 block mb-1.5">
+                  Orientação do contracheque
+                </label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setOrientacao('RETRATO')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      orientacao === 'RETRATO'
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                        : 'bg-page border border-border-input text-text-muted hover:bg-hover-bg'
+                    }`}
+                  >
+                    📄 Retrato (em pé)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrientacao('PAISAGEM')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      orientacao === 'PAISAGEM'
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                        : 'bg-page border border-border-input text-text-muted hover:bg-hover-bg'
+                    }`}
+                  >
+                    📃 Paisagem (deitado)
+                  </button>
+                </div>
+
+                {/* Preview */}
+                <PreviewOrientacao orientacao={orientacao} />
+              </div>
             </div>
 
             <button
@@ -401,7 +439,38 @@ export default function ContrachequeAdmin() {
                   className="w-full bg-page border border-border-input hover:border-purple-500/50 rounded-xl py-3 px-3 text-sm text-text-secondary outline-none focus:border-purple-500 transition-all"
                 />
               </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-text-faint tracking-wider ml-1 block mb-1.5">
+                  Orientação
+                </label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setBulkOrientacao('RETRATO')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      bulkOrientacao === 'RETRATO'
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                        : 'bg-page border border-border-input text-text-muted hover:bg-hover-bg'
+                    }`}
+                  >
+                    📄 Retrato
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkOrientacao('PAISAGEM')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      bulkOrientacao === 'PAISAGEM'
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                        : 'bg-page border border-border-input text-text-muted hover:bg-hover-bg'
+                    }`}
+                  >
+                    📃 Paisagem
+                  </button>
+                </div>
+              </div>
             </div>
+
+            <PreviewOrientacao orientacao={bulkOrientacao} />
 
             <p className="text-xs text-text-muted">
               Selecione um arquivo PDF para cada funcionario. O sistema enviara todos de uma vez.
@@ -652,6 +721,72 @@ export default function ContrachequeAdmin() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PreviewOrientacao({ orientacao }: { orientacao: 'RETRATO' | 'PAISAGEM' }) {
+  const isPaisagem = orientacao === 'PAISAGEM';
+
+  return (
+    <div className="bg-page border border-border-subtle rounded-xl p-4">
+      <p className="text-[10px] text-text-faint font-bold uppercase tracking-wider mb-2">
+        Pré-visualização · onde a assinatura ficará
+      </p>
+      <div className="flex items-center justify-center py-4">
+        {/* Folha simulada */}
+        <div
+          className={`relative bg-white border-2 border-border-default rounded shadow-lg overflow-hidden ${
+            isPaisagem ? 'w-48 h-32' : 'w-32 h-48'
+          }`}
+        >
+          {/* Linhas simulando conteúdo */}
+          {isPaisagem ? (
+            // Paisagem: conteúdo rotacionado (linhas verticais representando texto deitado)
+            <div className="absolute inset-y-3 right-3 flex gap-1.5">
+              <div className="w-1 bg-gray-300 rounded h-full" />
+              <div className="w-1 bg-gray-200 rounded h-4/5" />
+              <div className="w-1 bg-gray-200 rounded h-3/5" />
+              <div className="w-1 bg-gray-300 rounded h-full" />
+              <div className="w-1 bg-gray-200 rounded h-4/5" />
+            </div>
+          ) : (
+            // Retrato: linhas horizontais normais
+            <div className="absolute inset-x-3 top-3 space-y-1.5">
+              <div className="h-1 bg-gray-300 rounded w-full" />
+              <div className="h-1 bg-gray-200 rounded w-4/5" />
+              <div className="h-1 bg-gray-200 rounded w-3/5" />
+              <div className="h-1 bg-gray-300 rounded w-full" />
+              <div className="h-1 bg-gray-200 rounded w-4/5" />
+            </div>
+          )}
+
+          {/* Marca da assinatura */}
+          {isPaisagem ? (
+            // Paisagem: assinatura no lado esquerdo, rotacionada para ficar "em pé" quando documento for virado
+            <div className="absolute left-2 top-1/2 -translate-y-1/2">
+              <div
+                className="bg-emerald-500/20 border border-emerald-500/50 rounded px-2 py-1 text-[8px] font-bold text-emerald-700 whitespace-nowrap"
+                style={{ transform: 'rotate(90deg)' }}
+              >
+                ✓ Assinatura
+              </div>
+            </div>
+          ) : (
+            // Retrato: assinatura centralizada no rodapé
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2">
+              <div className="bg-emerald-500/20 border border-emerald-500/50 rounded px-2 py-1 text-[8px] font-bold text-emerald-700 whitespace-nowrap">
+                ✓ Assinatura
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <p className="text-[10px] text-text-muted text-center">
+        {isPaisagem
+          ? 'A assinatura será inserida rotacionada 90° no rodapé do documento (lado esquerdo do PDF deitado)'
+          : 'A assinatura será inserida centralizada no rodapé do documento'}
+      </p>
     </div>
   );
 }

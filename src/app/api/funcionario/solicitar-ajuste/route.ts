@@ -200,15 +200,60 @@ export async function POST(request: Request) {
     }
 
     // ============================
-    // CRIAR SOLICITAÇÃO
-    // - edição: salva tipo como null (ou pode salvar tipoEfetivo se quiser)
-    // - inclusão: salva tipoEfetivo
+    // VERIFICA AUTO-GESTÃO
+    // Se empresa permite, funcionário cria/edita ponto diretamente (sem aprovação)
+    // ============================
+    // @ts-ignore
+    const empresaIdSess = session.user.empresaId as string;
+    const empresaCfg = await prisma.empresa.findUnique({
+      where: { id: empresaIdSess },
+      select: { configuracoes: true },
+    });
+    const autoGestao = !!(empresaCfg?.configuracoes as any)?.permitirEdicaoFunc;
+
+    if (autoGestao) {
+      if (pontoId) {
+        // Edição direta
+        await prisma.ponto.update({
+          where: { id: pontoId },
+          data: { dataHora: new Date(novoHorario) },
+        });
+      } else {
+        // Inclusão direta
+        await prisma.ponto.create({
+          data: {
+            usuarioId: session.user.id,
+            dataHora: new Date(novoHorario),
+            latitude: 0,
+            longitude: 0,
+            tipo: tipoEfetivo!,
+            subTipo: tipoEfetivo!,
+            endereco: 'Auto-gestão (funcionário)',
+          },
+        });
+      }
+
+      await registrarLog({
+        empresaId: empresaIdSess,
+        usuarioId: session.user.id,
+        autor: session.user.name || 'Funcionário',
+        acao: pontoId ? 'AUTO_EDICAO' : 'AUTO_INCLUSAO',
+        detalhes: pontoId
+          ? `Editou o próprio ponto (auto-gestão) para ${new Date(novoHorario).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | Motivo: "${motivo}"`
+          : `Incluiu ${String(tipoEfetivo).replaceAll('_', ' ')} (auto-gestão) em ${new Date(novoHorario).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | Motivo: "${motivo}"`,
+      });
+
+      return NextResponse.json({ success: true, autoGestao: true });
+    }
+
+    // ============================
+    // CRIAR SOLICITAÇÃO (fluxo padrão com aprovação do admin)
     // ============================
     const solicitacao = await prisma.solicitacaoAjuste.create({
       data: {
         usuarioId: session.user.id,
         pontoId: pontoId || null,
-        tipo: pontoId ? null : tipoEfetivo, // <- mantém comportamento: edição não precisa tipo
+        tipo: pontoId ? null : tipoEfetivo,
         novoHorario: new Date(novoHorario),
         motivo,
         status: 'PENDENTE',

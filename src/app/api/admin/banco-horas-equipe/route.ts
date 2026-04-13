@@ -155,6 +155,13 @@ export async function GET(request: Request) {
     // Calcular saldo de cada funcionário
     const isAcumulado = !mesParam;
 
+    const empresaConfig = await prisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: { configuracoes: true },
+    });
+    const tolCfg = (empresaConfig?.configuracoes as any)?.toleranciaMinutos;
+    const toleranciaMinutos = typeof tolCfg === 'number' ? tolCfg : 10;
+
     const resultado = funcionarios.map(func => {
       // Usar data de criação do funcionário se for depois do início do período
       const criadoEmStr = format(new Date(func.criadoEm), 'yyyy-MM-dd');
@@ -170,6 +177,7 @@ export async function GET(request: Request) {
         dataFim,
         horasExtrasAprovadas: horasExtras,
         ajustesBanco: ajustes.map(a => ({ ...a, dataFolga: a.dataFolga ?? undefined })),
+        toleranciaMinutos,
       });
 
       // Extrair minutos do saldo formatado

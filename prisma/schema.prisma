@@ -297,6 +297,7 @@ model Contracheque {
   assinado       Boolean   @default(false)
   assinadoEm     DateTime?
   assinaturaUrl  String?   // URL da assinatura digital do funcionário no momento da confirmação
+  orientacao     String    @default("RETRATO") // RETRATO | PAISAGEM
 
   usuario        Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 

@@ -64,6 +64,7 @@ export async function POST(request: Request) {
     const file = formData.get('file') as File | null;
     const usuarioId = formData.get('usuarioId') as string;
     const mes = formData.get('mes') as string;
+    const orientacao = (formData.get('orientacao') as string) || 'RETRATO';
 
     if (!file || !usuarioId || !mes) {
       return NextResponse.json({ erro: 'Campos obrigatórios: file, usuarioId, mes' }, { status: 400 });
@@ -111,6 +112,10 @@ export async function POST(request: Request) {
           enviadoPorNome: session.user.nome || session.user.name || 'Admin',
           visualizado: false,
           visualizadoEm: null,
+          orientacao,
+          assinado: false,
+          assinadoEm: null,
+          assinaturaUrl: null,
         },
       });
 
@@ -142,6 +147,7 @@ export async function POST(request: Request) {
         enviadoPorId: session.user.id,
         // @ts-ignore
         enviadoPorNome: session.user.nome || session.user.name || 'Admin',
+        orientacao,
       },
     });
 

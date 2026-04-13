@@ -114,8 +114,10 @@ export function calcularEstatisticas(args: {
   dataFim: string;
   horasExtrasAprovadas?: Array<{ usuarioId: string; data: string; minutosExtra: number }>;
   ajustesBanco?: Array<{ usuarioId: string; data: string; dataFolga?: string; minutos: number; tipo?: string }>;
+  toleranciaMinutos?: number;
 }) {
   const { filtroUsuario, registros, usuarios, feriados, feriadosParciais, dataInicio, dataFim, horasExtrasAprovadas, ajustesBanco } = args;
+  const tolerancia = typeof args.toleranciaMinutos === 'number' ? args.toleranciaMinutos : 10;
 
   if (!filtroUsuario) return null;
 
@@ -560,12 +562,11 @@ export function calcularEstatisticas(args: {
       // Cortar hora extra no saldo: se trabalhou além da meta + tolerância, corta no expediente
       // A menos que haja aprovação explícita
       // Também corta quando dia é folga (meta=0) mas trabalhou
-      const toleranciaHE = 10;
       let trabalhadoEfetivo = trabalhado;
 
       const temHoraExtra = meta > 0
-        ? trabalhado > meta + toleranciaHE
-        : trabalhado > toleranciaHE; // folga: qualquer trabalho é extra
+        ? trabalhado > meta + tolerancia
+        : trabalhado > tolerancia; // folga: qualquer trabalho é extra
 
       if (temHoraExtra) {
         trabalhadoEfetivo = meta; // corta no expediente (0 se folga)
@@ -580,7 +581,7 @@ export function calcularEstatisticas(args: {
 
       let saldoDia = trabalhadoEfetivo - meta;
 
-      if (Math.abs(saldoDia) <= 10) {
+      if (Math.abs(saldoDia) <= tolerancia) {
         saldoDia = 0;
       }
 

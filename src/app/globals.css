@@ -178,3 +178,15 @@ body {
 .blog-content a:hover {
   color: #c084fc;
 }
+
+/* Sidebar scrollbar */
+.sidebar-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.25);
+  border-radius: 9999px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.45);
+}
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(168,85,247,0.25) transparent; }

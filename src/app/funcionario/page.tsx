@@ -98,20 +98,42 @@ export default function Home() {
 
       if (ultimoPontoData && (statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO')) {
         const diffMs = agora.getTime() - new Date(ultimoPontoData).getTime();
+        const decorridoSeg = Math.floor(diffMs / 1000);
 
-        const totalSeconds = Math.floor(diffMs / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
+        // Limite em segundos conforme tipo de pausa
+        let limiteSeg = 0;
+        if (statusPonto === 'SAIDA_INTERVALO') {
+          const limiteCafeMin = (configs as any).duracaoPausaCafeMin || 15;
+          limiteSeg = limiteCafeMin * 60;
+        } else if (statusPonto === 'SAIDA_ALMOCO') {
+          let almocoMin = 60;
+          try {
+            if (jornadaHoje) {
+              const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+              const diaAtual = diasMap[agora.getDay()];
+              const jd = jornadaHoje[diaAtual];
+              if (jd?.s1 && jd?.e2) {
+                const parse = (h: string) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; };
+                almocoMin = parse(jd.e2) - parse(jd.s1);
+              }
+            }
+          } catch {}
+          limiteSeg = almocoMin * 60;
+        }
 
-        const timeString = [hours, minutes, seconds]
-          .map(v => (v < 10 ? "0" + v : v))
-          .join(":");
+        const restanteSeg = limiteSeg - decorridoSeg;
+        const negativo = restanteSeg < 0;
+        const abs = Math.abs(restanteSeg);
+        const hours = Math.floor(abs / 3600);
+        const minutes = Math.floor((abs % 3600) / 60);
+        const seconds = abs % 60;
+        const timeString = (negativo ? '-' : '') + [hours, minutes, seconds]
+          .map(v => (v < 10 ? '0' + v : String(v)))
+          .join(':');
 
         setTempoIntervalo(timeString);
 
-        // Alerta de café excedido (> 15min)
-        if (statusPonto === 'SAIDA_INTERVALO' && minutes >= 15 && !alertaIntervaloMostrado) {
+        if (statusPonto === 'SAIDA_INTERVALO' && negativo && !alertaIntervaloMostrado) {
           setAlertaIntervaloMostrado(true);
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         }
@@ -120,7 +142,7 @@ export default function Home() {
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [ultimoPontoData, statusPonto, alertaIntervaloMostrado]);
+  }, [ultimoPontoData, statusPonto, alertaIntervaloMostrado, configs, jornadaHoje]);
 
   // Recarrega dados de progresso a cada 60s
   useEffect(() => {
@@ -529,10 +551,12 @@ export default function Home() {
           <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isAlmoco ? 'text-orange-500/70' : 'text-amber-500/70'} mb-2`}>
             {isAlmoco ? 'Em Almoço' : 'Em Pausa'}
           </p>
-          <p className="text-5xl font-mono font-bold text-text-primary tracking-widest tabular-nums mb-3">
+          <p className={`text-5xl font-mono font-bold tracking-widest tabular-nums mb-3 ${tempoIntervalo.startsWith('-') ? 'text-red-400' : 'text-text-primary'}`}>
             {tempoIntervalo}
           </p>
-          <p className="text-xs text-text-faint">Tempo de intervalo</p>
+          <p className={`text-xs ${tempoIntervalo.startsWith('-') ? 'text-red-400/70' : 'text-text-faint'}`}>
+            {tempoIntervalo.startsWith('-') ? 'Pausa excedida' : 'Tempo restante'}
+          </p>
         </div>
       );
     }
@@ -813,7 +837,7 @@ export default function Home() {
             </div>
             <div>
               <p className="text-red-400 font-bold text-sm">Pausa excedida!</p>
-              <p className="text-red-400/70 text-xs">Seu café ultrapassou 15 minutos</p>
+              <p className="text-red-400/70 text-xs">Seu café ultrapassou {(configs as any).duracaoPausaCafeMin || 15} minutos</p>
             </div>
           </div>
         )}

@@ -187,106 +187,22 @@ export default function AdminDashboard() {
               </button>
 
               <div className="flex items-center gap-1 bg-surface backdrop-blur border border-border-subtle p-1.5 rounded-xl">
-                <Link
-                  data-tour="admin-profile"
-                  href="/admin/perfil"
-                  className="p-2.5 hover:bg-hover-bg-strong rounded-lg text-text-muted hover:text-text-primary transition-colors"
-                  title="Minha Conta"
-                >
-                  <User size={18} />
-                </Link>
                 <ThemeToggle />
-                <button
-                  onClick={() => { localStorage.removeItem('workid_rt'); signOut({ callbackUrl: '/login' }); }}
-                  className="p-2.5 hover:bg-red-500/20 text-text-muted hover:text-red-400 rounded-lg transition-colors"
-                  title="Sair"
-                >
-                  <LogOut size={18} />
-                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <PushNotificationPrompt />
-        <InstallPrompt />
-
-        {/* === AÇÕES RÁPIDAS === */}
-        <div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 grid-flow-dense">
-            <ActionCard
-              dataTour="admin-ausencia"
-              onClick={a.abrirModalAusencia}
-              icon={<Plane size={20} className="text-text-secondary group-hover:text-text-primary" />}
-              label="Lançar Ausência"
-              className="shadow-lg shadow-black/20"
-            />
-
-            <ActionCard
-              dataTour="admin-ajustes"
-              href="/admin/solicitacoes"
-              icon={<AlertCircle size={20} className="text-purple-400" />}
-              label="Ajustes"
-              accent="purple"
-              badge={a.pendenciasAjuste + a.pendenciasHoraExtra}
-            />
-
-            {!a.configs.ocultar_menu_atestados && (
-              <ActionCard
-                dataTour="admin-atestados"
-                href="/admin/pendencias"
-                icon={<ShieldAlert size={20} className="text-amber-400" />}
-                label="Atestados"
-                accent="amber"
-                badge={a.pendenciasAusencia}
-              />
-            )}
-
-            <ActionCard
-              dataTour="admin-team"
-              href="/admin/funcionarios"
-              icon={<User size={20} className="text-purple-400 group-hover:text-purple-300" />}
-              label="Gestão da Equipe"
-              accent="purple"
-              className="col-span-2 md:col-span-1 order-first md:order-none p-5 md:p-4 ring-1 ring-purple-500/15 shadow-lg shadow-black/20"
-            />
-
-            <ActionCard
-              dataTour="admin-visao-geral"
-              href="/admin/dashboard"
-              icon={<LayoutDashboard size={20} className="text-text-muted group-hover:text-text-primary" />}
-              label="Visão Geral"
-            />
-
-            <ActionCard
-              dataTour="admin-auditoria"
-              href="/admin/logs"
-              icon={<ScrollText size={20} className="text-text-muted group-hover:text-text-primary" />}
-              label="Auditoria"
-            />
-
-            <ActionCard
-              dataTour="admin-feriados"
-              href="/admin/feriados"
-              icon={<CalendarDays size={20} className="text-text-muted group-hover:text-text-primary" />}
-              label="Feriados"
-            />
-
-            <ActionCard
-              href="/admin/comunicados"
-              icon={<Megaphone size={20} className="text-purple-400 group-hover:text-purple-300" />}
-              label="Comunicados"
-              accent="purple"
-            />
-
-            <ActionCard
-              href="/admin/contracheques"
-              icon={<FileText size={20} className="text-purple-400 group-hover:text-purple-300" />}
-              label="Contracheques"
-              accent="purple"
-            />
-
-          </div>
+        {/* === AÇÃO RÁPIDA === */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            data-tour="admin-ausencia"
+            onClick={a.abrirModalAusencia}
+            className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 rounded-xl text-purple-300 hover:text-purple-200 text-sm font-semibold transition-all shadow-lg shadow-black/20"
+          >
+            <Plane size={16} />
+            Lançar Ausência
+          </button>
         </div>
 
         {/* === FILTROS === */}

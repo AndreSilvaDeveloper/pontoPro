@@ -433,6 +433,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     return filtroUsuario ? usuarios.find((u) => u.id === filtroUsuario) : null;
   }, [filtroUsuario, usuarios]);
 
+  const configs = empresa.configuracoes || {};
+  const toleranciaMinutos = typeof configs.toleranciaMinutos === 'number' ? configs.toleranciaMinutos : 10;
+
   const stats = useMemo(() => {
     return calcularEstatisticas({
       filtroUsuario,
@@ -444,10 +447,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       dataFim,
       horasExtrasAprovadas,
       ajustesBanco,
+      toleranciaMinutos,
     });
-  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas, ajustesBanco]);
-
-  const configs = empresa.configuracoes || {};
+  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas, ajustesBanco, toleranciaMinutos]);
 
   return {
     registros,

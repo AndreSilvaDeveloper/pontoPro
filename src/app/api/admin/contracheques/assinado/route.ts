@@ -62,9 +62,10 @@ export async function GET(request: Request) {
       sigImage = await pdfDoc.embedJpg(sigBytes);
     }
 
-    // Detectar orientação: se página é mais larga que alta ou tem rotação, é paisagem
+    // Usar orientação definida pelo admin ao enviar o contracheque
+    const orientacao = (contracheque as any).orientacao || 'RETRATO';
+    const isLandscape = orientacao === 'PAISAGEM';
     const rotation = lastPage.getRotation().angle;
-    const isLandscape = width > height || rotation === 90 || rotation === 270;
 
     // Dimensões da assinatura
     const sigAspect = sigImage.width / sigImage.height;
@@ -79,43 +80,45 @@ export async function GET(request: Request) {
       : '';
     const dataTexto = `Assinado digitalmente em ${dataAssinatura}`;
 
-    if (isLandscape && (rotation === 90 || rotation === 270)) {
-      // Página rotacionada (como contracheques em paisagem)
-      // Desenhar rotacionado: a assinatura fica "em pé" visualmente
-      // No PDF rotacionado 90°, x vai para cima e y vai para a direita
-      const sigX = (height - sigWidth) / 2; // centralizar no eixo visual
-      const sigY = 50;
+    if (isLandscape) {
+      // Conteúdo do PDF está em paisagem (deitado). Desenhar rotacionado 90° anti-horário
+      // para que visualmente fique "em pé" quando o usuário girar o documento.
+      // No pdf-lib, a rotação é feita com degrees({angle: 90}) e o ponto x,y se torna o canto inferior esquerdo após rotação.
+      const { degrees } = await import('pdf-lib');
+
+      // Rotação -90° (270°): a assinatura fica virada corretamente quando o documento é visto em pé
+      // Com rotação -90°, o desenho cresce para baixo e para a esquerda a partir de (sigX, sigY)
+      const sigX = 50; // próximo da borda esquerda do PDF
+      const sigY = (height + sigWidth) / 2; // centralizado, ajustado pela rotação
 
       lastPage.drawImage(sigImage, {
         x: sigX,
         y: sigY,
         width: sigWidth,
         height: sigHeight,
+        rotate: degrees(-90),
       });
 
-      lastPage.drawLine({
-        start: { x: sigX, y: sigY - 2 },
-        end: { x: sigX + sigWidth, y: sigY - 2 },
-        thickness: 0.5,
-        color: rgb(0.3, 0.3, 0.3),
-      });
-
+      // Nome - rotacionado -90°
       const nomeWidth = font.widthOfTextAtSize(nome, fontSize);
       lastPage.drawText(nome, {
-        x: sigX + (sigWidth - nomeWidth) / 2,
-        y: sigY - 14,
+        x: sigX + sigHeight + 10,
+        y: sigY - (sigWidth - nomeWidth) / 2,
         size: fontSize,
         font,
         color: rgb(0.2, 0.2, 0.2),
+        rotate: degrees(-90),
       });
 
+      // Data - rotacionada -90°
       const dataWidth = font.widthOfTextAtSize(dataTexto, fontSize - 1);
       lastPage.drawText(dataTexto, {
-        x: sigX + (sigWidth - dataWidth) / 2,
-        y: sigY - 24,
+        x: sigX + sigHeight + 20,
+        y: sigY - (sigWidth - dataWidth) / 2,
         size: fontSize - 1,
         font,
         color: rgb(0.5, 0.5, 0.5),
+        rotate: degrees(-90),
       });
     } else {
       // Página normal (retrato) ou paisagem sem rotação

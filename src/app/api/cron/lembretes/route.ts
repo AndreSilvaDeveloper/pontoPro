@@ -76,6 +76,11 @@ const LEMBRETES = {
     body: 'Sua pausa para café já passou de 15 minutos.',
     tag: 'lembrete-pausa-cafe',
   },
+  ESQUECEU_SAIDA: {
+    title: 'Você esqueceu de bater o ponto?',
+    body: 'Seu horário de saída já passou há mais de 30 minutos e você ainda não bateu o ponto.',
+    tag: 'lembrete-esqueceu-saida',
+  },
 } as const;
 
 type TipoLembrete = keyof typeof LEMBRETES;
@@ -108,6 +113,7 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         jornada: true,
+        empresa: { select: { configuracoes: true } },
         pontos: {
           where: { dataHora: { gte: inicioHoje, lte: fimHoje } },
           orderBy: { dataHora: 'desc' },
@@ -134,6 +140,10 @@ export async function GET(req: NextRequest) {
     const inserts: { usuarioId: string; tipo: string; data: string }[] = [];
 
     for (const usuario of usuarios) {
+      const cfg = (usuario.empresa?.configuracoes as any) || {};
+      if (cfg.lembretesAtivos === false) continue;
+      const duracaoPausaCafeMin = typeof cfg.duracaoPausaCafeMin === 'number' ? cfg.duracaoPausaCafeMin : 15;
+
       const jornada = (usuario.jornada as any)?.[diaKey];
       if (!jornada?.ativo) continue;
 
@@ -214,8 +224,18 @@ export async function GET(req: NextRequest) {
       if (deveLembrar('PAUSA_CAFE_EXCEDIDA') && ultimoTipo === 'SAIDA_INTERVALO') {
         const saidaCafe = new Date(ultimoPonto.dataHora);
         const diffMin = Math.floor((Date.now() - saidaCafe.getTime()) / 60000);
-        if (diffMin > 15) {
-          agendar('PAUSA_CAFE_EXCEDIDA');
+        if (diffMin > duracaoPausaCafeMin) {
+          agendar('PAUSA_CAFE_EXCEDIDA', `Sua pausa para café já passou de ${duracaoPausaCafeMin} minutos.`);
+        }
+      }
+
+      // 5) Esqueceu de bater ponto de saída (>30 min após horário, último ponto não é SAIDA)
+      if (s2 > 0 && deveLembrar('ESQUECEU_SAIDA')) {
+        if (minutosAgora >= s2 + 30 && minutosAgora < s2 + 180) {
+          // Último ponto do dia não é SAIDA e não está em almoço/intervalo (já voltou)
+          if (ultimoTipo && !['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(ultimoTipo)) {
+            agendar('ESQUECEU_SAIDA');
+          }
         }
       }
     }

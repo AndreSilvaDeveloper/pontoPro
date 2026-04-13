@@ -159,8 +159,8 @@ export default function ComunicadosFuncionario() {
 
       {/* Modal detalhe */}
       {selecionado && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-overlay backdrop-blur-sm animate-in fade-in">
-          <div className="bg-surface-solid border border-border-default w-full max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
+          <div className="bg-surface-solid border border-border-default w-full max-w-lg rounded-2xl shadow-2xl max-h-[80dvh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="sticky top-0 bg-surface-solid border-b border-border-subtle p-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {(() => {
