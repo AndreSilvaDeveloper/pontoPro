@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { driver, DriveStep, Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
-const TOUR_VERSION = "v1";
+const TOUR_VERSION = "v2";
 
 export const FUNC_TOUR_RESTART_EVENT = "funcionario-tour-restart";
 
@@ -25,8 +25,7 @@ function getAllSteps(): DriveStep[] {
       element: "body",
       popover: {
         title: "Bem-vindo!",
-        description:
-          "Vou te mostrar rapidinho como bater o ponto e usar o sistema.",
+        description: "Vou te mostrar como bater o ponto e usar o app rapidinho.",
         side: "bottom",
         align: "center",
       },
@@ -35,7 +34,7 @@ function getAllSteps(): DriveStep[] {
       element: '[data-tour="emp-header"]',
       popover: {
         title: "Seu painel",
-        description: "Aqui aparece seu nome e o horário atual. Use o botão Tutorial para rever este guia quando quiser.",
+        description: "Aqui aparecem seu nome e o horário atual. Use o botão Tutorial pra rever este guia.",
         side: "bottom",
         align: "start",
       },
@@ -44,8 +43,7 @@ function getAllSteps(): DriveStep[] {
       element: '[data-tour="emp-gps"]',
       popover: {
         title: "Ativar localização",
-        description:
-          "Toque aqui para permitir o GPS. Sem isso, não é possível bater o ponto.",
+        description: "Toque aqui para permitir o GPS. Sem isso, não dá pra bater o ponto.",
         side: "top",
         align: "center",
       },
@@ -54,8 +52,7 @@ function getAllSteps(): DriveStep[] {
       element: '[data-tour="emp-actions"]',
       popover: {
         title: "Bater ponto",
-        description:
-          "Após ativar o GPS, os botões aparecem aqui. Toque para registrar entrada, pausas e saída.",
+        description: "Depois que o GPS estiver ativo, os botões de entrada, pausas e saída aparecem aqui.",
         side: "top",
         align: "start",
       },
@@ -64,8 +61,7 @@ function getAllSteps(): DriveStep[] {
       element: '[data-tour="emp-camera"]',
       popover: {
         title: "Foto para validação",
-        description:
-          "Se a empresa exigir, a câmera aparece aqui. Posicione seu rosto e confirme o ponto.",
+        description: "Se sua empresa exigir foto, a câmera aparece aqui. Posicione o rosto e confirme.",
         side: "bottom",
         align: "start",
       },
@@ -73,17 +69,35 @@ function getAllSteps(): DriveStep[] {
     {
       element: '[data-tour="emp-forgot"]',
       popover: {
-        title: "Esqueceu de bater o ponto?",
-        description: "Toque aqui para solicitar a inclusão do registro. Seu gestor vai aprovar ou recusar.",
+        title: "Esqueceu de bater?",
+        description: "Toque aqui para solicitar a inclusão. Dependendo da empresa, vai pra aprovação do admin.",
         side: "top",
         align: "start",
+      },
+    },
+    {
+      element: '[data-tour="emp-bottomnav"]',
+      popover: {
+        title: "Menu do app",
+        description: "Aqui embaixo você navega entre Ponto, Histórico, Avisos, Holerite e Mais opções.",
+        side: "top",
+        align: "center",
+      },
+    },
+    {
+      element: '[data-tour="emp-mais"]',
+      popover: {
+        title: "Botão Mais",
+        description: "Aqui ficam ausências, sua assinatura, sugestões de pontos esquecidos e o botão de sair.",
+        side: "top",
+        align: "end",
       },
     },
     {
       element: '[data-tour="emp-logout"]',
       popover: {
         title: "Sair do sistema",
-        description: "Toque aqui para encerrar sua sessão.",
+        description: "Esse botão também encerra sua sessão. Você ainda encontra ele dentro do menu Mais.",
         side: "left",
         align: "center",
       },

@@ -5,6 +5,29 @@ import { authOptions } from '../[...nextauth]/route';
 import jsPDF from 'jspdf';
 import { storagePut } from '@/lib/storage';
 import { format } from 'date-fns';
+import fs from 'fs';
+import path from 'path';
+
+async function carregarArquivoLocal(url: string): Promise<ArrayBuffer | null> {
+  const marker = '/api/uploads/';
+  const idx = url.indexOf(marker);
+  if (idx !== -1) {
+    const LOCAL_DIR = process.env.STORAGE_LOCAL_DIR || path.join(process.cwd(), 'uploads');
+    const relativePath = url.substring(idx + marker.length).split('?')[0];
+    const absolutePath = path.join(LOCAL_DIR, relativePath);
+    if (fs.existsSync(absolutePath)) {
+      const buf = fs.readFileSync(absolutePath);
+      return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+    }
+  }
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -156,9 +179,8 @@ export async function POST(request: Request) {
     // Incluir assinatura do funcionário se existir
     if (usuario.assinaturaUrl) {
       try {
-        const assinaturaRes = await fetch(usuario.assinaturaUrl);
-        if (assinaturaRes.ok) {
-          const assinaturaArrayBuffer = await assinaturaRes.arrayBuffer();
+        const assinaturaArrayBuffer = await carregarArquivoLocal(usuario.assinaturaUrl);
+        if (assinaturaArrayBuffer) {
           const assinaturaUint8 = new Uint8Array(assinaturaArrayBuffer);
 
           const isPNG = assinaturaUint8[0] === 0x89 && assinaturaUint8[1] === 0x50;
@@ -173,6 +195,8 @@ export async function POST(request: Request) {
           const imgH = 25;
           const imgX = (pageW - imgW) / 2;
           doc.addImage(assinaturaDataUri, formato, imgX, assinaturaY, imgW, imgH);
+        } else {
+          console.warn('Assinatura não carregada do storage:', usuario.assinaturaUrl);
         }
       } catch (e) {
         console.error('Erro ao carregar assinatura para PDF:', e);

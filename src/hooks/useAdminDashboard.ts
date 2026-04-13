@@ -86,7 +86,13 @@ export function useAdminDashboard() {
   const [ajustesBanco, setAjustesBanco] = useState<Array<{ usuarioId: string; data: string; dataFolga?: string; minutos: number; tipo?: string }>>([]);
 
   const [modalAjusteBancoAberto, setModalAjusteBancoAberto] = useState(false);
+  const [ajusteBancoPreSelected, setAjusteBancoPreSelected] = useState<{ usuarioId?: string; tipo?: 'PAGAMENTO_HE' | 'COMPENSACAO_FOLGA' | 'CORRECAO_MANUAL' } | null>(null);
   const [bancoRefreshKey, setBancoRefreshKey] = useState(0);
+
+  const abrirAjusteBanco = (usuarioId?: string, tipo?: 'PAGAMENTO_HE' | 'COMPENSACAO_FOLGA' | 'CORRECAO_MANUAL') => {
+    setAjusteBancoPreSelected({ usuarioId, tipo });
+    setModalAjusteBancoAberto(true);
+  };
 
   // ✅ NOVO: Billing status central
   const [billing, setBilling] = useState<BillingStatus | null>(null);
@@ -472,6 +478,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     pendenciasHoraExtra,
     modalAjusteBancoAberto,
     setModalAjusteBancoAberto,
+    ajusteBancoPreSelected,
+    setAjusteBancoPreSelected,
+    abrirAjusteBanco,
     bancoRefreshKey,
     setBancoRefreshKey,
 

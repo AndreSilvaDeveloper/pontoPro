@@ -24,7 +24,7 @@ import {
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 
-type MenuItem = { href: string; label: string; icon: any; badge?: number; accent?: string };
+type MenuItem = { href: string; label: string; icon: any; badge?: number; accent?: string; tour?: string };
 type MenuCategory = { label: string; items: MenuItem[] };
 
 interface Props {
@@ -64,35 +64,35 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
     {
       label: 'Equipe',
       items: [
-        { href: '/admin/funcionarios', label: 'Gestão da Equipe', icon: Users, accent: 'purple' },
+        { href: '/admin/funcionarios', label: 'Gestão da Equipe', icon: Users, accent: 'purple', tour: 'sidebar-team' },
       ],
     },
     {
       label: 'Ponto & Aprovações',
       items: [
-        { href: '/admin/solicitacoes', label: 'Ajustes', icon: AlertCircle, badge: pendenciasAjuste, accent: 'purple' },
-        { href: '/admin/pendencias', label: 'Atestados', icon: ShieldAlert, badge: pendenciasAusencia, accent: 'amber' },
-        { href: '/admin/comunicados', label: 'Comunicados', icon: Megaphone, accent: 'purple' },
+        { href: '/admin/solicitacoes', label: 'Ajustes', icon: AlertCircle, badge: pendenciasAjuste, accent: 'purple', tour: 'sidebar-ajustes' },
+        { href: '/admin/pendencias', label: 'Atestados', icon: ShieldAlert, badge: pendenciasAusencia, accent: 'amber', tour: 'sidebar-atestados' },
+        { href: '/admin/comunicados', label: 'Comunicados', icon: Megaphone, accent: 'purple', tour: 'sidebar-comunicados' },
       ],
     },
     {
       label: 'Documentos',
       items: [
-        { href: '/admin/contracheques', label: 'Contracheques', icon: FileText, accent: 'purple' },
+        { href: '/admin/contracheques', label: 'Contracheques', icon: FileText, accent: 'purple', tour: 'sidebar-contracheques' },
         { href: '/admin/relatorio-mensal', label: 'Relatório Mensal', icon: FileText },
       ],
     },
     {
       label: 'Auditoria',
       items: [
-        { href: '/admin/logs', label: 'Auditoria', icon: ScrollText },
+        { href: '/admin/logs', label: 'Auditoria', icon: ScrollText, tour: 'sidebar-auditoria' },
       ],
     },
     {
       label: 'Configurações',
       items: [
         { href: '/admin/feriados', label: 'Feriados', icon: CalendarDays },
-        { href: '/admin/configuracoes', label: 'Configurações', icon: Settings },
+        { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, tour: 'sidebar-configuracoes' },
       ],
     },
   ];
@@ -141,6 +141,7 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
                   <li key={item.href}>
                     <Link
                       href={item.href}
+                      data-tour={item.tour}
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                         active
                           ? 'bg-purple-500/15 text-purple-300 border border-purple-500/20'
@@ -219,6 +220,7 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
 
       {/* Sidebar desktop */}
       <aside
+        data-tour="admin-sidebar"
         className={`hidden lg:flex fixed top-0 left-0 h-screen bg-surface-solid border-r border-purple-500/10 z-30 transition-all duration-300 shadow-[8px_0_32px_rgba(0,0,0,0.45),2px_0_8px_rgba(168,85,247,0.08)] ${
           collapsed ? 'w-16' : 'w-64'
         }`}

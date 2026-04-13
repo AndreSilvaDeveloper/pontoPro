@@ -449,7 +449,7 @@ export default function AdminDashboard() {
         )}
 
         {/* === BANCO DE HORAS DA EQUIPE === */}
-        <BancoHorasEquipe onAjustar={() => a.setModalAjusteBancoAberto(true)} refreshKey={a.bancoRefreshKey} />
+        <BancoHorasEquipe onAjustar={a.abrirAjusteBanco} refreshKey={a.bancoRefreshKey} />
 
         {/* === TABELA (SEPARADA) === */}
         <AdminRegistrosTable
@@ -549,9 +549,11 @@ export default function AdminDashboard() {
         {/* === MODAL AJUSTE BANCO DE HORAS === */}
         <ModalAjusteBancoHoras
           aberto={a.modalAjusteBancoAberto}
-          onClose={() => a.setModalAjusteBancoAberto(false)}
+          onClose={() => { a.setModalAjusteBancoAberto(false); a.setAjusteBancoPreSelected(null); }}
           usuarios={a.usuarios}
-          onConfirmar={() => { a.setBancoRefreshKey((k: number) => k + 1); a.carregarDados(); }}
+          funcionarioPreSelecionado={a.ajusteBancoPreSelected?.usuarioId || null}
+          tipoPreSelecionado={a.ajusteBancoPreSelected?.tipo || null}
+          onConfirmar={() => { a.setBancoRefreshKey((k: number) => k + 1); a.carregarDados(); a.setAjusteBancoPreSelected(null); }}
         />
 
         {/* === MODAL EDITAR JORNADA (já separado) === */}

@@ -102,7 +102,7 @@ export default function ModalLancarAusencia({
     (suportaParcial && hasTimeSupport && folgaHorarioInvalido);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 lg:left-64 z-[200] flex items-center justify-center p-4 bg-overlay backdrop-blur-sm animate-in fade-in">
       <div className="bg-surface-solid border border-border-default w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex justify-between items-center border-b border-border-subtle pb-4">
           <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">

@@ -78,6 +78,7 @@ export default function BottomNav() {
   return (
     <>
       <nav
+        data-tour="emp-bottomnav"
         className="fixed bottom-0 left-0 right-0 z-40 bg-surface-solid/80 backdrop-blur-xl border-t border-border-default"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
@@ -110,6 +111,7 @@ export default function BottomNav() {
 
           {/* Botão Mais */}
           <button
+            data-tour="emp-mais"
             onClick={() => setMaisAberto(true)}
             className={`relative flex flex-col items-center justify-center gap-1 flex-1 py-2 transition-colors ${
               maisAberto ? 'text-purple-400' : 'text-text-faint active:text-text-secondary'
