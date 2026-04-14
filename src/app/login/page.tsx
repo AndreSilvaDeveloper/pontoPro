@@ -46,6 +46,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [restaurando, setRestaurando] = useState(true);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [twoFARequired, setTwoFARequired] = useState(false);
+  const [twoFACode, setTwoFACode] = useState('');
 
   useEffect(() => {
     const rt = localStorage.getItem('workid_rt');
@@ -121,9 +123,22 @@ export default function LoginPage() {
         redirect: false,
         email: email.trim().toLowerCase(),
         password,
+        twoFactorCode: twoFACode,
       });
 
       if (result?.error) {
+        if (result.error === '2FA_REQUIRED') {
+          setTwoFARequired(true);
+          toast.dismiss(toastId);
+          toast.info('Digite o código do seu app autenticador.');
+          setLoading(false);
+          return;
+        }
+        if (result.error === '2FA_INVALID') {
+          toast.error('Código inválido. Tente novamente.', { id: toastId });
+          setLoading(false);
+          return;
+        }
         toast.error('E-mail ou senha inválidos.', { id: toastId });
         setLoading(false);
         return;
@@ -504,6 +519,27 @@ export default function LoginPage() {
                         </button>
                       </div>
                     </div>
+
+                    {twoFARequired && (
+                      <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                        <label className="text-[11px] font-bold text-purple-300 ml-1 uppercase tracking-wider">
+                          Código 2FA
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={8}
+                          autoFocus
+                          value={twoFACode}
+                          onChange={(e) => setTwoFACode(e.target.value.replace(/[^0-9A-Za-z]/g, ''))}
+                          placeholder="Digite o código de 6 dígitos"
+                          className="w-full bg-page/60 border border-purple-500/40 text-text-primary py-3.5 px-4 rounded-xl focus:border-purple-500 focus:bg-page outline-none transition-all placeholder:text-text-dim text-center font-mono tracking-widest text-lg"
+                        />
+                        <p className="text-[11px] text-text-muted ml-1">
+                          Use seu app autenticador ou um código de backup.
+                        </p>
+                      </div>
+                    )}
 
                     <button
                       type="submit"

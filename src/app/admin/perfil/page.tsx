@@ -35,6 +35,7 @@ import type { BillingStatus } from "@/lib/billing";
 import { validarCNPJ } from "@/utils/cnpj";
 
 import PaymentModal, { AsaasBundle, type PayMode } from "@/components/billing/PaymentModal";
+import TwoFactorCard from "@/components/admin/TwoFactorCard";
 
 // === FUNÇÕES AUXILIARES DE PIX (mantidas) ===
 const normalizeText = (text: string) =>
@@ -1014,6 +1015,9 @@ export default function PerfilAdmin() {
             </button>
           </form>
         </div>
+
+        {/* Segurança / 2FA */}
+        <TwoFactorCard />
 
         {/* Zona de Perigo */}
         <ExcluirContaSection />

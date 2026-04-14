@@ -73,6 +73,11 @@ model Usuario {
   telefone           String?
   modoValidacaoPonto String              @default("GPS")
   temaPreferido      String              @default("dark") // dark | light | system
+
+  // === 2FA (TOTP) ===
+  twoFactorSecret       String?           // base32 secret, só preenchido quando 2FA ativado
+  twoFactorEnabled      Boolean           @default(false)
+  twoFactorBackupCodes  Json?             // array de 10 códigos hash sha256 para recovery
   lojasPermitidas    AdminLoja[]
   ausencias          Ausencia[]
   pontos             Ponto[]
