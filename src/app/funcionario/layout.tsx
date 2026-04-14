@@ -8,6 +8,7 @@ import NotificacaoSolicitacao from '@/components/funcionario/NotificacaoSolicita
 import InstallPrompt from '@/components/InstallPrompt';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import BannerNovidades from '@/components/funcionario/BannerNovidades';
+import OfflineIndicator from '@/components/funcionario/OfflineIndicator';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -72,6 +73,7 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
 
   return (
     <>
+      <OfflineIndicator />
       <NotificacaoSolicitacao />
       <PushNotificationPrompt />
       <InstallPrompt />

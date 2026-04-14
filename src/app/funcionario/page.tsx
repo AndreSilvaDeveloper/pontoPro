@@ -352,8 +352,38 @@ export default function Home() {
       }, 2000);
 
     } catch (error: any) {
-      setStatusMsg({ tipo: 'erro', texto: `${error.response?.data?.erro || 'Erro ao registrar'}` });
-      setAcaoEmProcesso(null);
+      const semInternet = !error.response && (!navigator.onLine || error.code === 'ERR_NETWORK' || error.message === 'Network Error');
+
+      if (semInternet) {
+        // Salva na fila offline
+        try {
+          const { enqueuePonto } = await import('@/lib/offline/pontoQueue');
+          await enqueuePonto({
+            // @ts-ignore
+            usuarioId: session?.user?.id,
+            latitude: gpsAtual.lat,
+            longitude: gpsAtual.lng,
+            fotoBase64: imageSrc,
+            tipo: tipoFinal,
+            dataHoraOffline: new Date().toISOString(),
+          });
+          setStatusPonto(tipoFinal);
+          setUltimoPontoData(new Date());
+          setMostrarCamera(false);
+          setStatusMsg({ tipo: 'sucesso', texto: 'Ponto salvo offline! Será enviado quando voltar a internet.' });
+          setTimeout(() => {
+            setStatusMsg(null);
+            setAcaoEmProcesso(null);
+          }, 3000);
+          window.dispatchEvent(new Event('offline-queue-updated'));
+        } catch (e) {
+          setStatusMsg({ tipo: 'erro', texto: 'Sem internet e falha ao salvar offline. Tente novamente.' });
+          setAcaoEmProcesso(null);
+        }
+      } else {
+        setStatusMsg({ tipo: 'erro', texto: `${error.response?.data?.erro || 'Erro ao registrar'}` });
+        setAcaoEmProcesso(null);
+      }
     } finally {
       setLoading(false);
     }
