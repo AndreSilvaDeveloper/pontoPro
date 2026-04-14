@@ -39,6 +39,7 @@ import BancoHorasEquipe from '@/components/admin/BancoHorasEquipe';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
 import ModalCompletarCadastro from '@/components/admin/ModalCompletarCadastro';
+import OnboardingWizard from '@/components/admin/OnboardingWizard';
 import ActionCard from '@/components/admin/ActionCard';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import InstallPrompt from '@/components/InstallPrompt';
@@ -204,6 +205,13 @@ export default function AdminDashboard() {
             Lançar Ausência
           </button>
         </div>
+
+        {/* === ONBOARDING WIZARD === */}
+        <OnboardingWizard
+          empresaTemDados={!!(a.empresa?.nome && a.empresa?.cnpj)}
+          temFuncionario={a.usuarios.filter((u: any) => u.cargo === 'FUNCIONARIO').length > 0}
+          temPonto={a.registros.some((r: any) => r.tipo === 'PONTO')}
+        />
 
         {/* === FILTROS === */}
         <div className="relative z-20 bg-page backdrop-blur-xl border border-border-subtle p-5 rounded-3xl shadow-xl flex flex-col lg:flex-row gap-6 items-end">

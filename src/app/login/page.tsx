@@ -15,6 +15,13 @@ import {
   ArrowLeft,
   Mail,
   KeyRound,
+  Clock,
+  MapPin,
+  Camera,
+  FileText,
+  TrendingUp,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -38,10 +45,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [restaurando, setRestaurando] = useState(true);
-
   const [showRecovery, setShowRecovery] = useState(false);
 
-  // Tentar restaurar sessão via refresh token antes de mostrar login
   useEffect(() => {
     const rt = localStorage.getItem('workid_rt');
     if (!rt) { setRestaurando(false); return; }
@@ -54,7 +59,6 @@ export default function LoginPage() {
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
-          // Sessão restaurada — redirecionar
           const dest = data.cargo === 'ADMIN' ? '/admin' : '/funcionario';
           window.location.href = dest;
         } else {
@@ -105,7 +109,6 @@ export default function LoginPage() {
     }
   };
 
-  // ✅ LOGIN (corrigido)
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -133,7 +136,6 @@ export default function LoginPage() {
       const sessionRes = await fetch('/api/auth/session');
       const sessionData = await sessionRes.json();
 
-      // Salvar refresh token para auto-login no iOS PWA
       try {
         if (sessionData?.user?.id) {
           const rtRes = await fetch('/api/auth/auto-login', {
@@ -148,8 +150,6 @@ export default function LoginPage() {
         }
       } catch {}
 
-
-      // Verifica bloqueio financeiro após login (sessão já criada)
       if (sessionData?.error === 'BILLING_BLOCK') {
         const blockPayload = base64UrlEncodeUtf8({
           code: 'BLOCKED',
@@ -177,7 +177,6 @@ export default function LoginPage() {
     }
   };
 
-  // === RECUPERAR SENHA ===
   const handleRecovery = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return toast.warning('Digite seu e-mail.');
@@ -212,17 +211,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-3 sm:p-4 relative overflow-hidden bg-page selection:bg-purple-500/30" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div
+      className="min-h-[100dvh] w-full relative overflow-hidden bg-page selection:bg-purple-500/30"
+      style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       {/* Theme Toggle */}
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-4 right-4 z-30">
         <ThemeToggle />
       </div>
 
-      {/* Efeitos de Fundo */}
-      <div className="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
+      {/* Background animado (orbs usam cor do tema pra não lavar no light) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] bg-orb-purple rounded-full blur-[100px] animate-[pulse_8s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[600px] h-[600px] bg-orb-indigo rounded-full blur-[100px] animate-[pulse_10s_ease-in-out_infinite]" />
+      </div>
 
-      {/* MODAL DE TUTORIAL PWA */}
+      {/* Modal tutorial PWA (preservado) */}
       {showTutorial && (
         <div
           className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm flex items-end sm:items-center justify-center animate-in fade-in duration-300"
@@ -250,7 +254,6 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-0">
-                  {/* Passo 1 */}
                   <div className="flex gap-3 p-3">
                     <div className="shrink-0 flex flex-col items-center">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold">1</div>
@@ -266,7 +269,6 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* Passo 2 */}
                   <div className="flex gap-3 p-3">
                     <div className="shrink-0 flex flex-col items-center">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold">2</div>
@@ -282,7 +284,6 @@ export default function LoginPage() {
                     </div>
                   </div>
 
-                  {/* Passo 3 */}
                   <div className="flex gap-3 p-3">
                     <div className="shrink-0 flex flex-col items-center">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">3</div>
@@ -343,160 +344,253 @@ export default function LoginPage() {
         </div>
       )}
 
-      {/* CARD PRINCIPAL */}
-      <div className="w-full max-w-md p-6 sm:p-8 bg-page backdrop-blur-xl border border-border-default rounded-3xl shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-500">
-        {/* CABEÇALHO */}
-        <div className="text-center mb-8">
-          <img
-            src="/logo.png"
-            alt="WorkID"
-            className="w-32 h-32 sm:w-36 sm:h-36 object-contain mb-2 mx-auto select-none"
-            draggable={false}
-            onContextMenu={(e) => e.preventDefault()}
-            onTouchStart={(e) => {
-              const timer = setTimeout(() => { window.location.href = '/push-debug'; }, 3000);
-              const cancel = () => clearTimeout(timer);
-              e.currentTarget.addEventListener('touchend', cancel, { once: true });
-              e.currentTarget.addEventListener('touchmove', cancel, { once: true });
-            }}
-          />
-          <p className="text-text-muted text-sm">Gestão Inteligente de Ponto</p>
+      {/* Layout split */}
+      <div className="relative z-10 min-h-[100dvh] grid lg:grid-cols-2">
+        {/* === COLUNA ESQUERDA: HERO (desktop only) === */}
+        <div className="hidden lg:flex flex-col justify-between p-12 xl:p-16 relative">
+          <div className="self-start">
+            <img
+              src="/logo.png"
+              alt="WorkID"
+              className="h-12 w-auto object-contain object-left select-none"
+              draggable={false}
+            />
+          </div>
+
+          {/* Hero content */}
+          <div className="space-y-8 max-w-lg">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-full">
+              <Sparkles size={14} className="text-purple-400" />
+              <span className="text-xs font-semibold text-purple-300">Validade jurídica · Portaria 671</span>
+            </div>
+
+            <h1 className="text-4xl xl:text-5xl font-bold text-text-primary leading-[1.2] tracking-tight">
+              O ponto eletrônico que{' '}
+              <span className="bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 bg-clip-text text-transparent font-extrabold">
+                cabe no bolso
+              </span>
+              {' '}da sua equipe.
+            </h1>
+
+            <p className="text-lg text-text-muted leading-relaxed">
+              GPS, reconhecimento facial, banco de horas, holerite digital e auditoria — tudo em um lugar, em tempo real.
+            </p>
+
+            {/* Features grid */}
+            <div className="grid grid-cols-2 gap-3 pt-4">
+              {[
+                { icon: MapPin, label: 'Geofence GPS', desc: 'Só bate no local certo' },
+                { icon: Camera, label: 'Reconhecimento', desc: 'Facial com AWS' },
+                { icon: Clock, label: 'Banco de Horas', desc: 'Cálculo automático' },
+                { icon: FileText, label: 'Holerite Digital', desc: 'Assinatura no PDF' },
+              ].map(({ icon: Icon, label, desc }) => (
+                <div
+                  key={label}
+                  className="flex items-start gap-3 p-3 rounded-xl bg-surface/60 border border-border-subtle hover:border-purple-500/30 transition-colors"
+                >
+                  <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 shrink-0">
+                    <Icon size={16} className="text-purple-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-text-primary">{label}</p>
+                    <p className="text-[11px] text-text-muted">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Trust badges */}
+            <div className="flex items-center gap-6 pt-2 text-xs text-text-faint">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 size={14} className="text-emerald-400" />
+                <span>LGPD compliant</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-emerald-400" />
+                <span>SSL 256-bit</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <TrendingUp size={14} className="text-emerald-400" />
+                <span>99.9% uptime</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer esquerda */}
+          <p className="text-xs text-text-dim">
+            © 2026 WorkID · <a href="/privacidade" className="hover:text-text-muted underline">Privacidade</a> · <a href="/termos" className="hover:text-text-muted underline">Termos</a>
+          </p>
         </div>
 
-        {!showRecovery ? (
-          <form onSubmit={handleLogin} className="space-y-5 animate-in slide-in-from-left-4 duration-300">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-text-muted ml-1 uppercase tracking-wider">Email</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-3.5 text-text-faint group-focus-within:text-purple-400 transition-colors">
-                  <Mail size={20} />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-page border border-border-input text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim hover:border-border-input"
-                  placeholder="exemplo@workid.com"
-                  required
-                />
-              </div>
+        {/* === COLUNA DIREITA: FORM === */}
+        <div className="flex items-center justify-center p-4 sm:p-6 lg:p-12 relative">
+          <div className="w-full max-w-md">
+            {/* Logo mobile */}
+            <div className="lg:hidden text-center mb-6">
+              <img
+                src="/logo.png"
+                alt="WorkID"
+                className="w-28 h-28 object-contain mx-auto select-none drop-shadow-[0_8px_32px_rgba(168,85,247,0.3)]"
+                draggable={false}
+                onContextMenu={(e) => e.preventDefault()}
+                onTouchStart={(e) => {
+                  const timer = setTimeout(() => { window.location.href = '/push-debug'; }, 3000);
+                  const cancel = () => clearTimeout(timer);
+                  e.currentTarget.addEventListener('touchend', cancel, { once: true });
+                  e.currentTarget.addEventListener('touchmove', cancel, { once: true });
+                }}
+              />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-text-muted ml-1 uppercase tracking-wider">Senha</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-3.5 text-text-faint group-focus-within:text-purple-400 transition-colors">
-                  <ShieldCheck size={20} />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-page border border-border-input text-text-primary p-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim hover:border-border-input"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-3.5 text-text-faint hover:text-text-primary transition-colors focus:outline-none"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              </div>
+            {/* Card com glass effect */}
+            <div className="bg-surface/70 backdrop-blur-2xl border border-border-default rounded-3xl shadow-[0_20px_80px_-20px_rgba(168,85,247,0.25)] p-6 sm:p-8 relative overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+              {/* Shine effect no topo */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
 
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowRecovery(true)}
-                  className="text-xs text-purple-400 hover:text-purple-300 transition-colors hover:underline"
-                >
-                  Esqueci minha senha
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-purple-900/20 active:scale-95 mt-2 group"
-            >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
+              {!showRecovery ? (
                 <>
-                  ACESSAR SISTEMA <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-text-primary tracking-tight">Bem-vindo de volta</h2>
+                    <p className="text-sm text-text-muted mt-1">Entre com seu e-mail e senha</p>
+                  </div>
+
+                  <form onSubmit={handleLogin} className="space-y-4 animate-in slide-in-from-left-4 duration-300">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-text-muted ml-1 uppercase tracking-wider">Email</label>
+                      <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-faint group-focus-within:text-purple-400 transition-colors">
+                          <Mail size={18} />
+                        </div>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="w-full bg-page/60 border border-border-input text-text-primary py-3.5 pl-12 pr-4 rounded-xl focus:border-purple-500 focus:bg-page outline-none transition-all placeholder:text-text-dim"
+                          placeholder="seu@email.com"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-text-muted ml-1 uppercase tracking-wider">Senha</label>
+                      <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-faint group-focus-within:text-purple-400 transition-colors">
+                          <ShieldCheck size={18} />
+                        </div>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full bg-page/60 border border-border-input text-text-primary py-3.5 pl-12 pr-12 rounded-xl focus:border-purple-500 focus:bg-page outline-none transition-all placeholder:text-text-dim"
+                          placeholder="••••••••"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-text-faint hover:text-text-primary transition-colors"
+                        >
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      <div className="flex justify-end pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowRecovery(true)}
+                          className="text-xs text-purple-400 hover:text-purple-300 transition-colors hover:underline"
+                        >
+                          Esqueci minha senha
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="relative w-full overflow-hidden bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:via-fuchsia-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_8px_24px_-8px_rgba(168,85,247,0.5)] hover:shadow-[0_12px_32px_-8px_rgba(168,85,247,0.7)] active:scale-[0.98] mt-2 group"
+                    >
+                      {/* Shine effect */}
+                      <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                      <span className="relative flex items-center justify-center gap-2">
+                        {loading ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <>
+                            Entrar
+                            <span className="group-hover:translate-x-1 transition-transform">→</span>
+                          </>
+                        )}
+                      </span>
+                    </button>
+                  </form>
                 </>
+              ) : (
+                <form onSubmit={handleRecovery} className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                  <div className="mb-2">
+                    <h2 className="text-2xl font-bold text-text-primary tracking-tight flex items-center gap-2">
+                      <KeyRound size={22} className="text-purple-400" />
+                      Recuperar acesso
+                    </h2>
+                    <p className="text-sm text-text-muted mt-1">Enviaremos um link para redefinir sua senha.</p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-text-muted ml-1 uppercase tracking-wider">E-mail de cadastro</label>
+                    <div className="relative group">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-faint group-focus-within:text-purple-400 transition-colors">
+                        <Mail size={18} />
+                      </div>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-page/60 border border-border-input text-text-primary py-3.5 pl-12 pr-4 rounded-xl focus:border-purple-500 focus:bg-page outline-none transition-all placeholder:text-text-dim"
+                        placeholder="Digite seu e-mail..."
+                        autoFocus
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-purple-900/30 active:scale-[0.98]"
+                  >
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : 'Enviar link'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRecovery(false)}
+                    className="w-full text-text-muted hover:text-text-primary text-sm py-2 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft size={16} /> Voltar
+                  </button>
+                </form>
               )}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleRecovery} className="space-y-5 animate-in slide-in-from-right-4 duration-300">
-            <div className="text-center pb-2">
-              <h3 className="text-text-primary font-bold text-lg flex items-center justify-center gap-2">
-                <KeyRound size={20} className="text-purple-500" /> Recuperar Acesso
-              </h3>
-              <p className="text-xs text-text-muted">Enviaremos um link mágico para seu e-mail.</p>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-text-muted ml-1 uppercase tracking-wider">Email de Cadastro</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-3.5 text-text-faint group-focus-within:text-purple-400 transition-colors">
-                  <Mail size={20} />
+              {!isStandalone && !showRecovery && (
+                <div className="pt-6 mt-6 border-t border-border-subtle">
+                  <button
+                    type="button"
+                    onClick={handleInstallClick}
+                    className="w-full bg-page/40 hover:bg-page/70 border border-border-input hover:border-purple-500/40 text-text-secondary hover:text-text-primary font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2.5 text-sm group"
+                  >
+                    <Smartphone size={16} className="text-purple-400" />
+                    {isIOS ? 'Instalar no iPhone' : 'Instalar aplicativo'}
+                  </button>
                 </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-page border border-border-input text-text-primary p-3.5 pl-12 rounded-xl focus:border-purple-500 outline-none transition-colors placeholder:text-text-dim hover:border-border-input"
-                  placeholder="Digite seu e-mail..."
-                  autoFocus
-                  required
-                />
-              </div>
+              )}
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-lg active:scale-95 mt-2"
-            >
-              {loading ? <Loader2 size={20} className="animate-spin" /> : 'ENVIAR LINK DE RECUPERAÇÃO'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowRecovery(false)}
-              className="w-full text-text-muted hover:text-text-primary text-sm py-2 transition-colors flex items-center justify-center gap-2"
-            >
-              <ArrowLeft size={16} /> Voltar para Login
-            </button>
-          </form>
-        )}
-
-        {!isStandalone && !showRecovery && (
-          <div className="pt-6 mt-2">
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-border-input/50"></div>
-              <span className="flex-shrink-0 mx-4 text-text-faint text-[10px] uppercase tracking-widest">Instalar App</span>
-              <div className="flex-grow border-t border-border-input/50"></div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleInstallClick}
-              className="w-full bg-elevated hover:bg-elevated-solid text-text-secondary border border-border-input/50 hover:border-purple-500/30 font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-3 text-sm mt-2 group"
-            >
-              <div className="bg-border-input p-1.5 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                <Smartphone size={16} />
-              </div>
-              {isIOS ? 'Instalar no iPhone' : 'Instalar Aplicativo'}
-            </button>
+            {/* Footer mobile */}
+            <p className="lg:hidden text-center text-text-dim text-[10px] mt-6">
+              © 2026 WorkID · <a href="/privacidade" className="hover:text-text-muted underline">Privacidade</a> · <a href="/termos" className="hover:text-text-muted underline">Termos</a>
+            </p>
           </div>
-        )}
-
-        <p className="text-center text-text-dim text-[10px] mt-8">© 2026 WorkID • Tecnologia em Gestão</p>
+        </div>
       </div>
     </div>
   );

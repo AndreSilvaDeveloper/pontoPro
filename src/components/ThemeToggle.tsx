@@ -1,6 +1,7 @@
 'use client';
 
 import { useTheme } from 'next-themes';
+import { useSession } from 'next-auth/react';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -8,6 +9,7 @@ const CYCLE: ('dark' | 'light' | 'system')[] = ['dark', 'light', 'system'];
 
 export default function ThemeToggle({ className = '' }: { className?: string }) {
   const { theme, setTheme } = useTheme();
+  const { status } = useSession();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -21,12 +23,14 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
     const newTheme = CYCLE[(idx + 1) % CYCLE.length];
     setTheme(newTheme);
 
-    // Salva no banco (fire-and-forget)
-    fetch('/api/user/tema', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tema: newTheme }),
-    }).catch(() => {});
+    // Só persiste no banco se o usuário estiver logado
+    if (status === 'authenticated') {
+      fetch('/api/user/tema', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tema: newTheme }),
+      }).catch(() => {});
+    }
   };
 
   const icon =

@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, Tag } from "lucide-react";
 import { blogPosts } from "@/data/blog-posts";
 
 export const metadata: Metadata = {
@@ -21,6 +21,8 @@ export default function BlogPage() {
   const sortedPosts = [...blogPosts].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+  const [destaque, ...demaisPosts] = sortedPosts;
+  const categorias = Array.from(new Set(sortedPosts.map((p) => p.category)));
 
   return (
     <div className="min-h-screen bg-[#0a0e27]">
@@ -61,11 +63,55 @@ export default function BlogPage() {
         </div>
       </section>
 
-      {/* Posts Grid */}
+      {/* Categorias */}
+      <section className="px-4 pb-6 md:px-6">
+        <div className="container mx-auto flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-gray-500 mr-2">Categorias:</span>
+          {categorias.map((cat) => (
+            <span
+              key={cat}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-purple-500/30 bg-purple-500/5 text-xs text-purple-300"
+            >
+              <Tag className="h-3 w-3" /> {cat}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* Post em destaque */}
+      {destaque && (
+        <section className="px-4 pb-10 md:px-6">
+          <div className="container mx-auto">
+            <Link
+              href={`/blog/${destaque.slug}`}
+              className="group grid gap-6 md:grid-cols-[1.2fr_1fr] items-stretch overflow-hidden rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-950/40 via-[#0f1333] to-[#0f1333] p-6 md:p-8 transition-all hover:border-purple-500/60 hover:shadow-2xl hover:shadow-purple-500/20"
+            >
+              <div>
+                <span className="inline-block mb-3 text-[10px] font-bold text-purple-300 uppercase tracking-widest">Em destaque</span>
+                <h2 className="mb-3 text-2xl md:text-3xl font-bold text-white group-hover:text-purple-300 transition-colors leading-tight">
+                  {destaque.title}
+                </h2>
+                <p className="mb-4 text-sm md:text-base text-gray-400 leading-relaxed">{destaque.description}</p>
+                <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <span className="rounded-full bg-purple-500/10 px-3 py-1 font-medium text-purple-400">{destaque.category}</span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {destaque.readTime}
+                  </span>
+                </div>
+              </div>
+              <div className="hidden md:flex items-center justify-center bg-gradient-to-br from-purple-950/60 to-pink-950/30 rounded-2xl border border-purple-500/20 min-h-[200px]">
+                <span className="text-6xl font-bold text-purple-500/25 group-hover:text-purple-500/40 transition-colors">WorkID</span>
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {/* Grid do restante */}
       <section className="px-4 pb-20 md:px-6">
         <div className="container mx-auto">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {sortedPosts.map((post) => (
+            {demaisPosts.map((post) => (
               <Link
                 key={post.slug}
                 href={`/blog/${post.slug}`}
