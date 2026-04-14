@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
+
+const subDaysSafe = (dataStr: string, n: number) => subDays(new Date(`${dataStr}T12:00:00`), n);
+const addDaysSafe = (dataStr: string, n: number) => addDays(new Date(`${dataStr}T12:00:00`), n);
 import { calcularEstatisticas } from '@/lib/admin/calcularEstatisticas';
 import type { BillingStatus } from '@/lib/billing';
 import type { RegistroUnificado } from '@/types/registro';
@@ -131,6 +134,10 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
 
   const carregarDados = useCallback(async () => {
     try {
+      // Busca pontos só dentro do range selecionado + margem de 7 dias pra lógica de sábado/cross-day
+      const inicioBusca = format(subDaysSafe(dataInicio, 7), 'yyyy-MM-dd');
+      const fimBusca = format(addDaysSafe(dataFim, 1), 'yyyy-MM-dd');
+
       const [
         resPontos,
         resAusencias,
@@ -144,7 +151,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         resHEPendentes,
         resAjustesBanco,
       ] = await Promise.all([
-        axios.get('/api/admin/pontos-todos'),
+        axios.get(`/api/admin/pontos-todos?inicio=${inicioBusca}&fim=${fimBusca}`),
         axios.get('/api/admin/ausencias-aprovadas'),
         axios.get('/api/admin/funcionarios'),
         axios.get('/api/admin/solicitacoes'),
@@ -253,7 +260,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dataInicio, dataFim]);
 
   useEffect(() => {
     carregarDados();

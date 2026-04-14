@@ -131,6 +131,9 @@ model Ponto {
   usuarioId    String
   usuario      Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   solicitacoes SolicitacaoAjuste[]
+
+  @@index([usuarioId, dataHora])
+  @@index([dataHora])
 }
 
 model SolicitacaoAjuste {
@@ -148,6 +151,9 @@ model SolicitacaoAjuste {
   decididoPorNome String?
   decididoEm      DateTime?
 
+  @@index([usuarioId])
+  @@index([status])
+  @@index([pontoId])
 }
 
 model Ausencia {
@@ -161,6 +167,10 @@ model Ausencia {
   usuarioId      String
   criadoEm       DateTime @default(now())
   usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([status])
+  @@index([dataInicio, dataFim])
 }
 
 model Feriado {
@@ -170,6 +180,8 @@ model Feriado {
   empresaId String?
   criadoEm  DateTime @default(now())
   empresa   Empresa? @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, data])
 }
 
 model LogAuditoria {
@@ -180,6 +192,8 @@ model LogAuditoria {
   adminNome String
   adminId   String
   empresaId String
+
+  @@index([empresaId, dataHora])
 }
 
 enum ModoValidacaoPonto {
