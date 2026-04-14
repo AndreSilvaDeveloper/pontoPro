@@ -26,6 +26,17 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
         const user = s?.user;
         if (!user) return;
 
+        // Cache para modo offline (usuário precisa ter logado ao menos 1 vez)
+        try {
+          localStorage.setItem('workid_user_cache', JSON.stringify({
+            id: user.id,
+            nome: user.name,
+            email: user.email,
+            empresaId: user.empresaId,
+            cargo: user.cargo,
+          }));
+        } catch {}
+
         // Impersonate ou SUPER_ADMIN: libera direto
         if (user.impersonatedBy || user.cargo === 'SUPER_ADMIN') {
           setAllowed(true);
@@ -50,7 +61,11 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
         setOnboardingChecked(true);
       })
       .catch(() => {
-        setAllowed(true);
+        // Offline: se temos cache do usuário, libera; senão mostra aviso.
+        try {
+          const cached = localStorage.getItem('workid_user_cache');
+          if (cached) setAllowed(true);
+        } catch {}
         setOnboardingChecked(true);
       });
   }, [status, onboardingChecked, router]);

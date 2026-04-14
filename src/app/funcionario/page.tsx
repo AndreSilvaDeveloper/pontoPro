@@ -325,12 +325,25 @@ export default function Home() {
       }
     }
 
+    // Fallback offline: se não tem session ativa, usa cache do último login
+    let usuarioIdFinal: string | undefined = (session?.user as any)?.id;
+    if (!usuarioIdFinal) {
+      try {
+        const cached = localStorage.getItem('workid_user_cache');
+        if (cached) usuarioIdFinal = JSON.parse(cached)?.id;
+      } catch {}
+    }
+
+    if (!usuarioIdFinal) {
+      setStatusMsg({ tipo: 'erro', texto: 'Sessão expirada. Faça login novamente.' });
+      setAcaoEmProcesso(null);
+      return;
+    }
+
     setLoading(true);
     try {
-      // @ts-ignore
       await axios.post('/api/funcionario/ponto', {
-        // @ts-ignore
-        usuarioId: session?.user?.id,
+        usuarioId: usuarioIdFinal,
         latitude: gpsAtual.lat, longitude: gpsAtual.lng,
         fotoBase64: imageSrc,
         tipo: tipoFinal
@@ -359,8 +372,7 @@ export default function Home() {
         try {
           const { enqueuePonto } = await import('@/lib/offline/pontoQueue');
           await enqueuePonto({
-            // @ts-ignore
-            usuarioId: session?.user?.id,
+            usuarioId: usuarioIdFinal,
             latitude: gpsAtual.lat,
             longitude: gpsAtual.lng,
             fotoBase64: imageSrc,
