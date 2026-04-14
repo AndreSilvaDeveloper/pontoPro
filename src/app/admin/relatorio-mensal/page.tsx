@@ -306,7 +306,14 @@ export default function RelatorioMensalPage() {
             </div>
 
             {/* PDF Actions */}
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <a
+                href={`/api/admin/relatorio-afd?inicio=${dataInicio}&fim=${dataFim}`}
+                className="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+                title="Arquivo Fonte de Dados (AFD) conforme Portaria 671 do MTE"
+              >
+                <Download size={16} /> Baixar AFD (.txt)
+              </a>
               <button
                 onClick={visualizarPDF}
                 className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2"

@@ -43,6 +43,7 @@ export interface Funcionario {
   nome: string;
   email: string;
   telefone?: string;
+  pis?: string;
   tituloCargo?: string;
   latitudeBase: number;
   longitudeBase: number;
@@ -116,6 +117,7 @@ export default function ModalFuncionario({
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [pis, setPis] = useState('');
   const [tituloCargo, setTituloCargo] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
@@ -189,6 +191,7 @@ export default function ModalFuncionario({
       setNome(funcionarioEdicao.nome);
       setEmail(funcionarioEdicao.email);
       setTelefone(funcionarioEdicao.telefone ? formatarTelefone(funcionarioEdicao.telefone) : '');
+      setPis(funcionarioEdicao.pis || '');
       setTituloCargo(funcionarioEdicao.tituloCargo || '');
       setLat(funcionarioEdicao.latitudeBase?.toString() || '');
       setLng(funcionarioEdicao.longitudeBase?.toString() || '');
@@ -514,6 +517,7 @@ export default function ModalFuncionario({
       formData.append('nome', nome);
       formData.append('email', email);
       formData.append('telefone', telefone.replace(/\D/g, ''));
+      formData.append('pis', pis.replace(/\D/g, ''));
       formData.append('tituloCargo', tituloCargo);
       formData.append('latitude', lat || '0');
       formData.append('longitude', lng || '0');
@@ -653,6 +657,21 @@ export default function ModalFuncionario({
                     onChange={(e) => setTituloCargo(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-text-muted mb-1.5 block">
+                  PIS / PASEP / NIS <span className="text-text-dim font-normal">(opcional · necessário para AFD)</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={11}
+                  className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors font-mono"
+                  value={pis}
+                  onChange={(e) => setPis(e.target.value.replace(/\D/g, ''))}
+                  placeholder="11 dígitos"
+                />
               </div>
             </section>
 

@@ -87,6 +87,7 @@ model Usuario {
 
   deveDarCienciaCelular   Boolean   @default(false)
   cpf                     String?
+  pis                     String?   // PIS/PASEP/NIS - usado no AFD (Portaria 671)
   cienciaCelularOpcao     String?
   cienciaCelularData      DateTime?
   cienciaCelularDocUrl    String?

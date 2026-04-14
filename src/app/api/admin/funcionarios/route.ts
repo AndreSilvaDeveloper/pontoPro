@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
     const telefone = formData.get('telefone') as string || '';
+    const pis = (formData.get('pis') as string || '').replace(/\D/g, '');
     const exigirFotoFuncionario = formData.get('exigirFotoFuncionario') === 'true';
     const exigirCienciaCelular = formData.get('exigirCienciaCelular') === 'true';
 
@@ -134,6 +135,7 @@ export async function POST(request: Request) {
         modoValidacaoPonto: modoValidacaoPontoStr as any,
         ipsPermitidos,
         telefone: telefone || null,
+        pis: pis || null,
       }
     });
 
@@ -248,6 +250,7 @@ export async function PUT(request: Request) {
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
     const telefone = formData.get('telefone') as string || '';
+    const pis = (formData.get('pis') as string || '').replace(/\D/g, '');
     const exigirFotoFuncionarioStr = formData.get('exigirFotoFuncionario');
     const exigirCienciaCelularStr = formData.get('exigirCienciaCelular');
 
@@ -267,6 +270,7 @@ export async function PUT(request: Request) {
       modoValidacaoPonto: modoValidacaoPontoStr as any,
       ipsPermitidos,
       telefone: telefone || null,
+      pis: pis || null,
     };
 
     if (jornadaTexto && jornadaTexto !== 'undefined') {
