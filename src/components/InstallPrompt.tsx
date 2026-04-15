@@ -62,18 +62,24 @@ export default function InstallPrompt() {
       return;
     }
 
-    // Espera o push prompt terminar primeiro
+    // Espera tour + push terminarem antes de mostrar
     const show = () => setTimeout(() => setMostrar(true), 500);
 
     const w = window as any;
-    if (w.__pushDone) {
+    const pronto = () => !!w.__tourDone && !!w.__pushDone;
+
+    if (pronto()) {
       show();
       return;
     }
 
-    const onPushDone = () => show();
-    window.addEventListener('push-prompt-done', onPushDone);
-    return () => window.removeEventListener('push-prompt-done', onPushDone);
+    const handler = () => { if (pronto()) show(); };
+    window.addEventListener('tour-done', handler);
+    window.addEventListener('push-prompt-done', handler);
+    return () => {
+      window.removeEventListener('tour-done', handler);
+      window.removeEventListener('push-prompt-done', handler);
+    };
   }, [statusLoading, status, isStandalone]);
 
   const fechar = () => {
