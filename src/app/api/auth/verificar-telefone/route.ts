@@ -29,6 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ erro: 'Telefone inválido' }, { status: 400 });
     }
 
+    // Feature flag: se SMS estiver desligado, pular verificação
+    if (process.env.SMS_VERIFICACAO_ENABLED !== 'true') {
+      return NextResponse.json({ ok: true, skipVerification: true });
+    }
+
     limparExpirados();
 
     // Rate limit: máximo 3 envios por sessão em 10 min

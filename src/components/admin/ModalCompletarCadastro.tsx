@@ -82,6 +82,20 @@ export default function ModalCompletarCadastro({ empresa, onComplete }: Props) {
     try {
       const res = await axios.post('/api/auth/verificar-telefone', { telefone: telLimpo });
       if (res.data.ok) {
+        // Verificação SMS desligada no servidor — salvar direto
+        if (res.data.skipVerification) {
+          await axios.put('/api/admin/empresa', {
+            cnpj: cnpjLimpo,
+            cobrancaWhatsapp: telLimpo,
+          });
+          toast.success('Dados salvos!');
+          sessionStorage.setItem('cadastro-completado', '1');
+          setAberto(false);
+          (window as any).__cadastroCompleto = true;
+          window.dispatchEvent(new Event('cadastro-completo'));
+          onComplete();
+          return;
+        }
         setCanalEnvio(res.data.canal || 'sms');
         toast.success(res.data.canal === 'whatsapp' ? 'Código enviado pelo WhatsApp!' : 'Código enviado por SMS!');
         setEtapa('codigo');
