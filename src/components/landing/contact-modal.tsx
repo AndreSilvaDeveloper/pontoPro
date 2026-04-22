@@ -17,7 +17,7 @@ export function ContactModal({ open, onOpenChange }: ContactModalProps) {
 
   const whatsappNumber = '5532935005492'
   const whatsappLabel = '+55 32 93500-5492'
-  const whatsappText = encodeURIComponent('Olá! Vim pelo site OntimeIA. Quero conhecer o sistema e valores.')
+  const whatsappText = encodeURIComponent('Olá! Vim pelo site WorkID. Quero conhecer o sistema e valores.')
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappText}`
 
   const itemClass =

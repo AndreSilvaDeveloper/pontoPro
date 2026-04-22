@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { EMAIL_NO_REPLY, SITE_NAME } from '@/config/site';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_123');
 
@@ -7,7 +8,7 @@ export async function enviarEmailSeguro(para: string, assunto: string, html: str
   try {
     // Tenta enviar
     await resend.emails.send({
-      from: 'WorkID <nao-responda@ontimeia.com>', 
+      from: `${SITE_NAME} <${EMAIL_NO_REPLY}>`,
       to: para,
       subject: assunto,
       html: html,

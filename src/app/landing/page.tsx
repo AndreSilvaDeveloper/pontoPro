@@ -40,6 +40,7 @@ import { PricingSection } from "@/components/landing/pricing-section";
 import ROICalculator from "@/components/landing/ROICalculator";
 
 import { LINKS, waLink } from '@/config/links'
+import { BASE_URL } from '@/config/site'
 import { GalleryCarousel } from "@/components/landing/gallery-carousel";
 import WhatsAppFloat from "@/components/landing/WhatsAppFloat";
 import ExitIntentPopup from "@/components/landing/ExitIntentPopup";
@@ -68,7 +69,7 @@ const SCHEMA_ORG = {
   publisher: {
     "@type": "Organization",
     name: "WorkID",
-    url: "https://ontimeia.com",
+    url: BASE_URL,
   },
 };
 

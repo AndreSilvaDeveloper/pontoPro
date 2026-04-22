@@ -1,7 +1,9 @@
+import { EMAIL_CONTACT } from '@/config/site'
+
 export const LINKS = {
   demoVideo: {
     id: 'K8pNHIq31EQ',
-    shortUrl: 'https://www.youtube.com/watch?v=K8pNHIq31EQ', 
+    shortUrl: 'https://www.youtube.com/watch?v=K8pNHIq31EQ',
   },
 
   whatsapp: {
@@ -10,9 +12,9 @@ export const LINKS = {
 
     messages: {
       agendarDemo:
-        'Olá! Vim pelo site do OntimeIA e gostaria de agendar uma demonstração do sistema. Qual o melhor horário?',
+        'Olá! Vim pelo site do WorkID e gostaria de agendar uma demonstração do sistema. Qual o melhor horário?',
       suporteGeral:
-        'Olá! Vim pelo site do OntimeIA. Pode me ajudar, por favor?',
+        'Olá! Vim pelo site do WorkID. Pode me ajudar, por favor?',
     },
   },
 
@@ -22,7 +24,7 @@ export const LINKS = {
   },
 
   email: {
-    address: 'contato@ontimeia.com',
+    address: EMAIL_CONTACT,
   },
 } as const
 

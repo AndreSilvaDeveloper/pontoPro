@@ -1,8 +1,9 @@
 import { MetadataRoute } from 'next';
 import { blogPosts } from '@/data/blog-posts';
+import { BASE_URL } from '@/config/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://ontimeia.com';
+  const baseUrl = BASE_URL;
 
   const staticPages: MetadataRoute.Sitemap = [
     {

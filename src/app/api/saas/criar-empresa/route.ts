@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { enviarEmailSeguro } from "@/lib/email";
 import { validarCNPJ } from "@/utils/cnpj";
+import { BASE_URL } from "@/config/site";
 
 export const runtime = "nodejs";
 
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
                 </div>
             </div>
             <div style="text-align: center; margin-bottom: 30px;">
-                <a href="https://ontimeia.com/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px;">Acessar Painel</a>
+                <a href="${BASE_URL}/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px;">Acessar Painel</a>
             </div>
         </div>
       </div>

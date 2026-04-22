@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Clock, Tag } from "lucide-react";
 import { blogPosts } from "@/data/blog-posts";
+import { BASE_URL } from "@/config/site";
 
 export const metadata: Metadata = {
   title: "Blog | WorkID - Ponto Digital e Gestão de Jornada",
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: "Blog | WorkID - Ponto Digital e Gestão de Jornada",
     description:
       "Artigos sobre ponto digital, legislação trabalhista, banco de horas e gestão de equipes.",
-    url: "https://ontimeia.com/blog",
+    url: `${BASE_URL}/blog`,
     siteName: "WorkID",
     type: "website",
   },

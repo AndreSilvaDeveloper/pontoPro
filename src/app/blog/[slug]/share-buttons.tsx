@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MessageCircle, Copy, Check } from "lucide-react";
+import { BASE_URL } from "@/config/site";
 
 interface ShareButtonsProps {
   title: string;
@@ -10,7 +11,7 @@ interface ShareButtonsProps {
 
 export function ShareButtons({ title, slug }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
-  const url = `https://ontimeia.com/blog/${slug}`;
+  const url = `${BASE_URL}/blog/${slug}`;
 
   const shareWhatsApp = () => {
     const text = encodeURIComponent(`${title}\n\n${url}`);
