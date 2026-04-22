@@ -123,8 +123,8 @@ export default function ModalFuncionario({
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('100');
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
-  const [exigirFotoFuncionario, setExigirFotoFuncionario] = useState(false);
-  const [exigirCienciaCelular, setExigirCienciaCelular] = useState(false);
+  const [exigirFotoFuncionario, setExigirFotoFuncionario] = useState(true);
+  const [exigirCienciaCelular, setExigirCienciaCelular] = useState(true);
 
   // Upload UX
   const [fotoErro, setFotoErro] = useState<string>('');
@@ -221,8 +221,8 @@ export default function ModalFuncionario({
       setPontoLivre(false);
       setLocaisExtras([]);
       setFotoArquivo(null);
-      setExigirFotoFuncionario(false);
-      setExigirCienciaCelular(false);
+      setExigirFotoFuncionario(true);
+      setExigirCienciaCelular(true);
       setModoValidacao('GPS');
       setIpsPermitidos('');
       setEnderecoPrincipal('');
