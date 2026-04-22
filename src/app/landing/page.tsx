@@ -23,7 +23,6 @@ import {
   FileText,
   ChevronDown,
   CheckCircle2,
-  Instagram,
   MessageCircle,
   Mail,
   ShieldCheck,
@@ -932,14 +931,6 @@ export default function LandingPage() {
             {/* Social links mobile */}
             <div className="flex items-center gap-4">
               <a
-                href={LINKS.instagram.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg bg-purple-950/50 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
-              >
-                <Instagram className="size-5" />
-              </a>
-              <a
                 href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -974,14 +965,6 @@ export default function LandingPage() {
                   Controle de ponto inteligente para empresas modernas. Registre, gerencie e exporte com facilidade.
                 </p>
                 <div className="flex items-center gap-3">
-                  <a
-                    href={LINKS.instagram.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg bg-purple-950/50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
-                  >
-                    <Instagram className="size-4" />
-                  </a>
                   <a
                     href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                     target="_blank"
@@ -1028,16 +1011,6 @@ export default function LandingPage() {
                       className="block py-2 transition-colors hover:text-white"
                     >
                       {LINKS.email.address}
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href={LINKS.instagram.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block py-2 transition-colors hover:text-white"
-                    >
-                      {LINKS.instagram.handle}
                     </a>
                   </li>
                 </ul>

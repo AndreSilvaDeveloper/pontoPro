@@ -1,7 +1,7 @@
 export const SITE_NAME = 'WorkID';
 
 function readBaseUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_BASE_URL || 'https://ontimeia.com';
+  const raw = process.env.NEXT_PUBLIC_BASE_URL || 'https://workid.com.br';
   return raw.replace(/\/+$/, '');
 }
 
@@ -11,7 +11,7 @@ function extractDomain(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
   } catch {
-    return 'ontimeia.com';
+    return 'workid.com.br';
   }
 }
 

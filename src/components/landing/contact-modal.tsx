@@ -1,7 +1,7 @@
 'use client'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Instagram, Mail, MessageCircle } from 'lucide-react'
+import { Mail, MessageCircle } from 'lucide-react'
 
 interface ContactModalProps {
   open: boolean
@@ -9,9 +9,6 @@ interface ContactModalProps {
 }
 
 export function ContactModal({ open, onOpenChange }: ContactModalProps) {
-  const instagramHandle = '@ontimeponto'
-  const instagramUrl = 'https://www.instagram.com/ontimeponto/'
-
   const email = 'andreworkid@gmail.com'
   const emailUrl = `mailto:${email}`
 
@@ -36,21 +33,6 @@ export function ContactModal({ open, onOpenChange }: ContactModalProps) {
         </DialogHeader>
 
         <div className="flex flex-col gap-3 pt-4">
-          <a
-            href={instagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={itemClass}
-          >
-            <div className={iconWrapClass}>
-              <Instagram className="size-5 text-purple-400" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium text-gray-400">Instagram</p>
-              <p className="truncate text-sm font-bold text-white">{instagramHandle}</p>
-            </div>
-          </a>
-
           <a href={emailUrl} className={itemClass}>
             <div className={iconWrapClass}>
               <Mail className="size-5 text-purple-400" />

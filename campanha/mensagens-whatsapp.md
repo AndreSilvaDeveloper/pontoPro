@@ -16,7 +16,7 @@ Criamos um sistema onde o funcionário bate ponto pelo celular com GPS e reconhe
 
 Posso te mostrar em 5 minutos como funciona?
 
-👉 ontimeia.com
+👉 workid.com.br
 ```
 
 ---
@@ -34,7 +34,7 @@ Temos um programa de indicação com comissão recorrente para contadores parcei
 
 Posso te mostrar o sistema em 5 minutos?
 
-👉 ontimeia.com
+👉 workid.com.br
 ```
 
 ---
@@ -57,10 +57,10 @@ Se tiver 5 minutinhos, posso te mandar um vídeo rápido mostrando o sistema. Se
 Ótimo! Fico feliz pelo interesse! 😊
 
 Aqui está o link para criar sua conta e testar grátis por 14 dias:
-👉 ontimeia.com/signup
+👉 workid.com.br/signup
 
 Se preferir, posso te mostrar o sistema ao vivo em uma demonstração rápida de 20 minutos:
-👉 ontimeia.com/agendar-demo
+👉 workid.com.br/agendar-demo
 
 Qualquer dúvida, estou aqui!
 ```
@@ -76,7 +76,7 @@ Desde 2022, a Portaria 671 permite usar ponto digital pelo celular. Não precisa
 
 O funcionário bate ponto pelo celular com GPS e reconhecimento facial. O gestor vê tudo em tempo real.
 
-Se alguém quiser testar grátis por 14 dias: ontimeia.com
+Se alguém quiser testar grátis por 14 dias: workid.com.br
 
 Sem instalar app, sem cartão de crédito. 👊
 ```
@@ -97,7 +97,7 @@ O WorkID é um sistema de ponto digital feito pra empresas como a sua:
 
 14 dias grátis pra testar. Posso te mostrar?
 
-👉 ontimeia.com
+👉 workid.com.br
 ```
 
 ---
@@ -118,5 +118,5 @@ O WorkID é um sistema de ponto pelo celular, perfeito pra varejo:
 
 14 dias grátis. Quer testar?
 
-👉 ontimeia.com
+👉 workid.com.br
 ```

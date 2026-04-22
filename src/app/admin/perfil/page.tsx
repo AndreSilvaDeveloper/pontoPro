@@ -307,7 +307,7 @@ export default function PerfilAdmin() {
 
       const payloadPix = gerarPayloadPix(
         fatura.chavePix,
-        "Ontime Sistemas",
+        "WorkID",
         "Juiz de Fora",
         fatura.valor.toFixed(2),
         `FAT${format(new Date(), "MMyy")}`
@@ -319,7 +319,7 @@ export default function PerfilAdmin() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("ONTIME SISTEMAS", 14, 20);
+      doc.text("WORKID", 14, 20);
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");

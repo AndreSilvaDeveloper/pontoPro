@@ -18,11 +18,6 @@ export const LINKS = {
     },
   },
 
-  instagram: {
-    handle: '@ontimeponto',
-    url: 'https://www.instagram.com/ontimeponto/',
-  },
-
   email: {
     address: EMAIL_CONTACT,
   },
