@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { registrarLog } from '@/lib/logger';
 import { formatInTimeZone } from 'date-fns-tz';
+import { atualizarHoraExtraDia } from '@/lib/admin/atualizarHoraExtraDia';
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
@@ -62,6 +63,14 @@ export async function DELETE(request: Request) {
 
     // Exclui
     await prisma.ponto.delete({ where: { id } });
+
+    // Reprocessa hora extra do dia afetado (agora pode não ter mais extra; helper remove se for o caso)
+    await atualizarHoraExtraDia({
+      usuarioId: ponto.usuarioId,
+      data: new Date(ponto.dataHora),
+      adminId,
+      adminNome,
+    }).catch((e) => console.error('Falha ao atualizar hora extra:', e));
 
     return NextResponse.json({ success: true });
   } catch (error) {
