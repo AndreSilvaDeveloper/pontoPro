@@ -334,8 +334,8 @@ export default function LandingPage() {
                     alt="Tela do aplicativo WorkID de ponto digital no celular"
                     width={400}
                     height={800}
-                    priority
-                    sizes="(max-width: 640px) 280px, (max-width: 768px) 384px, 448px"
+                    loading="lazy"
+                    sizes="(min-width: 1024px) 448px, 0px"
                     className="w-full max-w-xs transition-transform duration-500 hover:scale-105 sm:max-w-sm md:max-w-md"
                   />
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent" />
@@ -673,9 +673,13 @@ export default function LandingPage() {
               </div>
               <div className="relative">
                 <div className="absolute inset-0 bg-purple-600/20 blur-[80px]" />
-                <img
-                  src="/images/laptop-preview.jpeg"
-                  alt="Experiencia Desktop"
+                <Image
+                  src="/images/laptop-preview.webp"
+                  alt="Painel administrativo WorkID no computador"
+                  width={900}
+                  height={600}
+                  sizes="100vw"
+                  loading="lazy"
                   className="relative z-10 rounded-2xl shadow-2xl shadow-purple-500/30"
                 />
                 <p className="relative z-10 mt-4 text-center text-sm font-medium text-gray-300">
