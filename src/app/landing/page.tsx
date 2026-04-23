@@ -257,16 +257,16 @@ export default function LandingPage() {
 
               <h1 className="mb-4 text-balance text-[32px] font-extrabold leading-tight text-white md:mb-6 md:text-5xl lg:text-6xl xl:text-7xl">
                 <span className="md:hidden">
-                  Controle de ponto{' '}
+                  Ponto eletrônico{' '}
                   <span className="bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-                    inteligente
+                    digital
                   </span>{' '}
                   para sua empresa
                 </span>
                 <span className="hidden md:inline">
-                  Controle de ponto{' '}
+                  Ponto eletrônico{' '}
                   <span className="bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-                    inteligente
+                    digital
                   </span>{' '}
                   para empresas modernas
                 </span>

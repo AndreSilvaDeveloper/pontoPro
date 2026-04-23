@@ -25,10 +25,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'WorkID - Sistema de Ponto Digital com GPS e Reconhecimento Facial',
+    default: 'Ponto Eletrônico Digital com GPS e Reconhecimento Facial | WorkID',
     template: '%s | WorkID',
   },
-  description: 'Controle de ponto digital para empresas. Registro por GPS, reconhecimento facial, relatórios automáticos, banco de horas e espelho de ponto. Teste grátis 14 dias.',
+  description: 'Ponto eletrônico digital em conformidade com a Portaria 671. Registro por GPS, reconhecimento facial, banco de horas, espelho de ponto e relatórios automáticos. Teste grátis 14 dias.',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: '/icon.png',
@@ -50,19 +50,19 @@ export const metadata: Metadata = {
     locale: 'pt_BR',
     url: BASE_URL,
     siteName: 'WorkID',
-    title: 'WorkID - Sistema de Ponto Digital com GPS e Reconhecimento Facial',
-    description: 'Controle de ponto digital para empresas. Registro por GPS, reconhecimento facial, relatórios e banco de horas. Teste grátis 14 dias.',
+    title: 'Ponto Eletrônico Digital com GPS e Reconhecimento Facial | WorkID',
+    description: 'Ponto eletrônico digital em conformidade com a Portaria 671. GPS, reconhecimento facial, banco de horas e relatórios. Teste grátis 14 dias.',
     images: [{
       url: '/images/og-image.png',
       width: 1200,
       height: 630,
-      alt: 'WorkID - Sistema de Ponto Digital',
+      alt: 'WorkID - Ponto Eletrônico Digital',
     }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'WorkID - Sistema de Ponto Digital',
-    description: 'Controle de ponto por GPS e reconhecimento facial. Teste grátis 14 dias.',
+    title: 'Ponto Eletrônico Digital | WorkID',
+    description: 'Ponto eletrônico digital por GPS e reconhecimento facial. Portaria 671. Teste grátis 14 dias.',
     images: ['/images/og-image.png'],
   },
   robots: {
