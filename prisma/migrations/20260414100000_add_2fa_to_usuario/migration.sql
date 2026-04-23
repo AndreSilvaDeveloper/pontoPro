@@ -1,0 +1,4 @@
+ALTER TABLE "Usuario"
+  ADD COLUMN IF NOT EXISTS "twoFactorSecret" TEXT,
+  ADD COLUMN IF NOT EXISTS "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "twoFactorBackupCodes" JSONB;

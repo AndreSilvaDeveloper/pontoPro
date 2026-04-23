@@ -23,21 +23,54 @@ import {
   FileText,
   ChevronDown,
   CheckCircle2,
-  Instagram,
   MessageCircle,
   Mail,
+  ShieldCheck,
+  Scale,
+  Lock,
+  XCircle,
+  Sparkles,
 } from "lucide-react";
 
 import { MobileCarousel } from "@/components/landing/mobile-carousel";
 import { MobileMenu } from "@/components/landing/mobile-menu";
 import { DesktopMenu } from "@/components/landing/desktop-menu";
 import { PricingSection } from "@/components/landing/pricing-section";
+import ROICalculator from "@/components/landing/ROICalculator";
 
 import { LINKS, waLink } from '@/config/links'
+import { BASE_URL } from '@/config/site'
 import { GalleryCarousel } from "@/components/landing/gallery-carousel";
 import WhatsAppFloat from "@/components/landing/WhatsAppFloat";
 import ExitIntentPopup from "@/components/landing/ExitIntentPopup";
 import { getLatestPosts } from "@/data/blog-posts";
+import RevealOnScroll from "@/components/landing/RevealOnScroll";
+
+const SCHEMA_ORG = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "WorkID",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web, iOS, Android",
+  offers: {
+    "@type": "Offer",
+    priceCurrency: "BRL",
+    price: "9.90",
+    priceValidUntil: "2026-12-31",
+  },
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.9",
+    ratingCount: "50",
+  },
+  description:
+    "Sistema de controle de ponto digital com GPS, reconhecimento facial, banco de horas e holerite digital. Em conformidade com a Portaria 671 e LGPD.",
+  publisher: {
+    "@type": "Organization",
+    name: "WorkID",
+    url: BASE_URL,
+  },
+};
 
 export default function LandingPage() {
   const router = useRouter();
@@ -174,6 +207,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0e27]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(SCHEMA_ORG) }}
+      />
+
       {/* Animated Grid Background */}
       <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none" />
 
@@ -234,7 +272,7 @@ export default function LandingPage() {
                 </span>
               </h1>
 
-              <p className="mb-6 text-pretty text-base leading-relaxed text-gray-400 md:mb-8 md:text-lg md:text-gray-300 lg:text-xl">
+              <p className="mb-4 text-pretty text-base leading-relaxed text-gray-300 md:mb-6 md:text-lg lg:text-xl">
                 <span className="md:hidden">
                   Registre ponto por GPS, reconhecimento facial e gerencie sua equipe em tempo real. Tudo no celular.
                 </span>
@@ -242,6 +280,20 @@ export default function LandingPage() {
                   Chega de planilhas e relógios de ponto ultrapassados. Com o WorkID, seus funcionários batem ponto pelo celular com GPS e reconhecimento facial, e você gerencia tudo em tempo real.
                 </span>
               </p>
+              <ul className="mb-6 space-y-2 text-sm text-gray-300 md:mb-8 md:text-base">
+                <li className="flex items-start gap-2 justify-center lg:justify-start">
+                  <CheckCircle2 className="size-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Reduza o tempo do RH fechando folha em até <strong className="text-white">80%</strong></span>
+                </li>
+                <li className="flex items-start gap-2 justify-center lg:justify-start">
+                  <CheckCircle2 className="size-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Elimine fraudes com <strong className="text-white">geofence + foto em toda batida</strong></span>
+                </li>
+                <li className="flex items-start gap-2 justify-center lg:justify-start">
+                  <CheckCircle2 className="size-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Configuração completa em <strong className="text-white">menos de 10 minutos</strong></span>
+                </li>
+              </ul>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 <Button
@@ -294,26 +346,30 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof Metrics Bar */}
-      <section className="relative z-10 border-y border-purple-500/10 bg-purple-950/20 px-4 py-8 md:px-6 md:py-10">
+      {/* Trust Strip — selos de conformidade */}
+      <section className="relative z-10 border-y border-purple-500/10 bg-purple-950/20 px-4 py-6 md:px-6 md:py-8">
         <div className="container mx-auto">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
-            <div className="text-center">
-              <div className="text-3xl font-extrabold text-white md:text-4xl">500+</div>
-              <p className="mt-1 text-sm text-gray-400">Empresas ativas</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-extrabold text-white md:text-4xl">10k+</div>
-              <p className="mt-1 text-sm text-gray-400">Funcionarios gerenciados</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-extrabold text-white md:text-4xl">99.9%</div>
-              <p className="mt-1 text-sm text-gray-400">Uptime garantido</p>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-extrabold text-white md:text-4xl">4.9/5</div>
-              <p className="mt-1 text-sm text-gray-400">Avaliacao dos clientes</p>
-            </div>
+          <p className="text-center text-[11px] font-semibold text-purple-300/70 uppercase tracking-widest mb-4">
+            Conformidade garantida
+          </p>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5 md:gap-6 max-w-5xl mx-auto">
+            {[
+              { icon: Scale, label: "Portaria 671", sub: "MTE compliant" },
+              { icon: ShieldCheck, label: "LGPD", sub: "Dados protegidos" },
+              { icon: Lock, label: "SSL 256-bit", sub: "Criptografia bancária" },
+              { icon: MapPin, label: "Geofence GPS", sub: "Anti-fraude" },
+              { icon: ScanFace, label: "Facial AWS", sub: "Reconhecimento IA" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-xl border border-purple-500/20 bg-purple-950/30 px-3 py-3 transition-colors hover:border-purple-500/40 hover:bg-purple-950/50">
+                <div className="flex size-10 items-center justify-center rounded-lg bg-purple-500/15 border border-purple-500/30 shrink-0">
+                  <item.icon className="size-5 text-purple-300" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white leading-tight">{item.label}</p>
+                  <p className="text-[11px] text-gray-400">{item.sub}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -321,17 +377,19 @@ export default function LandingPage() {
       {/* How it Works Section */}
       <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
         <div className="container mx-auto">
-          <div className="mb-12 text-center md:mb-16">
-            <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
-              Simples de usar
-            </Badge>
-            <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
-              Comece em 3 passos
-            </h2>
-            <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
-              Configure sua empresa em minutos e comece a registrar o ponto da sua equipe hoje mesmo.
-            </p>
-          </div>
+          <RevealOnScroll>
+            <div className="mb-12 text-center md:mb-16">
+              <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
+                Simples de usar
+              </Badge>
+              <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
+                Comece em 3 passos
+              </h2>
+              <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
+                Configure sua empresa em minutos e comece a registrar o ponto da sua equipe hoje mesmo.
+              </p>
+            </div>
+          </RevealOnScroll>
 
           <div className="mx-auto grid max-w-4xl gap-8 md:grid-cols-3">
             {[
@@ -369,17 +427,19 @@ export default function LandingPage() {
       {/* Features Section */}
       <section id="features" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
         <div className="container mx-auto">
-          <div className="mb-16 text-center">
-            <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
-              Recursos
-            </Badge>
-            <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
-              Tudo que sua empresa precisa
-            </h2>
-            <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
-              Funcionalidades completas para controle de ponto digital, gestao de equipes e conformidade trabalhista.
-            </p>
-          </div>
+          <RevealOnScroll>
+            <div className="mb-16 text-center">
+              <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
+                Recursos
+              </Badge>
+              <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl lg:text-6xl">
+                Tudo que sua empresa precisa
+              </h2>
+              <p className="mx-auto max-w-2xl text-balance text-lg text-gray-400">
+                Funcionalidades completas para controle de ponto digital, gestao de equipes e conformidade trabalhista.
+              </p>
+            </div>
+          </RevealOnScroll>
 
           {/* Mobile Carousel */}
           <div className="md:hidden">
@@ -509,6 +569,76 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Comparison Section */}
+      <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
+        <div className="container mx-auto max-w-5xl">
+          <div className="mb-10 text-center md:mb-12">
+            <Badge className="mb-4 border-purple-500/50 bg-purple-950/50 text-purple-300">
+              Comparativo
+            </Badge>
+            <h2 className="mb-4 text-[32px] font-extrabold text-white md:text-5xl">
+              Por que escolher o{" "}
+              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">WorkID</span>
+            </h2>
+            <p className="mx-auto max-w-2xl text-base text-gray-400 md:text-lg">
+              Compare o WorkID com as alternativas mais comuns no mercado brasileiro.
+            </p>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-purple-500/20 bg-gradient-to-b from-purple-950/20 to-transparent">
+            <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr] text-sm">
+              <div className="border-b border-purple-500/20 bg-purple-950/30 p-3 md:p-4"></div>
+              <div className="border-b border-purple-500/20 bg-purple-950/30 p-3 md:p-4 text-center">
+                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Planilha</p>
+              </div>
+              <div className="border-b border-purple-500/20 bg-purple-950/30 p-3 md:p-4 text-center">
+                <p className="text-[10px] md:text-xs font-semibold text-gray-400 uppercase tracking-wider">Concorrência</p>
+              </div>
+              <div className="border-b border-purple-500/40 bg-gradient-to-b from-purple-600/30 to-purple-600/10 p-3 md:p-4 text-center">
+                <p className="text-[10px] md:text-xs font-extrabold text-purple-200 uppercase tracking-wider flex items-center justify-center gap-1">
+                  <Sparkles className="size-3" /> WorkID
+                </p>
+              </div>
+
+              {[
+                { feat: "GPS + Reconhecimento Facial", a: false, b: "extra", c: true },
+                { feat: "Banco de horas automático", a: false, b: true, c: true },
+                { feat: "Validação Portaria 671", a: false, b: true, c: true },
+                { feat: "Holerite digital com assinatura", a: false, b: false, c: true },
+                { feat: "Offline no campo/obra", a: false, b: false, c: true },
+                { feat: "Multi-unidade (franquias)", a: false, b: "extra", c: true },
+                { feat: "Auditoria e anti-fraude", a: false, b: true, c: true },
+                { feat: "Suporte em português", a: false, b: false, c: true },
+                { feat: "Setup em 10 min", a: false, b: false, c: true },
+              ].map((row, i) => {
+                const renderCell = (val: any) => {
+                  if (val === true) return <CheckCircle2 className="size-5 text-emerald-400 mx-auto" />;
+                  if (val === false) return <XCircle className="size-5 text-gray-600 mx-auto" />;
+                  if (val === "extra") return <span className="text-[11px] text-amber-400 font-semibold">Plano caro</span>;
+                  return null;
+                };
+                return (
+                  <div key={i} className="contents">
+                    <div className="border-b border-purple-500/10 p-3 md:p-4 text-white text-sm font-medium">{row.feat}</div>
+                    <div className="border-b border-purple-500/10 p-3 md:p-4 flex items-center justify-center">{renderCell(row.a)}</div>
+                    <div className="border-b border-purple-500/10 p-3 md:p-4 flex items-center justify-center">{renderCell(row.b)}</div>
+                    <div className="border-b border-purple-500/20 bg-purple-600/5 p-3 md:p-4 flex items-center justify-center">{renderCell(row.c)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-8 text-center">
+            <Button asChild size="lg" className="bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-xl shadow-purple-500/40">
+              <Link href="/signup">
+                Começar agora — 14 dias grátis <ArrowRight className="ml-2 size-5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Visual Section with Images */}
       <section className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
         <div className="container mx-auto">
@@ -610,6 +740,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ROI Calculator */}
+      <ROICalculator />
 
       {/* Pricing Section */}
       <PricingSection />
@@ -798,14 +931,6 @@ export default function LandingPage() {
             {/* Social links mobile */}
             <div className="flex items-center gap-4">
               <a
-                href={LINKS.instagram.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-lg bg-purple-950/50 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
-              >
-                <Instagram className="size-5" />
-              </a>
-              <a
                 href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -840,14 +965,6 @@ export default function LandingPage() {
                   Controle de ponto inteligente para empresas modernas. Registre, gerencie e exporte com facilidade.
                 </p>
                 <div className="flex items-center gap-3">
-                  <a
-                    href={LINKS.instagram.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg bg-purple-950/50 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 transition-colors hover:bg-purple-900/50 hover:text-white"
-                  >
-                    <Instagram className="size-4" />
-                  </a>
                   <a
                     href={waLink(LINKS.whatsapp.messages.suporteGeral)}
                     target="_blank"
@@ -894,16 +1011,6 @@ export default function LandingPage() {
                       className="block py-2 transition-colors hover:text-white"
                     >
                       {LINKS.email.address}
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href={LINKS.instagram.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block py-2 transition-colors hover:text-white"
-                    >
-                      {LINKS.instagram.handle}
                     </a>
                   </li>
                 </ul>

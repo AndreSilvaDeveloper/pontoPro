@@ -26,6 +26,7 @@ model Empresa {
   filiais             Empresa[]   @relation("MatrizFilial")
   feriados            Feriado[]
   usuarios            Usuario[]
+  comunicados         Comunicado[]
 
   cobrancaAtiva      Boolean  @default(false)
   trialAte           DateTime?
@@ -72,6 +73,11 @@ model Usuario {
   telefone           String?
   modoValidacaoPonto String              @default("GPS")
   temaPreferido      String              @default("dark") // dark | light | system
+
+  // === 2FA (TOTP) ===
+  twoFactorSecret       String?           // base32 secret, só preenchido quando 2FA ativado
+  twoFactorEnabled      Boolean           @default(false)
+  twoFactorBackupCodes  Json?             // array de 10 códigos hash sha256 para recovery
   lojasPermitidas    AdminLoja[]
   ausencias          Ausencia[]
   pontos             Ponto[]
@@ -81,6 +87,7 @@ model Usuario {
 
   deveDarCienciaCelular   Boolean   @default(false)
   cpf                     String?
+  pis                     String?   // PIS/PASEP/NIS - usado no AFD (Portaria 671)
   cienciaCelularOpcao     String?
   cienciaCelularData      DateTime?
   cienciaCelularDocUrl    String?
@@ -92,6 +99,7 @@ model Usuario {
   revendedorId            String?
   revendedor              Revendedor? @relation(fields: [revendedorId], references: [id])
   ajustesBancoHoras       AjusteBancoHoras[]
+  contracheques           Contracheque[]
 }
 
 model PushSubscription {
@@ -129,6 +137,9 @@ model Ponto {
   usuarioId    String
   usuario      Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   solicitacoes SolicitacaoAjuste[]
+
+  @@index([usuarioId, dataHora])
+  @@index([dataHora])
 }
 
 model SolicitacaoAjuste {
@@ -146,6 +157,9 @@ model SolicitacaoAjuste {
   decididoPorNome String?
   decididoEm      DateTime?
 
+  @@index([usuarioId])
+  @@index([status])
+  @@index([pontoId])
 }
 
 model Ausencia {
@@ -159,6 +173,10 @@ model Ausencia {
   usuarioId      String
   criadoEm       DateTime @default(now())
   usuario        Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([status])
+  @@index([dataInicio, dataFim])
 }
 
 model Feriado {
@@ -168,6 +186,8 @@ model Feriado {
   empresaId String?
   criadoEm  DateTime @default(now())
   empresa   Empresa? @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, data])
 }
 
 model LogAuditoria {
@@ -178,6 +198,8 @@ model LogAuditoria {
   adminNome String
   adminId   String
   empresaId String
+
+  @@index([empresaId, dataHora])
 }
 
 enum ModoValidacaoPonto {
@@ -280,3 +302,56 @@ model AjusteBancoHoras {
   @@index([data])
 }
 
+model Contracheque {
+  id             String    @id @default(cuid())
+  empresaId      String
+  usuarioId      String
+  mes            String    // "2026-03" format
+  arquivoUrl     String    // URL do PDF
+  nomeArquivo    String
+  enviadoPorId   String
+  enviadoPorNome String
+  criadoEm       DateTime  @default(now())
+  visualizado    Boolean   @default(false)
+  visualizadoEm  DateTime?
+  assinado       Boolean   @default(false)
+  assinadoEm     DateTime?
+  assinaturaUrl  String?   // URL da assinatura digital do funcionário no momento da confirmação
+  orientacao     String    @default("RETRATO") // RETRATO | PAISAGEM
+
+  usuario        Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, mes])
+  @@index([empresaId])
+  @@index([usuarioId])
+}
+
+model Comunicado {
+  id             String   @id @default(cuid())
+  empresaId      String
+  autorId        String
+  autorNome      String
+  titulo         String
+  mensagem       String
+  tipo           String   @default("AVISO") // AVISO | URGENTE | INFORMATIVO
+  destinatarios  Json?    // null = todos, ["id1","id2"] = específicos
+  criadoEm       DateTime @default(now())
+
+  empresa     Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  leituras    LeituraComunicado[]
+
+  @@index([empresaId])
+  @@index([criadoEm])
+}
+
+model LeituraComunicado {
+  id           String   @id @default(cuid())
+  comunicadoId String
+  usuarioId    String
+  lidoEm       DateTime @default(now())
+
+  comunicado   Comunicado @relation(fields: [comunicadoId], references: [id], onDelete: Cascade)
+
+  @@unique([comunicadoId, usuarioId])
+  @@index([usuarioId])
+}

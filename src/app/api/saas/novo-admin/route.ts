@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
+import { BASE_URL } from '@/config/site';
 
 export async function POST(req: Request) {
   try {
@@ -89,7 +90,7 @@ export async function POST(req: Request) {
                 </div>
             </div>
             <div style="text-align: center; margin-bottom: 30px;">
-                <a href="https://ontimeia.com/admin" style="display: inline-block; background-color: #4338ca; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px;">Acessar Gestão</a>
+                <a href="${BASE_URL}/admin" style="display: inline-block; background-color: #4338ca; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px;">Acessar Gestão</a>
             </div>
         </div>
       </div>

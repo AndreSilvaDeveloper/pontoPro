@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import BottomNav from '@/components/funcionario/BottomNav';
 import NotificacaoSolicitacao from '@/components/funcionario/NotificacaoSolicitacao';
+import InstallPrompt from '@/components/InstallPrompt';
+import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import BannerNovidades from '@/components/funcionario/BannerNovidades';
+import OfflineIndicator from '@/components/funcionario/OfflineIndicator';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -21,6 +25,17 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
       .then(s => {
         const user = s?.user;
         if (!user) return;
+
+        // Cache para modo offline (usuário precisa ter logado ao menos 1 vez)
+        try {
+          localStorage.setItem('workid_user_cache', JSON.stringify({
+            id: user.id,
+            nome: user.name,
+            email: user.email,
+            empresaId: user.empresaId,
+            cargo: user.cargo,
+          }));
+        } catch {}
 
         // Impersonate ou SUPER_ADMIN: libera direto
         if (user.impersonatedBy || user.cargo === 'SUPER_ADMIN') {
@@ -46,7 +61,11 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
         setOnboardingChecked(true);
       })
       .catch(() => {
-        setAllowed(true);
+        // Offline: se temos cache do usuário, libera; senão mostra aviso.
+        try {
+          const cached = localStorage.getItem('workid_user_cache');
+          if (cached) setAllowed(true);
+        } catch {}
         setOnboardingChecked(true);
       });
   }, [status, onboardingChecked, router]);
@@ -69,7 +88,11 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
 
   return (
     <>
+      <OfflineIndicator />
       <NotificacaoSolicitacao />
+      <PushNotificationPrompt />
+      <InstallPrompt />
+      <BannerNovidades />
       {children}
       <BottomNav />
     </>

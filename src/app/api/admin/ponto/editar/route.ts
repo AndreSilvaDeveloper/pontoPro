@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../auth/[...nextauth]/route';
 import { registrarLog } from '@/lib/logger';
 import { formatInTimeZone } from 'date-fns-tz';
+import { atualizarHoraExtraDia } from '@/lib/admin/atualizarHoraExtraDia';
 
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
@@ -69,6 +70,19 @@ export async function PUT(request: Request) {
       acao: 'EDICAO_PONTO',
       detalhes,
     });
+
+    // Reprocessa hora extra nos dias afetados (antes e depois, caso edição atravesse meia-noite)
+    const diasAfetados = new Set<string>();
+    diasAfetados.add(new Date(ponto.dataHora).toDateString());
+    diasAfetados.add(new Date(novoHorario).toDateString());
+    for (const diaStr of diasAfetados) {
+      await atualizarHoraExtraDia({
+        usuarioId: ponto.usuarioId,
+        data: new Date(diaStr),
+        adminId,
+        adminNome,
+      }).catch((e) => console.error('Falha ao atualizar hora extra:', e));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

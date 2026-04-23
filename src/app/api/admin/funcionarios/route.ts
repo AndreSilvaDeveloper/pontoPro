@@ -6,6 +6,7 @@ import { storagePut } from '@/lib/storage';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
 import { getPlanoConfig } from '@/config/planos';
+import { BASE_URL } from '@/config/site';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
     const telefone = formData.get('telefone') as string || '';
+    const pis = (formData.get('pis') as string || '').replace(/\D/g, '');
     const exigirFotoFuncionario = formData.get('exigirFotoFuncionario') === 'true';
     const exigirCienciaCelular = formData.get('exigirCienciaCelular') === 'true';
 
@@ -134,6 +136,7 @@ export async function POST(request: Request) {
         modoValidacaoPonto: modoValidacaoPontoStr as any,
         ipsPermitidos,
         telefone: telefone || null,
+        pis: pis || null,
       }
     });
 
@@ -169,7 +172,7 @@ export async function POST(request: Request) {
             </div>
 
             <div style="text-align: center; margin-bottom: 30px;">
-                <a href="https://ontimeia.com/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(91, 33, 182, 0.3);">
+                <a href="${BASE_URL}/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(91, 33, 182, 0.3);">
                     Acessar Sistema Agora
                 </a>
             </div>
@@ -248,6 +251,7 @@ export async function PUT(request: Request) {
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
     const telefone = formData.get('telefone') as string || '';
+    const pis = (formData.get('pis') as string || '').replace(/\D/g, '');
     const exigirFotoFuncionarioStr = formData.get('exigirFotoFuncionario');
     const exigirCienciaCelularStr = formData.get('exigirCienciaCelular');
 
@@ -267,6 +271,7 @@ export async function PUT(request: Request) {
       modoValidacaoPonto: modoValidacaoPontoStr as any,
       ipsPermitidos,
       telefone: telefone || null,
+      pis: pis || null,
     };
 
     if (jornadaTexto && jornadaTexto !== 'undefined') {

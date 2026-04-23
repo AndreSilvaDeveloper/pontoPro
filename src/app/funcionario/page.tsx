@@ -98,20 +98,42 @@ export default function Home() {
 
       if (ultimoPontoData && (statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO')) {
         const diffMs = agora.getTime() - new Date(ultimoPontoData).getTime();
+        const decorridoSeg = Math.floor(diffMs / 1000);
 
-        const totalSeconds = Math.floor(diffMs / 1000);
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
+        // Limite em segundos conforme tipo de pausa
+        let limiteSeg = 0;
+        if (statusPonto === 'SAIDA_INTERVALO') {
+          const limiteCafeMin = (configs as any).duracaoPausaCafeMin || 15;
+          limiteSeg = limiteCafeMin * 60;
+        } else if (statusPonto === 'SAIDA_ALMOCO') {
+          let almocoMin = 60;
+          try {
+            if (jornadaHoje) {
+              const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+              const diaAtual = diasMap[agora.getDay()];
+              const jd = jornadaHoje[diaAtual];
+              if (jd?.s1 && jd?.e2) {
+                const parse = (h: string) => { const [hh, mm] = h.split(':').map(Number); return hh * 60 + mm; };
+                almocoMin = parse(jd.e2) - parse(jd.s1);
+              }
+            }
+          } catch {}
+          limiteSeg = almocoMin * 60;
+        }
 
-        const timeString = [hours, minutes, seconds]
-          .map(v => (v < 10 ? "0" + v : v))
-          .join(":");
+        const restanteSeg = limiteSeg - decorridoSeg;
+        const negativo = restanteSeg < 0;
+        const abs = Math.abs(restanteSeg);
+        const hours = Math.floor(abs / 3600);
+        const minutes = Math.floor((abs % 3600) / 60);
+        const seconds = abs % 60;
+        const timeString = (negativo ? '-' : '') + [hours, minutes, seconds]
+          .map(v => (v < 10 ? '0' + v : String(v)))
+          .join(':');
 
         setTempoIntervalo(timeString);
 
-        // Alerta de café excedido (> 15min)
-        if (statusPonto === 'SAIDA_INTERVALO' && minutes >= 15 && !alertaIntervaloMostrado) {
+        if (statusPonto === 'SAIDA_INTERVALO' && negativo && !alertaIntervaloMostrado) {
           setAlertaIntervaloMostrado(true);
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
         }
@@ -120,7 +142,7 @@ export default function Home() {
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [ultimoPontoData, statusPonto, alertaIntervaloMostrado]);
+  }, [ultimoPontoData, statusPonto, alertaIntervaloMostrado, configs, jornadaHoje]);
 
   // Recarrega dados de progresso a cada 60s
   useEffect(() => {
@@ -303,12 +325,25 @@ export default function Home() {
       }
     }
 
+    // Fallback offline: se não tem session ativa, usa cache do último login
+    let usuarioIdFinal: string | undefined = (session?.user as any)?.id;
+    if (!usuarioIdFinal) {
+      try {
+        const cached = localStorage.getItem('workid_user_cache');
+        if (cached) usuarioIdFinal = JSON.parse(cached)?.id;
+      } catch {}
+    }
+
+    if (!usuarioIdFinal) {
+      setStatusMsg({ tipo: 'erro', texto: 'Sessão expirada. Faça login novamente.' });
+      setAcaoEmProcesso(null);
+      return;
+    }
+
     setLoading(true);
     try {
-      // @ts-ignore
       await axios.post('/api/funcionario/ponto', {
-        // @ts-ignore
-        usuarioId: session?.user?.id,
+        usuarioId: usuarioIdFinal,
         latitude: gpsAtual.lat, longitude: gpsAtual.lng,
         fotoBase64: imageSrc,
         tipo: tipoFinal
@@ -330,8 +365,37 @@ export default function Home() {
       }, 2000);
 
     } catch (error: any) {
-      setStatusMsg({ tipo: 'erro', texto: `${error.response?.data?.erro || 'Erro ao registrar'}` });
-      setAcaoEmProcesso(null);
+      const semInternet = !error.response && (!navigator.onLine || error.code === 'ERR_NETWORK' || error.message === 'Network Error');
+
+      if (semInternet) {
+        // Salva na fila offline
+        try {
+          const { enqueuePonto } = await import('@/lib/offline/pontoQueue');
+          await enqueuePonto({
+            usuarioId: usuarioIdFinal,
+            latitude: gpsAtual.lat,
+            longitude: gpsAtual.lng,
+            fotoBase64: imageSrc,
+            tipo: tipoFinal,
+            dataHoraOffline: new Date().toISOString(),
+          });
+          setStatusPonto(tipoFinal);
+          setUltimoPontoData(new Date());
+          setMostrarCamera(false);
+          setStatusMsg({ tipo: 'sucesso', texto: 'Ponto salvo offline! Será enviado quando voltar a internet.' });
+          setTimeout(() => {
+            setStatusMsg(null);
+            setAcaoEmProcesso(null);
+          }, 3000);
+          window.dispatchEvent(new Event('offline-queue-updated'));
+        } catch (e) {
+          setStatusMsg({ tipo: 'erro', texto: 'Sem internet e falha ao salvar offline. Tente novamente.' });
+          setAcaoEmProcesso(null);
+        }
+      } else {
+        setStatusMsg({ tipo: 'erro', texto: `${error.response?.data?.erro || 'Erro ao registrar'}` });
+        setAcaoEmProcesso(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -529,10 +593,12 @@ export default function Home() {
           <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isAlmoco ? 'text-orange-500/70' : 'text-amber-500/70'} mb-2`}>
             {isAlmoco ? 'Em Almoço' : 'Em Pausa'}
           </p>
-          <p className="text-5xl font-mono font-bold text-text-primary tracking-widest tabular-nums mb-3">
+          <p className={`text-5xl font-mono font-bold tracking-widest tabular-nums mb-3 ${tempoIntervalo.startsWith('-') ? 'text-red-400' : 'text-text-primary'}`}>
             {tempoIntervalo}
           </p>
-          <p className="text-xs text-text-faint">Tempo de intervalo</p>
+          <p className={`text-xs ${tempoIntervalo.startsWith('-') ? 'text-red-400/70' : 'text-text-faint'}`}>
+            {tempoIntervalo.startsWith('-') ? 'Pausa excedida' : 'Tempo restante'}
+          </p>
         </div>
       );
     }
@@ -813,7 +879,7 @@ export default function Home() {
             </div>
             <div>
               <p className="text-red-400 font-bold text-sm">Pausa excedida!</p>
-              <p className="text-red-400/70 text-xs">Seu café ultrapassou 15 minutos</p>
+              <p className="text-red-400/70 text-xs">Seu café ultrapassou {(configs as any).duracaoPausaCafeMin || 15} minutos</p>
             </div>
           </div>
         )}
@@ -1181,7 +1247,7 @@ export default function Home() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Data</label>
                 <input type="date" value={dataNova} onChange={e => setDataNova(e.target.value)} className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm text-center outline-none focus:border-purple-500 transition-colors" />
@@ -1191,21 +1257,33 @@ export default function Home() {
                 <select
                   value={tipoNovo}
                   onChange={(e) => setTipoNovo(e.target.value as TipoSolicitacao)}
-                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
+                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 appearance-none"
                 >
-                  <option value="ENTRADA">ENTRADA</option>
-                  <option value="SAIDA_INTERVALO">SAÍDA CAFÉ</option>
-                  <option value="VOLTA_INTERVALO">VOLTA CAFÉ</option>
-                  <option value="SAIDA_ALMOCO">SAÍDA ALMOÇO</option>
-                  <option value="VOLTA_ALMOCO">VOLTA ALMOÇO</option>
-                  <option value="SAIDA">SAÍDA</option>
+                  <option value="ENTRADA">Entrada</option>
+                  <option value="SAIDA_INTERVALO">Saída Café</option>
+                  <option value="VOLTA_INTERVALO">Volta Café</option>
+                  <option value="SAIDA_ALMOCO">Saída Almoço</option>
+                  <option value="VOLTA_ALMOCO">Volta Almoço</option>
+                  <option value="SAIDA">Saída</option>
                 </select>
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Novo Horário</label>
-              <input type="time" value={horaNova} onChange={e => setHoraNova(e.target.value)} className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-colors" />
+              <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Novo Horário (HH:MM)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="00:00"
+                value={horaNova}
+                onChange={e => {
+                  let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2);
+                  setHoraNova(v);
+                }}
+                className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center font-mono tracking-widest outline-none focus:border-purple-500 transition-colors"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Justificativa (Obrigatório)</label>

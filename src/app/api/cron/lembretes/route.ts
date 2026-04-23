@@ -46,6 +46,16 @@ function getAgoraSP() {
 }
 
 const LEMBRETES = {
+  ENTRADA_15MIN: {
+    title: 'Hora de ir trabalhar!',
+    body: 'Faltam 15 minutos para o seu horário de entrada.',
+    tag: 'lembrete-entrada',
+  },
+  ENTRADA_ATRASADO: {
+    title: 'Você está atrasado!',
+    body: 'Seu horário de entrada já passou. Bata o ponto assim que chegar.',
+    tag: 'lembrete-atraso',
+  },
   ALMOCO_5MIN: {
     title: 'Hora do almoço!',
     body: 'Faltam 5 minutos para o seu horário de almoço.',
@@ -65,6 +75,11 @@ const LEMBRETES = {
     title: 'Pausa excedida',
     body: 'Sua pausa para café já passou de 15 minutos.',
     tag: 'lembrete-pausa-cafe',
+  },
+  ESQUECEU_SAIDA: {
+    title: 'Você esqueceu de bater o ponto?',
+    body: 'Seu horário de saída já passou há mais de 30 minutos e você ainda não bateu o ponto.',
+    tag: 'lembrete-esqueceu-saida',
   },
 } as const;
 
@@ -88,22 +103,17 @@ export async function GET(req: NextRequest) {
     const inicioHoje = new Date(`${dataSP}T00:00:00.000-03:00`);
     const fimHoje = new Date(`${dataSP}T23:59:59.999-03:00`);
 
-    // Buscar funcionários com push subscriptions que bateram ponto hoje
+    // Buscar todos os funcionários com push subscriptions (inclui quem ainda não bateu ponto)
     const usuarios = await prisma.usuario.findMany({
       where: {
         cargo: 'FUNCIONARIO',
         empresa: { status: 'ATIVO' },
         pushSubscriptions: { some: {} },
-        pontos: {
-          some: {
-            subTipo: 'ENTRADA',
-            dataHora: { gte: inicioHoje, lte: fimHoje },
-          },
-        },
       },
       select: {
         id: true,
         jornada: true,
+        empresa: { select: { configuracoes: true } },
         pontos: {
           where: { dataHora: { gte: inicioHoje, lte: fimHoje } },
           orderBy: { dataHora: 'desc' },
@@ -130,6 +140,10 @@ export async function GET(req: NextRequest) {
     const inserts: { usuarioId: string; tipo: string; data: string }[] = [];
 
     for (const usuario of usuarios) {
+      const cfg = (usuario.empresa?.configuracoes as any) || {};
+      if (cfg.lembretesAtivos === false) continue;
+      const duracaoPausaCafeMin = typeof cfg.duracaoPausaCafeMin === 'number' ? cfg.duracaoPausaCafeMin : 15;
+
       const jornada = (usuario.jornada as any)?.[diaKey];
       if (!jornada?.ativo) continue;
 
@@ -139,18 +153,40 @@ export async function GET(req: NextRequest) {
       const deveLembrar = (tipo: TipoLembrete) =>
         !enviadoSet.has(`${usuario.id}:${tipo}`);
 
-      const agendar = (tipo: TipoLembrete) => {
+      const agendar = (tipo: TipoLembrete, bodyOverride?: string) => {
         const cfg = LEMBRETES[tipo];
         pushPromises.push(
           enviarPushSeguro(usuario.id, {
             title: cfg.title,
-            body: cfg.body,
+            body: bodyOverride || cfg.body,
             tag: cfg.tag,
             url: '/funcionario',
           })
         );
         inserts.push({ usuarioId: usuario.id, tipo, data: dataSP });
       };
+
+      const entradaHoje = usuario.pontos.length > 0;
+      const e1 = parseHM(jornada.e1);
+
+      // 0a) 15 min antes da entrada — lembrete preventivo
+      if (e1 > 0 && !entradaHoje && deveLembrar('ENTRADA_15MIN')) {
+        if (minutosAgora >= e1 - 15 && minutosAgora < e1) {
+          const horaEntrada = `${String(Math.floor(e1 / 60)).padStart(2, '0')}:${String(e1 % 60).padStart(2, '0')}`;
+          agendar('ENTRADA_15MIN', `Seu horário de entrada é às ${horaEntrada}. Faltam ${e1 - minutosAgora} minutos.`);
+        }
+      }
+
+      // 0b) Atrasado — já passou o horário e não bateu ponto
+      if (e1 > 0 && !entradaHoje && deveLembrar('ENTRADA_ATRASADO')) {
+        if (minutosAgora >= e1 + 10 && minutosAgora < e1 + 30) {
+          const atraso = minutosAgora - e1;
+          agendar('ENTRADA_ATRASADO', `Você está ${atraso} minutos atrasado. Bata o ponto assim que chegar.`);
+        }
+      }
+
+      // Lembretes abaixo só para quem já bateu ponto
+      if (!entradaHoje) continue;
 
       // 1) 5 min antes do almoço (s1)
       const s1 = parseHM(jornada.s1);
@@ -188,8 +224,18 @@ export async function GET(req: NextRequest) {
       if (deveLembrar('PAUSA_CAFE_EXCEDIDA') && ultimoTipo === 'SAIDA_INTERVALO') {
         const saidaCafe = new Date(ultimoPonto.dataHora);
         const diffMin = Math.floor((Date.now() - saidaCafe.getTime()) / 60000);
-        if (diffMin > 15) {
-          agendar('PAUSA_CAFE_EXCEDIDA');
+        if (diffMin > duracaoPausaCafeMin) {
+          agendar('PAUSA_CAFE_EXCEDIDA', `Sua pausa para café já passou de ${duracaoPausaCafeMin} minutos.`);
+        }
+      }
+
+      // 5) Esqueceu de bater ponto de saída (>30 min após horário, último ponto não é SAIDA)
+      if (s2 > 0 && deveLembrar('ESQUECEU_SAIDA')) {
+        if (minutosAgora >= s2 + 30 && minutosAgora < s2 + 180) {
+          // Último ponto do dia não é SAIDA e não está em almoço/intervalo (já voltou)
+          if (ultimoTipo && !['SAIDA', 'SAIDA_ALMOCO', 'SAIDA_INTERVALO'].includes(ultimoTipo)) {
+            agendar('ESQUECEU_SAIDA');
+          }
         }
       }
     }

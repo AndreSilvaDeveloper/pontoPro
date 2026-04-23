@@ -3,23 +3,32 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 
-export const dynamic = 'force-dynamic'; // Garante que não faça cache
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
 
-  // Segurança: Só Admin pode ver
   if (!session || session.user.cargo !== 'ADMIN') {
     return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
   }
 
   try {
-    // Busca todos os pontos da empresa do admin logado
+    const { searchParams } = new URL(request.url);
+    const inicioParam = searchParams.get('inicio');
+    const fimParam = searchParams.get('fim');
+
+    // Default: últimos 60 dias. Evita scan da tabela inteira em empresas grandes.
+    const agora = new Date();
+    const defaultInicio = new Date(agora);
+    defaultInicio.setDate(defaultInicio.getDate() - 60);
+
+    const inicio = inicioParam ? new Date(`${inicioParam}T00:00:00`) : defaultInicio;
+    const fim = fimParam ? new Date(`${fimParam}T23:59:59.999`) : agora;
+
     const pontos = await prisma.ponto.findMany({
       where: {
-        usuario: {
-          empresaId: session.user.empresaId 
-        }
+        usuario: { empresaId: session.user.empresaId },
+        dataHora: { gte: inicio, lte: fim },
       },
       include: {
         usuario: {
@@ -27,18 +36,17 @@ export async function GET(request: Request) {
             id: true,
             nome: true,
             email: true,
-            jornada: true, // <--- USE O NOVO CAMPO 'JORNADA'
-            fotoPerfilUrl: true
-          }
-        }
+            jornada: true,
+            fotoPerfilUrl: true,
+          },
+        },
       },
-      orderBy: { dataHora: 'desc' }
+      orderBy: { dataHora: 'desc' },
     });
 
     return NextResponse.json(pontos);
-
   } catch (error) {
-    console.error("Erro ao buscar pontos:", error);
+    console.error('Erro ao buscar pontos:', error);
     return NextResponse.json({ erro: 'Erro interno' }, { status: 500 });
   }
 }

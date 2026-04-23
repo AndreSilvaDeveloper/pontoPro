@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 import { getBillingStatus, buildBillingBlockPayload } from "@/lib/billing";
+import { verifyToken, consumeBackupCode } from "@/lib/twoFactor";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
+        twoFactorCode: { label: "2FA", type: "text" },
       },
 
       async authorize(credentials) {
@@ -50,6 +52,9 @@ export const authOptions: NextAuthOptions = {
             deveCadastrarFoto: true,
             deveDarCienciaCelular: true,
             assinaturaUrl: true,
+            twoFactorEnabled: true,
+            twoFactorSecret: true,
+            twoFactorBackupCodes: true,
           },
         });
 
@@ -79,6 +84,32 @@ export const authOptions: NextAuthOptions = {
         if (!ok) {
           console.log("FAIL: wrong password (bcrypt)");
           return null;
+        }
+
+        // (B.1) 2FA — se habilitado, exige código TOTP ou backup
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          const code = (credentials.twoFactorCode || '').trim();
+          if (!code) {
+            // Sinal pro frontend: pedir código
+            throw new Error('2FA_REQUIRED');
+          }
+          let twoFAok = verifyToken(user.twoFactorSecret, code);
+
+          // Se falhou, tenta como backup code
+          if (!twoFAok && Array.isArray(user.twoFactorBackupCodes)) {
+            const restantes = consumeBackupCode(user.twoFactorBackupCodes as string[], code);
+            if (restantes) {
+              twoFAok = true;
+              await prisma.usuario.update({
+                where: { id: user.id },
+                data: { twoFactorBackupCodes: restantes },
+              });
+            }
+          }
+
+          if (!twoFAok) {
+            throw new Error('2FA_INVALID');
+          }
         }
 
         // (C) SUPER_ADMIN

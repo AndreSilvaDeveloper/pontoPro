@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
+import { BASE_URL } from '@/config/site';
 
 interface FuncionarioImport {
   nome: string;
@@ -215,7 +216,7 @@ export async function POST(request: Request) {
                 </div>
               </div>
               <div style="text-align: center; margin-bottom: 30px;">
-                <a href="https://ontimeia.com/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px;">
+                <a href="${BASE_URL}/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px;">
                   Acessar Sistema
                 </a>
               </div>

@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/db";
 import { getBillingStatus } from "@/lib/billing";
+import AdminPrompts from "@/components/admin/AdminPrompts";
 
 export const runtime = "nodejs";
 
@@ -70,5 +71,22 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     }
   }
 
-  return <>{children}</>;
+  // Buscar nome da empresa para o sidebar
+  let empresaNome: string | undefined;
+  // @ts-ignore
+  const emailSess = session.user.email;
+  if (emailSess) {
+    const u = await prisma.usuario.findUnique({
+      where: { email: emailSess },
+      select: { empresa: { select: { nome: true } } },
+    });
+    empresaNome = u?.empresa?.nome;
+  }
+
+  return (
+    <>
+      <AdminPrompts empresaNome={empresaNome} />
+      <div className="lg:pl-64">{children}</div>
+    </>
+  );
 }

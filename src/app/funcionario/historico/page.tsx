@@ -88,6 +88,11 @@ export default function MeuHistorico() {
   const [jornada, setJornada] = useState<any>(null);
   const [feriados, setFeriados] = useState<string[]>([]);
   const [resumo, setResumo] = useState<{ total: string; saldo: string; saldoPositivo: boolean } | null>(null);
+  const [ocultarSaldo, setOcultarSaldo] = useState(false);
+  const [toleranciaMin, setToleranciaMin] = useState(10);
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [paginaSolicitacoes, setPaginaSolicitacoes] = useState(1);
+  const [pontosUltimos7, setPontosUltimos7] = useState<any[]>([]);
   const [ajustesBancoLista, setAjustesBancoLista] = useState<any[]>([]);
   const [solicitacoes, setSolicitacoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -395,7 +400,7 @@ export default function MeuHistorico() {
 
         if (!diasIsentos.has(diaStr)) {
           // Cortar hora extra no saldo se não aprovada
-          const toleranciaHE = 10;
+          const toleranciaHE = toleranciaMin;
           let trabalhadoEfetivo = trabalhadoDia;
 
           const temHoraExtra = metaDia > 0
@@ -411,7 +416,7 @@ export default function MeuHistorico() {
           }
 
           let saldoDia = trabalhadoEfetivo - metaDia;
-          if (Math.abs(saldoDia) <= 10) saldoDia = 0;
+          if (Math.abs(saldoDia) <= toleranciaMin) saldoDia = 0;
           saldoTotalBanco += saldoDia;
         }
       }
@@ -473,11 +478,28 @@ export default function MeuHistorico() {
     carregar();
   }, [carregar]);
 
+  useEffect(() => {
+    setPaginaAtual(1);
+  }, [dataInicio, dataFim]);
+
+  useEffect(() => {
+    setPaginaSolicitacoes(1);
+  }, [solicitacaoExpandida]);
+
+  useEffect(() => {
+    axios.get('/api/funcionario/config').then(res => {
+      setOcultarSaldo(!!res.data?.ocultarSaldoHoras);
+      if (typeof res.data?.toleranciaMinutos === 'number') {
+        setToleranciaMin(res.data.toleranciaMinutos);
+      }
+    }).catch(() => {});
+  }, []);
+
   // === SUGESTÕES INTELIGENTES ===
   type Sugestao = { data: string; tipo: string; horario: string; label: string };
 
   const detectarPontosFaltantes = useCallback((): Sugestao[] => {
-    if (!jornada || !pontos) return [];
+    if (!jornada || !pontosUltimos7) return [];
 
     const diasMap = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
     const hoje = new Date();
@@ -495,7 +517,7 @@ export default function MeuHistorico() {
       if (feriados.includes(diaStr)) continue;
 
       // Pontos desse dia (excluindo ausências)
-      const pontosDoDia = pontos
+      const pontosDoDia = pontosUltimos7
         .filter(p => p.tipo !== 'AUSENCIA' && format(new Date(p.dataHora), 'yyyy-MM-dd') === diaStr)
         .sort((a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
@@ -535,7 +557,16 @@ export default function MeuHistorico() {
     }
 
     return sugestoes.slice(0, 5); // máximo 5 sugestões
-  }, [pontos, jornada, feriados]);
+  }, [pontosUltimos7, jornada, feriados]);
+
+  const carregarPontosUltimos7 = useCallback(async () => {
+    try {
+      const fim = format(new Date(), 'yyyy-MM-dd');
+      const inicio = format(new Date(Date.now() - 7 * 86400000), 'yyyy-MM-dd');
+      const res = await axios.get(`/api/funcionario/historico?inicio=${inicio}&fim=${fim}`);
+      setPontosUltimos7(res.data.pontos || []);
+    } catch {}
+  }, []);
 
   // === AÇÕES DO MODAL ===
   const aplicarSugestao = (sug: Sugestao) => {
@@ -554,6 +585,7 @@ export default function MeuHistorico() {
     setMotivo('');
     setAvisoModal(null);
     setModalAberto(true);
+    carregarPontosUltimos7();
   };
 
   const abrirEdicao = useCallback((ponto: any) => {
@@ -608,14 +640,17 @@ export default function MeuHistorico() {
     const dataHoraFinal = new Date(`${dataBase}T${horaNova}:00`);
 
     try {
-      await axios.post('/api/funcionario/solicitar-ajuste', {
+      const res = await axios.post('/api/funcionario/solicitar-ajuste', {
         pontoId: pontoSelecionado?.id ?? null,
         tipo: modoModal === 'INCLUSAO' ? tipoNovo : null,
         novoHorario: dataHoraFinal.toISOString(),
         motivo,
       });
 
-      setAvisoModal({ tipo: 'sucesso', texto: 'Solicitação enviada com sucesso!' });
+      const msg = res.data?.autoGestao
+        ? (modoModal === 'INCLUSAO' ? 'Ponto incluído com sucesso!' : 'Ponto atualizado com sucesso!')
+        : 'Solicitação enviada com sucesso!';
+      setAvisoModal({ tipo: 'sucesso', texto: msg });
       setTimeout(() => { setModalAberto(false); setAvisoModal(null); }, 900);
       carregar();
     } catch (error: any) {
@@ -692,8 +727,29 @@ export default function MeuHistorico() {
   // Ordenar datas (mais recente primeiro)
   const datasOrdenadas = Object.keys(pontosPorData).sort((a, b) => b.localeCompare(a));
 
+  // Paginação: 10 dias por página
+  const DIAS_POR_PAGINA = 10;
+  const totalPaginas = Math.max(1, Math.ceil(datasOrdenadas.length / DIAS_POR_PAGINA));
+  const paginaSegura = Math.min(Math.max(1, paginaAtual), totalPaginas);
+  const datasPaginadas = datasOrdenadas.slice(
+    (paginaSegura - 1) * DIAS_POR_PAGINA,
+    paginaSegura * DIAS_POR_PAGINA,
+  );
+
   // Contadores de solicitações
   const countPendentes = solicitacoes.filter(s => s.status === 'PENDENTE').length;
+
+  // Mapear solicitações pendentes por pontoId (para badge inline)
+  const pendentesPorPonto: Record<string, any> = {};
+  const pendentesInclusao: any[] = [];
+  solicitacoes.forEach((s: any) => {
+    if (s.status !== 'PENDENTE') return;
+    if (s.pontoId) {
+      pendentesPorPonto[s.pontoId] = s;
+    } else {
+      pendentesInclusao.push(s);
+    }
+  });
 
   return (
     <div
@@ -754,7 +810,7 @@ export default function MeuHistorico() {
 
             {/* Resumo */}
             {resumo && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`grid gap-3 ${ocultarSaldo ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <div className="bg-page backdrop-blur border border-purple-500/20 p-4 rounded-2xl">
                   <div className="flex items-center gap-2 mb-2">
                     <Clock size={14} className="text-purple-400" />
@@ -763,24 +819,26 @@ export default function MeuHistorico() {
                   <p className="text-2xl font-bold text-text-primary tracking-tight">{resumo.total}</p>
                 </div>
 
-                <div className={`backdrop-blur border p-4 rounded-2xl ${
-                  resumo.saldoPositivo
-                    ? 'bg-emerald-500/5 border-emerald-500/20'
-                    : 'bg-red-500/5 border-red-500/20'
-                }`}>
-                  <div className="flex items-center gap-2 mb-2">
-                    {resumo.saldoPositivo
-                      ? <TrendingUp size={14} className="text-emerald-400" />
-                      : <TrendingDown size={14} className="text-red-400" />
-                    }
-                    <span className={`text-[10px] uppercase font-bold tracking-widest ${
-                      resumo.saldoPositivo ? 'text-emerald-300/70' : 'text-red-300/70'
-                    }`}>Banco</span>
+                {!ocultarSaldo && (
+                  <div className={`backdrop-blur border p-4 rounded-2xl ${
+                    resumo.saldoPositivo
+                      ? 'bg-emerald-500/5 border-emerald-500/20'
+                      : 'bg-red-500/5 border-red-500/20'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {resumo.saldoPositivo
+                        ? <TrendingUp size={14} className="text-emerald-400" />
+                        : <TrendingDown size={14} className="text-red-400" />
+                      }
+                      <span className={`text-[10px] uppercase font-bold tracking-widest ${
+                        resumo.saldoPositivo ? 'text-emerald-300/70' : 'text-red-300/70'
+                      }`}>Banco</span>
+                    </div>
+                    <p className={`text-2xl font-bold tracking-tight ${
+                      resumo.saldoPositivo ? 'text-emerald-400' : 'text-red-400'
+                    }`}>{resumo.saldo}</p>
                   </div>
-                  <p className={`text-2xl font-bold tracking-tight ${
-                    resumo.saldoPositivo ? 'text-emerald-400' : 'text-red-400'
-                  }`}>{resumo.saldo}</p>
-                </div>
+                )}
               </div>
             )}
 
@@ -1022,6 +1080,37 @@ export default function MeuHistorico() {
               );
             })()}
 
+            {/* Banner: inclusões pendentes aguardando admin */}
+            {pendentesInclusao.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+                  <AlertCircle size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm text-amber-300">
+                    {pendentesInclusao.length === 1
+                      ? 'Você tem 1 solicitação de inclusão pendente'
+                      : `Você tem ${pendentesInclusao.length} solicitações de inclusão pendentes`}
+                  </p>
+                  <p className="text-xs text-amber-300/70 mt-0.5">Aguardando aprovação do admin.</p>
+                  <ul className="mt-2 space-y-1">
+                    {pendentesInclusao.slice(0, 3).map((s: any) => {
+                      const tipoLabel = getTipoConfig(s.tipo).label;
+                      const dt = format(new Date(s.novoHorario), "dd/MM 'às' HH:mm", { locale: ptBR });
+                      return (
+                        <li key={s.id} className="text-xs text-amber-200/80">
+                          <span className="font-semibold">{tipoLabel}</span> — {dt}
+                        </li>
+                      );
+                    })}
+                    {pendentesInclusao.length > 3 && (
+                      <li className="text-xs text-amber-300/60">+ {pendentesInclusao.length - 3} outras</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             {/* Lista de Pontos Agrupados por Data */}
             <div className="space-y-4">
               {pontosFiltrados.length === 0 && !loading && (
@@ -1034,7 +1123,7 @@ export default function MeuHistorico() {
                 </div>
               )}
 
-              {datasOrdenadas.map(dia => {
+              {datasPaginadas.map(dia => {
                 const pontosDoDia = pontosPorData[dia].sort(
                   (a: any, b: any) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime()
                 );
@@ -1090,6 +1179,13 @@ export default function MeuHistorico() {
                                   </span>
                                 </div>
                               </div>
+
+                              {/* Badge: solicitação pendente */}
+                              {pendentesPorPonto[ponto.id] && (
+                                <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                                  <Clock size={11} /> Ajuste pendente ({format(new Date(pendentesPorPonto[ponto.id].novoHorario), 'HH:mm')})
+                                </span>
+                              )}
 
                               {/* Ações */}
                               {ponto.tipo !== 'AUSENCIA' && (
@@ -1153,6 +1249,29 @@ export default function MeuHistorico() {
                   </div>
                 );
               })}
+
+              {/* Paginação */}
+              {totalPaginas > 1 && (
+                <div className="flex items-center justify-between gap-2 pt-4 border-t border-border-subtle">
+                  <button
+                    onClick={() => setPaginaAtual(p => Math.max(1, p - 1))}
+                    disabled={paginaSegura <= 1}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface/60 hover:bg-hover-bg border border-border-subtle text-sm text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    <ChevronLeft size={16} /> Anterior
+                  </button>
+                  <span className="text-xs text-text-muted font-semibold">
+                    Página {paginaSegura} de {totalPaginas}
+                  </span>
+                  <button
+                    onClick={() => setPaginaAtual(p => Math.min(totalPaginas, p + 1))}
+                    disabled={paginaSegura >= totalPaginas}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface/60 hover:bg-hover-bg border border-border-subtle text-sm text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    Próxima <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -1204,10 +1323,20 @@ export default function MeuHistorico() {
                 <p className="text-text-faint text-sm font-medium">Nenhuma solicitação</p>
                 <p className="text-text-dim text-xs mt-1">Suas solicitações de ajuste aparecerão aqui</p>
               </div>
-            ) : (
+            ) : (() => {
+              const solicitacoesFiltradas = solicitacoes
+                .filter(s => !solicitacaoExpandida || solicitacaoExpandida === 'TODOS' || s.status === solicitacaoExpandida);
+              const POR_PAGINA_SOL = 10;
+              const totalPagSol = Math.max(1, Math.ceil(solicitacoesFiltradas.length / POR_PAGINA_SOL));
+              const pagSolSegura = Math.min(Math.max(1, paginaSolicitacoes), totalPagSol);
+              const solicitacoesPaginadas = solicitacoesFiltradas.slice(
+                (pagSolSegura - 1) * POR_PAGINA_SOL,
+                pagSolSegura * POR_PAGINA_SOL,
+              );
+
+              return (
               <div className="space-y-3">
-                {solicitacoes
-                  .filter(s => !solicitacaoExpandida || solicitacaoExpandida === 'TODOS' || s.status === solicitacaoExpandida)
+                {solicitacoesPaginadas
                   .map(sol => {
                     const stCfg = STATUS_CONFIG[sol.status] || STATUS_CONFIG.PENDENTE;
                     const StIcon = stCfg.icon;
@@ -1278,8 +1407,31 @@ export default function MeuHistorico() {
                       </div>
                     );
                   })}
+
+                {totalPagSol > 1 && (
+                  <div className="flex items-center justify-between gap-2 pt-4 border-t border-border-subtle">
+                    <button
+                      onClick={() => setPaginaSolicitacoes(p => Math.max(1, p - 1))}
+                      disabled={pagSolSegura <= 1}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface/60 hover:bg-hover-bg border border-border-subtle text-sm text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                    >
+                      <ChevronLeft size={16} /> Anterior
+                    </button>
+                    <span className="text-xs text-text-muted font-semibold">
+                      Página {pagSolSegura} de {totalPagSol}
+                    </span>
+                    <button
+                      onClick={() => setPaginaSolicitacoes(p => Math.min(totalPagSol, p + 1))}
+                      disabled={pagSolSegura >= totalPagSol}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface/60 hover:bg-hover-bg border border-border-subtle text-sm text-text-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                    >
+                      Próxima <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+              );
+            })()}
           </div>
         )}
 
@@ -1368,7 +1520,7 @@ export default function MeuHistorico() {
                       )}
 
                       {/* Campos manuais */}
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Data</label>
                           <input
@@ -1383,7 +1535,7 @@ export default function MeuHistorico() {
                           <select
                             value={tipoNovo}
                             onChange={e => setTipoNovo(e.target.value)}
-                            className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-xs outline-none focus:border-purple-500 appearance-none"
+                            className="w-full bg-input-solid/60 border border-border-default p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 appearance-none"
                           >
                             <option value="ENTRADA">Entrada</option>
                             <option value="SAIDA_INTERVALO">Saída Café</option>
@@ -1408,12 +1560,19 @@ export default function MeuHistorico() {
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Novo Horário</label>
+                  <label className="text-[10px] text-text-faint font-bold uppercase ml-1">Novo Horário (HH:MM)</label>
                   <input
-                    type="time"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={5}
+                    placeholder="00:00"
                     value={horaNova}
-                    onChange={e => setHoraNova(e.target.value)}
-                    className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center outline-none focus:border-purple-500 transition-colors"
+                    onChange={e => {
+                      let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      if (v.length >= 3) v = v.slice(0, 2) + ':' + v.slice(2);
+                      setHoraNova(v);
+                    }}
+                    className="w-full bg-page border border-border-input p-4 rounded-2xl text-text-primary text-3xl font-bold text-center font-mono tracking-widest outline-none focus:border-purple-500 transition-colors"
                   />
                 </div>
 

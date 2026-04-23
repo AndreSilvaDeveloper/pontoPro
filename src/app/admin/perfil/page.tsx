@@ -35,6 +35,7 @@ import type { BillingStatus } from "@/lib/billing";
 import { validarCNPJ } from "@/utils/cnpj";
 
 import PaymentModal, { AsaasBundle, type PayMode } from "@/components/billing/PaymentModal";
+import TwoFactorCard from "@/components/admin/TwoFactorCard";
 
 // === FUNÇÕES AUXILIARES DE PIX (mantidas) ===
 const normalizeText = (text: string) =>
@@ -306,7 +307,7 @@ export default function PerfilAdmin() {
 
       const payloadPix = gerarPayloadPix(
         fatura.chavePix,
-        "Ontime Sistemas",
+        "WorkID",
         "Juiz de Fora",
         fatura.valor.toFixed(2),
         `FAT${format(new Date(), "MMyy")}`
@@ -318,7 +319,7 @@ export default function PerfilAdmin() {
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(24);
       doc.setFont("helvetica", "bold");
-      doc.text("ONTIME SISTEMAS", 14, 20);
+      doc.text("WORKID", 14, 20);
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
@@ -1014,6 +1015,9 @@ export default function PerfilAdmin() {
             </button>
           </form>
         </div>
+
+        {/* Segurança / 2FA */}
+        <TwoFactorCard />
 
         {/* Zona de Perigo */}
         <ExcluirContaSection />

@@ -11,6 +11,7 @@ import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot"
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import AutoLoginRestore from "@/components/AutoLoginRestore";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import { BASE_URL } from "@/config/site";
 
 
 const inter = Inter({ subsets: ["latin"] });
@@ -42,12 +43,12 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'WorkID' }],
   creator: 'WorkID',
-  metadataBase: new URL('https://ontimeia.com'),
+  metadataBase: new URL(BASE_URL),
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    url: 'https://ontimeia.com',
+    url: BASE_URL,
     siteName: 'WorkID',
     title: 'WorkID - Sistema de Ponto Digital com GPS e Reconhecimento Facial',
     description: 'Controle de ponto digital para empresas. Registro por GPS, reconhecimento facial, relatórios e banco de horas. Teste grátis 14 dias.',

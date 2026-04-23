@@ -5,6 +5,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { registrarLog } from '@/lib/logger';
 import { enviarEmailSeguro } from '@/lib/email';
 import { enviarPushSeguro } from '@/lib/push';
+import { atualizarHoraExtraDia } from '@/lib/admin/atualizarHoraExtraDia';
 
 // ============================
 // Helpers de Data (SP)
@@ -373,6 +374,21 @@ export async function POST(request: Request) {
           detalhes,
         });
       });
+
+      // Reprocessa hora extra dos dias afetados (implícito: admin aprovou, então hora extra já conta)
+      const diasAfetados = new Set<string>();
+      diasAfetados.add(new Date(dataFinal).toDateString());
+      if (sol.pontoId && sol.ponto?.dataHora) {
+        diasAfetados.add(new Date(sol.ponto.dataHora).toDateString());
+      }
+      for (const diaStr of diasAfetados) {
+        await atualizarHoraExtraDia({
+          usuarioId: sol.usuarioId,
+          data: new Date(diaStr),
+          adminId,
+          adminNome,
+        }).catch((e) => console.error('Falha ao atualizar hora extra:', e));
+      }
 
       // Notificar funcionário por e-mail sobre aprovação
       if (sol.usuario?.email) {

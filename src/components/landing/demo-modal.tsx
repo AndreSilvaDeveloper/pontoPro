@@ -15,7 +15,7 @@ export function DemoModal({ open, onOpenChange }: DemoModalProps) {
       <DialogContent className="max-w-[95vw] border-purple-500/20 bg-[#0a0e27]/90 text-white backdrop-blur-xl sm:max-w-3xl">
         <DialogHeader className="text-center">
           <DialogTitle className="text-xl font-extrabold text-white md:text-2xl">
-            Demonstração do OntimeIA
+            Demonstração do WorkID
           </DialogTitle>
         </DialogHeader>
 
@@ -24,7 +24,7 @@ export function DemoModal({ open, onOpenChange }: DemoModalProps) {
             <iframe
               className="absolute inset-0 h-full w-full"
               src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`}
-              title="Demonstração OntimeIA"
+              title="Demonstração WorkID"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
             />

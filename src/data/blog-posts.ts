@@ -47,22 +47,22 @@ export const blogPosts: BlogPost[] = [
       </ul>
 
       <h2>Ponto digital é obrigatório?</h2>
-      <p>A CLT exige que empresas com mais de 20 funcionários façam o controle de jornada. O ponto digital é uma das formas aceitas pela legislação, desde que o sistema esteja em conformidade com a <strong>Portaria 671</strong>.</p>
-      <p>Mesmo empresas menores podem (e devem) adotar o ponto digital como forma de proteção jurídica e organização interna. Em disputas trabalhistas, ter registros completos e confiáveis faz toda a diferença.</p>
+      <p>A CLT exige que empresas com mais de 20 funcionários façam o controle de jornada. O ponto digital é uma das formas aceitas pela legislação, desde que o sistema esteja em conformidade com a <a href="/blog/portaria-671-controle-de-ponto"><strong>Portaria 671</strong></a>.</p>
+      <p>Mesmo empresas menores podem (e devem) adotar o ponto digital como forma de proteção jurídica e organização interna. Em disputas trabalhistas, ter registros completos e confiáveis faz toda a diferença. Veja também: <a href="/blog/ponto-eletronico-obrigatorio-lei">ponto eletrônico é obrigatório por lei?</a></p>
 
       <h2>Como escolher um sistema de ponto digital?</h2>
       <p>Na hora de escolher, avalie os seguintes critérios:</p>
       <ul>
         <li><strong>Facilidade de uso:</strong> O sistema precisa ser intuitivo tanto para gestores quanto para colaboradores.</li>
-        <li><strong>Segurança:</strong> Busque soluções com GPS, reconhecimento facial e criptografia de dados.</li>
-        <li><strong>Conformidade legal:</strong> Verifique se o sistema atende à Portaria 671.</li>
+        <li><strong>Segurança:</strong> Busque soluções com GPS, <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">reconhecimento facial</a> e criptografia de dados.</li>
+        <li><strong>Conformidade legal:</strong> Verifique se o sistema atende à Portaria 671 e à <a href="/blog/ponto-eletronico-lgpd-o-que-saber">LGPD</a>.</li>
         <li><strong>Suporte:</strong> Ter um time de suporte acessível é fundamental para resolver dúvidas rapidamente.</li>
         <li><strong>Custo-benefício:</strong> Compare planos e funcionalidades. Nem sempre o mais barato é o mais econômico a longo prazo.</li>
       </ul>
 
       <h2>Conclusão</h2>
       <p>O ponto digital é a evolução natural do controle de jornada. Ele traz mais segurança, praticidade e conformidade legal para sua empresa, além de economizar tempo e dinheiro do departamento de RH.</p>
-      <p>Se você busca uma solução moderna e confiável, o <strong>WorkID</strong> oferece ponto digital com GPS, reconhecimento facial, banco de horas automático e muito mais — tudo em uma plataforma simples e acessível.</p>
+      <p>Se você busca uma solução moderna e confiável, o <strong>WorkID</strong> oferece ponto digital com GPS, <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">reconhecimento facial</a>, <a href="/blog/banco-de-horas-como-calcular-gerenciar">banco de horas automático</a> e muito mais — tudo em uma plataforma simples e acessível. Precisa migrar do cartão de ponto? Veja como <a href="/blog/como-implantar-ponto-digital-7-dias">implantar ponto digital em 7 dias</a>.</p>
 
       <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
         <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Pronto para modernizar o controle de ponto da sua empresa?</p>
@@ -824,6 +824,322 @@ export const blogPosts: BlogPost[] = [
       </div>
     `,
   },
+  {
+    slug: "reconhecimento-facial-ponto-vale-a-pena",
+    title: "Reconhecimento facial no ponto: vale a pena?",
+    description:
+      "Entenda como funciona o reconhecimento facial no registro de ponto, quais os benefícios, os riscos e quando ele vale a pena para sua empresa.",
+    date: "2026-04-05",
+    readTime: "6 min",
+    category: "Tecnologia",
+    tags: ["reconhecimento facial", "segurança", "fraude", "biometria"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O que é reconhecimento facial no ponto?</h2>
+      <p>O <strong>reconhecimento facial</strong> é uma tecnologia biométrica que compara a foto capturada no momento da batida com uma foto de referência do colaborador, garantindo que é ele mesmo quem está registrando o ponto. Combinado com <a href="/blog/como-evitar-fraudes-registro-ponto-gps-reconhecimento-facial">GPS e geofence</a>, é a forma mais segura de controle de jornada disponível hoje.</p>
+
+      <h2>Como funciona na prática?</h2>
+      <p>O processo acontece em segundos e é totalmente transparente para o funcionário:</p>
+      <ul>
+        <li><strong>Cadastro inicial:</strong> No primeiro acesso, o colaborador tira uma selfie de referência.</li>
+        <li><strong>Captura no ponto:</strong> Cada vez que bate o ponto, uma nova foto é capturada automaticamente.</li>
+        <li><strong>Comparação por IA:</strong> Um algoritmo (no caso do WorkID, a AWS Rekognition) compara as duas fotos.</li>
+        <li><strong>Validação:</strong> Se a similaridade for alta o suficiente, o ponto é aceito. Caso contrário, é bloqueado.</li>
+      </ul>
+
+      <h2>Quais os benefícios?</h2>
+      <ul>
+        <li><strong>Fim da "batida por terceiros":</strong> Não adianta um colega bater o ponto por você — a foto não confere.</li>
+        <li><strong>Segurança jurídica:</strong> Em uma auditoria, você tem uma foto datada de cada registro.</li>
+        <li><strong>Rápido e sem fricção:</strong> Apenas uma selfie, em segundos.</li>
+        <li><strong>Sem hardware caro:</strong> O celular do próprio funcionário já resolve.</li>
+      </ul>
+
+      <h2>E a LGPD?</h2>
+      <p>Sim, dados biométricos são considerados <strong>dados sensíveis</strong> pela LGPD. Você precisa:</p>
+      <ul>
+        <li>Obter consentimento explícito do colaborador;</li>
+        <li>Informar a finalidade do uso (controle de ponto);</li>
+        <li>Armazenar as fotos com segurança;</li>
+        <li>Permitir que o colaborador solicite exclusão dos dados ao sair.</li>
+      </ul>
+      <p>Com o <a href="/signup">WorkID</a>, tudo isso já vem configurado por padrão — o colaborador dá ciência no primeiro login.</p>
+
+      <h2>Vale a pena para pequenas empresas?</h2>
+      <p>Depende do seu cenário. Se você tem poucos funcionários e todos trabalham no mesmo local, só <a href="/blog/o-que-e-ponto-digital-como-funciona">GPS já resolve</a>. Mas se você tem:</p>
+      <ul>
+        <li>Equipes externas ou em campo;</li>
+        <li>Múltiplas unidades;</li>
+        <li>Histórico de "favores" entre colegas;</li>
+        <li>Necessidade de auditoria rigorosa;</li>
+      </ul>
+      <p>...o reconhecimento facial é fundamental.</p>
+
+      <h2>Conclusão</h2>
+      <p>Reconhecimento facial deixou de ser luxo e virou padrão para quem leva controle de jornada a sério. Com o <strong>WorkID</strong>, essa tecnologia está incluída em todos os planos.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Zero fraudes no seu controle de ponto</p>
+        <p>GPS + reconhecimento facial + geofence. Teste grátis.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "ponto-eletronico-lgpd-o-que-saber",
+    title: "Ponto eletrônico e LGPD: o que você precisa saber",
+    description:
+      "Como adequar seu sistema de ponto eletrônico à LGPD. Direitos do colaborador, base legal, armazenamento e como o WorkID ajuda.",
+    date: "2026-04-07",
+    readTime: "8 min",
+    category: "Compliance",
+    tags: ["LGPD", "privacidade", "ponto digital", "compliance"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>LGPD e controle de ponto: por onde começar?</h2>
+      <p>A Lei Geral de Proteção de Dados (LGPD) alcança qualquer empresa que trate dados pessoais — e dados de ponto (horário, localização, foto) definitivamente se encaixam. Se você usa <a href="/blog/o-que-e-ponto-digital-como-funciona">ponto digital</a>, precisa entender as obrigações.</p>
+
+      <h2>Quais dados de ponto são sensíveis?</h2>
+      <ul>
+        <li><strong>Foto / biometria facial:</strong> dado sensível — exige consentimento explícito.</li>
+        <li><strong>Geolocalização:</strong> dado pessoal — exige finalidade clara.</li>
+        <li><strong>Horários de entrada/saída:</strong> dado pessoal — tratado pela base legal de execução de contrato de trabalho.</li>
+      </ul>
+
+      <h2>Quais são as obrigações da empresa?</h2>
+      <ul>
+        <li>Informar ao colaborador quais dados são coletados e por que;</li>
+        <li>Obter consentimento para dados biométricos;</li>
+        <li>Armazenar os dados com segurança (criptografia, acesso restrito);</li>
+        <li>Manter os dados somente enquanto forem necessários;</li>
+        <li>Permitir acesso, correção e exclusão quando solicitado;</li>
+        <li>Informar vazamentos à ANPD se ocorrerem.</li>
+      </ul>
+
+      <h2>Direitos do colaborador</h2>
+      <p>Pela LGPD, o colaborador pode solicitar:</p>
+      <ul>
+        <li>Acesso aos dados armazenados (histórico de pontos, fotos);</li>
+        <li>Correção de dados incorretos;</li>
+        <li>Exclusão dos dados após o desligamento (com prazos legais);</li>
+        <li>Portabilidade (receber os dados em formato aberto).</li>
+      </ul>
+
+      <h2>Como o WorkID ajuda?</h2>
+      <p>O <a href="/signup">WorkID</a> foi projetado com LGPD em mente:</p>
+      <ul>
+        <li><strong>Termo de ciência digital:</strong> o colaborador assina eletronicamente autorizando uso de biometria e GPS;</li>
+        <li><strong>Criptografia:</strong> todos os dados são criptografados em trânsito e em repouso;</li>
+        <li><strong>Controle de acesso:</strong> só admins autorizados visualizam fotos e dados;</li>
+        <li><strong>Retenção automática:</strong> fotos antigas são expurgadas conforme política configurável;</li>
+        <li><strong>Export e portabilidade:</strong> o colaborador pode solicitar todos os dados em PDF.</li>
+      </ul>
+
+      <h2>E se eu não fizer nada?</h2>
+      <p>Multas podem chegar a <strong>R$ 50 milhões por infração</strong>. Além disso, colaboradores podem processar individualmente. Em disputas trabalhistas, provas obtidas em desacordo com a LGPD podem ser descartadas.</p>
+
+      <h2>Checklist rápido</h2>
+      <ul>
+        <li>✅ Termo de ciência assinado pelo colaborador;</li>
+        <li>✅ Política de privacidade publicada;</li>
+        <li>✅ Encarregado de dados (DPO) designado;</li>
+        <li>✅ Sistema de ponto com conformidade comprovada;</li>
+        <li>✅ Plano de resposta a incidentes.</li>
+      </ul>
+
+      <h2>Conclusão</h2>
+      <p>LGPD não é opcional. Mas com a tecnologia certa, atender a lei é simples. Veja também nossos guias sobre <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a> e <a href="/blog/ponto-eletronico-obrigatorio-lei">obrigatoriedade legal do ponto</a>.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">LGPD em dia com o WorkID</p>
+        <p>Termo digital, criptografia e retenção automática. Tudo pronto para auditoria.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "como-implantar-ponto-digital-7-dias",
+    title: "Como implantar ponto digital na sua empresa em 7 dias",
+    description:
+      "Um cronograma prático, dia a dia, para migrar do cartão de ponto para o ponto digital em uma semana. Checklist completo.",
+    date: "2026-04-09",
+    readTime: "7 min",
+    category: "Guia",
+    tags: ["implantação", "migração", "ponto digital", "RH"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>Migrar para ponto digital não precisa ser complicado</h2>
+      <p>Muitos gestores acham que implantar um sistema de <a href="/blog/o-que-e-ponto-digital-como-funciona">ponto digital</a> vai demorar meses e gerar resistência. Na prática, dá pra fazer em uma semana se seguir um plano claro. Aqui vai o cronograma.</p>
+
+      <h2>Dia 1 — Diagnóstico</h2>
+      <ul>
+        <li>Liste todos os funcionários e suas jornadas atuais;</li>
+        <li>Identifique regras especiais (hora extra, banco de horas, jornadas diferenciadas);</li>
+        <li>Liste os locais de trabalho e se há home office;</li>
+        <li>Verifique feriados locais e folgas acordadas.</li>
+      </ul>
+
+      <h2>Dia 2 — Escolha a ferramenta</h2>
+      <p>Compare opções. Critérios importantes:</p>
+      <ul>
+        <li>Conformidade com a <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a>;</li>
+        <li>GPS e <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">reconhecimento facial</a>;</li>
+        <li>Funciona no celular do funcionário (sem hardware extra);</li>
+        <li>Suporte responsivo;</li>
+        <li>Preço por funcionário ativo.</li>
+      </ul>
+      <p>O <a href="/signup">WorkID</a> atende todos esses requisitos e oferece 14 dias grátis.</p>
+
+      <h2>Dia 3 — Configuração inicial</h2>
+      <ul>
+        <li>Cadastre a empresa e o admin;</li>
+        <li>Defina jornadas padrão (6h, 8h, 12x36, etc);</li>
+        <li>Configure o local de trabalho (latitude/longitude e raio);</li>
+        <li>Cadastre feriados da sua empresa.</li>
+      </ul>
+
+      <h2>Dia 4 — Cadastro dos funcionários</h2>
+      <ul>
+        <li>Importe a lista via planilha (ou cadastre um a um);</li>
+        <li>Envie os convites por e-mail automaticamente;</li>
+        <li>Defina quem é admin, quem é funcionário.</li>
+      </ul>
+
+      <h2>Dia 5 — Treinamento rápido</h2>
+      <p>Junte todos (presencial ou remoto) em um encontro de 30 minutos:</p>
+      <ul>
+        <li>Mostre como instalar o PWA no celular;</li>
+        <li>Faça uma batida ao vivo;</li>
+        <li>Explique o termo de ciência (<a href="/blog/ponto-eletronico-lgpd-o-que-saber">LGPD</a>);</li>
+        <li>Mostre como solicitar ajuste em caso de esquecimento.</li>
+      </ul>
+
+      <h2>Dia 6 — Período paralelo</h2>
+      <p>Use por 1-2 dias ao mesmo tempo que o sistema antigo. Compare resultados. Resolva dúvidas.</p>
+
+      <h2>Dia 7 — Go-live</h2>
+      <p>Desative o sistema antigo. Celebrate! Nos próximos 30 dias, monitore:</p>
+      <ul>
+        <li>Atrasos e faltas (o sistema avisa em tempo real);</li>
+        <li><a href="/blog/banco-de-horas-como-calcular-gerenciar">Banco de horas</a>;</li>
+        <li>Solicitações de ajuste (elas caem — a precisão melhora).</li>
+      </ul>
+
+      <h2>Dica extra: envolva o time</h2>
+      <p>Apresente o ponto digital como uma <strong>melhoria para o funcionário</strong>: sem cartão perdido, sem fila para bater, transparência de horas. A adesão é muito melhor quando todos veem valor.</p>
+
+      <h2>Conclusão</h2>
+      <p>Em uma semana você pode ter um sistema moderno, legal e sem papel. Não adie mais.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Comece hoje mesmo</p>
+        <p>Teste o WorkID gratuitamente por 14 dias. Sem cartão, sem burocracia.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "atestado-medico-digital-como-validar",
+    title: "Atestado médico digital: como receber, validar e arquivar",
+    description:
+      "Como aceitar atestados médicos digitalmente na empresa, quais os critérios legais e como o WorkID automatiza todo o processo.",
+    date: "2026-04-10",
+    readTime: "6 min",
+    category: "Gestão",
+    tags: ["atestado", "ausência", "RH", "documentação"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>Atestado médico ainda em papel?</h2>
+      <p>Se você ainda recebe atestados em papel na empresa, está perdendo tempo e correndo risco. Um atestado digital, armazenado no sistema de ponto, é mais seguro, rastreável e dá transparência tanto para o RH quanto para o colaborador.</p>
+
+      <h2>Como funciona o atestado digital?</h2>
+      <ul>
+        <li>O colaborador abre o app e vai em "Ausências";</li>
+        <li>Seleciona o tipo (atestado médico, licença, justificativa);</li>
+        <li>Tira foto ou faz upload do documento;</li>
+        <li>O admin recebe uma notificação e aprova ou rejeita;</li>
+        <li>O ponto desses dias fica marcado como "ausência justificada" automaticamente.</li>
+      </ul>
+
+      <h2>O que precisa constar no atestado?</h2>
+      <ul>
+        <li>Nome do paciente;</li>
+        <li>CID (opcional, mas recomendado);</li>
+        <li>Data de emissão;</li>
+        <li>Número de dias de afastamento;</li>
+        <li>Assinatura e CRM do médico (ou certificado ICP-Brasil se digital).</li>
+      </ul>
+
+      <h2>E na hora de integrar com o banco de horas?</h2>
+      <p>Quando aprovado, o atestado automaticamente isenta o funcionário daquele dia no <a href="/blog/banco-de-horas-como-calcular-gerenciar">cálculo de banco de horas</a> e no <a href="/blog/dsr-descanso-semanal-remunerado-como-calcular">DSR</a>. Isso evita erros na folha.</p>
+
+      <h2>Como o WorkID ajuda?</h2>
+      <ul>
+        <li>App do funcionário com upload em 2 toques;</li>
+        <li>Notificação push para admin em tempo real;</li>
+        <li>Arquivo armazenado por anos (para auditoria);</li>
+        <li>Integração automática com folha e banco de horas;</li>
+        <li>Registro com data/hora imutável.</li>
+      </ul>
+
+      <h2>Validade jurídica</h2>
+      <p>Uma foto legível do atestado é aceita pela justiça do trabalho, desde que armazenada com data de envio e não tenha sido alterada. Sistemas como o <a href="/signup">WorkID</a> garantem isso com hash criptográfico automático.</p>
+
+      <h2>Conclusão</h2>
+      <p>Eliminar papel no RH é uma vitória pra todo mundo: menos burocracia para o colaborador, mais organização para o admin, menos risco pra empresa. Atestado digital é o padrão moderno.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Chega de atestado perdido</p>
+        <p>Com o WorkID, tudo fica organizado e acessível para auditoria a qualquer hora.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "5-erros-comuns-controle-ponto",
+    title: "5 erros comuns no controle de ponto (e como evitar)",
+    description:
+      "Os erros mais frequentes que empresas cometem no controle de ponto e como o ponto digital resolve cada um deles.",
+    date: "2026-04-12",
+    readTime: "5 min",
+    category: "Gestão",
+    tags: ["erros", "gestão", "ponto", "melhores práticas"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>1. Aceitar "batida por terceiros"</h2>
+      <p>Colegas batendo ponto uns pelos outros é o clássico. Solução: <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">reconhecimento facial</a> torna isso impossível. Cada batida tem uma foto datada.</p>
+
+      <h2>2. Não ter política clara de horas extras</h2>
+      <p>Funcionários chegam cedo ou saem tarde "por conta própria" e depois cobram como extra. Solução: aprovação obrigatória de <a href="/blog/como-calcular-hora-extra-clt">hora extra</a> pelo gestor antes de contabilizar.</p>
+
+      <h2>3. Esquecer feriados locais</h2>
+      <p>Cada cidade tem seus feriados. Se o sistema não está atualizado, o cálculo sai errado. Solução: cadastro de feriados por empresa, com importação de calendário oficial.</p>
+
+      <h2>4. Não controlar home office</h2>
+      <p>Funcionários em <a href="/blog/home-office-controle-ponto-remoto">home office</a> também precisam bater ponto. Sem controle, você tem um "buraco negro" de jornada que vira problema em rescisão.</p>
+
+      <h2>5. Guardar registros em planilha</h2>
+      <p>Planilha no Excel é prova fraca na justiça. E qualquer um pode editar. Solução: sistema de ponto digital com registro imutável e logs de auditoria.</p>
+
+      <h2>Como o WorkID resolve tudo isso?</h2>
+      <ul>
+        <li>Reconhecimento facial + GPS em toda batida;</li>
+        <li>Fluxo de aprovação de HE pré-configurado;</li>
+        <li>Gestão de feriados por unidade;</li>
+        <li>App mobile para trabalhos remotos;</li>
+        <li>Armazenamento criptografado e imutável.</li>
+      </ul>
+
+      <h2>Conclusão</h2>
+      <p>Se você reconhece sua empresa em 2+ desses erros, é hora de modernizar. Dá pra <a href="/blog/como-implantar-ponto-digital-7-dias">implantar em 7 dias</a>.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Evite dor de cabeça no RH</p>
+        <p>Controle de ponto profissional a partir de R$ 9,90 por funcionário.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
@@ -841,5 +1157,19 @@ export function getLatestPosts(count: number): BlogPost[] {
 }
 
 export function getRelatedPosts(currentSlug: string, count: number): BlogPost[] {
-  return blogPosts.filter((post) => post.slug !== currentSlug).slice(0, count);
+  const current = blogPosts.find((p) => p.slug === currentSlug);
+  if (!current) {
+    return blogPosts.filter((post) => post.slug !== currentSlug).slice(0, count);
+  }
+  // Ordena pelos que mais compartilham tags/categoria com o atual
+  return blogPosts
+    .filter((p) => p.slug !== currentSlug)
+    .map((p) => {
+      const tagOverlap = p.tags.filter((t) => current.tags.includes(t)).length;
+      const sameCategory = p.category === current.category ? 1 : 0;
+      return { p, score: tagOverlap * 2 + sameCategory };
+    })
+    .sort((a, b) => b.score - a.score || new Date(b.p.date).getTime() - new Date(a.p.date).getTime())
+    .slice(0, count)
+    .map((x) => x.p);
 }

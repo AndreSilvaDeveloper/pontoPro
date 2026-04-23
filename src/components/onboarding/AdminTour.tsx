@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { driver, DriveStep, Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
-const TOUR_VERSION = "v1";
+const TOUR_VERSION = "v2";
 function makeAdminTourKey(empresaId: string | null, userId: string | null) {
   const e = empresaId ?? "no_empresa";
   const u = userId ?? "no_user";
@@ -20,9 +20,9 @@ function getSteps(): DriveStep[] {
     {
       element: "body",
       popover: {
-        title: "Bem-vindo ao Painel Admin",
+        title: "Bem-vindo ao novo painel!",
         description:
-          "Vou te mostrar onde ficam as principais funções. Use o botão Tutorial para rever este guia quando quiser.",
+          "O painel foi reorganizado para crescer junto com sua empresa. Vou te mostrar onde tudo fica agora.",
         side: "bottom",
         align: "start",
       },
@@ -31,8 +31,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-title"]',
       popover: {
         title: "Sua empresa",
-        description:
-          "Nome da empresa ou unidade que você está gerenciando agora.",
+        description: "Nome da empresa ou unidade que você está gerenciando.",
         side: "bottom",
         align: "start",
       },
@@ -41,74 +40,89 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-store-selector"]',
       popover: {
         title: "Trocar unidade",
-        description:
-          "Se tiver mais de uma filial, troque por aqui para ver os dados de cada uma.",
+        description: "Tem mais de uma filial? Troque por aqui para ver os dados de cada uma.",
         side: "bottom",
         align: "start",
       },
     },
     {
-      element: '[data-tour="admin-team"]',
+      element: '[data-tour="admin-sidebar"]',
       popover: {
-        title: "Gestão da equipe",
-        description: "Cadastre e edite funcionários, defina escalas e controle acessos.",
-        side: "bottom",
+        title: "Menu lateral",
+        description: "Toda a navegação agora está aqui, organizada por categorias. Pode ser recolhida no botão no rodapé.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-team"]',
+      popover: {
+        title: "Gestão da Equipe",
+        description: "Cadastre funcionários, defina jornadas, controle acessos e configure o local do ponto de cada um.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-ajustes"]',
+      popover: {
+        title: "Ajustes de Ponto",
+        description: "Aprove ou rejeite solicitações de ajuste/inclusão. O número em vermelho mostra quantas estão pendentes.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-atestados"]',
+      popover: {
+        title: "Atestados",
+        description: "Aprove atestados médicos e justificativas enviadas pelos funcionários.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-comunicados"]',
+      popover: {
+        title: "Comunicados",
+        description: "Envie avisos para a equipe inteira ou para funcionários específicos. Os funcionários veem no app.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-contracheques"]',
+      popover: {
+        title: "Contracheques",
+        description: "Envie holerites em PDF para os funcionários assinarem digitalmente. A assinatura é inserida no próprio documento.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-auditoria"]',
+      popover: {
+        title: "Auditoria",
+        description: "Histórico completo de tudo que foi alterado no sistema e por quem.",
+        side: "right",
+        align: "start",
+      },
+    },
+    {
+      element: '[data-tour="sidebar-configuracoes"]',
+      popover: {
+        title: "Configurações da empresa",
+        description:
+          "Aqui você define as regras: bloqueio de GPS, foto obrigatória, tolerância de atraso, limite de horas extras, lembretes e muito mais.",
+        side: "right",
         align: "start",
       },
     },
     {
       element: '[data-tour="admin-ausencia"]',
       popover: {
-        title: "Lançar ausência",
-        description: "Registre férias, folgas ou faltas dos funcionários.",
-        side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="admin-ajustes"]',
-      popover: {
-        title: "Ajustes de ponto",
-        description:
-          "Veja e aprove solicitações de ajuste feitas pelos funcionários.",
-        side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="admin-atestados"]',
-      popover: {
-        title: "Atestados",
-        description: "Veja atestados e justificativas enviadas pelos funcionários.",
-        side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="admin-feriados"]',
-      popover: {
-        title: "Feriados",
-        description:
-          "Cadastre feriados e dias não úteis para o cálculo correto do banco de horas.",
-        side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="admin-auditoria"]',
-      popover: {
-        title: "Auditoria",
-        description: "Veja tudo que foi alterado no sistema e por quem.",
-        side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="admin-visao-geral"]',
-      popover: {
-        title: "Visão Geral",
-        description:
-          "Veja um resumo de presença, faltas, atrasos e alertas de toda a equipe.",
+        title: "Lançar ausência rápida",
+        description: "Botão para registrar férias, folgas ou faltas direto pelo painel.",
         side: "bottom",
         align: "start",
       },
@@ -126,8 +140,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-filter-period"]',
       popover: {
         title: "Filtrar por período",
-        description:
-          "Escolha as datas de início e fim para ver os registros desse período.",
+        description: "Defina a data de início e fim para o relatório aparecer abaixo.",
         side: "bottom",
         align: "start",
       },
@@ -136,17 +149,7 @@ function getSteps(): DriveStep[] {
       element: '[data-tour="admin-report"]',
       popover: {
         title: "Gerar relatório",
-        description:
-          "Exporte a folha de ponto em PDF ou Excel, pronto para enviar ao contador.",
-        side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="admin-profile"]',
-      popover: {
-        title: "Minha conta",
-        description: "Veja seus dados, plano, pagamentos e configurações.",
+        description: "Exporte a folha de ponto em PDF ou Excel, pronto para enviar ao contador.",
         side: "bottom",
         align: "start",
       },
@@ -155,8 +158,11 @@ function getSteps(): DriveStep[] {
 
   return all.filter((step) => {
     const el = step.element;
-    if (!el || typeof el !== "string") return true;
-    return !!document.querySelector(el);
+    if (!el || typeof el !== "string" || el === "body") return true;
+    const node = document.querySelector(el) as HTMLElement | null;
+    if (!node) return false;
+    const rect = node.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   });
 }
 

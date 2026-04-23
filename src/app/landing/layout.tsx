@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
+import { BASE_URL } from '@/config/site';
 
 export const metadata: Metadata = {
   title: 'WorkID - Sistema de Ponto Digital com GPS e Reconhecimento Facial',
   description: 'Controle de ponto digital para empresas. Registro por GPS, reconhecimento facial, relatórios automáticos, banco de horas e espelho de ponto. Teste grátis 14 dias. Sem cartão de crédito.',
-  alternates: { canonical: 'https://ontimeia.com' },
+  alternates: { canonical: BASE_URL },
 };
 
 const jsonLd = {
@@ -12,8 +13,8 @@ const jsonLd = {
     {
       '@type': 'Organization',
       name: 'WorkID',
-      url: 'https://ontimeia.com',
-      logo: 'https://ontimeia.com/logo.png',
+      url: BASE_URL,
+      logo: `${BASE_URL}/logo.png`,
       sameAs: ['https://instagram.com/workid.app'],
       contactPoint: {
         '@type': 'ContactPoint',

@@ -30,10 +30,18 @@ export async function PUT(req: Request) {
     return NextResponse.json({ erro: 'Tema inválido' }, { status: 400 });
   }
 
-  await prisma.usuario.update({
-    where: { id: session.user.id },
-    data: { temaPreferido: tema },
-  });
-
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.usuario.update({
+      where: { id: session.user.id },
+      data: { temaPreferido: tema },
+    });
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    // P2025: usuário não existe (impersonação, usuário deletado, sessão stale).
+    // Tema continua funcionando via localStorage — silencia o erro.
+    if (e?.code === 'P2025') {
+      return NextResponse.json({ ok: true, skipped: true });
+    }
+    throw e;
+  }
 }

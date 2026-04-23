@@ -8,6 +8,7 @@ import {
   getRelatedPosts,
 } from "@/data/blog-posts";
 import { ShareButtons } from "./share-buttons";
+import { BASE_URL } from "@/config/site";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     openGraph: {
       title: post.title,
       description: post.description,
-      url: `https://ontimeia.com/blog/${post.slug}`,
+      url: `${BASE_URL}/blog/${post.slug}`,
       siteName: "WorkID",
       type: "article",
       publishedTime: post.date,
@@ -41,7 +42,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description: post.description,
     },
     alternates: {
-      canonical: `https://ontimeia.com/blog/${post.slug}`,
+      canonical: `${BASE_URL}/blog/${post.slug}`,
     },
   };
 }
@@ -58,26 +59,26 @@ export default async function BlogPostPage({ params }: PageProps) {
     "@type": "Article",
     headline: post.title,
     description: post.description,
-    image: `https://ontimeia.com${post.ogImage}`,
+    image: `${BASE_URL}${post.ogImage}`,
     datePublished: post.date,
     dateModified: post.date,
     author: {
       "@type": "Organization",
       name: "WorkID",
-      url: "https://ontimeia.com",
+      url: BASE_URL,
     },
     publisher: {
       "@type": "Organization",
       name: "WorkID",
-      url: "https://ontimeia.com",
+      url: BASE_URL,
       logo: {
         "@type": "ImageObject",
-        url: "https://ontimeia.com/images/og-image.png",
+        url: `${BASE_URL}/images/og-image.png`,
       },
     },
     mainEntityOfPage: {
       "@type": "WebPage",
-      "@id": `https://ontimeia.com/blog/${post.slug}`,
+      "@id": `${BASE_URL}/blog/${post.slug}`,
     },
   };
 

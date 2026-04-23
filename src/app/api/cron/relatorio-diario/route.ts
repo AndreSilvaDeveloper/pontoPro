@@ -124,10 +124,18 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    const cfgPorEmpresa = Object.fromEntries(
+      empresas.map(e => [e.id, (e.configuracoes as any) || {}])
+    );
+
     let emailsEnviados = 0;
     let empresasProcessadas = 0;
 
     for (const empresa of empresas) {
+      const cfg = cfgPorEmpresa[empresa.id] || {};
+      const tolerancia = typeof cfg.toleranciaMinutos === 'number' ? cfg.toleranciaMinutos : 10;
+      const limiteHE = typeof cfg.limiteDiarioHoraExtraMin === 'number' ? cfg.limiteDiarioHoraExtraMin : 120;
+
       const admins = empresa.usuarios.filter((u) => u.cargo === 'ADMIN');
       const funcionarios = empresa.usuarios.filter((u) => u.cargo !== 'ADMIN');
 
@@ -204,7 +212,7 @@ export async function GET(req: NextRequest) {
             const mSP = parseInt(partsSP.find(p => p.type === 'minute')?.value || '0');
             const minPrimeiro = hSP * 60 + mSP;
 
-            if (minPrimeiro > metaEntrada + 10) {
+            if (minPrimeiro > metaEntrada + tolerancia) {
               const atrasoMin = minPrimeiro - metaEntrada;
               const horaChegou = `${String(hSP).padStart(2, '0')}:${String(mSP).padStart(2, '0')}`;
               atrasados.push(`${func.nome} - chegou ${horaChegou} (atraso de ${atrasoMin}min)`);
@@ -215,16 +223,16 @@ export async function GET(req: NextRequest) {
           // Caso 1: dia ativo e trabalhou além da meta + 10min
           // Caso 2: dia de folga (meta=0) mas trabalhou mesmo assim
           const ehHoraExtra = meta > 0
-            ? minTrabalhados > meta + 10
-            : minTrabalhados > 10; // folga: qualquer trabalho >10min é extra
+            ? minTrabalhados > meta + tolerancia
+            : minTrabalhados > tolerancia;
 
           if (ehHoraExtra) {
-            const minutosExtra = meta > 0 ? minTrabalhados - meta : minTrabalhados;
+            const minutosExtraBruto = meta > 0 ? minTrabalhados - meta : minTrabalhados;
+            const minutosExtra = limiteHE > 0 ? Math.min(minutosExtraBruto, limiteHE) : minutosExtraBruto;
             horaExtra.push(
-              `${func.nome} - trabalhou ${formatMinToHM(minTrabalhados)}, meta ${formatMinToHM(meta)} (+${minutosExtra}min)`,
+              `${func.nome} - trabalhou ${formatMinToHM(minTrabalhados)}, meta ${formatMinToHM(meta)} (+${minutosExtra}min${minutosExtraBruto > minutosExtra ? ' [limitado]' : ''})`,
             );
 
-            // Criar/atualizar registro de hora extra pendente
             await prisma.horaExtra.upsert({
               where: { usuarioId_data: { usuarioId: func.id, data: ontemStr } },
               create: { usuarioId: func.id, data: ontemStr, minutosExtra, status: 'PENDENTE' },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { base64UrlDecodeUtf8 } from "@/lib/base64url";
@@ -297,8 +297,21 @@ export default function BloqueadoPage() {
                 : "Verificacao automatica a cada 10s. Acesso liberado = redirecionamento automatico."}
             </p>
 
-            <Button asChild className="w-full bg-purple-600 hover:bg-purple-500 rounded-xl">
-              <Link href="/login">Voltar ao login</Link>
+            <Button
+              type="button"
+              className="w-full bg-purple-600 hover:bg-purple-500 rounded-xl"
+              onClick={async () => {
+                try {
+                  localStorage.removeItem("workid_rt");
+                  sessionStorage.removeItem(STORAGE_KEY);
+                } catch {
+                  // ignore
+                }
+                await signOut({ redirect: false });
+                window.location.href = "/login";
+              }}
+            >
+              Voltar ao login
             </Button>
 
             {/* Funcionario: copiar mensagem */}

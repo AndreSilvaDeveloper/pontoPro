@@ -43,6 +43,7 @@ export interface Funcionario {
   nome: string;
   email: string;
   telefone?: string;
+  pis?: string;
   tituloCargo?: string;
   latitudeBase: number;
   longitudeBase: number;
@@ -116,13 +117,14 @@ export default function ModalFuncionario({
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [pis, setPis] = useState('');
   const [tituloCargo, setTituloCargo] = useState('');
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [raio, setRaio] = useState('100');
   const [fotoArquivo, setFotoArquivo] = useState<File | null>(null);
-  const [exigirFotoFuncionario, setExigirFotoFuncionario] = useState(false);
-  const [exigirCienciaCelular, setExigirCienciaCelular] = useState(false);
+  const [exigirFotoFuncionario, setExigirFotoFuncionario] = useState(true);
+  const [exigirCienciaCelular, setExigirCienciaCelular] = useState(true);
 
   // Upload UX
   const [fotoErro, setFotoErro] = useState<string>('');
@@ -189,6 +191,7 @@ export default function ModalFuncionario({
       setNome(funcionarioEdicao.nome);
       setEmail(funcionarioEdicao.email);
       setTelefone(funcionarioEdicao.telefone ? formatarTelefone(funcionarioEdicao.telefone) : '');
+      setPis(funcionarioEdicao.pis || '');
       setTituloCargo(funcionarioEdicao.tituloCargo || '');
       setLat(funcionarioEdicao.latitudeBase?.toString() || '');
       setLng(funcionarioEdicao.longitudeBase?.toString() || '');
@@ -218,8 +221,8 @@ export default function ModalFuncionario({
       setPontoLivre(false);
       setLocaisExtras([]);
       setFotoArquivo(null);
-      setExigirFotoFuncionario(false);
-      setExigirCienciaCelular(false);
+      setExigirFotoFuncionario(true);
+      setExigirCienciaCelular(true);
       setModoValidacao('GPS');
       setIpsPermitidos('');
       setEnderecoPrincipal('');
@@ -514,6 +517,7 @@ export default function ModalFuncionario({
       formData.append('nome', nome);
       formData.append('email', email);
       formData.append('telefone', telefone.replace(/\D/g, ''));
+      formData.append('pis', pis.replace(/\D/g, ''));
       formData.append('tituloCargo', tituloCargo);
       formData.append('latitude', lat || '0');
       formData.append('longitude', lng || '0');
@@ -560,7 +564,7 @@ export default function ModalFuncionario({
   
 
   return (
-    <div className="fixed inset-0 z-[60] md:flex md:items-center md:justify-center bg-page md:bg-overlay md:backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
+    <div className="fixed inset-0 lg:left-64 z-[60] md:flex md:items-center md:justify-center bg-page md:bg-overlay md:backdrop-blur-sm p-0 md:p-4 overflow-y-auto">
       <div className="bg-page md:bg-surface-solid w-full min-h-full md:min-h-0 md:h-auto md:max-h-[90vh] md:max-w-4xl md:rounded-2xl md:border md:border-border-default shadow-2xl flex flex-col relative">
         {/* Header */}
         <div className="p-4 md:p-6 border-b border-border-subtle flex justify-between items-center bg-surface-solid/80 backdrop-blur-sm md:rounded-t-2xl sticky top-0 z-10 flex-shrink-0" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}>
@@ -653,6 +657,21 @@ export default function ModalFuncionario({
                     onChange={(e) => setTituloCargo(e.target.value)}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-text-muted mb-1.5 block">
+                  PIS / PASEP / NIS <span className="text-text-dim font-normal">(opcional · necessário para AFD)</span>
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={11}
+                  className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors font-mono"
+                  value={pis}
+                  onChange={(e) => setPis(e.target.value.replace(/\D/g, ''))}
+                  placeholder="11 dígitos"
+                />
               </div>
             </section>
 

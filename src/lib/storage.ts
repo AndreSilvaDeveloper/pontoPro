@@ -9,7 +9,7 @@
  *
  * .env necessário na VPS:
  *   STORAGE_LOCAL_DIR=/home/pluri/meuProjeto/ponto-pro/uploads
- *   NEXT_PUBLIC_BASE_URL=https://ontimeia.com
+ *   NEXT_PUBLIC_BASE_URL=https://workid.com.br
  *
  * Em staging (Vercel), define STORAGE_MODE=vercel para usar Vercel Blob.
  */

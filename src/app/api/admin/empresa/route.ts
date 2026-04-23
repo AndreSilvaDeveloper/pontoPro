@@ -44,11 +44,15 @@ export async function GET() {
 
     // Define valores padrão para configurações operacionais
     const configsPadrao = {
-        bloquearForaDoRaio: true, 
-        exigirFoto: true,         
+        bloquearForaDoRaio: true,
+        exigirFoto: true,
         permitirEdicaoFunc: false,
         ocultar_menu_atestados: false,
-        ocultarSaldoHoras: false
+        ocultarSaldoHoras: false,
+        lembretesAtivos: true,
+        toleranciaMinutos: 10,
+        limiteDiarioHoraExtraMin: 120,
+        duracaoPausaCafeMin: 15,
     };
 
     // Mescla o que está no banco com o padrão
@@ -89,10 +93,15 @@ export async function PUT(request: Request) {
         }
         if (body.cobrancaWhatsapp !== undefined) updateData.cobrancaWhatsapp = body.cobrancaWhatsapp || null;
 
-        // Se tem outros campos, trata como configurações
+        // Se tem outros campos, trata como configurações (MERGE, não substituir)
         const configKeys = Object.keys(body).filter(k => !['nome', 'cnpj', 'cobrancaWhatsapp'].includes(k));
         if (configKeys.length > 0) {
-            const configBody: any = {};
+            const empresaAtual = await prisma.empresa.findUnique({
+                where: { id: session.user.empresaId },
+                select: { configuracoes: true },
+            });
+            const configsAtuais = (empresaAtual?.configuracoes as object) || {};
+            const configBody: any = { ...configsAtuais };
             configKeys.forEach(k => { configBody[k] = body[k]; });
             updateData.configuracoes = configBody;
         }

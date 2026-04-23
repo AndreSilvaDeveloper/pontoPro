@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { format } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
+
+const subDaysSafe = (dataStr: string, n: number) => subDays(new Date(`${dataStr}T12:00:00`), n);
+const addDaysSafe = (dataStr: string, n: number) => addDays(new Date(`${dataStr}T12:00:00`), n);
 import { calcularEstatisticas } from '@/lib/admin/calcularEstatisticas';
 import type { BillingStatus } from '@/lib/billing';
 import type { RegistroUnificado } from '@/types/registro';
@@ -86,7 +89,13 @@ export function useAdminDashboard() {
   const [ajustesBanco, setAjustesBanco] = useState<Array<{ usuarioId: string; data: string; dataFolga?: string; minutos: number; tipo?: string }>>([]);
 
   const [modalAjusteBancoAberto, setModalAjusteBancoAberto] = useState(false);
+  const [ajusteBancoPreSelected, setAjusteBancoPreSelected] = useState<{ usuarioId?: string; tipo?: 'PAGAMENTO_HE' | 'COMPENSACAO_FOLGA' | 'CORRECAO_MANUAL' } | null>(null);
   const [bancoRefreshKey, setBancoRefreshKey] = useState(0);
+
+  const abrirAjusteBanco = (usuarioId?: string, tipo?: 'PAGAMENTO_HE' | 'COMPENSACAO_FOLGA' | 'CORRECAO_MANUAL') => {
+    setAjusteBancoPreSelected({ usuarioId, tipo });
+    setModalAjusteBancoAberto(true);
+  };
 
   // ✅ NOVO: Billing status central
   const [billing, setBilling] = useState<BillingStatus | null>(null);
@@ -125,6 +134,10 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
 
   const carregarDados = useCallback(async () => {
     try {
+      // Busca pontos só dentro do range selecionado + margem de 7 dias pra lógica de sábado/cross-day
+      const inicioBusca = format(subDaysSafe(dataInicio, 7), 'yyyy-MM-dd');
+      const fimBusca = format(addDaysSafe(dataFim, 1), 'yyyy-MM-dd');
+
       const [
         resPontos,
         resAusencias,
@@ -138,7 +151,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
         resHEPendentes,
         resAjustesBanco,
       ] = await Promise.all([
-        axios.get('/api/admin/pontos-todos'),
+        axios.get(`/api/admin/pontos-todos?inicio=${inicioBusca}&fim=${fimBusca}`),
         axios.get('/api/admin/ausencias-aprovadas'),
         axios.get('/api/admin/funcionarios'),
         axios.get('/api/admin/solicitacoes'),
@@ -247,7 +260,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dataInicio, dataFim]);
 
   useEffect(() => {
     carregarDados();
@@ -433,6 +446,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     return filtroUsuario ? usuarios.find((u) => u.id === filtroUsuario) : null;
   }, [filtroUsuario, usuarios]);
 
+  const configs = empresa.configuracoes || {};
+  const toleranciaMinutos = typeof configs.toleranciaMinutos === 'number' ? configs.toleranciaMinutos : 10;
+
   const stats = useMemo(() => {
     return calcularEstatisticas({
       filtroUsuario,
@@ -444,10 +460,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       dataFim,
       horasExtrasAprovadas,
       ajustesBanco,
+      toleranciaMinutos,
     });
-  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas, ajustesBanco]);
-
-  const configs = empresa.configuracoes || {};
+  }, [dataFim, dataInicio, feriados, feriadosParciais, filtroUsuario, registros, usuarios, horasExtrasAprovadas, ajustesBanco, toleranciaMinutos]);
 
   return {
     registros,
@@ -470,6 +485,9 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     pendenciasHoraExtra,
     modalAjusteBancoAberto,
     setModalAjusteBancoAberto,
+    ajusteBancoPreSelected,
+    setAjusteBancoPreSelected,
+    abrirAjusteBanco,
     bancoRefreshKey,
     setBancoRefreshKey,
 

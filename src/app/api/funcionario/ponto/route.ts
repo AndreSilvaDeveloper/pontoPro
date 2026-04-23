@@ -73,7 +73,7 @@ type ModoValidacao = 'GPS' | 'PC_IP' | 'GPS_E_IP';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { usuarioId, latitude, longitude, fotoBase64, tipo } = body;
+    const { usuarioId, latitude, longitude, fotoBase64, tipo, dataHoraOffline } = body;
 
     if (!usuarioId) {
       return NextResponse.json({ erro: 'Usuário inválido.' }, { status: 400 });
@@ -302,21 +302,33 @@ export async function POST(request: Request) {
     const latSalvar = (gpsObrigatorio && latitude) ? Number(latitude) : 0;
     const lngSalvar = (gpsObrigatorio && longitude) ? Number(longitude) : 0;
 
+    // Se veio com dataHoraOffline (sincronização de ponto batido sem internet),
+    // usa esse horário em vez de new Date(). Marca como offline no endereço.
+    let dataHoraFinal = new Date();
+    let enderecoFinal = !gpsObrigatorio
+      ? 'Validação por IP'
+      : enderecoLegivel !== 'Localização desconhecida'
+        ? enderecoLegivel
+        : nomeLocal;
+
+    if (dataHoraOffline) {
+      const d = new Date(dataHoraOffline);
+      if (!isNaN(d.getTime())) {
+        dataHoraFinal = d;
+        enderecoFinal = `[Offline] ${enderecoFinal}`;
+      }
+    }
+
     await prisma.ponto.create({
       data: {
         usuarioId,
-        dataHora: new Date(),
+        dataHora: dataHoraFinal,
         latitude: latSalvar,
         longitude: lngSalvar,
         fotoUrl,
         tipo: tipoFinal,
         subTipo: tipoFinal,
-        endereco:
-          !gpsObrigatorio
-            ? 'Validação por IP'
-            : enderecoLegivel !== 'Localização desconhecida'
-              ? enderecoLegivel
-              : nomeLocal,
+        endereco: enderecoFinal,
       },
     });
 
