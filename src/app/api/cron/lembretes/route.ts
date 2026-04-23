@@ -123,7 +123,7 @@ export async function GET(req: NextRequest) {
           where: { dataHora: { gte: inicioHoje, lte: fimHoje } },
           orderBy: { dataHora: 'desc' },
           take: 1,
-          select: { subTipo: true, tipo: true, dataHora: true },
+          select: { id: true, subTipo: true, tipo: true, dataHora: true },
         },
       },
     });
@@ -132,14 +132,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ processados: 0, enviados: 0 });
     }
 
-    // Buscar lembretes já enviados hoje em batch
+    // Buscar lembretes já enviados hoje em batch.
+    // Para lembretes de pausa café, a chave é "YYYY-MM-DD:pontoId" (dedup
+    // por pausa individual, não por dia) — o funcionário pode tirar várias
+    // pausas no mesmo dia e deve receber alerta em cada uma.
     const usuarioIds = usuarios.map(u => u.id);
     const jaEnviados = await prisma.lembretePush.findMany({
-      where: { data: dataSP, usuarioId: { in: usuarioIds } },
-      select: { usuarioId: true, tipo: true },
+      where: {
+        usuarioId: { in: usuarioIds },
+        OR: [
+          { data: dataSP },
+          { data: { startsWith: `${dataSP}:` } },
+        ],
+      },
+      select: { usuarioId: true, tipo: true, data: true },
     });
 
-    const enviadoSet = new Set(jaEnviados.map(e => `${e.usuarioId}:${e.tipo}`));
+    const enviadoSet = new Set(jaEnviados.map(e => `${e.usuarioId}:${e.tipo}:${e.data}`));
 
     const pushPromises: Promise<void>[] = [];
     const inserts: { usuarioId: string; tipo: string; data: string }[] = [];
@@ -155,10 +164,10 @@ export async function GET(req: NextRequest) {
       const ultimoPonto = usuario.pontos[0]; // desc, primeiro = último
       const ultimoTipo = ultimoPonto?.subTipo || ultimoPonto?.tipo;
 
-      const deveLembrar = (tipo: TipoLembrete) =>
-        !enviadoSet.has(`${usuario.id}:${tipo}`);
+      const deveLembrar = (tipo: TipoLembrete, dataChave: string = dataSP) =>
+        !enviadoSet.has(`${usuario.id}:${tipo}:${dataChave}`);
 
-      const agendar = (tipo: TipoLembrete, bodyOverride?: string) => {
+      const agendar = (tipo: TipoLembrete, bodyOverride?: string, dataChave: string = dataSP) => {
         const cfg = LEMBRETES[tipo];
         pushPromises.push(
           enviarPushSeguro(usuario.id, {
@@ -168,7 +177,7 @@ export async function GET(req: NextRequest) {
             url: '/funcionario',
           })
         );
-        inserts.push({ usuarioId: usuario.id, tipo, data: dataSP });
+        inserts.push({ usuarioId: usuario.id, tipo, data: dataChave });
       };
 
       const entradaHoje = usuario.pontos.length > 0;
@@ -225,19 +234,21 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // 4) Pausa café — dois lembretes: fim da pausa e reforço se excedeu
+      // 4) Pausa café — dois lembretes: fim da pausa e reforço se excedeu.
+      // Dedup por pontoId (cada SAIDA_INTERVALO no dia é uma pausa distinta).
       if (ultimoTipo === 'SAIDA_INTERVALO') {
         const saidaCafe = new Date(ultimoPonto.dataHora);
         const diffMin = Math.floor((Date.now() - saidaCafe.getTime()) / 60000);
+        const chavePausa = `${dataSP}:${ultimoPonto.id}`;
 
         // 4a) Volta da pausa: no momento exato em que a pausa termina
-        if (deveLembrar('VOLTA_PAUSA_CAFE') && diffMin >= duracaoPausaCafeMin) {
-          agendar('VOLTA_PAUSA_CAFE');
+        if (deveLembrar('VOLTA_PAUSA_CAFE', chavePausa) && diffMin >= duracaoPausaCafeMin) {
+          agendar('VOLTA_PAUSA_CAFE', undefined, chavePausa);
         }
 
         // 4b) Reforço: 5 min após o fim da pausa, se ainda não voltou
-        if (deveLembrar('PAUSA_CAFE_EXCEDIDA') && diffMin >= duracaoPausaCafeMin + 5) {
-          agendar('PAUSA_CAFE_EXCEDIDA', `Sua pausa para café já passou de ${duracaoPausaCafeMin} minutos.`);
+        if (deveLembrar('PAUSA_CAFE_EXCEDIDA', chavePausa) && diffMin >= duracaoPausaCafeMin + 5) {
+          agendar('PAUSA_CAFE_EXCEDIDA', `Sua pausa para café já passou de ${duracaoPausaCafeMin} minutos.`, chavePausa);
         }
       }
 
