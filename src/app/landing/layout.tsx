@@ -2,9 +2,16 @@ import { Metadata } from 'next';
 import { BASE_URL } from '@/config/site';
 
 export const metadata: Metadata = {
-  title: 'WorkID - Sistema de Ponto Digital com GPS e Reconhecimento Facial',
-  description: 'Controle de ponto digital para empresas. Registro por GPS, reconhecimento facial, relatórios automáticos, banco de horas e espelho de ponto. Teste grátis 14 dias. Sem cartão de crédito.',
+  title: 'Ponto Eletrônico Digital com GPS e Reconhecimento Facial | WorkID',
+  description: 'Ponto eletrônico digital em conformidade com a Portaria 671. Registro por GPS, reconhecimento facial, banco de horas, espelho de ponto e relatórios automáticos. Teste grátis 14 dias — sem cartão.',
   alternates: { canonical: BASE_URL },
+  openGraph: {
+    title: 'Ponto Eletrônico Digital com GPS e Reconhecimento Facial | WorkID',
+    description: 'Ponto eletrônico digital para empresas. GPS, reconhecimento facial, banco de horas e relatórios. Teste grátis 14 dias.',
+    url: BASE_URL,
+    type: 'website',
+    locale: 'pt_BR',
+  },
 };
 
 const jsonLd = {
