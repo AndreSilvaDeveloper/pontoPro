@@ -61,7 +61,10 @@ export default function LoginPage() {
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
-          const dest = data.cargo === 'ADMIN' ? '/admin' : '/funcionario';
+          let dest = '/funcionario';
+          if (data.cargo === 'SUPER_ADMIN') dest = '/saas';
+          else if (data.cargo === 'REVENDEDOR') dest = '/revendedor';
+          else if (data.cargo === 'ADMIN') dest = '/admin';
           window.location.href = dest;
         } else {
           localStorage.removeItem('workid_rt');

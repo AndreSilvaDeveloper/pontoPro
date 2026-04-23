@@ -203,11 +203,16 @@ export default function Home() {
     if (status === 'unauthenticated') {
       router.push('/login');
     } else if (status === 'authenticated') {
+      // @ts-ignore
+      const cargo = session?.user?.cargo;
+      // @ts-ignore
+      const impersonando = !!session?.user?.impersonatedBy;
+      if (!impersonando && cargo === 'SUPER_ADMIN') { router.push('/saas'); return; }
+      if (!impersonando && cargo === 'REVENDEDOR') { router.push('/revendedor'); return; }
       if (session?.user?.deveTrocarSenha) { router.push('/trocar-senha'); return; }
       if (session?.user?.deveCadastrarFoto) { router.push('/cadastrar-foto'); return; }
       if (!session?.user?.temAssinatura) { router.push('/cadastrar-assinatura'); return; }
-      // @ts-ignore
-      if (session?.user?.cargo === 'ADMIN') { router.push('/admin'); return; }
+      if (cargo === 'ADMIN') { router.push('/admin'); return; }
 
       carregarConfigEStatus();
     }

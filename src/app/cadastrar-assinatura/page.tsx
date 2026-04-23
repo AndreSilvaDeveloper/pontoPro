@@ -29,9 +29,16 @@ export default function CadastrarAssinaturaPage() {
         .then(s => {
           const user = s?.user;
           if (!user) return;
-          // Impersonate, SUPER_ADMIN, ou já tem assinatura: sai daqui
-          if (user.impersonatedBy || user.cargo === 'SUPER_ADMIN' || user.temAssinatura) {
-            const dest = user.cargo === 'ADMIN' ? '/admin' : '/funcionario';
+          // Impersonate, SUPER_ADMIN/REVENDEDOR, ou já tem assinatura: sai daqui
+          if (user.impersonatedBy || user.cargo === 'SUPER_ADMIN' || user.cargo === 'REVENDEDOR' || user.temAssinatura) {
+            let dest = '/funcionario';
+            if (!user.impersonatedBy) {
+              if (user.cargo === 'SUPER_ADMIN') dest = '/saas';
+              else if (user.cargo === 'REVENDEDOR') dest = '/revendedor';
+              else if (user.cargo === 'ADMIN') dest = '/admin';
+            } else if (user.cargo === 'ADMIN') {
+              dest = '/admin';
+            }
             window.location.href = dest; // Hard redirect para quebrar qualquer loop
             return;
           }

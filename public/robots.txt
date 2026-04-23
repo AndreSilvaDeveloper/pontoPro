@@ -9,4 +9,4 @@ Disallow: /cadastrar-assinatura
 Disallow: /cadastrar-foto
 Disallow: /ciencia-celular
 
-Sitemap: https://ontimeia.com/sitemap.xml
+Sitemap: https://workid.com.br/sitemap.xml

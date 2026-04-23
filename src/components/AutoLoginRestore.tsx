@@ -34,8 +34,19 @@ export default function AutoLoginRestore() {
       .then(r => r.json())
       .then(data => {
         if (data.ok) {
-          // Session restaurada — recarregar para que o NextAuth leia o novo cookie
-          window.location.reload();
+          // Redireciona para o dashboard correto do cargo — não volta pro /funcionario default
+          let dest: string | null = null;
+          if (data.cargo === 'SUPER_ADMIN') dest = '/saas';
+          else if (data.cargo === 'REVENDEDOR') dest = '/revendedor';
+          else if (data.cargo === 'ADMIN') dest = '/admin';
+          else if (data.cargo === 'FUNCIONARIO') dest = '/funcionario';
+
+          // Se já estamos no destino correto, apenas recarrega para o NextAuth ler o cookie novo
+          if (dest && pathname !== dest) {
+            window.location.href = dest;
+          } else {
+            window.location.reload();
+          }
         } else {
           // Token inválido — limpar
           localStorage.removeItem('workid_rt');
