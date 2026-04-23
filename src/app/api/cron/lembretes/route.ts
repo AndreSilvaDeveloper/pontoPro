@@ -71,6 +71,11 @@ const LEMBRETES = {
     body: 'Faltam 5 minutos para encerrar seu expediente.',
     tag: 'lembrete-saida',
   },
+  VOLTA_PAUSA_CAFE: {
+    title: 'Hora de voltar!',
+    body: 'Sua pausa para café acabou. Volte ao trabalho.',
+    tag: 'lembrete-volta-pausa-cafe',
+  },
   PAUSA_CAFE_EXCEDIDA: {
     title: 'Pausa excedida',
     body: 'Sua pausa para café já passou de 15 minutos.',
@@ -220,11 +225,18 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // 4) Pausa café excedida (> 15 min)
-      if (deveLembrar('PAUSA_CAFE_EXCEDIDA') && ultimoTipo === 'SAIDA_INTERVALO') {
+      // 4) Pausa café — dois lembretes: fim da pausa e reforço se excedeu
+      if (ultimoTipo === 'SAIDA_INTERVALO') {
         const saidaCafe = new Date(ultimoPonto.dataHora);
         const diffMin = Math.floor((Date.now() - saidaCafe.getTime()) / 60000);
-        if (diffMin > duracaoPausaCafeMin) {
+
+        // 4a) Volta da pausa: no momento exato em que a pausa termina
+        if (deveLembrar('VOLTA_PAUSA_CAFE') && diffMin >= duracaoPausaCafeMin) {
+          agendar('VOLTA_PAUSA_CAFE');
+        }
+
+        // 4b) Reforço: 5 min após o fim da pausa, se ainda não voltou
+        if (deveLembrar('PAUSA_CAFE_EXCEDIDA') && diffMin >= duracaoPausaCafeMin + 5) {
           agendar('PAUSA_CAFE_EXCEDIDA', `Sua pausa para café já passou de ${duracaoPausaCafeMin} minutos.`);
         }
       }

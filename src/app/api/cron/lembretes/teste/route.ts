@@ -39,6 +39,12 @@ export async function GET(req: Request) {
       tag: 'lembrete-saida',
       url: '/funcionario',
     },
+    VOLTA_PAUSA_CAFE: {
+      title: 'Hora de voltar!',
+      body: 'Sua pausa para café acabou. Volte ao trabalho.',
+      tag: 'lembrete-volta-pausa-cafe',
+      url: '/funcionario',
+    },
     PAUSA_CAFE_EXCEDIDA: {
       title: 'Pausa excedida',
       body: 'Sua pausa para café já passou de 15 minutos.',
