@@ -403,6 +403,22 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
+  events: {
+    async signOut({ token }) {
+      try {
+        const userId = (token as any)?.id ?? (token as any)?.sub;
+        if (userId) {
+          await prisma.usuario.updateMany({
+            where: { id: userId as string, resetToken: { startsWith: 'refresh:' } },
+            data: { resetToken: null, resetTokenExpiry: null },
+          });
+        }
+      } catch (e) {
+        console.error('events.signOut cleanup failed:', e);
+      }
+    },
+  },
+
   session: {
     strategy: "jwt",
     maxAge: 90 * 24 * 60 * 60, // 90 dias

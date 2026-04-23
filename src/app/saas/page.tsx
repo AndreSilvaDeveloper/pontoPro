@@ -245,7 +245,7 @@ export default function SuperAdminPage() {
             </Link>
 
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => { try { localStorage.removeItem('workid_rt'); } catch {} signOut({ callbackUrl: "/login" }); }}
               className="flex items-center gap-2 text-text-muted hover:text-red-400 px-3 py-2 rounded-xl text-sm transition-colors"
               title="Sair"
             >

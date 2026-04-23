@@ -64,7 +64,7 @@ export default function RevendedorDashboard() {
               <Settings size={18} />
             </Link>
             <button
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => { try { localStorage.removeItem('workid_rt'); } catch {} signOut({ callbackUrl: '/login' }); }}
               className="p-2.5 hover:bg-red-500/20 text-text-muted hover:text-red-400 rounded-lg transition-colors border border-border-subtle"
               title="Sair"
             >
