@@ -2,6 +2,9 @@ import { MetadataRoute } from 'next';
 import { blogPosts } from '@/data/blog-posts';
 import { BASE_URL } from '@/config/site';
 
+export const dynamic = 'force-static';
+export const revalidate = 86400;
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = BASE_URL;
 
