@@ -1140,6 +1140,333 @@ export const blogPosts: BlogPost[] = [
       </div>
     `,
   },
+  {
+    slug: "quanto-custa-sistema-ponto-eletronico-digital",
+    title: "Quanto custa um sistema de ponto eletrônico digital em 2026",
+    description:
+      "Descubra quanto custa um sistema de ponto eletrônico digital em 2026. Faixas de preço por funcionário, modelos de cobrança, e como calcular o ROI real para sua empresa.",
+    date: "2026-04-23",
+    readTime: "9 min",
+    category: "Guia",
+    tags: ["ponto eletrônico digital", "preço ponto eletrônico", "custo RH", "economia"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <p>Uma das primeiras perguntas de quem procura um <strong>sistema de ponto eletrônico digital</strong> é: quanto custa? A resposta real é "depende" — mas neste guia você vai ver faixas reais de preço praticadas no Brasil em 2026, como funciona cada modelo de cobrança e, mais importante, como calcular se o investimento vale a pena pra sua empresa.</p>
+
+      <h2>Quanto custa um sistema de ponto eletrônico digital por mês?</h2>
+      <p>O custo de um ponto eletrônico digital varia principalmente pelo <strong>número de funcionários</strong>. Em 2026, a faixa de preço mais comum no mercado brasileiro é:</p>
+      <ul>
+        <li><strong>De R$ 5 a R$ 12 por funcionário/mês</strong> — para sistemas SaaS (software como serviço) em nuvem, com app, GPS, reconhecimento facial e relatórios.</li>
+        <li><strong>De R$ 15 a R$ 30 por funcionário/mês</strong> — sistemas corporativos robustos, voltados para grandes empresas, com integrações avançadas (ERP, folha de pagamento).</li>
+        <li><strong>Plano fixo de R$ 100 a R$ 500/mês</strong> — com limite de funcionários (ex: até 10, 25 ou 50 pessoas), ideal para pequenas empresas.</li>
+      </ul>
+      <p>Ou seja, uma empresa com 10 funcionários pode pagar de R$ 50 a R$ 120 por mês. Já com 50 funcionários, a conta fica entre R$ 250 e R$ 600 mensais — o equivalente a uma fração do salário de um único colaborador.</p>
+
+      <h2>Modelos de cobrança mais comuns</h2>
+      <p>Antes de contratar, entenda como cada modelo funciona:</p>
+      <h3>1. Pay-per-user (por funcionário ativo)</h3>
+      <p>O mais transparente e justo. Você paga apenas pelos funcionários que realmente usam o sistema. Se alguém for demitido, o custo cai no mês seguinte. Indicado para empresas em crescimento.</p>
+      <h3>2. Plano fixo por faixa</h3>
+      <p>Você paga um valor fixo até X funcionários (ex: R$ 149/mês para até 25 pessoas). Acima disso, precisa fazer upgrade. Bom para empresas estáveis, mas pode virar armadilha se você crescer e tiver que migrar de plano com custo adicional.</p>
+      <h3>3. Licença anual</h3>
+      <p>Comum em sistemas tradicionais. Você paga tudo de uma vez (ex: R$ 2.400/ano), geralmente com desconto em relação ao mensal. Menos flexível se sua equipe oscila de tamanho.</p>
+      <h3>4. On-premise (software local)</h3>
+      <p>Você compra a licença (R$ 3.000 a R$ 15.000 one-time) e instala em seu próprio servidor. Custa mais de entrada, mas não tem mensalidade. Problema: você fica responsável por backup, segurança e atualizações. Modelo em desuso na era SaaS.</p>
+
+      <h2>O que deveria estar incluso no preço</h2>
+      <p>Cuidado com sistemas que cobram "por módulo" e depois inflam a conta. Um <strong>ponto eletrônico digital</strong> completo em 2026 deve incluir, sem custo extra:</p>
+      <ul>
+        <li>App mobile (Android e iOS) ou PWA.</li>
+        <li>Registro por GPS com geofencing.</li>
+        <li>Reconhecimento facial ou foto em toda batida.</li>
+        <li>Dashboard em tempo real pro gestor.</li>
+        <li>Relatórios de espelho de ponto, banco de horas e horas extras.</li>
+        <li>Exportação em PDF e Excel.</li>
+        <li>Conformidade com a <a href="/blog/portaria-671-controle-de-ponto">Portaria 671 do MTE</a>.</li>
+        <li>Suporte via chat ou WhatsApp.</li>
+        <li>Backup automático e criptografia.</li>
+      </ul>
+      <p>Se o sistema cobra extra por algum desses itens, está cobrando por algo que é padrão no mercado.</p>
+
+      <h2>Custos escondidos que você precisa conhecer</h2>
+      <p>Leia o contrato antes de assinar. Alguns custos menos óbvios:</p>
+      <ul>
+        <li><strong>Taxa de implantação:</strong> alguns fornecedores cobram R$ 500 a R$ 2.000 só pra "configurar" — quando o sistema deveria ser plug-and-play.</li>
+        <li><strong>Cobrança por filial:</strong> se sua empresa tem mais de uma unidade, alguns sistemas cobram extra por filial, mesmo que o número total de funcionários não mude.</li>
+        <li><strong>Treinamento obrigatório pago:</strong> sistemas complexos exigem treinamento caro. Sistemas modernos têm interface autoexplicativa — você e sua equipe aprendem em minutos.</li>
+        <li><strong>Multa de cancelamento:</strong> alguns contratos anuais cobram multa pesada para cancelar antes do prazo. Prefira mensal sem fidelidade.</li>
+        <li><strong>Integração com ERP:</strong> em sistemas corporativos, a API de integração pode ser um módulo separado com mensalidade própria.</li>
+      </ul>
+
+      <h2>Como calcular o ROI do ponto eletrônico digital</h2>
+      <p>Antes de olhar só o preço, calcule quanto você já perde hoje sem um sistema moderno. Exemplo real:</p>
+      <p>Uma empresa com <strong>20 funcionários</strong> que ainda usa planilha ou folha de ponto manual, em média:</p>
+      <ul>
+        <li>Gasta <strong>8 a 12 horas do RH por mês</strong> consolidando dados, corrigindo erros e calculando horas extras. Considerando R$ 40/hora do analista, isso é R$ 320 a R$ 480 só em tempo.</li>
+        <li>Paga <strong>3% a 8% a mais em horas extras</strong> por erros de cálculo e batidas esquecidas. Em uma folha de R$ 40.000, são até R$ 3.200 por mês jogados fora.</li>
+        <li>Tem risco real de <strong>condenação trabalhista</strong> por falta de registro adequado — valor médio de processo por jornada: R$ 15.000 a R$ 50.000 por funcionário.</li>
+      </ul>
+      <p>Um sistema de R$ 10 × 20 funcionários = R$ 200/mês. O ROI é evidente: o sistema se paga <strong>no primeiro mês</strong>, só evitando os erros de cálculo de hora extra.</p>
+
+      <h2>Ponto eletrônico digital para pequenas empresas: vale a pena?</h2>
+      <p>Sim, e mais do que pra grandes. Empresas pequenas geralmente não têm um RH estruturado e são as primeiras a cair em processos trabalhistas por falta de documentação. Um sistema de R$ 50 a R$ 100 por mês faz o papel de um mini-departamento jurídico — tudo fica registrado, assinado digitalmente e pronto pra se defender. Veja o <a href="/blog/ponto-eletronico-pequenas-empresas-guia-completo">guia específico pra pequenas empresas</a>.</p>
+
+      <h2>Comparando fornecedores: o que olhar</h2>
+      <p>Ao comparar preços de ponto eletrônico digital, não olhe só a mensalidade. Crie uma tabela com:</p>
+      <ul>
+        <li>Preço por funcionário/mês.</li>
+        <li>Se tem taxa de implantação.</li>
+        <li>Funcionalidades inclusas vs extras.</li>
+        <li>Período de teste grátis (mínimo 7 dias é o normal; 14 dias é bom).</li>
+        <li>Necessidade de cartão de crédito para testar.</li>
+        <li>Política de cancelamento (ideal: sem fidelidade, cancele quando quiser).</li>
+        <li>Canais de suporte (chat, WhatsApp, telefone).</li>
+        <li>Avaliações reais de clientes (Google, Reclame Aqui, B2B Stack).</li>
+      </ul>
+
+      <h2>Conclusão: quanto investir?</h2>
+      <p>Em 2026, o <strong>preço justo de um sistema de ponto eletrônico digital</strong> para a maioria das empresas brasileiras fica entre R$ 6 e R$ 12 por funcionário/mês, incluindo GPS, reconhecimento facial, banco de horas e conformidade legal. Fuja de sistemas que cobram taxa de implantação, treinamento obrigatório ou por módulo — isso é um modelo antigo que só existe pra inflar a mensalidade.</p>
+      <p>Lembre-se: o ponto eletrônico digital não é despesa, é <strong>economia</strong>. Ele se paga nos primeiros 30 dias só reduzindo horas extras erradas e tempo de RH.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">WorkID a partir de R$ 9,90 por funcionário</p>
+        <p>Tudo incluso, sem taxa de implantação, sem fidelidade. Teste grátis por 14 dias, sem cartão de crédito.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "ponto-eletronico-gps-como-funciona-legal",
+    title: "Ponto eletrônico por GPS: como funciona e é legal no Brasil",
+    description:
+      "Entenda como funciona o ponto eletrônico por GPS, como a geolocalização é usada para validar batidas, e o que a legislação brasileira (Portaria 671) diz sobre isso.",
+    date: "2026-04-22",
+    readTime: "8 min",
+    category: "Tecnologia",
+    tags: ["ponto eletrônico", "GPS", "geolocalização", "geofence", "home office"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <p>O <strong>ponto eletrônico por GPS</strong> é uma das tecnologias que mais revolucionou o controle de jornada no Brasil. Em vez do funcionário depender de um relógio fixo na porta da empresa, ele bate o ponto diretamente pelo celular — e o sistema confirma, via localização, que ele está no lugar certo. Mas como exatamente isso funciona? E mais importante: é legal? Neste guia, você vai entender tudo.</p>
+
+      <h2>Como funciona o ponto eletrônico por GPS</h2>
+      <p>Na prática, o processo é simples. Quando o colaborador abre o app e toca no botão de registrar ponto, três coisas acontecem ao mesmo tempo:</p>
+      <ol>
+        <li>O celular pede permissão de localização pro sistema operacional.</li>
+        <li>O app captura as coordenadas GPS (latitude e longitude) no momento exato da batida.</li>
+        <li>O sistema compara essa localização com um raio pré-definido pela empresa (ex: 100 metros ao redor da loja, da obra ou do endereço do cliente).</li>
+      </ol>
+      <p>Se o funcionário está dentro do raio, a batida é aceita. Se está fora, o sistema pode bloquear ou registrar como "fora da área" — dependendo da configuração. Esse raio virtual recebe o nome técnico de <strong>geofence</strong> (cerca virtual).</p>
+
+      <h2>O que é geofence (cerca virtual)?</h2>
+      <p>Geofence é um perímetro geográfico desenhado no mapa. Ele pode ter qualquer formato — circular, poligonal — e é definido pelo gestor. Cada funcionário, setor ou escala pode ter sua própria geofence. Exemplos práticos:</p>
+      <ul>
+        <li><strong>Loja única:</strong> raio de 50m ao redor do endereço. Só aceita batida dentro.</li>
+        <li><strong>Construção civil:</strong> polígono cobrindo o canteiro de obras. Atualizado quando a obra muda de local.</li>
+        <li><strong>Vendedor externo:</strong> sem geofence (qualquer lugar), mas com registro obrigatório da localização pra auditoria.</li>
+        <li><strong>Home office:</strong> raio de 100m ao redor da residência cadastrada do funcionário.</li>
+      </ul>
+      <p>Essa flexibilidade é o que torna o <strong>ponto por GPS</strong> ideal para empresas com equipes distribuídas, obra ou serviço em campo.</p>
+
+      <h2>Ponto por GPS é legal no Brasil?</h2>
+      <p>Sim. A <a href="/blog/portaria-671-controle-de-ponto">Portaria 671 do Ministério do Trabalho</a>, que regulamenta os sistemas eletrônicos de controle de ponto, permite expressamente o registro por celular com geolocalização, desde que o sistema atenda aos requisitos técnicos: integridade dos dados, registro imutável, acesso do trabalhador aos seus próprios registros, e não bloqueio de batida (o sistema pode alertar, mas não pode impedir o funcionário de marcar o ponto).</p>
+      <p>Além disso, a <strong>Reforma Trabalhista de 2017</strong> já havia aberto espaço para sistemas alternativos de controle, incluindo aplicativos móveis. Isso foi reforçado pela Portaria 671 em 2021. Hoje, mais de 70% das empresas brasileiras com mais de 10 funcionários já usam algum tipo de sistema digital de ponto — e o GPS é parte fundamental disso.</p>
+
+      <h2>Precisão do GPS: o sistema erra?</h2>
+      <p>Em ambientes abertos, o GPS moderno tem precisão de <strong>5 a 15 metros</strong>. Em ambientes fechados (prédios, subsolos), a precisão cai — pode chegar a 50m ou mais. Sistemas de ponto eletrônico digital sérios compensam isso com:</p>
+      <ul>
+        <li><strong>GPS + Wi-Fi + torres de celular:</strong> triangulação usando múltiplas fontes pra melhorar a precisão.</li>
+        <li><strong>Tolerância no raio:</strong> em vez de 10m, o gestor configura 100m. Acomoda imprecisão sem permitir fraude real.</li>
+        <li><strong>Indicador de precisão no app:</strong> o funcionário vê a margem de erro antes de bater (ex: "±8m"). Se estiver alta, ele pode aguardar o GPS estabilizar.</li>
+        <li><strong>Log completo pra auditoria:</strong> o sistema registra a precisão junto com a coordenada — em disputa, é possível provar o que aconteceu.</li>
+      </ul>
+
+      <h2>E se o funcionário falsificar a localização?</h2>
+      <p>Existem apps de <strong>fake GPS</strong> que mudam a localização do celular. Por isso, sistemas profissionais combinam o GPS com outras verificações:</p>
+      <ul>
+        <li><strong>Detecção de mock location:</strong> o sistema operacional Android sinaliza quando um app está simulando localização. O sistema de ponto detecta e bloqueia.</li>
+        <li><strong>Reconhecimento facial:</strong> mesmo com GPS fake, o rosto precisa bater com o cadastro. Veja <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">se vale a pena usar</a>.</li>
+        <li><strong>Cruzamento com histórico:</strong> se o funcionário nunca bate pela manhã em São Paulo e de repente aparece batendo em Salvador, o sistema alerta.</li>
+        <li><strong>IP address logging:</strong> o IP do dispositivo geralmente revela a cidade real, mesmo com GPS falso.</li>
+      </ul>
+      <p>Nenhum sistema é 100% à prova de fraude, mas a combinação de GPS + biometria + log torna a fraude tão trabalhosa que deixa de compensar.</p>
+
+      <h2>Ponto por GPS e LGPD: privacidade do funcionário</h2>
+      <p>Sim, localização é dado pessoal e está protegida pela LGPD. Mas a empresa pode coletá-la legitimamente se:</p>
+      <ul>
+        <li>O funcionário for informado previamente (em contrato ou termo específico).</li>
+        <li>A coleta acontecer apenas no momento da batida (não em tempo real durante toda a jornada).</li>
+        <li>Os dados forem usados exclusivamente para controle de ponto e não compartilhados com terceiros.</li>
+      </ul>
+      <p>Sistemas sérios pedem permissão de localização apenas quando o app é aberto para bater ponto — não rastreiam o funcionário. Esse é o padrão ético e legal. Veja mais sobre <a href="/blog/ponto-eletronico-lgpd-o-que-saber">ponto eletrônico e LGPD</a>.</p>
+
+      <h2>Vantagens do ponto por GPS sobre o relógio tradicional</h2>
+      <ul>
+        <li><strong>Equipes externas:</strong> vendedores, motoristas, técnicos, obras — todos podem bater ponto onde estiverem.</li>
+        <li><strong>Home office:</strong> sem necessidade de ida à empresa só pra registrar.</li>
+        <li><strong>Múltiplas unidades:</strong> uma conta atende todas as filiais, cada uma com sua geofence.</li>
+        <li><strong>Sem hardware:</strong> zero custo com relógio, cartão, catraca ou biometria física.</li>
+        <li><strong>Auditoria completa:</strong> cada batida tem coordenada, data, hora, foto e IP registrados de forma imutável.</li>
+      </ul>
+
+      <h2>Quando o ponto por GPS NÃO é ideal</h2>
+      <p>Apesar das vantagens, existem casos onde o GPS não é a melhor solução:</p>
+      <ul>
+        <li><strong>Ambientes fechados com bloqueio de sinal:</strong> subsolos, galpões metálicos, câmaras frias. O GPS simplesmente não chega. Nesses casos, combine com Wi-Fi corporativo.</li>
+        <li><strong>Funcionários sem celular próprio:</strong> ainda acontece. Nesses casos, o sistema pode usar tablets compartilhados fixos na entrada (com foto obrigatória).</li>
+        <li><strong>Indústrias com alta rotatividade e baixa confiança:</strong> combine GPS com biometria física (digital ou facial em terminal fixo).</li>
+      </ul>
+
+      <h2>Conclusão</h2>
+      <p>O <strong>ponto eletrônico por GPS</strong> é totalmente legal, tecnicamente confiável e a melhor solução para a maioria das empresas brasileiras em 2026. A combinação de geofence, reconhecimento facial e log imutável transforma o controle de jornada em algo que o relógio de ponto tradicional nunca foi: inteligente, remoto e à prova de fraude.</p>
+      <p>Se sua empresa tem equipe externa, múltiplas filiais, home office ou quer simplesmente modernizar o RH, esse é o caminho. Veja o <a href="/blog/home-office-controle-ponto-remoto">guia de controle de ponto em home office</a> para casos específicos.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Ponto por GPS com geofence e biometria</p>
+        <p>WorkID faz tudo isso em um app simples. Teste grátis por 14 dias.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "ponto-biometrico-vs-ponto-digital-diferenca",
+    title: "Ponto biométrico vs ponto digital: diferença e qual escolher",
+    description:
+      "Comparativo completo entre ponto biométrico (relógio de digital/facial) e ponto digital (celular). Vantagens, custos, segurança e qual escolher para sua empresa.",
+    date: "2026-04-21",
+    readTime: "7 min",
+    category: "Comparativo",
+    tags: ["ponto biométrico", "ponto digital", "comparativo", "tecnologia RH"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <p>Muita empresa chega na hora de escolher entre <strong>ponto biométrico</strong> (um relógio de ponto com leitura de digital ou rosto, instalado na parede) e <strong>ponto digital</strong> (registro pelo celular do funcionário, via app). Os dois são sistemas eletrônicos, os dois são legais, mas funcionam de forma muito diferente. Este guia mostra as diferenças reais, os custos e em que cenário cada um faz mais sentido.</p>
+
+      <h2>O que é ponto biométrico</h2>
+      <p>O <strong>ponto biométrico</strong> é um equipamento físico (relógio de ponto) instalado na entrada da empresa. O funcionário encosta o dedo no leitor de digital ou olha pra uma câmera que reconhece o rosto. O equipamento valida a identidade e registra a entrada ou saída. É a evolução do antigo relógio de cartão — mais seguro contra fraude, mas ainda preso a um lugar físico.</p>
+      <p>Equipamentos típicos incluem relógios como os da Henry, Madis, Topdata ou Control iD. Custam de R$ 1.500 a R$ 8.000 cada, mais instalação, manutenção e software de gestão (que pode ser separado).</p>
+
+      <h2>O que é ponto digital</h2>
+      <p>O <strong>ponto digital</strong> (ou ponto por celular, ponto mobile) é um sistema em nuvem onde o funcionário registra via app no próprio celular, com GPS, foto e reconhecimento facial por software. Não precisa de hardware. É baseado em SaaS (software como serviço), com mensalidade por funcionário. Veja como funciona em detalhe em <a href="/blog/o-que-e-ponto-digital-como-funciona">o que é ponto digital</a>.</p>
+
+      <h2>Tabela comparativa: ponto biométrico vs ponto digital</h2>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+          <thead>
+            <tr style="background: rgba(124, 58, 237, 0.1);">
+              <th style="text-align: left; padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.3);">Aspecto</th>
+              <th style="text-align: left; padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.3);">Ponto biométrico</th>
+              <th style="text-align: left; padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.3);">Ponto digital</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Investimento inicial</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">R$ 1.500 a R$ 8.000/equipamento</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">R$ 0 (zero)</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Custo mensal</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Manutenção + software gestão (R$ 100 a R$ 500)</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">R$ 6 a R$ 12 por funcionário</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Equipes externas</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Não atende (preso à parede)</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Sim — bate de qualquer lugar com GPS</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Home office</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Não atende</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Ideal</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Filas no início do expediente</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Problema real com equipes grandes</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Zero fila (cada um bate no próprio celular)</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Múltiplas unidades</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Um relógio por unidade (custo multiplicado)</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Uma conta, geofence por unidade</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Manutenção</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Quebras, técnicos, reposição de peças</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Zero (fornecedor cuida de tudo)</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);"><strong>Segurança contra fraude</strong></td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Alta (biometria física)</td>
+              <td style="padding: 0.75rem; border: 1px solid rgba(124, 58, 237, 0.2);">Alta (facial + GPS + geofence)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Vantagens do ponto biométrico</h2>
+      <ul>
+        <li><strong>Independe de celular do funcionário:</strong> útil em fábricas onde celulares são proibidos na linha de produção.</li>
+        <li><strong>Biometria física robusta:</strong> digital ou facial hardware-based é praticamente impossível de falsificar.</li>
+        <li><strong>Não depende de rede de dados:</strong> muitos modelos funcionam offline e sincronizam depois.</li>
+        <li><strong>Sensação de "oficial":</strong> alguns funcionários só batem se é em equipamento físico. Questão cultural.</li>
+      </ul>
+
+      <h2>Desvantagens do ponto biométrico</h2>
+      <ul>
+        <li><strong>Custo de entrada alto:</strong> multiplicado por cada unidade/filial.</li>
+        <li><strong>Instalação e infra:</strong> precisa de técnico, tomada, rede, espaço.</li>
+        <li><strong>Quebra e manutenção:</strong> equipamento físico eventualmente quebra. Custo de reposição sempre volta.</li>
+        <li><strong>Não cobre equipe externa:</strong> se sua empresa tem vendedor, entregador, obra — não resolve.</li>
+        <li><strong>Filas no horário de pico:</strong> 30 funcionários querendo bater ponto às 8h formam uma fila real.</li>
+      </ul>
+
+      <h2>Vantagens do ponto digital</h2>
+      <ul>
+        <li><strong>Zero investimento inicial:</strong> só mensalidade por usuário.</li>
+        <li><strong>Escalabilidade instantânea:</strong> adicionou 10 funcionários? Paga 10 a mais, sem comprar hardware.</li>
+        <li><strong>Atende todos os cenários:</strong> matriz, filial, home office, equipe externa, obra. Tudo em uma conta.</li>
+        <li><strong>Dashboard em tempo real:</strong> gestor vê no celular quem está trabalhando agora.</li>
+        <li><strong>Atualizações automáticas:</strong> sem visitas de técnico. Updates acontecem em segundo plano.</li>
+        <li><strong>Zero manutenção:</strong> nada pra quebrar.</li>
+      </ul>
+
+      <h2>Desvantagens do ponto digital</h2>
+      <ul>
+        <li><strong>Depende de celular com câmera e GPS:</strong> quase universal em 2026, mas ainda exige que o funcionário tenha o dispositivo.</li>
+        <li><strong>Reconhecimento facial por software:</strong> menos preciso que biometria dedicada em hardware (mas suficiente pra maioria dos casos quando combinado com GPS + foto).</li>
+        <li><strong>Depende de internet no momento da batida:</strong> sistemas modernos têm modo offline, mas é uma consideração.</li>
+      </ul>
+
+      <h2>Como escolher entre biométrico e digital</h2>
+      <p>Não é uma decisão de "melhor ou pior" — é sobre cenário. Use essas regras:</p>
+      <h3>Escolha ponto biométrico se:</h3>
+      <ul>
+        <li>Você tem operação 100% presencial em um único local (ex: fábrica, loja pequena).</li>
+        <li>Celulares são restritos na operação (linha de produção, laboratório).</li>
+        <li>Você já tem um relógio biométrico instalado e funcionando e não quer trocar.</li>
+      </ul>
+      <h3>Escolha ponto digital se:</h3>
+      <ul>
+        <li>Você tem equipes externas, remotas, ou múltiplas unidades.</li>
+        <li>Você quer evitar investimento em hardware.</li>
+        <li>Você precisa escalar rápido.</li>
+        <li>Você quer um dashboard centralizado de tudo em tempo real.</li>
+        <li>Sua empresa cresce ou muda de endereço com frequência.</li>
+      </ul>
+
+      <h2>E se eu quiser os dois?</h2>
+      <p>Dá pra combinar. Alguns sistemas de ponto digital (como o WorkID) aceitam integração com relógios biométricos existentes. Assim você mantém o equipamento na recepção pra quem trabalha na sede, e o app pra quem está em campo. O dashboard fica unificado.</p>
+
+      <h2>Conclusão</h2>
+      <p>Em 2026, a tendência clara é migrar pro <strong>ponto digital</strong>, mesmo em operações que antes eram 100% biométricas. O custo menor, a flexibilidade e a capacidade de atender cenários que o biométrico simplesmente não resolve fazem o digital vencer na maioria dos casos. Mas biométrico ainda tem seu lugar — principalmente em operações industriais estáveis e confinadas.</p>
+      <p>Se você está em dúvida, comece com o digital: o investimento é zero, o teste é grátis, e você consegue ver se atende antes de gastar um real. Veja também <a href="/blog/como-implantar-ponto-digital-7-dias">como implantar em 7 dias</a>.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Teste o ponto digital sem investir em hardware</p>
+        <p>14 dias grátis no WorkID, sem cartão de crédito. Depois só R$ 9,90 por funcionário.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
