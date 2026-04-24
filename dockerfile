@@ -9,14 +9,13 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Cache-bust do build: muda a cada commit, força o BuildKit a reexecutar
-# `npm run build` em vez de reaproveitar o .next/ de builds anteriores.
+# Cache-bust do build: o BuildKit só invalida a layer se o ARG aparecer
+# dentro do próprio RUN — declarar o ARG e ENV acima não basta.
 ARG BUILD_SHA=dev
-ENV BUILD_SHA=${BUILD_SHA}
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=BEcU9LWV3PkjR0C5JQFXSU1ZHQP2IbixATtrf2O3CYo42VLqwbliJe-SYIfL_BBhZqs5tIKOUaKCygZ_LBHd810
-RUN npm run build
+RUN echo "BUILD_SHA=${BUILD_SHA}" && npm run build
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
