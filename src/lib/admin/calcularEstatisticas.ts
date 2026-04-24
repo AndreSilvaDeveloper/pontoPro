@@ -637,5 +637,7 @@ export function calcularEstatisticas(args: {
     total: formatarHoras(minutosTotalPeriodo),
     saldo: formatarHoras(saldoMinutosBanco),
     saldoPositivo: saldoMinutosBanco >= 0,
+    saldoMinutos: saldoMinutosBanco,
+    totalMinutos: minutosTotalPeriodo,
   };
 }

@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
+import { calcularEstatisticas } from '@/lib/admin/calcularEstatisticas';
+import { format } from 'date-fns';
+
+const PARCIAL_MARK = '__PARCIAL__:';
+function isValidTimeHHMM(v: any) {
+  return typeof v === 'string' && /^([01]\d|2[0-3]):([0-5]\d)$/.test(v);
+}
+function parseParcialFromNome(nome: string): { horaInicio?: string; horaFim?: string } {
+  if (!nome) return {};
+  const idx = nome.indexOf(PARCIAL_MARK);
+  if (idx === -1) return {};
+  const rest = nome.slice(idx + PARCIAL_MARK.length).trim();
+  const [h1, h2] = rest.split('-').map(s => (s || '').trim());
+  if (isValidTimeHHMM(h1) && isValidTimeHHMM(h2)) return { horaInicio: h1, horaFim: h2 };
+  return {};
+}
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -86,6 +102,71 @@ export async function GET(request: Request) {
         ...ausencias.map(a => ({ ...a, dataHora: a.dataInicio, tipo: 'AUSENCIA', subTipo: a.tipo, extra: { dataFim: a.dataFim } }))
     ].sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
 
+    // Separa feriados integrais dos parciais (nome com __PARCIAL__:HH:MM-HH:MM)
+    const feriadosIntegrais: string[] = [];
+    const feriadosParciais: Record<string, { inicio: string; fim: string }> = {};
+    (usuario?.empresa?.feriados || []).forEach(f => {
+      const dia = format(new Date(f.data), 'yyyy-MM-dd');
+      const parsed = parseParcialFromNome(f.nome || '');
+      if (parsed.horaInicio && parsed.horaFim) {
+        feriadosParciais[dia] = { inicio: parsed.horaInicio, fim: parsed.horaFim };
+      } else {
+        feriadosIntegrais.push(dia);
+      }
+    });
+
+    // Tolerância configurada pela empresa (default 10 min)
+    const empresaConfig = usuario?.empresaId
+      ? await prisma.empresa.findUnique({
+          where: { id: usuario.empresaId },
+          select: { configuracoes: true },
+        })
+      : null;
+    const tolCfg = (empresaConfig?.configuracoes as any)?.toleranciaMinutos;
+    const toleranciaMinutos = typeof tolCfg === 'number' ? tolCfg : 10;
+
+    // Calcula saldo/total pela função canônica — mesma usada pelo dashboard
+    // do admin, garante que todas as telas mostrem o mesmo valor.
+    const registrosParaCalc = [
+      ...pontos.map(p => ({
+        id: p.id,
+        dataHora: p.dataHora,
+        tipo: 'PONTO',
+        subTipo: p.tipo,
+        descricao: null,
+        usuario: { id: session.user.id, nome: usuario?.nome || '' },
+        extra: {},
+      })),
+      ...ausencias.map(a => ({
+        id: a.id,
+        dataHora: a.dataInicio,
+        tipo: 'AUSENCIA',
+        subTipo: a.tipo,
+        descricao: null,
+        usuario: { id: session.user.id, nome: usuario?.nome || '' },
+        extra: { dataFim: a.dataFim },
+      })),
+    ];
+
+    const stats = calcularEstatisticas({
+      filtroUsuario: session.user.id,
+      registros: registrosParaCalc,
+      usuarios: usuario ? [{ id: session.user.id, jornada: usuario.jornada, criadoEm: usuario.criadoEm }] : [],
+      feriados: feriadosIntegrais,
+      feriadosParciais,
+      dataInicio: inicio,
+      dataFim: fim,
+      horasExtrasAprovadas: horasExtrasAprovadas.map(h => ({ usuarioId: session.user.id, data: h.data, minutosExtra: h.minutosExtra })),
+      ajustesBanco: ajustesBanco.map(a => ({
+        usuarioId: session.user.id,
+        data: a.data,
+        dataFolga: a.dataFolga ?? undefined,
+        minutos: a.minutos,
+        tipo: a.tipo,
+      })),
+      toleranciaMinutos,
+    });
+
     return NextResponse.json({
         pontos: listaUnificada,
         empresaNome: usuario?.empresa?.nome || 'Minha Empresa',
@@ -94,6 +175,15 @@ export async function GET(request: Request) {
         feriados: usuario?.empresa?.feriados?.map(f => f.data.toISOString().split('T')[0]) || [],
         horasExtrasAprovadas: horasExtrasAprovadas.map(h => ({ data: h.data, minutosExtra: h.minutosExtra })),
         ajustesBanco: ajustesBanco.map(a => ({ data: a.data, dataFolga: a.dataFolga, minutos: a.minutos, tipo: a.tipo, motivo: a.motivo, adminNome: a.adminNome })),
+        estatisticas: stats
+          ? {
+              saldo: stats.saldo,
+              saldoMinutos: stats.saldoMinutos,
+              saldoPositivo: stats.saldoPositivo,
+              total: stats.total,
+              totalMinutos: stats.totalMinutos,
+            }
+          : null,
     });
 
   } catch (error) {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getISOWeek, getYear, getDay } from 'date-fns';
+import { calcularEstatisticas } from '@/lib/admin/calcularEstatisticas';
 
 export const dynamic = 'force-dynamic';
 
@@ -221,9 +222,16 @@ export async function GET(req: Request) {
 
     const funcionarios = await prisma.usuario.findMany({
       where: { empresaId, cargo: { not: 'ADMIN' } },
-      select: { id: true, nome: true, tituloCargo: true, jornada: true },
+      select: { id: true, nome: true, tituloCargo: true, jornada: true, criadoEm: true },
       orderBy: { nome: 'asc' },
     });
+
+    const empresaConfig = await prisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: { configuracoes: true },
+    });
+    const tolCfg = (empresaConfig?.configuracoes as any)?.toleranciaMinutos;
+    const toleranciaMinutos = typeof tolCfg === 'number' ? tolCfg : 10;
 
     const funcionarioIds = funcionarios.map((f) => f.id);
 
@@ -231,7 +239,7 @@ export async function GET(req: Request) {
     const rangeExpandido = new Date(dataInicio);
     rangeExpandido.setDate(rangeExpandido.getDate() - 7);
 
-    const [todosPontos, ausencias, feriados, horasExtrasAprovadas] = await Promise.all([
+    const [todosPontos, ausencias, feriados, horasExtrasAprovadas, ajustesBanco] = await Promise.all([
       prisma.ponto.findMany({
         where: {
           usuarioId: { in: funcionarioIds },
@@ -264,13 +272,61 @@ export async function GET(req: Request) {
         },
         select: { usuarioId: true, data: true, minutosExtra: true },
       }),
+      prisma.ajusteBancoHoras.findMany({
+        where: {
+          usuarioId: { in: funcionarioIds },
+          OR: [
+            { data: { gte: dataInicioParam!, lte: dataFimParam! } },
+            { dataFolga: { gte: dataInicioParam!, lte: dataFimParam! } },
+          ],
+        },
+        select: { usuarioId: true, data: true, dataFolga: true, minutos: true, tipo: true },
+      }),
     ]);
 
+    // Separar feriados integrais dos parciais (nome contém "__PARCIAL__:HH:MM-HH:MM")
+    const PARCIAL_MARK = '__PARCIAL__:';
     const feriadoSet = new Set<string>();
+    const feriadosIntegrais: string[] = [];
+    const feriadosParciais: Record<string, { inicio: string; fim: string }> = {};
     for (const f of feriados) {
       const d = new Date(f.data);
-      feriadoSet.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+      const diaStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      feriadoSet.add(diaStr);
+      const nome = (f as any).nome || '';
+      const idx = nome.indexOf(PARCIAL_MARK);
+      if (idx !== -1) {
+        const rest = nome.slice(idx + PARCIAL_MARK.length).trim();
+        const [h1, h2] = rest.split('-').map((s: string) => (s || '').trim());
+        if (isValidTimeHHMM(h1) && isValidTimeHHMM(h2)) {
+          feriadosParciais[diaStr] = { inicio: h1, fim: h2 };
+          continue;
+        }
+      }
+      feriadosIntegrais.push(diaStr);
     }
+
+    // Registros unificados para passar à função canônica (pontos + ausências)
+    const registrosBase = [
+      ...todosPontos.map(p => ({
+        id: p.id,
+        dataHora: p.dataHora,
+        tipo: 'PONTO',
+        subTipo: p.tipo,
+        descricao: null,
+        usuario: { id: p.usuarioId, nome: '' },
+        extra: {},
+      })),
+      ...ausencias.map(a => ({
+        id: a.id,
+        dataHora: a.dataInicio,
+        tipo: 'AUSENCIA',
+        subTipo: a.tipo,
+        descricao: null,
+        usuario: { id: a.usuarioId, nome: '' },
+        extra: { dataFim: a.dataFim },
+      })),
+    ];
 
     // Agrupar pontos por usuário e dia
     const pontosMap = new Map<string, typeof todosPontos>();
@@ -329,14 +385,32 @@ export async function GET(req: Request) {
         }
       }
 
-      let totalMinutosTrabalhados = 0;
+      // Totais oficiais vêm da função canônica (mesma usada no dashboard),
+      // garantindo que saldo, total trabalhado e regras (crédito em domingo/feriado,
+      // criadoEm, ajustesBanco, feriados parciais) estejam sempre alinhados.
+      const statsCanonicas = calcularEstatisticas({
+        filtroUsuario: func.id,
+        registros: registrosBase,
+        usuarios: funcionarios,
+        feriados: feriadosIntegrais,
+        feriadosParciais,
+        dataInicio: dataInicioParam!,
+        dataFim: dataFimParam!,
+        horasExtrasAprovadas: horasExtrasAprovadas.filter(h => h.usuarioId === func.id),
+        ajustesBanco: ajustesBanco
+          .filter(a => a.usuarioId === func.id)
+          .map(a => ({ ...a, dataFolga: a.dataFolga ?? undefined })),
+        toleranciaMinutos,
+      });
+
+      const totalMinutosTrabalhados = statsCanonicas?.totalMinutos ?? 0;
+      const saldoMinutos = statsCanonicas?.saldoMinutos ?? 0;
       let totalMetaMinutos = 0;
       let diasTrabalhados = 0;
       let diasFalta = 0;
       let diasAtraso = 0;
       let diasAusenciaJustificada = 0;
       let diasFeriado = 0;
-      let saldoMinutos = 0;
 
       const dias = allDates.map((date) => {
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -405,31 +479,7 @@ export async function GET(req: Request) {
           if (minutosTrabalhados > 0) diasTrabalhados++;
         }
 
-        totalMinutosTrabalhados += minutosTrabalhados;
         totalMetaMinutos += metaMinutos;
-
-        // Saldo do dia com tolerância CLT de 10min e corte de hora extra
-        if (date <= hoje && status !== 'FOLGA' && status !== 'FUTURO') {
-          const tolerancia = 10;
-          let trabalhadoEfetivo = minutosTrabalhados;
-
-          const temHoraExtra = metaMinutos > 0
-            ? minutosTrabalhados > metaMinutos + tolerancia
-            : minutosTrabalhados > tolerancia;
-
-          if (temHoraExtra) {
-            trabalhadoEfetivo = metaMinutos;
-            const heKey = `${func.id}-${dateStr}`;
-            const minutosAprovados = heMap.get(heKey);
-            if (minutosAprovados !== undefined) {
-              trabalhadoEfetivo = metaMinutos + minutosAprovados;
-            }
-          }
-
-          let saldoDia = trabalhadoEfetivo - metaMinutos;
-          if (Math.abs(saldoDia) <= tolerancia) saldoDia = 0;
-          saldoMinutos += saldoDia;
-        }
 
         return {
           data: dateStr,
