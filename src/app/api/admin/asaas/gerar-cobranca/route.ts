@@ -158,7 +158,7 @@ async function findPendingPaymentFromSubscription(subscriptionId: string) {
     const list: any[] = Array.isArray(data?.data) ? data.data : [];
 
     const pendentes = list
-      .filter((p) => p?.status === "PENDING" || p?.status === "OVERDUE")
+      .filter((p) => !p?.deleted && (p?.status === "PENDING" || p?.status === "OVERDUE"))
       .sort((a, b) => String(a.dueDate ?? "").localeCompare(String(b.dueDate ?? "")));
 
     if (pendentes.length > 0) return pendentes[0];
@@ -192,7 +192,7 @@ async function getExistingPendingPayment(empresaId: string) {
 
   try {
     const { data: payment } = await asaas.get(`/payments/${empresa.asaasCurrentPaymentId}`);
-    if (payment && (payment.status === "PENDING" || payment.status === "OVERDUE")) {
+    if (payment && !payment.deleted && (payment.status === "PENDING" || payment.status === "OVERDUE")) {
       return payment;
     }
     return null;
