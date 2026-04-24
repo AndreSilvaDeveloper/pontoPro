@@ -242,6 +242,8 @@ export default function PaymentModal({
               {boletoPdfUrl && (
                 <a
                   href={boletoPdfUrl}
+                  target="_blank"
+                  rel="noreferrer"
                   className="flex items-center justify-between p-4 bg-elevated-solid hover:bg-elevated-solid rounded-xl border border-border-input transition-all group"
                 >
                   <div className="flex items-center gap-3">
