@@ -145,23 +145,24 @@ async function getPixSafe(paymentId: string) {
 }
 
 /**
- * Busca o pagamento pendente mais recente de uma assinatura.
+ * Busca o pagamento em aberto mais ANTIGO de uma assinatura.
+ * Quando Asaas gera o boleto do próximo ciclo antes do anterior ser pago,
+ * ambos ficam abertos — o admin deve pagar o mais antigo primeiro.
  */
 async function findPendingPaymentFromSubscription(subscriptionId: string) {
   try {
     const { data } = await asaas.get(`/subscriptions/${subscriptionId}/payments`, {
-      params: { limit: 5, offset: 0 },
+      params: { limit: 50, offset: 0 },
     });
 
     const list: any[] = Array.isArray(data?.data) ? data.data : [];
 
-    // Prioriza pagamento PENDING ou OVERDUE
-    const pending = list.find(
-      (p) => p?.status === "PENDING" || p?.status === "OVERDUE"
-    );
-    if (pending) return pending;
+    const pendentes = list
+      .filter((p) => p?.status === "PENDING" || p?.status === "OVERDUE")
+      .sort((a, b) => String(a.dueDate ?? "").localeCompare(String(b.dueDate ?? "")));
 
-    // Se não há pendente, retorna o mais recente
+    if (pendentes.length > 0) return pendentes[0];
+
     return list[0] ?? null;
   } catch {
     return null;
