@@ -459,7 +459,18 @@ export default function MeuHistorico() {
         setJornada(resHistorico.data.jornada);
         setFeriados(resHistorico.data.feriados);
         setAjustesBancoLista(resHistorico.data.ajustesBanco || []);
-        setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas, resHistorico.data.ajustesBanco));
+        // Prioriza o saldo calculado pelo servidor (função canônica, igual
+        // ao dashboard do admin). Fallback para o cálculo client-side se
+        // o campo não estiver presente (ex: durante transição de deploy).
+        if (resHistorico.data.estatisticas) {
+          setResumo({
+            total: resHistorico.data.estatisticas.total,
+            saldo: resHistorico.data.estatisticas.saldo,
+            saldoPositivo: resHistorico.data.estatisticas.saldoPositivo,
+          });
+        } else {
+          setResumo(calcularHorasAvancado(resHistorico.data.pontos, resHistorico.data.jornada, resHistorico.data.feriados, resHistorico.data.horasExtrasAprovadas, resHistorico.data.ajustesBanco));
+        }
       } else {
         setPontos(resHistorico.data);
       }
