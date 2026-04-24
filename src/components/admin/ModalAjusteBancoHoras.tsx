@@ -40,6 +40,7 @@ export default function ModalAjusteBancoHoras({ aberto, onClose, usuarios, onCon
   const [horas, setHoras] = useState('');
   const [minutos, setMinutos] = useState('');
   const [mesRef, setMesRef] = useState(format(new Date(), 'yyyy-MM'));
+  const [dataAjuste, setDataAjuste] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dataFolga, setDataFolga] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [motivo, setMotivo] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -127,9 +128,7 @@ export default function ModalAjusteBancoHoras({ aberto, onClose, usuarios, onCon
     if (!motivo.trim()) { toast.error('Informe o motivo'); return; }
     if (isCompensacao && !dataFolga) { toast.error('Informe a data da folga'); return; }
 
-    const [ano, mes] = mesRef.split('-').map(Number);
-    const ultimoDia = new Date(ano, mes, 0).getDate();
-    const dataRef = `${mesRef}-${String(ultimoDia).padStart(2, '0')}`;
+    const dataRef = dataAjuste;
     const minutosFinais = isDebito ? -totalMinutos : totalMinutos;
 
     setSalvando(true);
@@ -165,6 +164,7 @@ export default function ModalAjusteBancoHoras({ aberto, onClose, usuarios, onCon
 
     onClose();
     setUsuarioIds([]); setHoras(''); setMinutos(''); setMotivo(''); setBuscaFunc('');
+    setDataAjuste(format(new Date(), 'yyyy-MM-dd'));
     onConfirmar();
   };
 
@@ -275,6 +275,20 @@ export default function ModalAjusteBancoHoras({ aberto, onClose, usuarios, onCon
                 <option key={m.value} value={m.value}>{m.label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Data do ajuste */}
+          <div className="space-y-1">
+            <label className="text-[10px] text-text-muted font-bold uppercase ml-1">Data do ajuste</label>
+            <input
+              type="date"
+              value={dataAjuste}
+              onChange={e => setDataAjuste(e.target.value)}
+              className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500"
+            />
+            <p className="text-[10px] text-text-dim ml-1">
+              Em qual dia esse ajuste entra no banco. Use o dia em que a folga foi dada ou a HE foi paga.
+            </p>
           </div>
 
           {/* Saldo(s) do(s) funcionário(s) */}
