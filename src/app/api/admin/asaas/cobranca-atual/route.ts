@@ -27,7 +27,7 @@ async function findOldestOpenPaymentFromSubscription(subscriptionId: string) {
     });
     const list: any[] = Array.isArray(data?.data) ? data.data : [];
     const pendentes = list
-      .filter((p) => p?.status === "PENDING" || p?.status === "OVERDUE")
+      .filter((p) => !p?.deleted && (p?.status === "PENDING" || p?.status === "OVERDUE"))
       .sort((a, b) => String(a.dueDate ?? "").localeCompare(String(b.dueDate ?? "")));
     return pendentes[0] ?? null;
   } catch {
@@ -115,9 +115,9 @@ export async function GET() {
       return NextResponse.json({ ok: true, hasPayment: false });
     }
 
-    // Se já foi pago/cancelado, não há cobrança pendente
+    // Se já foi pago/cancelado ou deletado, não há cobrança pendente
     const inactiveStatuses = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH", "REFUNDED", "CANCELLED"];
-    if (inactiveStatuses.includes(payment.status)) {
+    if (payment.deleted || inactiveStatuses.includes(payment.status)) {
       await prisma.empresa.update({
         where: { id: billingEmpresaId },
         data: { asaasCurrentPaymentId: null, asaasCurrentDueDate: null },
