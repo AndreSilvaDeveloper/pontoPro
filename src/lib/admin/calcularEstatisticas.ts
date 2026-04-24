@@ -569,13 +569,25 @@ export function calcularEstatisticas(args: {
         : trabalhado > tolerancia; // folga: qualquer trabalho é extra
 
       if (temHoraExtra) {
-        trabalhadoEfetivo = meta; // corta no expediente (0 se folga)
+        // Crédito automático em dias sem obrigação de trabalho: domingo,
+        // feriado integral e feriado parcial (tudo acima da meta reduzida
+        // vira banco sem precisar de aprovação manual).
+        const ehFeriadoIntegral = feriados.includes(dataStr);
+        const ehFeriadoParcial = !!feriadosParciais?.[dataStr];
+        const ehDomingo = loopData.getDay() === 0;
+        const creditoAutomatico = ehFeriadoIntegral || ehFeriadoParcial || ehDomingo;
 
-        const aprovada = horasExtrasAprovadas?.find(
-          h => h.usuarioId === filtroUsuario && h.data === dataStr
-        );
-        if (aprovada) {
-          trabalhadoEfetivo = meta + aprovada.minutosExtra;
+        if (creditoAutomatico) {
+          trabalhadoEfetivo = trabalhado;
+        } else {
+          trabalhadoEfetivo = meta; // corta no expediente (0 se folga)
+
+          const aprovada = horasExtrasAprovadas?.find(
+            h => h.usuarioId === filtroUsuario && h.data === dataStr
+          );
+          if (aprovada) {
+            trabalhadoEfetivo = meta + aprovada.minutosExtra;
+          }
         }
       }
 
