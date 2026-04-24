@@ -1,7 +1,41 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { asaas } from "@/lib/asaas";
 
 export const runtime = "nodejs";
+
+/**
+ * Percorre os pagamentos de uma assinatura em ordem crescente de dueDate e
+ * retorna o dueDate do ÚLTIMO pagamento pago em sequência contígua (sem pular
+ * boletos em aberto). Usado para calcular pagoAte corretamente quando o
+ * cliente paga boletos fora de ordem — sem isso, pagar o boleto do próximo
+ * mês antes do atual faria o sistema considerar a empresa em dia.
+ */
+async function getLastContiguousPaidDueDate(subscriptionId: string): Promise<string | null> {
+  try {
+    const { data } = await asaas.get(`/subscriptions/${subscriptionId}/payments`, {
+      params: { limit: 50, offset: 0 },
+    });
+    const list: any[] = Array.isArray(data?.data) ? data.data : [];
+
+    const paidStatuses = new Set(["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]);
+    const sorted = list
+      .filter((p) => !p?.deleted && p?.dueDate)
+      .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
+
+    let lastPaidDue: string | null = null;
+    for (const p of sorted) {
+      if (paidStatuses.has(p.status)) {
+        lastPaidDue = String(p.dueDate).slice(0, 10);
+      } else {
+        break;
+      }
+    }
+    return lastPaidDue;
+  } catch {
+    return null;
+  }
+}
 
 function parseAsaasDueDate(input: any): Date | null {
   if (!input) return null;
@@ -201,6 +235,7 @@ export async function POST(req: Request) {
         billingAnchorAt: true,
         billingCycle: true,
         status: true,
+        asaasSubscriptionId: true,
       },
     });
 
@@ -215,17 +250,34 @@ export async function POST(req: Request) {
     const isYearly = current.billingCycle === "YEARLY";
     const advanceMonths = isYearly ? 12 : 1;
 
-    const paidUntilDate = startOfDay(addMonthsCalendar(dueDate, advanceMonths));
+    // Base do avanço: dueDate do último pagamento em sequência contígua
+    // (se a subscription existe e conseguimos consultar). Senão, fallback
+    // para o dueDate do evento atual.
+    const subscriptionId =
+      payment?.subscription ??
+      body?.subscription?.id ??
+      current.asaasSubscriptionId ??
+      null;
+
+    let advanceFromDate = dueDate;
+    if (subscriptionId) {
+      const lastPaidDueISO = await getLastContiguousPaidDueDate(subscriptionId);
+      if (lastPaidDueISO) {
+        const parsed = parseAsaasDueDate(lastPaidDueISO);
+        if (parsed) advanceFromDate = parsed;
+      }
+    }
+
+    const paidUntilDate = startOfDay(addMonthsCalendar(advanceFromDate, advanceMonths));
 
     const paidUntil = maxDate(
       current.pagoAte ? startOfDay(current.pagoAte) : null,
       paidUntilDate
     );
 
-    const nextAnchor = startOfDay(addMonthsCalendar(dueDate, advanceMonths));
     const anchor = maxDate(
       current.billingAnchorAt ? startOfDay(current.billingAnchorAt) : null,
-      nextAnchor
+      paidUntilDate
     );
 
     await prisma.empresa.update({
@@ -245,6 +297,8 @@ export async function POST(req: Request) {
       paymentId: payment?.id ?? null,
       externalReference: payment?.externalReference ?? null,
       dueDate: payment?.dueDate ?? null,
+      advanceFromDate: advanceFromDate.toISOString(),
+      subscriptionId,
     });
 
     return NextResponse.json({
