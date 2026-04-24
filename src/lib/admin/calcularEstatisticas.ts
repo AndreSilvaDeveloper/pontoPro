@@ -140,6 +140,16 @@ export function calcularEstatisticas(args: {
   const usuarioInfo = usuarios.find((u) => u.id === filtroUsuario);
   const jornadaConfig = usuarioInfo?.jornada || {};
 
+  // O loop de saldo deve começar na criação do funcionário: dias anteriores
+  // à entrada dele na empresa não podem contar como falta. Callers do tipo
+  // banco-horas-equipe já faziam esse clamp fora; centralizando aqui para
+  // que o dashboard e demais telas também respeitem automaticamente.
+  const criadoEmStr = usuarioInfo?.criadoEm
+    ? format(new Date(usuarioInfo.criadoEm), 'yyyy-MM-dd')
+    : null;
+  const dataInicioEfetiva =
+    criadoEmStr && criadoEmStr > dataInicio ? criadoEmStr : dataInicio;
+
   const fixData = (d: any) => {
     if (!d) return new Date();
     const str = typeof d === 'string' ? d : d.toISOString();
@@ -531,7 +541,7 @@ export function calcularEstatisticas(args: {
   }
 
   let saldoMinutosBanco = 0;
-  let loopData = criarDataLocal(dataInicio);
+  let loopData = criarDataLocal(dataInicioEfetiva);
   const fimData = criarDataLocal(dataFim);
 
   // Pré-calcular compensações de folga por dia (reduzem a meta)
