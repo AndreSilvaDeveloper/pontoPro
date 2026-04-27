@@ -86,6 +86,27 @@ export async function POST(request: Request) {
 
     if (!usuario) return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 });
 
+    // === BLOQUEIO MODO TOTEM EXCLUSIVO ===
+    // Empresa com addonTotem ATIVO + flag bloquearPontoApp ON: app não bate ponto.
+    // Salvaguarda: se empresa perder o addon, libera automaticamente.
+    {
+      const cfg = (usuario.empresa?.configuracoes as { bloquearPontoApp?: boolean } | null) || {};
+      let temAddon = usuario.empresa?.addonTotem === true;
+      if (!temAddon && usuario.empresa?.matrizId) {
+        const matriz = await prisma.empresa.findUnique({
+          where: { id: usuario.empresa.matrizId },
+          select: { addonTotem: true },
+        });
+        temAddon = matriz?.addonTotem === true;
+      }
+      if (temAddon && cfg.bloquearPontoApp === true) {
+        return NextResponse.json(
+          { erro: 'Sua empresa configurou o ponto exclusivo pelo totem. Use o tablet da empresa pra bater ponto.' },
+          { status: 403 }
+        );
+      }
+    }
+
     const fluxoEstrito = usuario.empresa?.fluxoEstrito !== false;
 
     const modoValidacao = (usuario as any).modoValidacaoPonto as ModoValidacao | null;

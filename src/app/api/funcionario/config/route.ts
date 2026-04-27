@@ -22,10 +22,21 @@ export async function GET() {
     // 1. Pega as configurações antigas (JSON)
     // Usamos 'as any' para o TypeScript não reclamar se for null
     const configsJSON = (usuario.empresa.configuracoes as any) || {};
-    
+
     // 2. Pega a nova configuração de Fluxo Estrito (Coluna da Tabela)
     // Se for null/undefined, assumimos true por segurança
     const fluxoEstrito = usuario.empresa.fluxoEstrito !== false;
+
+    // addonTotem efetivo (próprio ou herdado da matriz) — usado pra travar
+    // o "ponto só pelo totem" só quando a empresa realmente tem o addon
+    let addonTotemEfetivo = usuario.empresa.addonTotem === true;
+    if (!addonTotemEfetivo && usuario.empresa.matrizId) {
+        const matriz = await prisma.empresa.findUnique({
+            where: { id: usuario.empresa.matrizId },
+            select: { addonTotem: true },
+        });
+        addonTotemEfetivo = matriz?.addonTotem === true;
+    }
 
     // 3. Dados de geofence do funcionário
     const geofence = {
@@ -39,8 +50,9 @@ export async function GET() {
 
     // 4. Mistura tudo num objeto só para o Front
     return NextResponse.json({
-        ...configsJSON, // Espalha: exigirFoto, bloquearRaio, etc.
+        ...configsJSON, // Espalha: exigirFoto, bloquearRaio, bloquearPontoApp, etc.
         fluxoEstrito,   // Adiciona: true ou false
+        addonTotemEfetivo, // Adiciona: addon do Totem ativo (próprio ou matriz)
         ...geofence,    // Adiciona: latitudeBase, longitudeBase, raioPermitido, etc.
     });
 

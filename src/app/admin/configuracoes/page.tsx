@@ -6,7 +6,7 @@ import {
   ArrowLeft, Save, Camera, Lock, UserCog, EyeOff,
   Settings, ShieldAlert, Users, MapPin, ChevronRight,
   Building2, Bell, Timer, TrendingUp, Coffee,
-  Smartphone,
+  Smartphone, SmartphoneNfc,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ type ConfigsState = {
   duracaoPausaCafeMin: number;
   permiteIntervaloCafe: boolean;
   cafeDepoisDoAlmoco: boolean;
+  bloquearPontoApp: boolean;
 };
 
 type EmpresaState = {
@@ -43,6 +44,7 @@ const DEFAULTS: ConfigsState = {
   duracaoPausaCafeMin: 15,
   permiteIntervaloCafe: false,
   cafeDepoisDoAlmoco: false,
+  bloquearPontoApp: false,
 };
 
 function Toggle({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
@@ -332,6 +334,14 @@ export default function ConfiguracoesEmpresa() {
                 accent="blue"
               />
             )}
+            <ItemToggle
+              icon={<SmartphoneNfc size={18} />}
+              titulo="Funcionários só batem ponto pelo totem"
+              descricao="Bloqueia o botão de bater ponto no app/celular do funcionário. Ele continua vendo histórico, atestados e tudo o resto — só não consegue registrar batida pelo aparelho dele."
+              ativo={configs.bloquearPontoApp}
+              onToggle={() => toggle('bloquearPontoApp')}
+              accent="amber"
+            />
           </Secao>
         )}
 
