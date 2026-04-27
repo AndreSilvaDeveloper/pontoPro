@@ -17,7 +17,7 @@ type Estado =
   | { fase: 'idle' }
   | { fase: 'capturando' }
   | { fase: 'enviando' }
-  | { fase: 'sucesso'; nome: string; tipoLabel: string; horario: string }
+  | { fase: 'sucesso'; nome: string; tipo: string; tipoLabel: string; horario: string }
   | { fase: 'erro'; mensagem: string };
 
 function relogio(d: Date) {
@@ -25,6 +25,53 @@ function relogio(d: Date) {
 }
 function dataExtenso(d: Date) {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+}
+
+function mensagemSucesso(tipo: string, primeiroNome: string): { titulo: string; subtitulo: string } {
+  const hora = new Date().getHours();
+
+  switch (tipo) {
+    case 'ENTRADA':
+    case 'PONTO': {
+      const cumprimento = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+      return {
+        titulo: `${cumprimento}, ${primeiroNome}!`,
+        subtitulo: 'Tenha um ótimo dia de trabalho.',
+      };
+    }
+    case 'SAIDA_ALMOCO':
+      return {
+        titulo: `Bom apetite, ${primeiroNome}!`,
+        subtitulo: 'Aproveita o almoço — você merece.',
+      };
+    case 'VOLTA_ALMOCO':
+      return {
+        titulo: `Que bom te ver, ${primeiroNome}!`,
+        subtitulo: 'Bora pra segunda metade do dia.',
+      };
+    case 'SAIDA_INTERVALO':
+      return {
+        titulo: `Boa pausa, ${primeiroNome}!`,
+        subtitulo: 'Respira fundo, relaxa um pouco.',
+      };
+    case 'VOLTA_INTERVALO':
+      return {
+        titulo: `Bem-vindo de volta, ${primeiroNome}!`,
+        subtitulo: 'De volta ao trabalho com energia.',
+      };
+    case 'SAIDA': {
+      const despedida = hora < 18 ? 'Tenha uma ótima tarde' : 'Boa noite';
+      return {
+        titulo: `${despedida}, ${primeiroNome}!`,
+        subtitulo: 'Ótimo trabalho hoje. Descansa bem.',
+      };
+    }
+    default:
+      return {
+        titulo: `Olá, ${primeiroNome}!`,
+        subtitulo: 'Ponto registrado com sucesso.',
+      };
+  }
 }
 
 export default function TotemPage() {
@@ -91,6 +138,7 @@ export default function TotemPage() {
         setEstado({
           fase: 'sucesso',
           nome: data.usuarioNome,
+          tipo: data.tipo,
           tipoLabel: data.tipoLabel,
           horario: data.horario,
         });
@@ -247,21 +295,23 @@ export default function TotemPage() {
         )}
 
         {/* Estado SUCESSO */}
-        {estado.fase === 'sucesso' && (
-          <div className="text-center animate-in fade-in zoom-in-95 duration-500">
-            <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-emerald-500/20 mb-6">
-              <CheckCircle2 size={80} className="text-emerald-400" />
+        {estado.fase === 'sucesso' && (() => {
+          const { titulo, subtitulo } = mensagemSucesso(estado.tipo, estado.nome.split(' ')[0]);
+          return (
+            <div className="text-center animate-in fade-in zoom-in-95 duration-500">
+              <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-emerald-500/20 mb-6">
+                <CheckCircle2 size={80} className="text-emerald-400" />
+              </div>
+              <h1 className="text-5xl md:text-6xl font-extrabold mb-3">{titulo}</h1>
+              <p className="text-2xl text-white/80 mb-4">{subtitulo}</p>
+              <p className="text-base text-white/50 mb-2">{estado.tipoLabel} registrada</p>
+              <div className="inline-flex items-center gap-2 mt-2 px-6 py-3 rounded-full bg-white/5 border border-white/10">
+                <Clock size={20} className="text-purple-300" />
+                <span className="text-2xl font-bold tabular-nums">{estado.horario}</span>
+              </div>
             </div>
-            <h1 className="text-5xl md:text-6xl font-extrabold mb-3">
-              Olá, {estado.nome.split(' ')[0]}!
-            </h1>
-            <p className="text-2xl text-white/80 mb-2">{estado.tipoLabel} registrada</p>
-            <div className="inline-flex items-center gap-2 mt-4 px-6 py-3 rounded-full bg-white/5 border border-white/10">
-              <Clock size={20} className="text-purple-300" />
-              <span className="text-2xl font-bold tabular-nums">{estado.horario}</span>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Estado ERRO */}
         {estado.fase === 'erro' && (
