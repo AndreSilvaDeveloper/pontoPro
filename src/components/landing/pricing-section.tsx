@@ -50,6 +50,13 @@ const FEATURES: {
     getValue: (p) => PLANOS[p].reconhecimentoFacial,
   },
   {
+    label: "Modo Totem (tablet)",
+    getValue: (p) =>
+      PLANOS[p].totemIncluso
+        ? true
+        : `+R$ ${PLANOS[p].totemAddonMatriz.toFixed(2).replace(".", ",")}/mês`,
+  },
+  {
     label: "Relatórios PDF",
     getValue: (p) => PLANOS[p].relatoriosPdf === "COMPLETO" ? "Completo" : "Básico",
   },

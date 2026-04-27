@@ -15,6 +15,7 @@ import {
   Info,
   ChevronDown,
   ChevronUp,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -39,10 +40,22 @@ export default function AdminTotemPage() {
   const [bloqueado, setBloqueado] = useState<string | null>(null);
   const [resetando, setResetando] = useState<string | null>(null);
   const [mostrarAjuda, setMostrarAjuda] = useState(true);
+  const [addonAtivo, setAddonAtivo] = useState<boolean | null>(null);
+  const [empresaNome, setEmpresaNome] = useState<string>('');
 
   const carregar = async () => {
     setLoading(true);
     try {
+      // Verifica se o addon está ativo (próprio ou herdado da matriz)
+      try {
+        const empResp = await fetch('/api/admin/empresa', { cache: 'no-store' });
+        if (empResp.ok) {
+          const emp = await empResp.json();
+          setAddonAtivo(emp?.addonTotemEfetivo === true);
+          setEmpresaNome(emp?.nome || '');
+        }
+      } catch { /* ignora — fallback usa response da listagem */ }
+
       const res = await fetch('/api/admin/totem/devices');
       if (res.ok) {
         const data = await res.json();
@@ -129,6 +142,81 @@ export default function AdminTotemPage() {
     navigator.clipboard.writeText(codigo);
     toast.success('Código copiado.');
   };
+
+  // Tela de upsell — addon desligado pra essa empresa
+  if (addonAtivo === false) {
+    const msg = `Olá! Sou da empresa ${empresaNome || '[empresa]'} e gostaria de habilitar o Modo Totem da WorkID. Pode me ajudar?`;
+    const waUrl = `https://wa.me/5532935005492?text=${encodeURIComponent(msg)}`;
+    return (
+      <div className="max-w-3xl mx-auto p-4 md:p-8 space-y-6">
+        <header className="flex items-center gap-3">
+          <Lock className="text-amber-400" />
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary inline-flex items-center gap-2">
+              <Smartphone size={24} className="text-purple-400" />
+              Modo Totem
+            </h1>
+            <p className="text-sm text-text-muted mt-1">
+              Adicional pago — ainda não habilitado pra sua conta.
+            </p>
+          </div>
+        </header>
+
+        {/* Hero */}
+        <div className="rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-indigo-500/5 to-transparent p-6 md:p-8 space-y-4">
+          <div className="inline-flex items-center gap-2 bg-purple-500/15 border border-purple-500/30 text-purple-200 text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+            <Smartphone size={14} /> Adicional pago
+          </div>
+          <h2 className="text-3xl md:text-4xl font-extrabold text-text-primary leading-tight">
+            Tablet único pra equipe inteira bater ponto pelo rosto.
+          </h2>
+          <p className="text-text-secondary text-base md:text-lg leading-relaxed">
+            Ideal pra empresas que <strong>não querem</strong> que o funcionário use o celular pessoal pra bater ponto.
+            Funcionário chega no tablet, mostra o rosto, registra automático. Sem app, sem login, sem GPS — só reconhecimento facial.
+          </p>
+        </div>
+
+        {/* Benefícios */}
+        <div className="grid md:grid-cols-2 gap-3">
+          {[
+            { titulo: 'Sem hardware proprietário', texto: 'Funciona em qualquer tablet ou celular antigo com câmera frontal e Wi-Fi.' },
+            { titulo: 'Reconhecimento facial 1:N', texto: 'Identifica automaticamente qual funcionário está batendo o ponto pelo rosto.' },
+            { titulo: 'Tipo automático', texto: 'O sistema deduz Entrada / Almoço / Saída pela sequência do dia. Tudo num botão só.' },
+            { titulo: 'Bloqueio do app', texto: 'Opcionalmente, impede que funcionários batam ponto pelo celular pessoal.' },
+          ].map((b) => (
+            <div key={b.titulo} className="rounded-2xl border border-border-subtle bg-elevated/40 p-4">
+              <div className="font-semibold text-text-primary mb-1">{b.titulo}</div>
+              <p className="text-sm text-text-muted leading-relaxed">{b.texto}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Preço */}
+        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-6 md:p-8">
+          <div className="text-xs uppercase font-bold text-amber-300 tracking-wider mb-2">Quanto custa</div>
+          <div className="space-y-2 text-sm text-text-secondary">
+            <p><strong>R$ 49,90/mês</strong> adicional ao seu plano (matriz).</p>
+            <p><strong>+ R$ 29,90/mês</strong> por filial que também for usar o totem.</p>
+            <p className="text-text-muted">No plano <strong>Enterprise</strong>, o Modo Totem é <strong>incluso</strong> sem custo extra.</p>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <div className="text-center pt-2">
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-gradient-to-br from-purple-600 to-indigo-700 hover:from-purple-500 hover:to-indigo-600 active:scale-95 transition-all shadow-2xl shadow-purple-500/30 text-white px-8 py-4 rounded-2xl text-base font-bold"
+          >
+            <Smartphone size={20} />
+            Liberar Modo Totem (chama no WhatsApp)
+          </a>
+          <p className="text-xs text-text-faint mt-3">Resposta em horário comercial. Setup é feito em até 24h.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

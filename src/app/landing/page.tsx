@@ -36,6 +36,7 @@ import { MobileCarousel } from "@/components/landing/mobile-carousel";
 import { MobileMenu } from "@/components/landing/mobile-menu";
 import { DesktopMenu } from "@/components/landing/desktop-menu";
 import { PricingSection } from "@/components/landing/pricing-section";
+import { TotemSection } from "@/components/landing/totem-section";
 import ROICalculator from "@/components/landing/ROICalculator";
 
 import { LINKS, waLink } from '@/config/links'
@@ -747,6 +748,9 @@ export default function LandingPage() {
 
       {/* ROI Calculator */}
       <ROICalculator />
+
+      {/* Totem Section — destaque pra empresas que não querem ponto pelo celular */}
+      <TotemSection />
 
       {/* Pricing Section */}
       <PricingSection />
