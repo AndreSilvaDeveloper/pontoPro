@@ -193,7 +193,7 @@ export async function POST(req: Request) {
       usuarioNome: usuario.nome,
       tipo: tipoFinal,
       tipoLabel: tipoLabels[tipoFinal] ?? tipoFinal,
-      horario: agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      horario: agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }),
       confianca: match.confianca,
     });
   } catch (err) {

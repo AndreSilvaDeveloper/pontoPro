@@ -205,7 +205,10 @@ export default function AdminTotemPage() {
                   Digite os 6 dígitos no tablet e toque em <span className="text-purple-300 font-medium">"Parear"</span>.
                 </li>
                 <li>
-                  O tablet vai abrir a tela de bater ponto. Pronto — pode deixar lá. Recomendamos <span className="text-purple-300">"Adicionar à tela de início"</span> no Chrome pra virar atalho.
+                  O tablet vai abrir a tela de bater ponto. Pronto.
+                </li>
+                <li>
+                  <strong>Importante (esconder a barra do navegador):</strong> com a tela do totem aberta, toque no botão de <span className="text-purple-300">compartilhar</span> do navegador (no iPhone/iPad é o quadradinho com a setinha pra cima; no Android Chrome é o menu ⋮) e escolha <span className="text-purple-300">"Adicionar à tela de início"</span>. Depois abra pelo ícone novo — vai abrir em tela cheia, sem URL nem abas, igual um app de verdade.
                 </li>
               </ol>
             </div>
