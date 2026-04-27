@@ -936,7 +936,7 @@ export default function Home() {
           )}
 
           {/* Mapa Geofence */}
-          {location && !carregandoStatus && configs.modoValidacaoPonto === 'GPS' && !configs.pontoLivre && configs.latitudeBase !== 0 && configs.longitudeBase !== 0 && (
+          {!(configs.bloquearPontoApp && configs.addonTotemEfetivo) && location && !carregandoStatus && configs.modoValidacaoPonto === 'GPS' && !configs.pontoLivre && configs.latitudeBase !== 0 && configs.longitudeBase !== 0 && (
             <div className="animate-in fade-in slide-in-from-top-2">
               <button
                 type="button"
@@ -963,7 +963,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Câmera / Status Display */}
+          {/* Câmera / Status Display — escondido quando o ponto está travado pelo modo totem */}
+          {!(configs.bloquearPontoApp && configs.addonTotemEfetivo) && (
           <div data-tour="emp-camera">
             {/* Webcam oculta (sempre montada para captura) */}
             {configs.exigirFoto && location && !cameraErro && (
@@ -1017,6 +1018,7 @@ export default function Home() {
               <StatusDisplay />
             )}
           </div>
+          )}
 
           <div data-tour="emp-actions" className="mt-2">
             {configs.bloquearPontoApp && configs.addonTotemEfetivo ? (
