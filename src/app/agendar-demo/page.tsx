@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Calendar, Clock, User, Phone, Send, CheckCircle2, MessageCircle } from 'lucide-react';
 import { LINKS } from '@/config/links';
+import { trackEvent, trackLead } from '@/lib/analytics';
 
 const HORARIOS = [
   '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -49,10 +50,45 @@ export default function AgendarDemo() {
 
   const dias = getProximosDias(10);
 
-  const enviar = () => {
+  const enviar = async () => {
     if (!nome.trim() || !whatsapp.trim() || !dataSelecionada || !horario) return;
 
     const dataFormatada = formatDataCompleta(dataSelecionada);
+
+    // 1) Salva o lead no servidor antes de qualquer coisa — não dependemos do WhatsApp
+    try {
+      const params = new URLSearchParams(window.location.search);
+      await fetch('/api/public/agendar-demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: nome.trim(),
+          whatsapp: whatsapp.trim(),
+          empresa: empresa.trim(),
+          data: dataFormatada,
+          horario,
+          utm_source: params.get('utm_source') || undefined,
+          utm_medium: params.get('utm_medium') || undefined,
+          utm_campaign: params.get('utm_campaign') || undefined,
+          utm_content: params.get('utm_content') || undefined,
+          utm_term: params.get('utm_term') || undefined,
+          referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
+        }),
+      });
+    } catch (err) {
+      // Se falhar, seguimos abrindo o WhatsApp do mesmo jeito — não trava o usuário
+      console.error('Falha ao registrar lead:', err);
+    }
+
+    // 2) Dispara evento de conversão pro GTM/GA4/Ads/Pixel
+    trackEvent('lead_demo_booked', {
+      empresa: empresa.trim() || undefined,
+      data: dataFormatada,
+      horario,
+    });
+    trackLead({ tipo: 'agendar_demo', empresa: empresa.trim() || undefined });
+
+    // 3) Abre o WhatsApp como antes (UX preservada)
     const msg = [
       `*Agendamento de Demonstração - WorkID*`,
       ``,

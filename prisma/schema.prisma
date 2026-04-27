@@ -355,3 +355,28 @@ model LeituraComunicado {
   @@unique([comunicadoId, usuarioId])
   @@index([usuarioId])
 }
+
+model Lead {
+  id          String   @id @default(cuid())
+  origem      String   // 'AGENDAR_DEMO' | 'SIGNUP' | 'CONTATO' | etc
+  nome        String
+  email       String?
+  whatsapp    String?
+  empresa     String?
+  cargo       String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  referrer    String?
+  dadosExtras Json?    // payload livre por origem (data/horário do agendamento, plano escolhido, etc)
+  status      String   @default("NOVO") // NOVO | EM_CONTATO | QUALIFICADO | CONVERTIDO | DESCARTADO
+  obs         String?
+  criadoEm    DateTime @default(now())
+
+  @@index([origem])
+  @@index([status])
+  @@index([criadoEm])
+  @@map("lead")
+}
