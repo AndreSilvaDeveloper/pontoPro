@@ -1,5 +1,5 @@
 // src/lib/saas-financeiro.ts — Cálculos financeiros para o painel SaaS
-import { getPlanoConfig, type PlanoConfig } from "@/config/planos";
+import { calcularCustoTotem, getPlanoConfig, type PlanoConfig } from "@/config/planos";
 
 export type FinanceiroResult = {
   totalVidas: number;
@@ -9,6 +9,9 @@ export type FinanceiroResult = {
   adminsExcedentes: number;
   custoVidas: number;
   custoAdmins: number;
+  custoTotem: number;
+  totemAtivo: boolean;
+  totemIncluso: boolean;
   valorBase: number;
   valorFinal: number;
   planoNome: string;
@@ -47,7 +50,13 @@ export function calcularFinanceiro(matriz: any): FinanceiroResult {
 
   const custoVidas = vidasExcedentes * plano.extraFuncionario;
   const custoAdmins = adminsExcedentes * plano.extraAdmin;
-  const valorFinal = Number((plano.preco + custoVidas + custoAdmins).toFixed(2));
+
+  const totemAtivo = matriz.addonTotem === true;
+  const custoTotem = calcularCustoTotem(plano, totemAtivo, totalFiliais);
+
+  const valorFinal = Number(
+    (plano.preco + custoVidas + custoAdmins + custoTotem).toFixed(2),
+  );
 
   return {
     totalVidas,
@@ -57,6 +66,9 @@ export function calcularFinanceiro(matriz: any): FinanceiroResult {
     adminsExcedentes,
     custoVidas,
     custoAdmins,
+    custoTotem,
+    totemAtivo,
+    totemIncluso: plano.totemIncluso,
     valorBase: plano.preco,
     valorFinal,
     planoNome: plano.nome,

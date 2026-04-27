@@ -46,6 +46,8 @@ export async function GET() {
       chavePix: true,
       cobrancaWhatsapp: true,
 
+      addonTotem: true,
+
       filiais: { select: { id: true } }, // se for matriz, lista filiais
     },
   });
@@ -75,6 +77,8 @@ export async function GET() {
 
         chavePix: true,
         cobrancaWhatsapp: true,
+
+        addonTotem: true,
 
         filiais: { select: { id: true } },
       },
@@ -108,12 +112,14 @@ export async function GET() {
 
   const planoConfig = getPlanoConfig(billingEmpresa.plano);
   const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
+  const totemAtivo = (billingEmpresa as any).addonTotem === true;
   const calculo = calcularValorAssinatura(
     planoConfig,
     totalFuncionarios,
     totalAdmins,
     billingEmpresa.filiais?.length ?? 0,
-    cycle
+    cycle,
+    totemAtivo,
   );
 
   const vidasExcedentes = Math.max(0, totalFuncionarios - planoConfig.maxFuncionarios);
@@ -121,6 +127,7 @@ export async function GET() {
 
   const custoVidas = Number((vidasExcedentes * planoConfig.extraFuncionario).toFixed(2));
   const custoAdmins = Number((adminsExcedentes * planoConfig.extraAdmin).toFixed(2));
+  const custoTotem = calculo.totem;
 
   const valorFinal = calculo.total;
 
@@ -159,6 +166,10 @@ export async function GET() {
         adminsExcedentes,
         custoVidas: Number(custoVidas.toFixed(2)),
         custoAdmins: Number(custoAdmins.toFixed(2)),
+        custoTotem: Number(custoTotem.toFixed(2)),
+        totemAtivo,
+        totemIncluso: planoConfig.totemIncluso,
+        totalFiliais: billingEmpresa.filiais?.length ?? 0,
       },
       resumo: {
         totalFuncionarios,

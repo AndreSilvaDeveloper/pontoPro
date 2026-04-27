@@ -140,6 +140,10 @@ type FaturaState = {
     adminsExcedentes: number;
     custoVidas: number;
     custoAdmins: number;
+    custoTotem?: number;
+    totemAtivo?: boolean;
+    totemIncluso?: boolean;
+    totalFiliais?: number;
   };
 };
 
@@ -367,6 +371,19 @@ export default function PerfilAdmin() {
           `${fatura.itens.adminsExcedentes}`,
           "R$ 49,90",
           fatura.itens.custoAdmins.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+        ]);
+      }
+
+      if (fatura.itens.totemAtivo && !fatura.itens.totemIncluso && (fatura.itens.custoTotem ?? 0) > 0) {
+        const filiais = fatura.itens.totalFiliais ?? 0;
+        const detalhe = filiais > 0
+          ? `Modo Totem (matriz + ${filiais} filial(ais))`
+          : `Modo Totem (matriz)`;
+        dadosTabela.push([
+          detalhe,
+          "1",
+          "—",
+          (fatura.itens.custoTotem ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
         ]);
       }
 

@@ -19,6 +19,10 @@ export type PlanoConfig = {
   reconhecimentoFacial: boolean;
   relatoriosPdf: "BASICO" | "COMPLETO";
   suporte: "EMAIL" | "WHATSAPP_EMAIL" | "PRIORITARIO";
+  // Addon Modo Totem
+  totemIncluso: boolean;        // true = grátis no plano (ENTERPRISE)
+  totemAddonMatriz: number;     // R$/mês adicional pela matriz quando ativa o addon
+  totemAddonFilial: number;     // R$/mês por filial extra quando matriz tem totem
 };
 
 export const PLANOS: Record<PlanoId, PlanoConfig> = {
@@ -36,6 +40,9 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
     reconhecimentoFacial: false,
     relatoriosPdf: "BASICO",
     suporte: "EMAIL",
+    totemIncluso: false,
+    totemAddonMatriz: 49.9,
+    totemAddonFilial: 29.9,
   },
   PROFESSIONAL: {
     id: "PROFESSIONAL",
@@ -51,12 +58,15 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
     reconhecimentoFacial: true,
     relatoriosPdf: "COMPLETO",
     suporte: "WHATSAPP_EMAIL",
+    totemIncluso: false,
+    totemAddonMatriz: 49.9,
+    totemAddonFilial: 29.9,
   },
   ENTERPRISE: {
     id: "ENTERPRISE",
     nome: "Enterprise",
     descricao: "Para grandes operações",
-    preco: 199.9,
+    preco: 299.9,
     maxFuncionarios: 80,
     maxAdmins: 5,
     maxFiliais: -1,      // ilimitado
@@ -66,6 +76,9 @@ export const PLANOS: Record<PlanoId, PlanoConfig> = {
     reconhecimentoFacial: true,
     relatoriosPdf: "COMPLETO",
     suporte: "PRIORITARIO",
+    totemIncluso: true,
+    totemAddonMatriz: 0,
+    totemAddonFilial: 0,
   },
 };
 
@@ -77,6 +90,21 @@ export function getPlanoConfig(plano?: string | null): PlanoConfig {
 }
 
 /**
+ * Custo do addon Modo Totem por mês.
+ * Plano com totemIncluso=true → grátis. Caso contrário, cobra a matriz + filiais ativas.
+ */
+export function calcularCustoTotem(
+  plano: PlanoConfig,
+  addonAtivo: boolean,
+  totalFiliais: number = 0,
+): number {
+  if (!addonAtivo || plano.totemIncluso) return 0;
+  return Number(
+    (plano.totemAddonMatriz + plano.totemAddonFilial * totalFiliais).toFixed(2),
+  );
+}
+
+/**
  * Calcula o valor da assinatura com base no plano, quantidades atuais e ciclo.
  */
 export function calcularValorAssinatura(
@@ -84,12 +112,14 @@ export function calcularValorAssinatura(
   totalFuncionarios: number,
   totalAdmins: number,
   totalFiliais: number = 0,
-  cycle: BillingCycle = "MONTHLY"
+  cycle: BillingCycle = "MONTHLY",
+  totemAtivo: boolean = false,
 ): {
   valorBase: number;
   extraFunc: number;
   extraAdm: number;
   extraFil: number;
+  totem: number;
   totalMensal: number;
   desconto: number;
   cycle: BillingCycle;
@@ -103,8 +133,9 @@ export function calcularValorAssinatura(
   const valorExtraFunc = extraFunc * plano.extraFuncionario;
   const valorExtraAdm = extraAdm * plano.extraAdmin;
   const valorExtraFil = extraFil * plano.extraFilial;
+  const valorTotem = calcularCustoTotem(plano, totemAtivo, totalFiliais);
   const totalMensal = Number(
-    (plano.preco + valorExtraFunc + valorExtraAdm + valorExtraFil).toFixed(2)
+    (plano.preco + valorExtraFunc + valorExtraAdm + valorExtraFil + valorTotem).toFixed(2)
   );
 
   let total: number;
@@ -123,6 +154,7 @@ export function calcularValorAssinatura(
     extraFunc: valorExtraFunc,
     extraAdm: valorExtraAdm,
     extraFil: valorExtraFil,
+    totem: valorTotem,
     totalMensal,
     desconto,
     cycle,

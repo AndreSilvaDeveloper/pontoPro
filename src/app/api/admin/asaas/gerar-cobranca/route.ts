@@ -267,12 +267,14 @@ export async function POST() {
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
+    const totemAtivo = billingEmpresa.addonTotem === true;
     const { total: valorFinal } = calcularValorAssinatura(
       planoConfig,
       totalFuncionarios,
       totalAdmins,
       totalFiliais,
-      cycle
+      cycle,
+      totemAtivo,
     );
 
     const description = `WorkID ${planoConfig.nome} - ${billingEmpresa.nome}`;
