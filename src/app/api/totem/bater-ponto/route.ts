@@ -7,33 +7,37 @@ export const runtime = 'nodejs';
 
 /**
  * Determina o próximo tipo de ponto baseado no histórico do dia.
- * - intervaloPago=true: ENTRADA → SAIDA (sem almoço explícito)
- * - intervaloPago=false: ENTRADA → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA
+ * - intervaloPago=true: ENTRADA → SAIDA (2 batidas, café ignorado)
+ * - intervaloPago=false + permiteCafe=false: ENTRADA → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA (4 batidas)
+ * - intervaloPago=false + permiteCafe=true:  ENTRADA → SAIDA_INTERVALO → VOLTA_INTERVALO → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA (6 batidas)
  */
-function proximoTipoPonto(pontosHoje: { tipo: string; subTipo: string | null }[], intervaloPago: boolean): string | null {
+function proximoTipoPonto(
+  pontosHoje: { tipo: string; subTipo: string | null }[],
+  intervaloPago: boolean,
+  permiteCafe: boolean,
+): string | null {
   if (pontosHoje.length === 0) return 'ENTRADA';
 
   const ultimo = pontosHoje[pontosHoje.length - 1];
   const tipo = ultimo.subTipo || ultimo.tipo;
 
   if (intervaloPago) {
-    // Fluxo simples
     if (['ENTRADA', 'PONTO'].includes(tipo)) return 'SAIDA';
-    if (tipo === 'SAIDA') return null; // já encerrou
     return null;
   }
 
-  // Fluxo com almoço
-  if (['ENTRADA', 'PONTO', 'VOLTA_ALMOCO', 'VOLTA_INTERVALO'].includes(tipo)) {
-    // Já voltou do almoço? então a próxima é SAIDA. Senão, SAIDA_ALMOCO
-    const jaAlmocou = pontosHoje.some(p => (p.subTipo || p.tipo) === 'SAIDA_ALMOCO');
-    return jaAlmocou ? 'SAIDA' : 'SAIDA_ALMOCO';
-  }
-  if (tipo === 'SAIDA_ALMOCO') return 'VOLTA_ALMOCO';
+  // Estados "no meio" do intervalo — sempre fecham o que abriu
   if (tipo === 'SAIDA_INTERVALO') return 'VOLTA_INTERVALO';
+  if (tipo === 'SAIDA_ALMOCO') return 'VOLTA_ALMOCO';
   if (tipo === 'SAIDA') return null;
 
-  return null;
+  // Estado "trabalhando" (ENTRADA, VOLTA_INTERVALO ou VOLTA_ALMOCO)
+  const jaCafeou = pontosHoje.some(p => (p.subTipo || p.tipo) === 'SAIDA_INTERVALO');
+  const jaAlmocou = pontosHoje.some(p => (p.subTipo || p.tipo) === 'SAIDA_ALMOCO');
+
+  if (permiteCafe && !jaCafeou) return 'SAIDA_INTERVALO';
+  if (!jaAlmocou) return 'SAIDA_ALMOCO';
+  return 'SAIDA';
 }
 
 /**
@@ -53,7 +57,7 @@ export async function POST(req: Request) {
       where: { token },
       include: {
         empresa: {
-          select: { id: true, intervaloPago: true, addonTotem: true, matrizId: true, nome: true },
+          select: { id: true, intervaloPago: true, addonTotem: true, matrizId: true, nome: true, configuracoes: true },
         },
       },
     });
@@ -117,7 +121,9 @@ export async function POST(req: Request) {
       select: { tipo: true, subTipo: true },
     });
 
-    const tipoFinal = proximoTipoPonto(pontosHoje, totem.empresa.intervaloPago);
+    const cfg = (totem.empresa.configuracoes as { permiteIntervaloCafe?: boolean } | null) || {};
+    const permiteCafe = cfg.permiteIntervaloCafe === true;
+    const tipoFinal = proximoTipoPonto(pontosHoje, totem.empresa.intervaloPago, permiteCafe);
     if (!tipoFinal) {
       return NextResponse.json({
         erro: 'jornada_encerrada',

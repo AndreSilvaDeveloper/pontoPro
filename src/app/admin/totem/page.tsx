@@ -17,6 +17,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 type Totem = {
   id: string;
@@ -211,7 +212,11 @@ export default function AdminTotemPage() {
 
             <div>
               <div className="font-semibold text-text-primary mb-1">👤 Uso diário</div>
-              <p>Funcionário chega no tablet, toca no botão grande <span className="text-purple-300">"BATER PONTO"</span>, mostra o rosto. O sistema reconhece e registra automaticamente (Entrada, Saída Almoço, etc).</p>
+              <p>Funcionário chega no tablet, toca no botão grande <span className="text-purple-300">"BATER PONTO"</span>, mostra o rosto. O sistema reconhece e registra automaticamente.</p>
+              <p className="mt-1.5">
+                <strong>Sequência das batidas:</strong> Entrada → Saída Almoço → Volta Almoço → Saída (4 batidas).
+                Se sua empresa também marca <strong>café</strong>, ative em <Link href="/admin/configuracoes" className="text-purple-300 underline">Configurações</Link> e o totem espera 6 batidas (Entrada → Saída Café → Volta Café → Saída Almoço → Volta Almoço → Saída).
+              </p>
             </div>
 
             <div className="flex gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">

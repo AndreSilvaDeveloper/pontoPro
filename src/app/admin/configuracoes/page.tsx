@@ -6,6 +6,7 @@ import {
   ArrowLeft, Save, Camera, Lock, UserCog, EyeOff,
   Settings, ShieldAlert, Users, MapPin, ChevronRight,
   Building2, Bell, Timer, TrendingUp, Coffee,
+  Smartphone,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ type ConfigsState = {
   toleranciaMinutos: number;
   limiteDiarioHoraExtraMin: number;
   duracaoPausaCafeMin: number;
+  permiteIntervaloCafe: boolean;
 };
 
 type EmpresaState = {
@@ -38,6 +40,7 @@ const DEFAULTS: ConfigsState = {
   toleranciaMinutos: 10,
   limiteDiarioHoraExtraMin: 120,
   duracaoPausaCafeMin: 15,
+  permiteIntervaloCafe: false,
 };
 
 function Toggle({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
@@ -160,6 +163,7 @@ export default function ConfiguracoesEmpresa() {
   const [salvando, setSalvando] = useState(false);
   const [configs, setConfigs] = useState<ConfigsState>(DEFAULTS);
   const [empresa, setEmpresa] = useState<EmpresaState>({ nome: '', cnpj: '', cobrancaWhatsapp: '' });
+  const [temAddonTotem, setTemAddonTotem] = useState(false);
 
   useEffect(() => {
     axios.get('/api/admin/empresa').then(res => {
@@ -171,6 +175,8 @@ export default function ConfiguracoesEmpresa() {
         cnpj: res.data.cnpj || '',
         cobrancaWhatsapp: res.data.cobrancaWhatsapp || '',
       });
+      // addonTotem efetivo (próprio ou herdado da matriz, calculado no backend)
+      setTemAddonTotem(res.data.addonTotemEfetivo === true);
       setLoading(false);
     });
   }, []);
@@ -298,6 +304,20 @@ export default function ConfiguracoesEmpresa() {
             accent="blue"
           />
         </Secao>
+
+        {/* MODO TOTEM (só aparece se a empresa tem o addon ativo) */}
+        {temAddonTotem && (
+          <Secao titulo="Modo Totem">
+            <ItemToggle
+              icon={<Coffee size={18} />}
+              titulo="Registrar intervalo de café no totem"
+              descricao="Quando ligado, o totem espera 6 batidas no dia (Entrada → Saída Café → Volta Café → Saída Almoço → Volta Almoço → Saída) em vez de 4."
+              ativo={configs.permiteIntervaloCafe}
+              onToggle={() => toggle('permiteIntervaloCafe')}
+              accent="blue"
+            />
+          </Secao>
+        )}
 
         {/* NOTIFICAÇÕES */}
         <Secao titulo="Notificações">
