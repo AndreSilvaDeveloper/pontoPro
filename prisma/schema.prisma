@@ -46,6 +46,11 @@ model Empresa {
 
   revendedorId        String?
   revendedor          Revendedor? @relation(fields: [revendedorId], references: [id])
+
+  // Modo Totem (addon — admin do SaaS ativa por empresa)
+  addonTotem            Boolean   @default(false)
+  rekognitionCollection String?   // ID da coleção AWS Rekognition criada pra essa empresa
+  totens                TotemDevice[]
 }
 
 model Usuario {
@@ -60,6 +65,7 @@ model Usuario {
   cargo              String              @default("FUNCIONARIO")
   deveTrocarSenha    Boolean             @default(false)
   deveCadastrarFoto  Boolean             @default(false)
+  rekognitionFaceId  String?             // ID do rosto na coleção AWS Rekognition (1:N)
   empresaId          String?
   latitudeBase       Float               @default(0)
   longitudeBase      Float               @default(0)
@@ -134,6 +140,8 @@ model Ponto {
   tipo         String              @default("NORMAL")
   subTipo      String?
   descricao    String?
+  origem       String              @default("APP") // APP | TOTEM
+  totemId      String?             // se origem=TOTEM, identifica o tablet
   usuarioId    String
   usuario      Usuario             @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   solicitacoes SolicitacaoAjuste[]
@@ -354,6 +362,23 @@ model LeituraComunicado {
 
   @@unique([comunicadoId, usuarioId])
   @@index([usuarioId])
+}
+
+model TotemDevice {
+  id              String    @id @default(cuid())
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome            String    // identificação humana: "Recepção", "Portaria"
+  codigo          String?   @unique // código de pareamento de 6 dígitos (limpo após uso)
+  codigoExpiraEm  DateTime?
+  token           String?   @unique // JWT longo, persiste no tablet
+  pareadoEm       DateTime?
+  ultimoUso       DateTime?
+  ativo           Boolean   @default(true)
+  criadoEm        DateTime  @default(now())
+
+  @@index([empresaId])
+  @@map("totem_device")
 }
 
 model Lead {

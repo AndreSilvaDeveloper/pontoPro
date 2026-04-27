@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
 import { storagePut } from '@/lib/storage';
+import { reindexarRostoUsuario } from '@/lib/totem';
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
@@ -44,6 +45,9 @@ export async function POST(request: Request) {
         deveCadastrarFoto: false,
       },
     });
+
+    // Reindexa na coleção AWS (totem) — não bloqueia se falhar
+    reindexarRostoUsuario(session.user.id).catch(err => console.error('[cadastrar-foto] reindexar:', err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

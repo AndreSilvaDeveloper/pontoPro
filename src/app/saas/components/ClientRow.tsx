@@ -13,7 +13,9 @@ import {
   Trash2,
   Link as LinkIcon,
   Loader2,
+  Smartphone,
 } from "lucide-react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { calcularFinanceiro } from "@/lib/saas-financeiro";
 
@@ -78,6 +80,29 @@ export default function ClientRow({
   const estaPago = pagoAte && pagoAte >= new Date();
 
   const hasFiliais = empresa.filiais && empresa.filiais.length > 0;
+
+  const [togglingTotem, setTogglingTotem] = useState(false);
+  const [addonTotem, setAddonTotem] = useState<boolean>(empresa.addonTotem === true);
+  const toggleTotem = async () => {
+    const novo = !addonTotem;
+    if (!confirm(`${novo ? 'Ativar' : 'Desativar'} Modo Totem para "${empresa.nome}"? (cobrança extra é negociada com o cliente)`)) return;
+    setTogglingTotem(true);
+    try {
+      const res = await fetch(`/api/saas/empresa/${empresa.id}/addon-totem`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo: novo }),
+      });
+      if (res.ok) {
+        setAddonTotem(novo);
+        toast.success(`Modo Totem ${novo ? 'ativado' : 'desativado'}.`);
+      } else {
+        toast.error('Erro ao alterar.');
+      }
+    } finally {
+      setTogglingTotem(false);
+    }
+  };
 
   const formatDate = (d: any) => {
     if (!d) return "—";
@@ -177,6 +202,14 @@ export default function ClientRow({
             )}
             <button onClick={() => onVincular(empresa)} className="p-1.5 text-amber-400 hover:bg-amber-600/20 rounded transition-colors" title="Vincular Matriz">
               <LinkIcon size={14} />
+            </button>
+            <button
+              onClick={toggleTotem}
+              disabled={togglingTotem}
+              className={`p-1.5 rounded transition-colors ${addonTotem ? "text-cyan-400 hover:bg-cyan-600/20" : "text-slate-500 hover:bg-slate-600/20"}`}
+              title={addonTotem ? "Modo Totem ATIVO (clique pra desativar)" : "Modo Totem inativo (clique pra ativar — cobrança extra)"}
+            >
+              {togglingTotem ? <Loader2 className="animate-spin" size={14} /> : <Smartphone size={14} />}
             </button>
             <Link href={`/saas/${empresa.id}`} className="p-1.5 text-purple-400 hover:bg-purple-600/20 rounded transition-colors" title="Config Empresa">
               <Building2 size={14} />

@@ -20,6 +20,7 @@ import {
   X,
   LogOut,
   UserCircle,
+  Smartphone,
 } from 'lucide-react';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
@@ -92,6 +93,7 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
       label: 'Configurações',
       items: [
         { href: '/admin/feriados', label: 'Feriados', icon: CalendarDays },
+        { href: '/admin/totem', label: 'Totens', icon: Smartphone },
         { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, tour: 'sidebar-configuracoes' },
       ],
     },

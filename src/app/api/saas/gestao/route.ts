@@ -38,6 +38,8 @@ export async function POST() {
         billingCycle: true,
         billingMethod: true,
 
+        addonTotem: true,
+
         _count: { select: { usuarios: true } },
 
         usuarios: {
