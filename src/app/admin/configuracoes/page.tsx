@@ -22,6 +22,7 @@ type ConfigsState = {
   limiteDiarioHoraExtraMin: number;
   duracaoPausaCafeMin: number;
   permiteIntervaloCafe: boolean;
+  cafeDepoisDoAlmoco: boolean;
 };
 
 type EmpresaState = {
@@ -41,6 +42,7 @@ const DEFAULTS: ConfigsState = {
   limiteDiarioHoraExtraMin: 120,
   duracaoPausaCafeMin: 15,
   permiteIntervaloCafe: false,
+  cafeDepoisDoAlmoco: false,
 };
 
 function Toggle({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
@@ -311,11 +313,25 @@ export default function ConfiguracoesEmpresa() {
             <ItemToggle
               icon={<Coffee size={18} />}
               titulo="Registrar intervalo de café no totem"
-              descricao="Quando ligado, o totem espera 6 batidas no dia (Entrada → Saída Café → Volta Café → Saída Almoço → Volta Almoço → Saída) em vez de 4."
+              descricao="Quando ligado, o totem espera 6 batidas no dia em vez de 4."
               ativo={configs.permiteIntervaloCafe}
               onToggle={() => toggle('permiteIntervaloCafe')}
               accent="blue"
             />
+            {configs.permiteIntervaloCafe && (
+              <ItemToggle
+                icon={<Timer size={18} />}
+                titulo="Café é depois do almoço"
+                descricao={
+                  configs.cafeDepoisDoAlmoco
+                    ? "Sequência: Entrada → Almoço → Volta → Café → Volta → Saída."
+                    : "Sequência: Entrada → Café → Volta → Almoço → Volta → Saída. Ligue se na sua empresa o café é à tarde."
+                }
+                ativo={configs.cafeDepoisDoAlmoco}
+                onToggle={() => toggle('cafeDepoisDoAlmoco')}
+                accent="blue"
+              />
+            )}
           </Secao>
         )}
 

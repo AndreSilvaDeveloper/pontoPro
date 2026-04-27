@@ -9,12 +9,16 @@ export const runtime = 'nodejs';
  * Determina o próximo tipo de ponto baseado no histórico do dia.
  * - intervaloPago=true: ENTRADA → SAIDA (2 batidas, café ignorado)
  * - intervaloPago=false + permiteCafe=false: ENTRADA → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA (4 batidas)
- * - intervaloPago=false + permiteCafe=true:  ENTRADA → SAIDA_INTERVALO → VOLTA_INTERVALO → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA (6 batidas)
+ * - intervaloPago=false + permiteCafe=true + cafeDepoisDoAlmoco=false:
+ *   ENTRADA → SAIDA_INTERVALO → VOLTA_INTERVALO → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA
+ * - intervaloPago=false + permiteCafe=true + cafeDepoisDoAlmoco=true:
+ *   ENTRADA → SAIDA_ALMOCO → VOLTA_ALMOCO → SAIDA_INTERVALO → VOLTA_INTERVALO → SAIDA
  */
 function proximoTipoPonto(
   pontosHoje: { tipo: string; subTipo: string | null }[],
   intervaloPago: boolean,
   permiteCafe: boolean,
+  cafeDepoisDoAlmoco: boolean,
 ): string | null {
   if (pontosHoje.length === 0) return 'ENTRADA';
 
@@ -35,6 +39,14 @@ function proximoTipoPonto(
   const jaCafeou = pontosHoje.some(p => (p.subTipo || p.tipo) === 'SAIDA_INTERVALO');
   const jaAlmocou = pontosHoje.some(p => (p.subTipo || p.tipo) === 'SAIDA_ALMOCO');
 
+  if (permiteCafe && cafeDepoisDoAlmoco) {
+    // Almoço primeiro, depois café
+    if (!jaAlmocou) return 'SAIDA_ALMOCO';
+    if (!jaCafeou) return 'SAIDA_INTERVALO';
+    return 'SAIDA';
+  }
+
+  // Café primeiro (default), depois almoço
   if (permiteCafe && !jaCafeou) return 'SAIDA_INTERVALO';
   if (!jaAlmocou) return 'SAIDA_ALMOCO';
   return 'SAIDA';
@@ -121,9 +133,10 @@ export async function POST(req: Request) {
       select: { tipo: true, subTipo: true },
     });
 
-    const cfg = (totem.empresa.configuracoes as { permiteIntervaloCafe?: boolean } | null) || {};
+    const cfg = (totem.empresa.configuracoes as { permiteIntervaloCafe?: boolean; cafeDepoisDoAlmoco?: boolean } | null) || {};
     const permiteCafe = cfg.permiteIntervaloCafe === true;
-    const tipoFinal = proximoTipoPonto(pontosHoje, totem.empresa.intervaloPago, permiteCafe);
+    const cafeDepoisDoAlmoco = cfg.cafeDepoisDoAlmoco === true;
+    const tipoFinal = proximoTipoPonto(pontosHoje, totem.empresa.intervaloPago, permiteCafe, cafeDepoisDoAlmoco);
     if (!tipoFinal) {
       return NextResponse.json({
         erro: 'jornada_encerrada',
