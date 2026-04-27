@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../../../auth/[...nextauth]/route';
+import { indexarFuncionariosDaEmpresa } from '@/lib/totem';
 
 export const runtime = 'nodejs';
 
@@ -36,6 +37,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     where: { id },
     data: { addonTotem: ativo },
   });
+
+  // Ao ATIVAR, indexa retroativamente todos os funcionários com foto que já
+  // existiam antes do addon — fire-and-forget pra não atrasar a resposta.
+  if (ativo && !empresa.addonTotem) {
+    indexarFuncionariosDaEmpresa(id).catch(err =>
+      console.error('[addon-totem] indexação retroativa falhou:', err)
+    );
+  }
 
   return NextResponse.json({ ok: true, addonTotem: ativo });
 }

@@ -80,3 +80,28 @@ export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
     console.error('[totem] reindexarRostoUsuario falhou:', err);
   }
 }
+
+/**
+ * Indexa todos os funcionários da empresa que tenham foto cadastrada.
+ * Idempotente — pode chamar sempre que o addon for (re)ativado.
+ *
+ * Usado quando o super admin liga `addonTotem` numa empresa que já tinha
+ * funcionários cadastrados antes (os hooks de cadastro pulam quando o addon
+ * está desligado, então é preciso uma pasada retroativa).
+ *
+ * Fire-and-forget: nunca lança, só loga.
+ */
+export async function indexarFuncionariosDaEmpresa(empresaId: string): Promise<void> {
+  try {
+    const funcionarios = await prisma.usuario.findMany({
+      where: { empresaId, fotoPerfilUrl: { not: null } },
+      select: { id: true },
+    });
+    console.log(`[totem] indexação retroativa: ${funcionarios.length} funcionário(s) da empresa ${empresaId}`);
+    for (const f of funcionarios) {
+      await reindexarRostoUsuario(f.id);
+    }
+  } catch (err) {
+    console.error('[totem] indexarFuncionariosDaEmpresa falhou:', err);
+  }
+}
