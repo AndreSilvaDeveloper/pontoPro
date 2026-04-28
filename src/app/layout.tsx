@@ -11,6 +11,8 @@ import { ImpersonationRoot } from "@/components/impersonation/ImpersonationRoot"
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import AutoLoginRestore from "@/components/AutoLoginRestore";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
+import GoogleTagManager, { GoogleTagManagerNoScript } from "@/components/GoogleTagManager";
+import MetaPixel from "@/components/MetaPixel";
 import { BASE_URL } from "@/config/site";
 
 
@@ -78,6 +80,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: 'zTBmoD_CK0UDF4I-p1L2vCjmTA_q6Ayzv2esXNAei6k',
+    other: {
+      'facebook-domain-verification': 'sp8gf0t8dgmqoml9tk8tawogog7b77',
+    },
   },
 };
 
@@ -89,7 +94,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
+        <GoogleTagManagerNoScript />
+        <GoogleTagManager />
         <GoogleAnalytics />
+        <MetaPixel />
         <ThemeProvider>
           <Provider>
             <ThemeSyncer />

@@ -117,6 +117,18 @@ export async function gerarFaturaIndividual(
       fin.custoAdmins.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
     ]);
   }
+  if (fin.totemAtivo && !fin.totemIncluso && fin.custoTotem > 0) {
+    const plano = (await import("@/config/planos")).getPlanoConfig(empresa.plano);
+    const detalhe = fin.totalFiliais > 0
+      ? `Modo Totem (matriz R$ ${plano.totemAddonMatriz.toFixed(2).replace(".", ",")} + ${fin.totalFiliais} filial(ais) x R$ ${plano.totemAddonFilial.toFixed(2).replace(".", ",")})`
+      : `Modo Totem (matriz)`;
+    dadosTabela.push([
+      detalhe,
+      "1",
+      "—",
+      fin.custoTotem.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+    ]);
+  }
 
   autoTable(doc, {
     head: [["Descrição", "Qtd", "Valor Unit.", "Total"]],

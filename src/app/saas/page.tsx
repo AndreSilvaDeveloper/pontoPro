@@ -11,6 +11,7 @@ import {
   Link as LinkIcon,
   Plus,
   Handshake,
+  Inbox,
 } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
@@ -49,11 +50,24 @@ export default function SuperAdminPage() {
   const [adminData, setAdminData] = useState({ nome: "", email: "", senha: "123" });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
 
+  // Leads novos (badge no botão "Leads")
+  const [leadsNovos, setLeadsNovos] = useState<number>(0);
+
   // === CARREGAMENTO INICIAL ===
   useEffect(() => {
     listarEmpresas();
     carregarStats();
+    carregarLeadsNovos();
   }, []);
+
+  const carregarLeadsNovos = async () => {
+    try {
+      const res = await axios.get("/api/saas/leads?status=NOVO");
+      setLeadsNovos(res.data?.resumo?.totalNovos ?? 0);
+    } catch {
+      // silencioso
+    }
+  };
 
   const listarEmpresas = async () => {
     setLoadingListar(true);
@@ -229,6 +243,18 @@ export default function SuperAdminPage() {
             >
               <FileText size={16} /> <span className="hidden sm:inline">Relatório PDF</span>
             </button>
+
+            <Link
+              href="/saas/leads"
+              className="relative flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+            >
+              <Inbox size={16} /> <span className="hidden sm:inline">Leads</span>
+              {leadsNovos > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 rounded-full bg-purple-600 text-white text-[10px] font-bold flex items-center justify-center">
+                  {leadsNovos > 99 ? '99+' : leadsNovos}
+                </span>
+              )}
+            </Link>
 
             <Link
               href="/saas/revendedores"

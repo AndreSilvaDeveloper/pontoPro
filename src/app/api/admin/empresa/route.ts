@@ -58,10 +58,20 @@ export async function GET() {
     // Mescla o que está no banco com o padrão
     const configuracoes = { ...configsPadrao, ...(empresa.configuracoes as object || {}) };
 
-    // Retorna tudo unificado
-    return NextResponse.json({ 
-        ...empresa, 
-        configuracoes 
+    // addonTotem efetivo: filial herda da matriz quando a própria estiver desligada
+    let addonTotemEfetivo = empresa.addonTotem === true;
+    if (!addonTotemEfetivo && empresa.matrizId) {
+      const matriz = await prisma.empresa.findUnique({
+        where: { id: empresa.matrizId },
+        select: { addonTotem: true },
+      });
+      addonTotemEfetivo = matriz?.addonTotem === true;
+    }
+
+    return NextResponse.json({
+        ...empresa,
+        configuracoes,
+        addonTotemEfetivo,
     });
 
   } catch (error) {

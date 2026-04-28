@@ -7,6 +7,7 @@ import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
 import { getPlanoConfig } from '@/config/planos';
 import { BASE_URL } from '@/config/site';
+import { reindexarRostoUsuario } from '@/lib/totem';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
@@ -139,6 +140,11 @@ export async function POST(request: Request) {
         pis: pis || null,
       }
     });
+
+    // Reindexa rosto na coleção AWS (totem) — só se a empresa tem addon ativo
+    if (fotoPerfilUrl) {
+      reindexarRostoUsuario(novoUsuario.id).catch(err => console.error('[funcionarios POST] reindexar:', err));
+    }
 
     // === 7. E-MAIL PROFISSIONAL ===
     const htmlEmail = `

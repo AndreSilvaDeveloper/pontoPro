@@ -18,15 +18,17 @@ function formatarE164(telefone: string): string {
  * Envia SMS via Twilio
  */
 export async function enviarSMS(telefone: string, mensagem: string): Promise<boolean> {
+  const destino = formatarE164(telefone);
   try {
-    await client.messages.create({
+    const msg = await client.messages.create({
       body: mensagem,
       from: TWILIO_PHONE,
-      to: formatarE164(telefone),
+      to: destino,
     });
+    console.log(`📱 SMS enviado para ${destino} (sid: ${msg.sid}, status: ${msg.status})`);
     return true;
-  } catch (error) {
-    console.error('Erro ao enviar SMS:', error);
+  } catch (error: any) {
+    console.error(`❌ SMS falhou para ${destino}:`, error?.code, error?.message || error);
     return false;
   }
 }
@@ -35,16 +37,18 @@ export async function enviarSMS(telefone: string, mensagem: string): Promise<boo
  * Envia WhatsApp via Twilio
  */
 export async function enviarWhatsApp(telefone: string, mensagem: string): Promise<boolean> {
+  const destino = `whatsapp:${formatarE164(telefone)}`;
   try {
     const from = TWILIO_WHATSAPP ? `whatsapp:${TWILIO_WHATSAPP}` : `whatsapp:${TWILIO_PHONE}`;
-    await client.messages.create({
+    const msg = await client.messages.create({
       body: mensagem,
       from,
-      to: `whatsapp:${formatarE164(telefone)}`,
+      to: destino,
     });
+    console.log(`💬 WhatsApp enviado para ${destino} (sid: ${msg.sid}, status: ${msg.status})`);
     return true;
-  } catch (error) {
-    console.error('Erro ao enviar WhatsApp:', error);
+  } catch (error: any) {
+    console.error(`❌ WhatsApp falhou para ${destino}:`, error?.code, error?.message || error);
     return false;
   }
 }

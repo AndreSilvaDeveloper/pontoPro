@@ -6,7 +6,8 @@ import axios from 'axios';
 import {
   MapPin, Camera, LogOut, History, RefreshCcw,
   AlertCircle, User, LogIn, Coffee, ArrowRightCircle, CupSoda, CheckCircle2, Loader2, Clock,
-  PlusCircle, X, Save, HelpCircle, ShieldAlert, Briefcase, UtensilsCrossed, Pause
+  PlusCircle, X, Save, HelpCircle, ShieldAlert, Briefcase, UtensilsCrossed, Pause,
+  SmartphoneNfc
 } from 'lucide-react';
 import { format, getDay } from 'date-fns';
 import { useSession, signOut } from 'next-auth/react';
@@ -935,7 +936,7 @@ export default function Home() {
           )}
 
           {/* Mapa Geofence */}
-          {location && !carregandoStatus && configs.modoValidacaoPonto === 'GPS' && !configs.pontoLivre && configs.latitudeBase !== 0 && configs.longitudeBase !== 0 && (
+          {!(configs.bloquearPontoApp && configs.addonTotemEfetivo) && location && !carregandoStatus && configs.modoValidacaoPonto === 'GPS' && !configs.pontoLivre && configs.latitudeBase !== 0 && configs.longitudeBase !== 0 && (
             <div className="animate-in fade-in slide-in-from-top-2">
               <button
                 type="button"
@@ -962,7 +963,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Câmera / Status Display */}
+          {/* Câmera / Status Display — escondido quando o ponto está travado pelo modo totem */}
+          {!(configs.bloquearPontoApp && configs.addonTotemEfetivo) && (
           <div data-tour="emp-camera">
             {/* Webcam oculta (sempre montada para captura) */}
             {configs.exigirFoto && location && !cameraErro && (
@@ -1016,9 +1018,20 @@ export default function Home() {
               <StatusDisplay />
             )}
           </div>
+          )}
 
           <div data-tour="emp-actions" className="mt-2">
-            {!location ? (
+            {configs.bloquearPontoApp && configs.addonTotemEfetivo ? (
+              <div className="py-8 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4">
+                <div className="bg-amber-500/15 p-6 rounded-full mb-4 border border-amber-500/30">
+                  <SmartphoneNfc size={40} className="text-amber-400" />
+                </div>
+                <h3 className="text-text-primary font-bold text-lg mb-2">Use o totem da empresa</h3>
+                <p className="text-text-muted text-sm max-w-[260px] leading-relaxed">
+                  Sua empresa configurou o ponto exclusivo pelo tablet do totem. Você continua vendo seu histórico, banco de horas e tudo o resto por aqui — só a batida é feita no tablet.
+                </p>
+              </div>
+            ) : !location ? (
               <div className="py-8 flex flex-col items-center text-center">
                 <div className="bg-purple-500/10 p-6 rounded-full mb-4 animate-bounce">
                   <MapPin size={40} className="text-purple-500" />

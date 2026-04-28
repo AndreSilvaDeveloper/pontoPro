@@ -20,11 +20,13 @@ import {
   X,
   LogOut,
   UserCircle,
+  Smartphone,
+  Lock,
 } from 'lucide-react';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 
-type MenuItem = { href: string; label: string; icon: any; badge?: number; accent?: string; tour?: string };
+type MenuItem = { href: string; label: string; icon: any; badge?: number; accent?: string; tour?: string; locked?: boolean };
 type MenuCategory = { label: string; items: MenuItem[] };
 
 interface Props {
@@ -32,9 +34,10 @@ interface Props {
   pendenciasAusencia?: number;
   empresaNome?: string;
   onNovaAusencia?: () => void;
+  addonTotemEfetivo?: boolean;
 }
 
-export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia = 0, empresaNome = 'Admin', onNovaAusencia }: Props) {
+export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia = 0, empresaNome = 'Admin', onNovaAusencia, addonTotemEfetivo = false }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -92,6 +95,7 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
       label: 'Configurações',
       items: [
         { href: '/admin/feriados', label: 'Feriados', icon: CalendarDays },
+        { href: '/admin/totem', label: 'Totens', icon: Smartphone, locked: !addonTotemEfetivo },
         { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, tour: 'sidebar-configuracoes' },
       ],
     },
@@ -145,12 +149,17 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
                         active
                           ? 'bg-purple-500/15 text-purple-300 border border-purple-500/20'
-                          : 'text-text-secondary hover:bg-hover-bg hover:text-text-primary border border-transparent'
+                          : item.locked
+                            ? 'text-text-faint hover:bg-hover-bg hover:text-text-secondary border border-transparent'
+                            : 'text-text-secondary hover:bg-hover-bg hover:text-text-primary border border-transparent'
                       }`}
-                      title={collapsed ? item.label : undefined}
+                      title={collapsed ? `${item.label}${item.locked ? ' (bloqueado)' : ''}` : undefined}
                     >
-                      <Icon size={18} className={active ? 'text-purple-400' : item.accent === 'purple' ? 'text-purple-400' : item.accent === 'amber' ? 'text-amber-400' : 'text-text-muted'} />
+                      <Icon size={18} className={active ? 'text-purple-400' : item.locked ? 'text-text-faint' : item.accent === 'purple' ? 'text-purple-400' : item.accent === 'amber' ? 'text-amber-400' : 'text-text-muted'} />
                       {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
+                      {!collapsed && item.locked && (
+                        <Lock size={12} className="text-text-faint shrink-0" />
+                      )}
                       {!collapsed && item.badge && item.badge > 0 && (
                         <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
                           {item.badge > 99 ? '99+' : item.badge}

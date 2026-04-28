@@ -6,6 +6,7 @@ import {
   ArrowLeft, Save, Camera, Lock, UserCog, EyeOff,
   Settings, ShieldAlert, Users, MapPin, ChevronRight,
   Building2, Bell, Timer, TrendingUp, Coffee,
+  Smartphone, SmartphoneNfc,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -20,6 +21,9 @@ type ConfigsState = {
   toleranciaMinutos: number;
   limiteDiarioHoraExtraMin: number;
   duracaoPausaCafeMin: number;
+  permiteIntervaloCafe: boolean;
+  cafeDepoisDoAlmoco: boolean;
+  bloquearPontoApp: boolean;
 };
 
 type EmpresaState = {
@@ -38,6 +42,9 @@ const DEFAULTS: ConfigsState = {
   toleranciaMinutos: 10,
   limiteDiarioHoraExtraMin: 120,
   duracaoPausaCafeMin: 15,
+  permiteIntervaloCafe: false,
+  cafeDepoisDoAlmoco: false,
+  bloquearPontoApp: false,
 };
 
 function Toggle({ ativo, onClick }: { ativo: boolean; onClick: () => void }) {
@@ -160,6 +167,7 @@ export default function ConfiguracoesEmpresa() {
   const [salvando, setSalvando] = useState(false);
   const [configs, setConfigs] = useState<ConfigsState>(DEFAULTS);
   const [empresa, setEmpresa] = useState<EmpresaState>({ nome: '', cnpj: '', cobrancaWhatsapp: '' });
+  const [temAddonTotem, setTemAddonTotem] = useState(false);
 
   useEffect(() => {
     axios.get('/api/admin/empresa').then(res => {
@@ -171,6 +179,8 @@ export default function ConfiguracoesEmpresa() {
         cnpj: res.data.cnpj || '',
         cobrancaWhatsapp: res.data.cobrancaWhatsapp || '',
       });
+      // addonTotem efetivo (próprio ou herdado da matriz, calculado no backend)
+      setTemAddonTotem(res.data.addonTotemEfetivo === true);
       setLoading(false);
     });
   }, []);
@@ -298,6 +308,42 @@ export default function ConfiguracoesEmpresa() {
             accent="blue"
           />
         </Secao>
+
+        {/* MODO TOTEM (só aparece se a empresa tem o addon ativo) */}
+        {temAddonTotem && (
+          <Secao titulo="Modo Totem">
+            <ItemToggle
+              icon={<Coffee size={18} />}
+              titulo="Registrar intervalo de café no totem"
+              descricao="Quando ligado, o totem espera 6 batidas no dia em vez de 4."
+              ativo={configs.permiteIntervaloCafe}
+              onToggle={() => toggle('permiteIntervaloCafe')}
+              accent="blue"
+            />
+            {configs.permiteIntervaloCafe && (
+              <ItemToggle
+                icon={<Timer size={18} />}
+                titulo="Café é depois do almoço"
+                descricao={
+                  configs.cafeDepoisDoAlmoco
+                    ? "Sequência: Entrada → Almoço → Volta → Café → Volta → Saída."
+                    : "Sequência: Entrada → Café → Volta → Almoço → Volta → Saída. Ligue se na sua empresa o café é à tarde."
+                }
+                ativo={configs.cafeDepoisDoAlmoco}
+                onToggle={() => toggle('cafeDepoisDoAlmoco')}
+                accent="blue"
+              />
+            )}
+            <ItemToggle
+              icon={<SmartphoneNfc size={18} />}
+              titulo="Funcionários só batem ponto pelo totem"
+              descricao="Bloqueia o botão de bater ponto no app/celular do funcionário. Ele continua vendo histórico, atestados e tudo o resto — só não consegue registrar batida pelo aparelho dele."
+              ativo={configs.bloquearPontoApp}
+              onToggle={() => toggle('bloquearPontoApp')}
+              accent="amber"
+            />
+          </Secao>
+        )}
 
         {/* NOTIFICAÇÕES */}
         <Secao titulo="Notificações">

@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         billingAnchorAt: true,
         cobrancaAtiva: true,
         status: true,
+        addonTotem: true,
         filiais: { select: { id: true } },
       },
     });
@@ -83,6 +84,7 @@ export async function GET(request: NextRequest) {
             billingMethod: true,
             diaVencimento: true,
             pagoAte: true,
+            addonTotem: true,
             filiais: { select: { id: true } },
           },
         })
@@ -102,7 +104,8 @@ export async function GET(request: NextRequest) {
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const calculo = calcularValorAssinatura(
       planoConfig, totalFuncionarios, totalAdmins,
-      billingEmpresa.filiais?.length ?? 0, cycle
+      billingEmpresa.filiais?.length ?? 0, cycle,
+      billingEmpresa.addonTotem === true,
     );
 
     // Buscar pagamento atual no Asaas
@@ -188,7 +191,8 @@ export async function POST(request: NextRequest) {
     const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
     const { total: valorFinal } = calcularValorAssinatura(
       planoConfig, totalFuncionarios, totalAdmins,
-      billingEmpresa.filiais?.length ?? 0, cycle
+      billingEmpresa.filiais?.length ?? 0, cycle,
+      billingEmpresa.addonTotem === true,
     );
 
     // Ensure customer

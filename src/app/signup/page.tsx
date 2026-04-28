@@ -13,7 +13,6 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 import {
-  Rocket,
   Eye,
   EyeOff,
   Smartphone,
@@ -31,6 +30,7 @@ import {
 
 import { PLANOS, PLANO_DEFAULT, getPrecoAnual, type PlanoId } from '@/config/planos'
 import { validarCNPJ } from '@/utils/cnpj'
+import { trackEvent, trackLead } from '@/lib/analytics'
 
 const PLANOS_ORDER: PlanoId[] = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE']
 
@@ -156,6 +156,9 @@ function SignupForm() {
 
       toast.success('Conta criada! Entrando no sistema...', { id: t })
 
+      trackEvent('signup_completed', { plano })
+      trackLead({ tipo: 'signup', plano })
+
       const login = await signIn('credentials', {
         redirect: false,
         email: email.trim().toLowerCase(),
@@ -236,12 +239,14 @@ function SignupForm() {
       <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-purple-800 shadow-lg shadow-purple-500/50">
-                <Rocket className="size-7 text-white" />
-              </div>
+            <Link href="/" className="inline-flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="WorkID"
+                className="h-20 w-auto object-contain select-none drop-shadow-[0_8px_32px_rgba(168,85,247,0.3)]"
+                draggable={false}
+              />
             </Link>
-            <h1 className="mt-4 text-3xl font-extrabold text-text-primary">WorkID</h1>
             <p className="mt-2 text-sm text-text-muted">Gestão Inteligente de Ponto</p>
           </div>
 

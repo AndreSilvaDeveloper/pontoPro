@@ -1,4 +1,3 @@
-// build-id: align-saldo-v2
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';

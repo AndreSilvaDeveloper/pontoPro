@@ -71,21 +71,34 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     }
   }
 
-  // Buscar nome da empresa para o sidebar
+  // Buscar nome da empresa e addon Totem efetivo (próprio ou herdado da matriz)
   let empresaNome: string | undefined;
+  let addonTotemEfetivo = false;
   // @ts-ignore
   const emailSess = session.user.email;
   if (emailSess) {
     const u = await prisma.usuario.findUnique({
       where: { email: emailSess },
-      select: { empresa: { select: { nome: true } } },
+      select: {
+        empresa: {
+          select: { nome: true, addonTotem: true, matrizId: true },
+        },
+      },
     });
     empresaNome = u?.empresa?.nome;
+    addonTotemEfetivo = u?.empresa?.addonTotem === true;
+    if (!addonTotemEfetivo && u?.empresa?.matrizId) {
+      const matriz = await prisma.empresa.findUnique({
+        where: { id: u.empresa.matrizId },
+        select: { addonTotem: true },
+      });
+      addonTotemEfetivo = matriz?.addonTotem === true;
+    }
   }
 
   return (
     <>
-      <AdminPrompts empresaNome={empresaNome} />
+      <AdminPrompts empresaNome={empresaNome} addonTotemEfetivo={addonTotemEfetivo} />
       <div className="lg:pl-64">{children}</div>
     </>
   );

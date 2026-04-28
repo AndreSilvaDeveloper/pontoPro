@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { PLANOS, PLANO_DEFAULT, type PlanoId } from "@/config/planos";
 import { validarCNPJ } from "@/utils/cnpj";
+import { notificarLead } from "@/lib/leadAlert";
 
 export const runtime = "nodejs";
 
@@ -143,6 +144,29 @@ export async function POST(req: Request) {
       create: { data: hoje, signups: 1 },
       update: { signups: { increment: 1 } },
     }).catch(() => {});
+
+    // Persiste em Lead também (para CRM/funil único)
+    prisma.lead.create({
+      data: {
+        origem: 'SIGNUP',
+        nome: adminNome,
+        email,
+        whatsapp: telefone || null,
+        empresa: empresaNome,
+        status: 'CONVERTIDO', // signup já é conversão
+        dadosExtras: { plano, empresaId: result.empresaId, usuarioId: result.usuarioId },
+      },
+    }).catch(err => console.error('[signup] lead.create falhou:', err));
+
+    // Alerta admin em tempo real
+    notificarLead({
+      origem: 'SIGNUP',
+      nome: adminNome,
+      email,
+      whatsapp: telefone || null,
+      empresa: empresaNome,
+      detalhes: { Plano: plano },
+    }).catch(err => console.error('[signup] notificarLead falhou:', err));
 
     return NextResponse.json({ ok: true, ...result });
   } catch (e: any) {
