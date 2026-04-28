@@ -8,6 +8,7 @@ import { enviarEmailSeguro } from '@/lib/email';
 import { getPlanoConfig } from '@/config/planos';
 import { BASE_URL } from '@/config/site';
 import { reindexarRostoUsuario } from '@/lib/totem';
+import { removerRosto } from '@/lib/rekognition';
 
 // === GET: LISTAR FUNCIONÁRIOS ===
 export async function GET(request: Request) {
@@ -307,6 +308,11 @@ export async function PUT(request: Request) {
       data: dados,
     });
 
+    // Se admin trocou a foto, reindexa na coleção AWS Rekognition (fire-and-forget)
+    if (dados.fotoPerfilUrl) {
+      reindexarRostoUsuario(id).catch(err => console.error('[funcionarios PUT] reindexar:', err));
+    }
+
     return NextResponse.json(usuarioAtualizado);
   } catch (error) {
     console.error("Erro no PUT:", error);
@@ -329,12 +335,24 @@ export async function DELETE(request: Request) {
     
     if (!id) return NextResponse.json({ erro: 'ID necessário' }, { status: 400 });
 
+    // Antes de deletar, captura empresaId + faceId pra limpar a coleção AWS
+    const usuarioAntes = await prisma.usuario.findUnique({
+      where: { id },
+      select: { empresaId: true, rekognitionFaceId: true },
+    });
+
     // Limpeza manual de dependências
     await prisma.ponto.deleteMany({ where: { usuarioId: id } }).catch(() => null);
     await prisma.solicitacaoAjuste.deleteMany({ where: { usuarioId: id } }).catch(() => null);
     await prisma.ausencia.deleteMany({ where: { usuarioId: id } }).catch(() => null);
-    
+
     await prisma.usuario.delete({ where: { id } });
+
+    // Remove rosto da coleção AWS (fire-and-forget) — evita match futuro com usuário excluído
+    if (usuarioAntes?.empresaId && usuarioAntes.rekognitionFaceId) {
+      removerRosto(usuarioAntes.empresaId, usuarioAntes.rekognitionFaceId)
+        .catch(err => console.error('[funcionarios DELETE] removerRosto:', err));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
