@@ -14,6 +14,7 @@ import {
   Link as LinkIcon,
   Loader2,
   Smartphone,
+  ScanFace,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -82,7 +83,25 @@ export default function ClientRow({
   const hasFiliais = empresa.filiais && empresa.filiais.length > 0;
 
   const [togglingTotem, setTogglingTotem] = useState(false);
+  const [reindexando, setReindexando] = useState(false);
   const [addonTotem, setAddonTotem] = useState<boolean>(empresa.addonTotem === true);
+  const reindexarTotem = async () => {
+    if (!confirm(`Re-indexar rostos de TODOS os funcionários (com foto) de "${empresa.nome}" e filiais? Pode demorar alguns segundos.`)) return;
+    setReindexando(true);
+    try {
+      const res = await fetch(`/api/saas/empresa/${empresa.id}/reindexar-totem`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(`Indexação concluída: ${data.indexados}/${data.total} OK${data.falhas ? ` · ${data.falhas} falha(s)` : ''}.`);
+      } else {
+        toast.error(data?.mensagem || data?.erro || 'Erro ao re-indexar.');
+      }
+    } catch {
+      toast.error('Erro ao re-indexar.');
+    } finally {
+      setReindexando(false);
+    }
+  };
   const toggleTotem = async () => {
     const novo = !addonTotem;
     if (!confirm(`${novo ? 'Ativar' : 'Desativar'} Modo Totem para "${empresa.nome}"? (cobrança extra é negociada com o cliente)`)) return;
@@ -211,6 +230,16 @@ export default function ClientRow({
             >
               {togglingTotem ? <Loader2 className="animate-spin" size={14} /> : <Smartphone size={14} />}
             </button>
+            {addonTotem && (
+              <button
+                onClick={reindexarTotem}
+                disabled={reindexando}
+                className="p-1.5 text-cyan-300 hover:bg-cyan-600/20 rounded transition-colors disabled:opacity-50"
+                title="Re-indexar rostos dos funcionários (AWS Rekognition)"
+              >
+                {reindexando ? <Loader2 className="animate-spin" size={14} /> : <ScanFace size={14} />}
+              </button>
+            )}
             <Link href={`/saas/${empresa.id}`} className="p-1.5 text-purple-400 hover:bg-purple-600/20 rounded transition-colors" title="Config Empresa">
               <Building2 size={14} />
             </Link>

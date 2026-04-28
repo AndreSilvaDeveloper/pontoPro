@@ -11,7 +11,7 @@ import { indexarRosto, removerRosto } from './rekognition';
  *
  * Falhas são logadas, não lançadas — não bloquear cadastro/atualização do funcionário.
  */
-export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
+export async function reindexarRostoUsuario(usuarioId: string): Promise<boolean> {
   try {
     const u = await prisma.usuario.findUnique({
       where: { id: usuarioId },
@@ -23,7 +23,7 @@ export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
       },
     });
 
-    if (!u || !u.empresaId) return;
+    if (!u || !u.empresaId) return false;
 
     const empresa = await prisma.empresa.findUnique({
       where: { id: u.empresaId },
@@ -40,10 +40,7 @@ export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
       temAddon = matriz?.addonTotem === true;
     }
 
-    if (!temAddon) {
-      // empresa sem totem — se houver índice antigo, deixa quieto (custo é desprezível)
-      return;
-    }
+    if (!temAddon) return false;
 
     // Remove rosto antigo (se houver) — pra não acumular múltiplas faces da mesma pessoa
     if (u.rekognitionFaceId) {
@@ -59,7 +56,7 @@ export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
           data: { rekognitionFaceId: null },
         });
       }
-      return;
+      return false;
     }
 
     const resultado = await indexarRosto({
@@ -75,9 +72,12 @@ export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
 
     if (!resultado.faceId) {
       console.warn(`[totem] usuário ${u.id} sem rosto detectável na foto`);
+      return false;
     }
+    return true;
   } catch (err) {
     console.error('[totem] reindexarRostoUsuario falhou:', err);
+    return false;
   }
 }
 
@@ -91,17 +91,25 @@ export async function reindexarRostoUsuario(usuarioId: string): Promise<void> {
  *
  * Fire-and-forget: nunca lança, só loga.
  */
-export async function indexarFuncionariosDaEmpresa(empresaId: string): Promise<void> {
-  try {
-    const funcionarios = await prisma.usuario.findMany({
-      where: { empresaId, fotoPerfilUrl: { not: null } },
-      select: { id: true },
-    });
-    console.log(`[totem] indexação retroativa: ${funcionarios.length} funcionário(s) da empresa ${empresaId}`);
-    for (const f of funcionarios) {
-      await reindexarRostoUsuario(f.id);
+export async function indexarFuncionariosDaEmpresa(
+  empresaId: string,
+): Promise<{ total: number; indexados: number; falhas: number }> {
+  const funcionarios = await prisma.usuario.findMany({
+    where: { empresaId, fotoPerfilUrl: { not: null } },
+    select: { id: true },
+  });
+  console.log(`[totem] indexação retroativa: ${funcionarios.length} funcionário(s) da empresa ${empresaId}`);
+  let indexados = 0;
+  let falhas = 0;
+  for (const f of funcionarios) {
+    try {
+      const ok = await reindexarRostoUsuario(f.id);
+      if (ok) indexados++;
+      else falhas++;
+    } catch (err) {
+      falhas++;
+      console.error(`[totem] falha ao indexar usuário ${f.id}:`, err);
     }
-  } catch (err) {
-    console.error('[totem] indexarFuncionariosDaEmpresa falhou:', err);
   }
+  return { total: funcionarios.length, indexados, falhas };
 }
