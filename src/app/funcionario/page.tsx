@@ -935,6 +935,12 @@ export default function Home() {
             </div>
           )}
 
+          {/* Cronômetro de pausa — sempre visível durante intervalo,
+              independente de GPS ou modo totem (é só relógio, não valida nada) */}
+          {!carregandoStatus && (statusPonto === 'SAIDA_ALMOCO' || statusPonto === 'SAIDA_INTERVALO') && (
+            <StatusDisplay />
+          )}
+
           {/* Mapa Geofence */}
           {!(configs.bloquearPontoApp && configs.addonTotemEfetivo) && location && !carregandoStatus && configs.modoValidacaoPonto === 'GPS' && !configs.pontoLivre && configs.latitudeBase !== 0 && configs.longitudeBase !== 0 && (
             <div className="animate-in fade-in slide-in-from-top-2">
@@ -1013,8 +1019,11 @@ export default function Home() {
               </div>
             )}
 
-            {/* Status Display (substitui câmera após bater ponto) */}
-            {!mostrarCamera && location && !carregandoStatus && (
+            {/* Status Display (substitui câmera após bater ponto).
+                Pula em pausa/almoço — já é mostrado acima, fora desse bloco,
+                pra ficar visível mesmo sem GPS / com totem mandatório. */}
+            {!mostrarCamera && location && !carregandoStatus &&
+             statusPonto !== 'SAIDA_ALMOCO' && statusPonto !== 'SAIDA_INTERVALO' && (
               <StatusDisplay />
             )}
           </div>
