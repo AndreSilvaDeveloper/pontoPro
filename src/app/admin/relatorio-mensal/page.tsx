@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FileText, Download, Loader2, Calendar, Eye } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Loader2, Calendar, Eye, Send, Check, AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { toast } from 'sonner';
 
 interface ResumoFuncionario {
   totalMinutosTrabalhados: number;
@@ -74,6 +75,32 @@ export default function RelatorioMensalPage() {
   const [loading, setLoading] = useState(false);
   const [relatorio, setRelatorio] = useState<RelatorioMensal | null>(null);
   const [erro, setErro] = useState('');
+  const [solicitandoId, setSolicitandoId] = useState<string | null>(null);
+
+  async function solicitarFechamento(funcionarioId: string, funcionarioNome: string) {
+    if (!relatorio) return;
+    if (!confirm(`Enviar fechamento para ${funcionarioNome} conferir e assinar?\n\nPeríodo: ${formatDateBR(relatorio.dataInicio)} a ${formatDateBR(relatorio.dataFim)}`)) return;
+
+    setSolicitandoId(funcionarioId);
+    try {
+      const res = await fetch('/api/admin/fechamentos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          funcionarioId,
+          periodoInicio: relatorio.dataInicio,
+          periodoFim: relatorio.dataFim,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.erro || 'Erro ao solicitar');
+      toast.success(`Fechamento enviado pra ${funcionarioNome}`);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao solicitar fechamento');
+    } finally {
+      setSolicitandoId(null);
+    }
+  }
 
   async function gerarRelatorio() {
     setLoading(true);
@@ -200,7 +227,7 @@ export default function RelatorioMensalPage() {
           >
             <ArrowLeft size={20} />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
               <FileText size={24} className="text-purple-400" />
             </div>
@@ -209,6 +236,12 @@ export default function RelatorioMensalPage() {
               <p className="text-text-muted text-xs font-medium uppercase tracking-widest">Relatorio por periodo</p>
             </div>
           </div>
+          <Link
+            href="/admin/fechamentos"
+            className="px-4 py-2 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle text-sm font-bold transition-all flex items-center gap-2"
+          >
+            <Check size={16} /> Fechamentos
+          </Link>
         </div>
 
         {/* Filters */}
@@ -344,6 +377,7 @@ export default function RelatorioMensalPage() {
                       <th className="text-center p-4 text-[10px] uppercase font-bold text-text-faint tracking-wider">Horas Trab.</th>
                       <th className="text-center p-4 text-[10px] uppercase font-bold text-text-faint tracking-wider">Meta</th>
                       <th className="text-center p-4 text-[10px] uppercase font-bold text-text-faint tracking-wider">Saldo</th>
+                      <th className="text-center p-4 text-[10px] uppercase font-bold text-text-faint tracking-wider">Fechamento</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -370,6 +404,20 @@ export default function RelatorioMensalPage() {
                           <span className={f.resumo.saldoPositivo ? 'text-emerald-400' : 'text-rose-400'}>
                             {f.resumo.saldoFormatado}
                           </span>
+                        </td>
+                        <td className="p-4 text-center">
+                          <button
+                            onClick={() => solicitarFechamento(f.id, f.nome)}
+                            disabled={solicitandoId === f.id}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:bg-elevated-solid disabled:text-text-faint text-white rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 mx-auto"
+                            title="Envia o relatório do período pro funcionário conferir e assinar"
+                          >
+                            {solicitandoId === f.id ? (
+                              <><Loader2 size={12} className="animate-spin" /> Enviando</>
+                            ) : (
+                              <><Send size={12} /> Solicitar</>
+                            )}
+                          </button>
                         </td>
                       </tr>
                     ))}

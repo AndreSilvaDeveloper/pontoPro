@@ -10,6 +10,7 @@ import {
   ShieldAlert,
   Plane,
   FileText,
+  FileSignature,
   ScrollText,
   CalendarDays,
   Megaphone,
@@ -82,7 +83,8 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
       label: 'Documentos',
       items: [
         { href: '/admin/contracheques', label: 'Contracheques', icon: FileText, accent: 'purple', tour: 'sidebar-contracheques' },
-        { href: '/admin/relatorio-mensal', label: 'Relatório Mensal', icon: FileText },
+        { href: '/admin/relatorio-mensal', label: 'Folha de Ponto', icon: FileText },
+        { href: '/admin/fechamentos', label: 'Fechamentos', icon: FileSignature, accent: 'emerald' },
       ],
     },
     {

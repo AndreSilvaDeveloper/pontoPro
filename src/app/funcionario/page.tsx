@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { FUNC_TOUR_RESTART_EVENT } from '@/components/onboarding/FuncionarioTour';
 import ThemeToggle from '@/components/ThemeToggle';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
+import BannerFechamentoPendente from '@/components/funcionario/BannerFechamentoPendente';
 import dynamic from 'next/dynamic';
 
 const MapaGeofence = dynamic(() => import('@/components/MapaGeofence'), {
@@ -753,6 +754,8 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        <BannerFechamentoPendente />
 
         {/* STATUS DO EXPEDIENTE */}
         {location && !carregandoStatus && (() => {

@@ -318,12 +318,10 @@ export default function BotaoRelatorio({ pontos, filtro, resumoHoras, assinatura
         doc.setFontSize(8); doc.setTextColor(100, 100, 100);
         doc.text('Assinatura do Colaborador', 14, finalY + 5);
 
-        if (assinaturaUrl) {
-            try {
-                const imgData = await getBase64ImageFromURL(assinaturaUrl);
-                if (imgData) doc.addImage(imgData, 'PNG', 20, finalY - 25, 40, 20);
-            } catch (e) { console.error(e); }
-        }
+        // Aviso: esse relatório ad-hoc não é o documento legal.
+        // Pra ter validade, o admin precisa "Solicitar Fechamento" e o funcionário assinar.
+        doc.setFontSize(7); doc.setTextColor(160, 160, 160);
+        doc.text('Documento informativo · Para validade legal, gere um Fechamento', 14, finalY + 11);
     }
 
     // Footer com paginação em todas as páginas
