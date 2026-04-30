@@ -70,7 +70,18 @@ export async function PUT(request: NextRequest, context: Ctx) {
 
   try {
     const body = await request.json();
-    const { novasConfigs, plano, billingCycle, intervaloPago, fluxoEstrito } = body;
+    const {
+      novasConfigs,
+      plano,
+      billingCycle,
+      intervaloPago,
+      fluxoEstrito,
+      precoNegociado,
+      precoNegociadoMotivo,
+      precoNegociadoMeses,
+      precoNegociadoSemPrazo,
+      removerPrecoNegociado,
+    } = body;
 
     const data: any = {};
 
@@ -84,6 +95,42 @@ export async function PUT(request: NextRequest, context: Ctx) {
     if (billingCycle !== undefined) data.billingCycle = String(billingCycle);
     if (intervaloPago !== undefined) data.intervaloPago = Boolean(intervaloPago);
     if (fluxoEstrito !== undefined) data.fluxoEstrito = Boolean(fluxoEstrito);
+
+    // Preço negociado: 3 cenários
+    //   1) removerPrecoNegociado: true        → zera tudo, volta ao preço de tabela
+    //   2) precoNegociado + semPrazo          → seta valor com expiraEm = null
+    //   3) precoNegociado + meses (>0)        → seta valor com expiraEm = now + N meses
+    if (removerPrecoNegociado === true) {
+      data.precoNegociado = null;
+      data.precoNegociadoMotivo = null;
+      data.precoNegociadoExpiraEm = null;
+    } else if (precoNegociado !== undefined) {
+      const valor = Number(precoNegociado);
+      if (!Number.isFinite(valor) || valor < 0) {
+        return NextResponse.json(
+          { ok: false, erro: "Preço negociado inválido" },
+          { status: 400 }
+        );
+      }
+      data.precoNegociado = valor;
+      data.precoNegociadoMotivo =
+        precoNegociadoMotivo === undefined ? null : String(precoNegociadoMotivo || "") || null;
+
+      if (precoNegociadoSemPrazo === true) {
+        data.precoNegociadoExpiraEm = null;
+      } else {
+        const meses = Number(precoNegociadoMeses);
+        if (!Number.isFinite(meses) || meses <= 0 || meses > 240) {
+          return NextResponse.json(
+            { ok: false, erro: "Validade em meses inválida (1 a 240)" },
+            { status: 400 }
+          );
+        }
+        const expira = new Date();
+        expira.setMonth(expira.getMonth() + Math.round(meses));
+        data.precoNegociadoExpiraEm = expira;
+      }
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json(

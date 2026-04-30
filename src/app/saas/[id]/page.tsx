@@ -121,6 +121,12 @@ export default function ConfigEmpresaPage() {
   const [pagoAte, setPagoAte] = useState('');
   const [billingAnchor, setBillingAnchor] = useState('');
 
+  // Preço Negociado (override)
+  const [precoNegVal, setPrecoNegVal] = useState('');
+  const [precoNegMotivo, setPrecoNegMotivo] = useState('');
+  const [precoNegSemPrazo, setPrecoNegSemPrazo] = useState(true);
+  const [precoNegMeses, setPrecoNegMeses] = useState('12');
+
   // Tab Configurações
   const [padrao, setPadrao] = useState({
     bloquearForaDoRaio: true,
@@ -207,6 +213,49 @@ export default function ConfigEmpresaPage() {
       await axios.put('/api/saas/toggle-bloqueio', { empresaId: idEmpresa, bloquear });
       await carregar();
     } catch { alert('Erro ao alterar status'); }
+    finally { setBusy(null); }
+  };
+
+  // === Preço Negociado ===
+  const salvarPrecoNegociado = async () => {
+    const valor = Number(precoNegVal);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      alert('Informe um valor válido (maior que zero).');
+      return;
+    }
+    setBusy('preco');
+    try {
+      const payload: any = {
+        precoNegociado: valor,
+        precoNegociadoMotivo: precoNegMotivo || null,
+      };
+      if (precoNegSemPrazo) {
+        payload.precoNegociadoSemPrazo = true;
+      } else {
+        const meses = Number(precoNegMeses);
+        if (!Number.isFinite(meses) || meses < 1) {
+          alert('Informe um número de meses válido (1 ou mais).');
+          setBusy(null);
+          return;
+        }
+        payload.precoNegociadoMeses = meses;
+      }
+      await axios.put(`/api/saas/empresa/${idEmpresa}`, payload);
+      setPrecoNegVal('');
+      setPrecoNegMotivo('');
+      await carregar();
+      alert('Preço negociado aplicado!');
+    } catch { alert('Erro ao aplicar preço negociado'); }
+    finally { setBusy(null); }
+  };
+
+  const removerPrecoNegociado = async () => {
+    if (!confirm('Remover o preço negociado? A empresa volta a pagar o preço de tabela do plano.')) return;
+    setBusy('preco');
+    try {
+      await axios.put(`/api/saas/empresa/${idEmpresa}`, { removerPrecoNegociado: true });
+      await carregar();
+    } catch { alert('Erro ao remover'); }
     finally { setBusy(null); }
   };
 
@@ -493,6 +542,128 @@ export default function ConfigEmpresaPage() {
                     </button>
                   );
                 })}
+              </div>
+            </Card>
+
+            {/* Preço Negociado */}
+            <Card>
+              <h3 className="text-sm font-semibold text-text-secondary mb-1 flex items-center gap-2">
+                <DollarSign size={16} /> Preço Negociado <span className="text-xs text-text-faint font-normal">(override do preço de tabela)</span>
+              </h3>
+              <p className="text-xs text-text-faint mb-4">
+                Substitui inteiramente o preço do plano. Quando ativo, o cliente paga este valor flat — sem cobrança de excedentes ou addon. Use para descontos comerciais.
+              </p>
+
+              {empresa?.precoNegociado != null && (() => {
+                const expira = empresa.precoNegociadoExpiraEm ? new Date(empresa.precoNegociadoExpiraEm) : null;
+                const vigente = !expira || expira > new Date();
+                return (
+                  <div className={`mb-4 rounded-xl px-4 py-3 border ${
+                    vigente
+                      ? 'bg-emerald-500/10 border-emerald-500/30'
+                      : 'bg-amber-500/10 border-amber-500/30'
+                  }`}>
+                    <p className={`text-sm font-semibold ${vigente ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      {vigente ? 'Ativo' : 'Expirado'}: R$ {Number(empresa.precoNegociado).toFixed(2).replace('.', ',')}/mês
+                    </p>
+                    <p className="text-xs text-text-muted mt-1">
+                      {expira
+                        ? vigente
+                          ? `Válido até ${formatDate(empresa.precoNegociadoExpiraEm)}`
+                          : `Expirou em ${formatDate(empresa.precoNegociadoExpiraEm)} — voltou ao preço de tabela`
+                        : 'Sem prazo (até alterar manualmente)'}
+                    </p>
+                    {empresa.precoNegociadoMotivo && (
+                      <p className="text-xs text-text-muted mt-1 italic">&quot;{empresa.precoNegociadoMotivo}&quot;</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={removerPrecoNegociado}
+                      disabled={!!busy}
+                      className="mt-2 text-xs text-red-400 hover:text-red-300 underline disabled:opacity-50"
+                    >
+                      Remover preço negociado
+                    </button>
+                  </div>
+                );
+              })()}
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-text-muted mb-1 block">Valor mensal (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={precoNegVal}
+                      onChange={e => setPrecoNegVal(e.target.value)}
+                      placeholder="69.90"
+                      className="w-full bg-elevated border border-border-subtle rounded-xl px-3 py-2.5 text-sm text-text-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-muted mb-1 block">Motivo (opcional)</label>
+                    <input
+                      value={precoNegMotivo}
+                      onChange={e => setPrecoNegMotivo(e.target.value)}
+                      placeholder="Negociação 04/2026"
+                      className="w-full bg-elevated border border-border-subtle rounded-xl px-3 py-2.5 text-sm text-text-primary"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-text-muted mb-2 block">Validade</label>
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <button
+                      type="button"
+                      onClick={() => setPrecoNegSemPrazo(true)}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
+                        precoNegSemPrazo
+                          ? 'border-purple-500 bg-purple-500/10 text-text-primary'
+                          : 'border-border-subtle bg-elevated text-text-muted hover:border-white/20'
+                      }`}
+                    >
+                      Sem prazo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrecoNegSemPrazo(false)}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
+                        !precoNegSemPrazo
+                          ? 'border-purple-500 bg-purple-500/10 text-text-primary'
+                          : 'border-border-subtle bg-elevated text-text-muted hover:border-white/20'
+                      }`}
+                    >
+                      Por meses
+                    </button>
+                    {!precoNegSemPrazo && (
+                      <input
+                        type="number"
+                        min="1"
+                        max="240"
+                        step="1"
+                        value={precoNegMeses}
+                        onChange={e => setPrecoNegMeses(e.target.value)}
+                        className="w-32 bg-elevated border border-border-subtle rounded-xl px-3 py-2.5 text-sm text-text-primary"
+                        placeholder="12"
+                      />
+                    )}
+                    {!precoNegSemPrazo && (
+                      <span className="text-xs text-text-faint">meses a partir de hoje</span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={salvarPrecoNegociado}
+                  disabled={!precoNegVal || !!busy}
+                  className="bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                >
+                  {busy === 'preco' ? 'Aplicando...' : 'Aplicar preço negociado'}
+                </button>
               </div>
             </Card>
 

@@ -163,6 +163,90 @@ export function calcularValorAssinatura(
 }
 
 /**
+ * Empresa com override de preço (preço negociado).
+ * Quando definido e dentro da validade, substitui inteiramente o cálculo do plano.
+ *
+ * `precoNegociado` é tipado como `any` pra aceitar Prisma.Decimal, number ou string —
+ * o conversor `Number()` interno lida com qualquer um.
+ */
+export type EmpresaPrecoShape = {
+  plano?: string | null;
+  billingCycle?: string | null;
+  addonTotem?: boolean | null;
+  precoNegociado?: any;
+  precoNegociadoExpiraEm?: Date | string | null;
+};
+
+/**
+ * Retorna true se a empresa tem um preço negociado vigente.
+ * "Sem prazo" (expiraEm = null) também é considerado vigente.
+ */
+export function temPrecoNegociadoVigente(empresa: EmpresaPrecoShape): boolean {
+  if (empresa.precoNegociado == null) return false;
+  const valor = Number(empresa.precoNegociado);
+  if (!Number.isFinite(valor) || valor <= 0) return false;
+  if (!empresa.precoNegociadoExpiraEm) return true;
+  return new Date(empresa.precoNegociadoExpiraEm) > new Date();
+}
+
+export type CalculoEmpresaResult = ReturnType<typeof calcularValorAssinatura> & {
+  negociado: boolean;
+  /** valor mensal que SERIA cobrado se não houvesse override */
+  valorOriginalMensal: number;
+};
+
+/**
+ * Calcula o valor mensal/anual de uma empresa, aplicando o preço negociado quando vigente.
+ * Quando há override, ignora extras (excedentes, totem) — o valor negociado é flat.
+ */
+export function calcularValorEmpresa(
+  empresa: EmpresaPrecoShape,
+  totalFuncionarios: number,
+  totalAdmins: number,
+  totalFiliais: number = 0,
+): CalculoEmpresaResult {
+  const planoConfig = getPlanoConfig(empresa.plano);
+  const cycle = (empresa.billingCycle ?? "MONTHLY") as BillingCycle;
+  const totemAtivo = empresa.addonTotem === true;
+
+  const padrao = calcularValorAssinatura(
+    planoConfig,
+    totalFuncionarios,
+    totalAdmins,
+    totalFiliais,
+    cycle,
+    totemAtivo,
+  );
+
+  if (!temPrecoNegociadoVigente(empresa)) {
+    return { ...padrao, negociado: false, valorOriginalMensal: padrao.totalMensal };
+  }
+
+  const totalMensal = Number(Number(empresa.precoNegociado).toFixed(2));
+  let total = totalMensal;
+  let desconto = 0;
+  if (cycle === "YEARLY") {
+    const anualSemDesc = totalMensal * 12;
+    desconto = Number((anualSemDesc * ANNUAL_DISCOUNT).toFixed(2));
+    total = Number((anualSemDesc - desconto).toFixed(2));
+  }
+
+  return {
+    valorBase: totalMensal,
+    extraFunc: 0,
+    extraAdm: 0,
+    extraFil: 0,
+    totem: 0,
+    totalMensal,
+    desconto,
+    cycle,
+    total,
+    negociado: true,
+    valorOriginalMensal: padrao.totalMensal,
+  };
+}
+
+/**
  * Calcula o preço anual de um plano (sem excedentes) para exibição na UI.
  */
 export function getPrecoAnual(plano: PlanoConfig): {

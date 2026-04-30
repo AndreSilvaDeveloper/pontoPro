@@ -40,9 +40,11 @@ type PlanoData = {
     desconto: number;
     cycle: BillingCycle;
     total: number;
+    negociado?: boolean;
   };
   planos: PlanoComAnual[];
   isFilial: boolean;
+  precoNegociado?: boolean;
 };
 
 function fmt(v: number) {
@@ -168,7 +170,7 @@ export default function PlanoPage() {
                   Equivale a R$ {fmt(calculo.totalMensal * 0.9)}/mês (10% de desconto)
                 </p>
               )}
-              {calculo.total !== calculo.valorBase && !isYearly && (
+              {!calculo.negociado && calculo.total !== calculo.valorBase && !isYearly && (
                 <p className="mt-1 text-xs text-text-faint">
                   Base R$ {fmt(calculo.valorBase)} + excedentes R${" "}
                   {fmt(calculo.extraFunc + calculo.extraAdm + calculo.extraFil)}

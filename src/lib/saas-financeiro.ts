@@ -1,5 +1,10 @@
 // src/lib/saas-financeiro.ts — Cálculos financeiros para o painel SaaS
-import { calcularCustoTotem, getPlanoConfig, type PlanoConfig } from "@/config/planos";
+import {
+  calcularCustoTotem,
+  getPlanoConfig,
+  temPrecoNegociadoVigente,
+  type PlanoConfig,
+} from "@/config/planos";
 
 export type FinanceiroResult = {
   totalVidas: number;
@@ -15,6 +20,10 @@ export type FinanceiroResult = {
   valorBase: number;
   valorFinal: number;
   planoNome: string;
+  /** True quando há preço negociado vigente — UI pode mostrar badge */
+  precoNegociado: boolean;
+  /** Quando há override, este é o valor de tabela "ignorado" — útil pro painel SaaS */
+  valorTabelaMensal: number;
 };
 
 export function calcularFinanceiro(matriz: any): FinanceiroResult {
@@ -54,9 +63,18 @@ export function calcularFinanceiro(matriz: any): FinanceiroResult {
   const totemAtivo = matriz.addonTotem === true;
   const custoTotem = calcularCustoTotem(plano, totemAtivo, totalFiliais);
 
-  const valorFinal = Number(
+  const valorTabelaMensal = Number(
     (plano.preco + custoVidas + custoAdmins + custoTotem).toFixed(2),
   );
+
+  const negociado = temPrecoNegociadoVigente({
+    precoNegociado: matriz.precoNegociado,
+    precoNegociadoExpiraEm: matriz.precoNegociadoExpiraEm,
+  });
+
+  const valorFinal = negociado
+    ? Number(Number(matriz.precoNegociado).toFixed(2))
+    : valorTabelaMensal;
 
   return {
     totalVidas,
@@ -72,5 +90,7 @@ export function calcularFinanceiro(matriz: any): FinanceiroResult {
     valorBase: plano.preco,
     valorFinal,
     planoNome: plano.nome,
+    precoNegociado: negociado,
+    valorTabelaMensal,
   };
 }

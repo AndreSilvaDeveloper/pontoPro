@@ -51,6 +51,13 @@ model Empresa {
   addonTotem            Boolean   @default(false)
   rekognitionCollection String?   // ID da coleção AWS Rekognition criada pra essa empresa
   totens                TotemDevice[]
+
+  // Preço negociado (override do preço de tabela do plano).
+  // Quando definido e dentro da validade, substitui inteiramente o cálculo padrão.
+  // expiraEm = null significa "sem prazo" (vigente até alterar manualmente).
+  precoNegociado          Decimal?  @db.Decimal(10, 2)
+  precoNegociadoMotivo    String?
+  precoNegociadoExpiraEm  DateTime?
 }
 
 model Usuario {

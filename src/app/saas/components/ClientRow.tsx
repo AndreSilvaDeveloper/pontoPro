@@ -190,9 +190,19 @@ export default function ClientRow({
           {estaPago ? (
             <span className="text-xs text-emerald-400 font-bold">PAGO</span>
           ) : (
-            <span className="text-sm font-bold text-emerald-400">
-              {fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-            </span>
+            <div className="flex flex-col items-end leading-tight">
+              <span className="text-sm font-bold text-emerald-400">
+                {fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </span>
+              {fin.precoNegociado && (
+                <span
+                  className="text-[9px] text-amber-300 font-semibold uppercase tracking-wider"
+                  title="Preço negociado vigente — substitui o valor de tabela do plano"
+                >
+                  negociado
+                </span>
+              )}
+            </div>
           )}
         </td>
 
