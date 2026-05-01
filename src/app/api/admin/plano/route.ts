@@ -88,6 +88,7 @@ export async function GET() {
       planos: planosComAnual,
       isFilial: Boolean(empresa.matrizId),
       precoNegociado: calculo.negociado,
+      addonTotem: billingEmpresa.addonTotem === true,
     });
   } catch (err: any) {
     console.error("[PLANO_GET]", err);
