@@ -6,7 +6,7 @@ import {
   ArrowLeft, Save, Camera, Lock, UserCog, EyeOff,
   Settings, ShieldAlert, Users, MapPin, ChevronRight,
   Building2, Bell, Timer, TrendingUp, Coffee,
-  Smartphone, SmartphoneNfc,
+  Smartphone, SmartphoneNfc, Plus, X, Search, Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -158,6 +158,144 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
       <div className="bg-surface backdrop-blur-sm rounded-2xl border border-border-subtle divide-y divide-border-subtle">
         {children}
       </div>
+    </div>
+  );
+}
+
+type CafeOverride = { id: string; nome: string; cafeOrdem: 'ANTES' | 'DEPOIS' };
+type FuncionarioMin = { id: string; nome: string };
+
+function CafeOverridesManager({ cafeDepoisDoAlmoco }: { cafeDepoisDoAlmoco: boolean }) {
+  const [overrides, setOverrides] = useState<CafeOverride[]>([]);
+  const [funcionarios, setFuncionarios] = useState<FuncionarioMin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adicionando, setAdicionando] = useState(false);
+  const [busca, setBusca] = useState('');
+  const [salvandoId, setSalvandoId] = useState<string | null>(null);
+
+  const carregar = async () => {
+    setLoading(true);
+    try {
+      const [resOv, resFun] = await Promise.all([
+        axios.get('/api/admin/totem/cafe-overrides'),
+        axios.get('/api/admin/funcionarios'),
+      ]);
+      setOverrides(resOv.data || []);
+      setFuncionarios((resFun.data || []).map((f: any) => ({ id: f.id, nome: f.nome })));
+    } catch {
+      toast.error('Erro ao carregar configurações de café.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { carregar(); }, []);
+
+  const setOverride = async (funcionarioId: string, cafeOrdem: 'ANTES' | 'DEPOIS' | null) => {
+    setSalvandoId(funcionarioId);
+    try {
+      await axios.put('/api/admin/totem/cafe-overrides', { funcionarioId, cafeOrdem });
+      await carregar();
+    } catch {
+      toast.error('Erro ao salvar.');
+    } finally {
+      setSalvandoId(null);
+    }
+  };
+
+  // Padrão da empresa: o que NÃO está no override = padrão = oposto da config marcada
+  const ordemPadrao = cafeDepoisDoAlmoco ? 'DEPOIS' : 'ANTES';
+  const ordemContraria = cafeDepoisDoAlmoco ? 'ANTES' : 'DEPOIS';
+
+  const idsComOverride = new Set(overrides.map(o => o.id));
+  const disponiveisFiltrados = funcionarios
+    .filter(f => !idsComOverride.has(f.id))
+    .filter(f => f.nome.toLowerCase().includes(busca.trim().toLowerCase()));
+
+  return (
+    <div className="p-4 space-y-3">
+      <div>
+        <p className="text-xs text-text-muted">
+          Padrão da empresa: <span className="font-semibold text-text-primary">café {ordemPadrao === 'DEPOIS' ? 'depois' : 'antes'} do almoço</span>.
+          Quem está aqui faz o contrário (configurado individualmente).
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-text-muted text-xs"><Loader2 size={14} className="animate-spin" /> Carregando...</div>
+      ) : overrides.length === 0 ? (
+        <p className="text-xs text-text-faint italic">Nenhum funcionário com configuração diferente do padrão.</p>
+      ) : (
+        <div className="space-y-2">
+          {overrides.map(o => (
+            <div key={o.id} className="flex items-center justify-between gap-3 p-2.5 bg-page/40 border border-border-subtle rounded-lg">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-text-primary truncate">{o.nome}</div>
+                <div className="text-[11px] text-text-muted">
+                  café <span className="font-semibold text-purple-300">{o.cafeOrdem === 'DEPOIS' ? 'depois' : 'antes'}</span> do almoço
+                </div>
+              </div>
+              <button
+                onClick={() => setOverride(o.id, null)}
+                disabled={salvandoId === o.id}
+                className="text-text-faint hover:text-rose-400 p-1.5 rounded-lg transition-colors disabled:opacity-50"
+                title="Voltar ao padrão da empresa"
+              >
+                {salvandoId === o.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!adicionando ? (
+        <button
+          onClick={() => { setAdicionando(true); setBusca(''); }}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-300 hover:text-purple-200 transition-colors"
+        >
+          <Plus size={14} /> Adicionar funcionário
+        </button>
+      ) : (
+        <div className="space-y-2 p-3 bg-page/40 border border-border-subtle rounded-lg">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-text-muted">
+              Adicionar funcionário que faz café <span className="font-semibold">{ordemContraria === 'DEPOIS' ? 'depois' : 'antes'}</span> do almoço:
+            </p>
+            <button onClick={() => setAdicionando(false)} className="text-text-faint hover:text-text-primary">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-faint" />
+            <input
+              type="text"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar por nome..."
+              className="w-full pl-8 pr-3 py-2 bg-page border border-border-input rounded-lg text-sm text-text-primary placeholder:text-text-faint outline-none focus:border-purple-500"
+              autoFocus
+            />
+          </div>
+          {disponiveisFiltrados.length === 0 ? (
+            <p className="text-xs text-text-faint italic">
+              {busca ? 'Nenhum funcionário encontrado.' : 'Todos os funcionários já estão configurados.'}
+            </p>
+          ) : (
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {disponiveisFiltrados.slice(0, 20).map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => { setOverride(f.id, ordemContraria as 'ANTES' | 'DEPOIS'); setAdicionando(false); }}
+                  disabled={salvandoId === f.id}
+                  className="w-full text-left px-3 py-2 text-sm text-text-primary bg-elevated hover:bg-elevated-solid rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {f.nome}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -321,18 +459,21 @@ export default function ConfiguracoesEmpresa() {
               accent="blue"
             />
             {configs.permiteIntervaloCafe && (
-              <ItemToggle
-                icon={<Timer size={18} />}
-                titulo="Café é depois do almoço"
-                descricao={
-                  configs.cafeDepoisDoAlmoco
-                    ? "Sequência: Entrada → Almoço → Volta → Café → Volta → Saída."
-                    : "Sequência: Entrada → Café → Volta → Almoço → Volta → Saída. Ligue se na sua empresa o café é à tarde."
-                }
-                ativo={configs.cafeDepoisDoAlmoco}
-                onToggle={() => toggle('cafeDepoisDoAlmoco')}
-                accent="blue"
-              />
+              <>
+                <ItemToggle
+                  icon={<Timer size={18} />}
+                  titulo="Café é depois do almoço"
+                  descricao={
+                    configs.cafeDepoisDoAlmoco
+                      ? "Sequência: Entrada → Almoço → Volta → Café → Volta → Saída."
+                      : "Sequência: Entrada → Café → Volta → Almoço → Volta → Saída. Ligue se na sua empresa o café é à tarde."
+                  }
+                  ativo={configs.cafeDepoisDoAlmoco}
+                  onToggle={() => toggle('cafeDepoisDoAlmoco')}
+                  accent="blue"
+                />
+                <CafeOverridesManager cafeDepoisDoAlmoco={configs.cafeDepoisDoAlmoco} />
+              </>
             )}
             <ItemToggle
               icon={<SmartphoneNfc size={18} />}
