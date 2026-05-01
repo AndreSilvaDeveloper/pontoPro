@@ -13,6 +13,7 @@ import {
   Building2,
   TrendingUp,
   AlertTriangle,
+  Smartphone,
 } from "lucide-react";
 import type { PlanoConfig, PlanoId, BillingCycle } from "@/config/planos";
 
@@ -36,6 +37,7 @@ type PlanoData = {
     extraFunc: number;
     extraAdm: number;
     extraFil: number;
+    totem: number;
     totalMensal: number;
     desconto: number;
     cycle: BillingCycle;
@@ -45,6 +47,7 @@ type PlanoData = {
   planos: PlanoComAnual[];
   isFilial: boolean;
   precoNegociado?: boolean;
+  addonTotem?: boolean;
 };
 
 function fmt(v: number) {
@@ -106,7 +109,7 @@ export default function PlanoPage() {
     );
   }
 
-  const { planoAtual, planoConfig, billingCycle, uso, calculo, planos, isFilial } = data;
+  const { planoAtual, planoConfig, billingCycle, uso, calculo, planos, isFilial, addonTotem } = data;
   const isYearly = billingCycle === "YEARLY";
 
   return (
@@ -177,6 +180,40 @@ export default function PlanoPage() {
                 </p>
               )}
             </div>
+
+            {addonTotem && (
+              <div className="mb-4 rounded-xl border border-purple-500/30 bg-purple-500/10 p-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-purple-300">
+                  <Smartphone size={14} /> Modo Totem ativo
+                </div>
+                {planoConfig.totemIncluso ? (
+                  <p className="mt-1.5 text-[11px] text-text-muted">
+                    Incluso no plano <strong className="text-text-primary">{planoConfig.nome}</strong> — sem custo extra.
+                  </p>
+                ) : calculo.negociado ? (
+                  <p className="mt-1.5 text-[11px] text-text-muted">
+                    Já incluso no seu preço negociado.
+                  </p>
+                ) : (
+                  <div className="mt-2 space-y-1 text-[11px] text-text-secondary">
+                    <div className="flex justify-between">
+                      <span>+ Matriz</span>
+                      <span className="font-mono">R$ {fmt(planoConfig.totemAddonMatriz)}</span>
+                    </div>
+                    {uso.filiais > 0 && planoConfig.totemAddonFilial > 0 && (
+                      <div className="flex justify-between">
+                        <span>+ Filiais ({uso.filiais} × R$ {fmt(planoConfig.totemAddonFilial)})</span>
+                        <span className="font-mono">R$ {fmt(planoConfig.totemAddonFilial * uso.filiais)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-purple-500/20 pt-1 font-semibold text-purple-300">
+                      <span>Adicional Totem</span>
+                      <span className="font-mono">R$ {fmt(calculo.totem)}/mês</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <p className="text-xs text-text-faint">{planoConfig.descricao}</p>
           </div>
