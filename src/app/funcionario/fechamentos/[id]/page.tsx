@@ -17,6 +17,7 @@ interface Fechamento {
   criadoEm: string;
   assinadoEm: string | null;
   assinaturaUrl: string | null;
+  assinaturaBase64: string | null;
   ipAssinatura: string | null;
   recusadoEm: string | null;
   recusadoMotivo: string | null;
@@ -62,6 +63,7 @@ export default function FechamentoDetalheFunc({ params }: { params: Promise<{ id
         status: fech.status,
         assinadoEm: fech.assinadoEm,
         assinaturaUrl: fech.assinaturaUrl,
+        assinaturaBase64: fech.assinaturaBase64,
         ipAssinatura: fech.ipAssinatura,
         funcionario: {
           nome: fech.snapshot.funcionario.nome,
