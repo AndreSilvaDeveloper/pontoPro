@@ -124,7 +124,7 @@ export async function POST(req: Request) {
     // 2) Validar que o usuário pertence à empresa do totem (segurança extra)
     const usuario = await prisma.usuario.findUnique({
       where: { id: match.usuarioId },
-      select: { id: true, nome: true, empresaId: true },
+      select: { id: true, nome: true, empresaId: true, jornada: true },
     });
     if (!usuario || usuario.empresaId !== totem.empresaId) {
       return NextResponse.json({
@@ -147,7 +147,11 @@ export async function POST(req: Request) {
 
     const cfg = (totem.empresa.configuracoes as { permiteIntervaloCafe?: boolean; cafeDepoisDoAlmoco?: boolean } | null) || {};
     const permiteCafe = cfg.permiteIntervaloCafe === true;
-    const cafeDepoisDoAlmoco = cfg.cafeDepoisDoAlmoco === true;
+    // Resolve ordem do café: override por funcionário (jornada.cafeOrdem) tem prioridade sobre o padrão da empresa.
+    const overrideOrdem = (usuario.jornada as { cafeOrdem?: string } | null)?.cafeOrdem;
+    const cafeDepoisDoAlmoco = overrideOrdem === 'DEPOIS' ? true
+      : overrideOrdem === 'ANTES' ? false
+      : cfg.cafeDepoisDoAlmoco === true;
     const tipoFinal = proximoTipoPonto(pontosHoje, totem.empresa.intervaloPago, permiteCafe, cafeDepoisDoAlmoco);
     if (!tipoFinal) {
       return NextResponse.json({
