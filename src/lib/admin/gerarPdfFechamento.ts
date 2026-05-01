@@ -21,6 +21,8 @@ interface GerarPdfArgs {
   status: 'PENDENTE' | 'ASSINADO' | 'RECUSADO' | 'CANCELADO';
   assinadoEm: string | null;
   assinaturaUrl: string | null;
+  /** Assinatura já em data URL base64 (preferido — vem pré-carregada do servidor pra evitar CORS) */
+  assinaturaBase64?: string | null;
   ipAssinatura: string | null;
   funcionario: { nome: string; tituloCargo: string | null; cpf: string | null; pis: string | null };
   modo?: 'baixar' | 'visualizar';
@@ -37,7 +39,7 @@ function fmtMin(min: number): string {
 }
 
 export async function gerarPdfFechamento(args: GerarPdfArgs): Promise<void> {
-  const { snapshot: snap, status, assinadoEm, assinaturaUrl, ipAssinatura, funcionario, modo = 'baixar' } = args;
+  const { snapshot: snap, status, assinadoEm, assinaturaUrl, assinaturaBase64, ipAssinatura, funcionario, modo = 'baixar' } = args;
   const doc = new jsPDF();
 
   // Header roxo
@@ -152,10 +154,14 @@ export async function gerarPdfFechamento(args: GerarPdfArgs): Promise<void> {
   doc.setFontSize(8); doc.setTextColor(100, 100, 100);
   doc.text('Assinatura do Colaborador', 14, finalY + 19);
 
-  if (status === 'ASSINADO' && assinaturaUrl && assinadoEm) {
-    const img = await urlParaBase64(assinaturaUrl);
+  if (status === 'ASSINADO' && assinadoEm) {
+    // Prioriza base64 vindo do servidor (sem CORS); cai pro fetch do client se não tiver.
+    const img = assinaturaBase64 ?? (assinaturaUrl ? await urlParaBase64(assinaturaUrl) : null);
     if (img) {
-      try { doc.addImage(img, 'PNG', 20, finalY - 5, 40, 18); } catch {}
+      const fmt = img.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+      try { doc.addImage(img, fmt, 20, finalY - 5, 40, 18); } catch (e) { console.error('addImage assinatura falhou', e); }
+    } else {
+      console.warn('PDF fechamento: status ASSINADO mas sem imagem da assinatura disponível');
     }
     doc.setFontSize(7); doc.setTextColor(22, 163, 74);
     doc.text(`Assinado digitalmente em ${new Date(assinadoEm).toLocaleString('pt-BR')}`, 14, finalY + 24);

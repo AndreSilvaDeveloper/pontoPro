@@ -69,13 +69,25 @@ export async function POST(req: Request) {
       where: { token },
       include: {
         empresa: {
-          select: { id: true, intervaloPago: true, addonTotem: true, matrizId: true, nome: true, configuracoes: true },
+          select: { id: true, status: true, intervaloPago: true, addonTotem: true, matrizId: true, nome: true, configuracoes: true },
         },
       },
     });
 
     if (!totem || !totem.ativo) {
       return NextResponse.json({ erro: 'totem_invalido' }, { status: 401 });
+    }
+
+    // Throttle: rejeita batidas do mesmo totem em janela <2s — evita abuso/duplicidade e custo AWS.
+    if (totem.ultimoUso && Date.now() - totem.ultimoUso.getTime() < 2000) {
+      return NextResponse.json({ erro: 'aguarde', mensagem: 'Aguarde um instante antes de bater de novo.' }, { status: 429 });
+    }
+
+    if (totem.empresa.status === 'BLOQUEADO') {
+      return NextResponse.json({
+        erro: 'empresa_bloqueada',
+        mensagem: 'Acesso bloqueado. Fale com o administrador da empresa.',
+      }, { status: 403 });
     }
 
     let temAddon = totem.empresa.addonTotem === true;
@@ -150,7 +162,7 @@ export async function POST(req: Request) {
     try {
       const buffer = Buffer.from(fotoBase64.replace(/^data:image\/\w+;base64,/, ''), 'base64');
       const filename = `totem-${usuario.id}-${Date.now()}.jpg`;
-      const blob = await storagePut(filename, buffer, { access: 'public', contentType: 'image/jpeg' });
+      const blob = await storagePut(filename, buffer, { access: 'public', contentType: 'image/jpeg', permanente: true });
       fotoUrl = blob.url;
     } catch (e) {
       console.error('[totem/bater] falha ao salvar foto:', e);
