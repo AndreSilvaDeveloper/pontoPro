@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
-import { getPlanoConfig, calcularValorAssinatura, type BillingCycle } from "@/config/planos";
+import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 
 export const runtime = "nodejs";
 
@@ -113,13 +113,11 @@ export async function GET() {
   const planoConfig = getPlanoConfig(billingEmpresa.plano);
   const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
   const totemAtivo = (billingEmpresa as any).addonTotem === true;
-  const calculo = calcularValorAssinatura(
-    planoConfig,
+  const calculo = calcularValorEmpresa(
+    billingEmpresa,
     totalFuncionarios,
     totalAdmins,
     billingEmpresa.filiais?.length ?? 0,
-    cycle,
-    totemAtivo,
   );
 
   const vidasExcedentes = Math.max(0, totalFuncionarios - planoConfig.maxFuncionarios);

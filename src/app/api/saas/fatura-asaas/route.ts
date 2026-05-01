@@ -6,7 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { asaas } from "@/lib/asaas";
 import { getBillingStatus } from "@/lib/billing";
-import { getPlanoConfig, calcularValorAssinatura, type BillingCycle } from "@/config/planos";
+import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 
 export const runtime = "nodejs";
 
@@ -85,6 +85,8 @@ export async function GET(request: NextRequest) {
             diaVencimento: true,
             pagoAte: true,
             addonTotem: true,
+            precoNegociado: true,
+            precoNegociadoExpiraEm: true,
             filiais: { select: { id: true } },
           },
         })
@@ -102,10 +104,11 @@ export async function GET(request: NextRequest) {
     });
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
-    const calculo = calcularValorAssinatura(
-      planoConfig, totalFuncionarios, totalAdmins,
-      billingEmpresa.filiais?.length ?? 0, cycle,
-      billingEmpresa.addonTotem === true,
+    const calculo = calcularValorEmpresa(
+      billingEmpresa,
+      totalFuncionarios,
+      totalAdmins,
+      billingEmpresa.filiais?.length ?? 0,
     );
 
     // Buscar pagamento atual no Asaas
@@ -189,10 +192,11 @@ export async function POST(request: NextRequest) {
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
-    const { total: valorFinal } = calcularValorAssinatura(
-      planoConfig, totalFuncionarios, totalAdmins,
-      billingEmpresa.filiais?.length ?? 0, cycle,
-      billingEmpresa.addonTotem === true,
+    const { total: valorFinal } = calcularValorEmpresa(
+      billingEmpresa,
+      totalFuncionarios,
+      totalAdmins,
+      billingEmpresa.filiais?.length ?? 0,
     );
 
     // Ensure customer

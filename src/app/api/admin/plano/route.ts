@@ -5,7 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import {
   PLANOS,
   getPlanoConfig,
-  calcularValorAssinatura,
+  calcularValorEmpresa,
   getPrecoAnual,
   type PlanoId,
   type BillingCycle,
@@ -61,12 +61,11 @@ export async function GET() {
 
     const planoAtual = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
-    const calculo = calcularValorAssinatura(
-      planoAtual,
+    const calculo = calcularValorEmpresa(
+      billingEmpresa,
       totalFuncionarios,
       totalAdmins,
       totalFiliais,
-      cycle
     );
 
     // Adiciona preço anual para cada plano
@@ -88,6 +87,7 @@ export async function GET() {
       calculo,
       planos: planosComAnual,
       isFilial: Boolean(empresa.matrizId),
+      precoNegociado: calculo.negociado,
     });
   } catch (err: any) {
     console.error("[PLANO_GET]", err);

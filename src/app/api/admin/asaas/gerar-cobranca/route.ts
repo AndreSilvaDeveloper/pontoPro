@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
 import { asaas } from "@/lib/asaas";
-import { getPlanoConfig, calcularValorAssinatura, type BillingCycle } from "@/config/planos";
+import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 
 export const runtime = "nodejs";
 
@@ -267,14 +267,11 @@ export async function POST() {
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
-    const totemAtivo = billingEmpresa.addonTotem === true;
-    const { total: valorFinal } = calcularValorAssinatura(
-      planoConfig,
+    const { total: valorFinal } = calcularValorEmpresa(
+      billingEmpresa,
       totalFuncionarios,
       totalAdmins,
       totalFiliais,
-      cycle,
-      totemAtivo,
     );
 
     const description = `WorkID ${planoConfig.nome} - ${billingEmpresa.nome}`;

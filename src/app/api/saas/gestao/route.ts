@@ -40,6 +40,10 @@ export async function POST() {
 
         addonTotem: true,
 
+        precoNegociado: true,
+        precoNegociadoMotivo: true,
+        precoNegociadoExpiraEm: true,
+
         _count: { select: { usuarios: true } },
 
         usuarios: {

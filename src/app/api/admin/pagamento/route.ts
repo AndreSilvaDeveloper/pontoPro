@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { asaas } from "@/lib/asaas";
-import { getPlanoConfig, calcularValorAssinatura, type BillingCycle } from "@/config/planos";
+import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 import { getBillingStatus } from "@/lib/billing";
 
 export const runtime = "nodejs";
@@ -56,13 +56,11 @@ export async function GET() {
     const totalFiliais = billingEmpresa.filiais?.length ?? 0;
 
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
-    const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
-    const calculo = calcularValorAssinatura(
-      planoConfig,
+    const calculo = calcularValorEmpresa(
+      billingEmpresa,
       totalFuncionarios,
       totalAdmins,
       totalFiliais,
-      cycle
     );
 
     return NextResponse.json({

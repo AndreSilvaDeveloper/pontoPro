@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Clock, History, FileText, MessageSquare,
-  MoreHorizontal, PenTool, PenLine, LogOut, X, Lightbulb,
+  MoreHorizontal, PenTool, PenLine, LogOut, X, Lightbulb, FileSignature,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { getNotifCount } from './NotificacaoSolicitacao';
@@ -18,6 +18,7 @@ const navFixos = [
 ];
 
 const navMais = [
+  { href: '/funcionario/fechamentos', label: 'Fechamentos', icon: FileSignature, descricao: 'Conferir e assinar folha do mês', badgeKey: 'fechamentos' },
   { href: '/funcionario/sugestoes', label: 'Pontos que faltam', icon: Lightbulb, descricao: 'Sugestões de pontos não batidos' },
   { href: '/funcionario/ausencias', label: 'Ausências', icon: PenTool, descricao: 'Atestados e justificativas' },
   { href: '/funcionario/assinatura', label: 'Minha Assinatura', icon: PenLine, descricao: 'Cadastrar/atualizar assinatura' },
@@ -28,6 +29,7 @@ export default function BottomNav() {
   const [notifCount, setNotifCount] = useState(0);
   const [comunicadosNaoLidos, setComunicadosNaoLidos] = useState(0);
   const [contrachequesNovos, setContrachequesNovos] = useState(0);
+  const [fechamentosPendentes, setFechamentosPendentes] = useState(0);
   const [maisAberto, setMaisAberto] = useState(false);
 
   useEffect(() => {
@@ -56,13 +58,25 @@ export default function BottomNav() {
         }
       } catch {}
     };
+    const fetchFechamentos = async () => {
+      try {
+        const res = await fetch('/api/funcionario/fechamentos');
+        if (res.ok) {
+          const data = await res.json();
+          setFechamentosPendentes(Array.isArray(data) ? data.filter((f: any) => f.status === 'PENDENTE').length : 0);
+        }
+      } catch {}
+    };
     fetchComunicados();
     fetchContracheques();
+    fetchFechamentos();
     window.addEventListener('comunicados-update', fetchComunicados);
     window.addEventListener('contracheques-update', fetchContracheques);
+    window.addEventListener('fechamentos-update', fetchFechamentos);
     return () => {
       window.removeEventListener('comunicados-update', fetchComunicados);
       window.removeEventListener('contracheques-update', fetchContracheques);
+      window.removeEventListener('fechamentos-update', fetchFechamentos);
     };
   }, []);
 
@@ -72,6 +86,7 @@ export default function BottomNav() {
     if (key === 'solicitacoes') return notifCount;
     if (key === 'comunicados') return comunicadosNaoLidos;
     if (key === 'contracheques') return contrachequesNovos;
+    if (key === 'fechamentos') return fechamentosPendentes;
     return 0;
   };
 
@@ -145,21 +160,29 @@ export default function BottomNav() {
             </div>
 
             <div className="p-3 space-y-1">
-              {navMais.map(({ href, label, icon: Icon, descricao }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-3 p-3 rounded-2xl hover:bg-hover-bg transition-colors"
-                >
-                  <div className="p-2.5 rounded-xl bg-purple-500/15 text-purple-400 shrink-0">
-                    <Icon size={18} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-text-primary">{label}</p>
-                    <p className="text-xs text-text-muted">{descricao}</p>
-                  </div>
-                </Link>
-              ))}
+              {navMais.map(({ href, label, icon: Icon, descricao, badgeKey }) => {
+                const badge = badgeKey ? getBadge(badgeKey) : 0;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3 p-3 rounded-2xl hover:bg-hover-bg transition-colors"
+                  >
+                    <div className="relative p-2.5 rounded-xl bg-purple-500/15 text-purple-400 shrink-0">
+                      <Icon size={18} />
+                      {badge > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold flex items-center justify-center rounded-full border border-surface-solid">
+                          {badge > 9 ? '9+' : badge}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-text-primary">{label}</p>
+                      <p className="text-xs text-text-muted">{descricao}</p>
+                    </div>
+                  </Link>
+                );
+              })}
 
               <button
                 onClick={() => { localStorage.removeItem('workid_rt'); signOut({ callbackUrl: '/login' }); }}
