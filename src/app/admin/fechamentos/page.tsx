@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Check, Clock, X, Loader2, FileText, Eye, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, Clock, X, Loader2, FileText, Eye, Trash2, AlertCircle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 type StatusFechamento = 'PENDENTE' | 'ASSINADO' | 'RECUSADO' | 'CANCELADO';
@@ -41,7 +41,8 @@ export default function FechamentosAdminPage() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Fechamento[]>([]);
   const [filtroStatus, setFiltroStatus] = useState<'TODOS' | StatusFechamento>('TODOS');
-  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
+  const [excluindoId, setExcluindoId] = useState<string | null>(null);
 
   async function carregar() {
     setLoading(true);
@@ -58,23 +59,33 @@ export default function FechamentosAdminPage() {
 
   useEffect(() => { carregar(); }, []);
 
-  async function cancelar(f: Fechamento) {
-    if (!confirm(`Cancelar o fechamento pendente de ${f.funcionario.nome}?\nIsso vai removê-lo do app do funcionário.`)) return;
-    setCancelandoId(f.id);
+  async function excluir(f: Fechamento) {
+    const aviso = f.status === 'ASSINADO'
+      ? `ATENÇÃO: este fechamento já foi ASSINADO por ${f.funcionario.nome}. Excluir vai apagar o registro legal da assinatura permanentemente.\n\nTem certeza que deseja excluir?`
+      : `Excluir o fechamento de ${f.funcionario.nome}?\nO registro vai ser removido permanentemente.`;
+    if (!confirm(aviso)) return;
+    setExcluindoId(f.id);
     try {
       const res = await fetch(`/api/admin/fechamentos/${f.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.erro);
-      toast.success('Fechamento cancelado');
+      toast.success('Fechamento excluído');
       carregar();
     } catch (e: any) {
-      toast.error(e.message || 'Erro ao cancelar');
+      toast.error(e.message || 'Erro ao excluir');
     } finally {
-      setCancelandoId(null);
+      setExcluindoId(null);
     }
   }
 
-  const filtrados = filtroStatus === 'TODOS' ? items : items.filter(i => i.status === filtroStatus);
+  const filtrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return items.filter(i => {
+      if (filtroStatus !== 'TODOS' && i.status !== filtroStatus) return false;
+      if (termo && !i.funcionario.nome.toLowerCase().includes(termo)) return false;
+      return true;
+    });
+  }, [items, filtroStatus, busca]);
 
   const counts = {
     PENDENTE: items.filter(i => i.status === 'PENDENTE').length,
@@ -102,6 +113,26 @@ export default function FechamentosAdminPage() {
               <p className="text-text-muted text-xs font-medium uppercase tracking-widest">Conferências e assinaturas</p>
             </div>
           </div>
+        </div>
+
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none" />
+          <input
+            type="text"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar por nome do funcionário..."
+            className="w-full pl-10 pr-10 py-2.5 bg-surface border border-border-subtle rounded-xl text-sm text-text-primary placeholder:text-text-faint outline-none focus:border-purple-500 transition-colors"
+          />
+          {busca && (
+            <button
+              onClick={() => setBusca('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-faint hover:text-text-primary"
+              aria-label="Limpar busca"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -173,15 +204,14 @@ export default function FechamentosAdminPage() {
                         >
                           <Eye size={12} /> Ver
                         </Link>
-                        {f.status === 'PENDENTE' && (
-                          <button
-                            onClick={() => cancelar(f)}
-                            disabled={cancelandoId === f.id}
-                            className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 rounded-lg text-[11px] font-bold border border-rose-500/30 flex items-center gap-1.5 transition-all disabled:opacity-50"
-                          >
-                            {cancelandoId === f.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Cancelar
-                          </button>
-                        )}
+                        <button
+                          onClick={() => excluir(f)}
+                          disabled={excluindoId === f.id}
+                          className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 rounded-lg text-[11px] font-bold border border-rose-500/30 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                          title="Excluir fechamento permanentemente"
+                        >
+                          {excluindoId === f.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />} Excluir
+                        </button>
                       </div>
                     </div>
                   </div>
