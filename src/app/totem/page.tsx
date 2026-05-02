@@ -266,7 +266,7 @@ export default function TotemPage() {
         {/* Estado CAPTURANDO — câmera ativa */}
         {estado.fase === 'capturando' && (
           <div className="relative w-full max-w-3xl flex flex-col items-center">
-            <div className="relative w-full aspect-[4/3] bg-black rounded-3xl overflow-hidden border-2 border-purple-500/30 shadow-2xl shadow-purple-500/40">
+            <div className="relative w-full mx-auto aspect-[3/4] landscape:aspect-[4/3] max-h-[80vh] bg-black rounded-3xl overflow-hidden border-2 border-purple-500/30 shadow-2xl shadow-purple-500/40">
               <video
                 ref={videoRef}
                 playsInline

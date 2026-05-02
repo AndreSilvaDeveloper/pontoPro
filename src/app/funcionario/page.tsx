@@ -978,7 +978,7 @@ export default function Home() {
             {/* Webcam oculta (sempre montada para captura) */}
             {configs.exigirFoto && location && !cameraErro && (
               <div className={mostrarCamera ? '' : 'sr-only'}>
-                <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[3/4] border-2 shadow-inner border-purple-500/30 ring-1 ring-purple-500/20`}>
+                <div className={`relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner border-purple-500/30 ring-1 ring-purple-500/20`}>
                   <Webcam
                     audio={false}
                     ref={webcamRef}
@@ -996,7 +996,7 @@ export default function Home() {
 
             {/* Câmera visível: placeholder sem GPS / erro */}
             {mostrarCamera && (!configs.exigirFoto || !location) && (
-              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] border-2 shadow-inner border-purple-500/30 ring-1 ring-purple-500/20">
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner border-purple-500/30 ring-1 ring-purple-500/20">
                 <div className="absolute inset-0 flex items-center justify-center bg-input-solid/40 text-text-muted text-sm px-6 text-center">
                   A câmera aparece após permitir o GPS (se a empresa exigir foto).
                 </div>
@@ -1005,7 +1005,7 @@ export default function Home() {
 
             {/* Erro de câmera */}
             {mostrarCamera && cameraErro && configs.exigirFoto && location && (
-              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[3/4] border-2 shadow-inner border-red-500/50">
+              <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] border-2 shadow-inner border-red-500/50">
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-solid text-center p-6">
                   <div className="bg-red-500/10 p-4 rounded-full mb-3">
                     <AlertCircle size={32} className="text-red-500" />
