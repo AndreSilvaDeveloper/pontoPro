@@ -78,8 +78,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ erro: 'totem_invalido' }, { status: 401 });
     }
 
+    const body = await req.json().catch(() => ({}));
+    const fotoBase64 = String(body?.fotoBase64 || '');
+    const dataHoraOffline = body?.dataHoraOffline ? String(body.dataHoraOffline) : null;
+    const isSyncOffline = !!dataHoraOffline;
+
     // Throttle: rejeita batidas do mesmo totem em janela <2s — evita abuso/duplicidade e custo AWS.
-    if (totem.ultimoUso && Date.now() - totem.ultimoUso.getTime() < 2000) {
+    // Não aplica em sync offline (lote drenando fila tem que processar todos rapidamente).
+    if (!isSyncOffline && totem.ultimoUso && Date.now() - totem.ultimoUso.getTime() < 2000) {
       return NextResponse.json({ erro: 'aguarde', mensagem: 'Aguarde um instante antes de bater de novo.' }, { status: 429 });
     }
 
@@ -102,10 +108,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ erro: 'addon_inativo' }, { status: 402 });
     }
 
-    const body = await req.json().catch(() => ({}));
-    const fotoBase64 = String(body?.fotoBase64 || '');
     if (!fotoBase64) {
       return NextResponse.json({ erro: 'foto_obrigatoria' }, { status: 400 });
+    }
+
+    // Anti-abuso: rejeita timestamps offline absurdamente antigos (>30 dias) ou no futuro.
+    const refDate = dataHoraOffline ? new Date(dataHoraOffline) : new Date();
+    if (isSyncOffline) {
+      const agora = Date.now();
+      const t = refDate.getTime();
+      if (Number.isNaN(t) || t > agora + 60_000 || t < agora - 30 * 24 * 60 * 60 * 1000) {
+        return NextResponse.json({ erro: 'data_invalida' }, { status: 400 });
+      }
     }
 
     // 1) Identificar funcionário pelo rosto (1:N)
@@ -134,9 +148,10 @@ export async function POST(req: Request) {
     }
 
     // 3) Determinar tipo do ponto baseado no histórico do dia
-    const inicioDia = new Date();
+    // Quando é sync offline, usa o dia da batida original — não o dia atual.
+    const inicioDia = new Date(refDate);
     inicioDia.setHours(0, 0, 0, 0);
-    const fimDia = new Date();
+    const fimDia = new Date(refDate);
     fimDia.setHours(23, 59, 59, 999);
 
     const pontosHoje = await prisma.ponto.findMany({
@@ -173,14 +188,15 @@ export async function POST(req: Request) {
     }
 
     // 5) Criar registro do ponto
-    const agora = new Date();
+    // Se é sync offline, usa o timestamp original da batida; senão, agora.
+    const agora = isSyncOffline ? refDate : new Date();
     await prisma.ponto.create({
       data: {
         usuarioId: usuario.id,
         dataHora: agora,
         latitude: 0,
         longitude: 0,
-        endereco: `Totem: ${totem.nome}`,
+        endereco: `Totem: ${totem.nome}${isSyncOffline ? ' (offline)' : ''}`,
         fotoUrl,
         tipo: tipoFinal,
         subTipo: tipoFinal,
@@ -189,11 +205,13 @@ export async function POST(req: Request) {
       },
     });
 
-    // Atualiza ultimoUso do totem
-    prisma.totemDevice.update({
-      where: { id: totem.id },
-      data: { ultimoUso: agora },
-    }).catch(() => {});
+    // Atualiza ultimoUso do totem só em batidas ao vivo — offline sync não conta como heartbeat.
+    if (!isSyncOffline) {
+      prisma.totemDevice.update({
+        where: { id: totem.id },
+        data: { ultimoUso: agora },
+      }).catch(() => {});
+    }
 
     const tipoLabels: Record<string, string> = {
       ENTRADA: 'Entrada',
