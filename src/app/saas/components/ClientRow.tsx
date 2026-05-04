@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Building2,
   ChevronDown,
@@ -15,6 +16,8 @@ import {
   Loader2,
   Smartphone,
   ScanFace,
+  MoreVertical,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -85,6 +88,42 @@ export default function ClientRow({
   const [togglingTotem, setTogglingTotem] = useState(false);
   const [reindexando, setReindexando] = useState(false);
   const [addonTotem, setAddonTotem] = useState<boolean>(empresa.addonTotem === true);
+  const [menuAberto, setMenuAberto] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [montado, setMontado] = useState(false);
+
+  useEffect(() => { setMontado(true); }, []);
+
+  useLayoutEffect(() => {
+    if (!menuAberto || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+  }, [menuAberto]);
+
+  useEffect(() => {
+    if (!menuAberto) return;
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        triggerRef.current && !triggerRef.current.contains(t) &&
+        menuRef.current && !menuRef.current.contains(t)
+      ) setMenuAberto(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuAberto(false); };
+    const onScroll = () => setMenuAberto(false);
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [menuAberto]);
   const reindexarTotem = async () => {
     if (!confirm(`Re-indexar rostos de TODOS os funcionários (com foto) de "${empresa.nome}" e filiais? Pode demorar alguns segundos.`)) return;
     setReindexando(true);
@@ -209,60 +248,118 @@ export default function ClientRow({
         {/* Ações */}
         <td className="px-3 py-3">
           <div className="flex items-center gap-1 justify-end">
-            <button onClick={() => onOpenEquipe(empresa)} className="p-1.5 text-blue-400 hover:bg-blue-600/20 rounded transition-colors" title="Equipe">
-              <Users size={14} />
+            {/* Ações primárias (mais usadas) com label visível */}
+            <button
+              onClick={() => onOpenEquipe(empresa)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-600/15 rounded-lg border border-blue-500/20 transition-colors"
+            >
+              <Users size={13} /> <span className="hidden lg:inline">Equipe</span>
             </button>
-            <button onClick={() => onOpenFatura(empresa)} className="p-1.5 text-emerald-400 hover:bg-emerald-600/20 rounded transition-colors" title="Fatura">
-              <DollarSign size={14} />
+            <button
+              onClick={() => onOpenFatura(empresa)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-600/15 rounded-lg border border-emerald-500/20 transition-colors"
+            >
+              <DollarSign size={13} /> <span className="hidden lg:inline">Fatura</span>
             </button>
-            {!estaPago && (
-              <button
-                onClick={() => onConfirmarPagamento(empresa.id)}
-                disabled={loadingPagamento === empresa.id}
-                className="p-1.5 text-slate-400 hover:bg-emerald-600/20 hover:text-emerald-400 rounded transition-colors"
-                title="Confirmar Pagamento"
+
+            {/* Menu de ações secundárias */}
+            <button
+              ref={triggerRef}
+              onClick={() => setMenuAberto(v => !v)}
+              className={`p-2 rounded-lg border transition-colors ${menuAberto ? 'bg-hover-bg border-border-default text-text-primary' : 'border-border-subtle text-text-muted hover:text-text-primary hover:bg-hover-bg'}`}
+              title="Mais opções"
+              aria-label="Mais opções"
+            >
+              <MoreVertical size={14} />
+            </button>
+
+            {montado && menuAberto && menuPos && createPortal(
+              <div
+                ref={menuRef}
+                style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
+                className="w-60 bg-page border border-border-default rounded-xl shadow-2xl z-[60] py-1.5 animate-in fade-in slide-in-from-top-2 duration-150"
               >
-                {loadingPagamento === empresa.id ? (
-                  <Loader2 className="animate-spin" size={14} />
-                ) : (
-                  <CheckCircle size={14} />
+                {!estaPago && (
+                  <button
+                    onClick={() => { setMenuAberto(false); onConfirmarPagamento(empresa.id); }}
+                    disabled={loadingPagamento === empresa.id}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-emerald-600/10 hover:text-emerald-400 transition-colors disabled:opacity-50 text-left"
+                  >
+                    {loadingPagamento === empresa.id
+                      ? <Loader2 className="animate-spin shrink-0" size={14} />
+                      : <CheckCircle size={14} className="shrink-0 text-emerald-400" />}
+                    <span>Confirmar pagamento</span>
+                  </button>
                 )}
-              </button>
+
+                <Link
+                  href={`/saas/${empresa.id}`}
+                  onClick={() => setMenuAberto(false)}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-purple-600/10 hover:text-purple-400 transition-colors"
+                >
+                  <Settings size={14} className="shrink-0 text-purple-400" />
+                  <span>Configurações da empresa</span>
+                </Link>
+
+                <button
+                  onClick={() => { setMenuAberto(false); onVincular(empresa); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-amber-600/10 hover:text-amber-400 transition-colors text-left"
+                >
+                  <LinkIcon size={14} className="shrink-0 text-amber-400" />
+                  <span>Vincular como filial...</span>
+                </button>
+
+                <div className="my-1 border-t border-border-subtle" />
+
+                <button
+                  onClick={() => { toggleTotem(); }}
+                  disabled={togglingTotem}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-cyan-600/10 hover:text-cyan-400 transition-colors disabled:opacity-50 text-left"
+                >
+                  {togglingTotem
+                    ? <Loader2 className="animate-spin shrink-0" size={14} />
+                    : <Smartphone size={14} className={`shrink-0 ${addonTotem ? 'text-cyan-400' : 'text-text-faint'}`} />}
+                  <span className="flex-1">Modo Totem</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${addonTotem ? 'bg-cyan-500/20 text-cyan-300' : 'bg-elevated text-text-faint'}`}>
+                    {addonTotem ? 'ATIVO' : 'OFF'}
+                  </span>
+                </button>
+
+                {addonTotem && (
+                  <button
+                    onClick={() => { setMenuAberto(false); reindexarTotem(); }}
+                    disabled={reindexando}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-cyan-600/10 hover:text-cyan-300 transition-colors disabled:opacity-50 text-left"
+                  >
+                    {reindexando
+                      ? <Loader2 className="animate-spin shrink-0" size={14} />
+                      : <ScanFace size={14} className="shrink-0 text-cyan-300" />}
+                    <span>Re-indexar rostos (AWS)</span>
+                  </button>
+                )}
+
+                <div className="my-1 border-t border-border-subtle" />
+
+                <button
+                  onClick={() => { setMenuAberto(false); onAlternarStatus(empresa.id, empresa.nome, empresa.status); }}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary transition-colors text-left ${empresa.status === 'ATIVO' ? 'hover:bg-orange-600/10 hover:text-orange-400' : 'hover:bg-emerald-600/10 hover:text-emerald-400'}`}
+                >
+                  {empresa.status === 'ATIVO'
+                    ? <Ban size={14} className="shrink-0 text-orange-400" />
+                    : <PlayCircle size={14} className="shrink-0 text-emerald-400" />}
+                  <span>{empresa.status === 'ATIVO' ? 'Bloquear empresa' : 'Reativar empresa'}</span>
+                </button>
+
+                <button
+                  onClick={() => { setMenuAberto(false); onExcluir(empresa.id, empresa.nome); }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-red-600/10 transition-colors text-left"
+                >
+                  <Trash2 size={14} className="shrink-0" />
+                  <span>Excluir empresa</span>
+                </button>
+              </div>,
+              document.body
             )}
-            <button onClick={() => onVincular(empresa)} className="p-1.5 text-amber-400 hover:bg-amber-600/20 rounded transition-colors" title="Vincular Matriz">
-              <LinkIcon size={14} />
-            </button>
-            <button
-              onClick={toggleTotem}
-              disabled={togglingTotem}
-              className={`p-1.5 rounded transition-colors ${addonTotem ? "text-cyan-400 hover:bg-cyan-600/20" : "text-slate-500 hover:bg-slate-600/20"}`}
-              title={addonTotem ? "Modo Totem ATIVO (clique pra desativar)" : "Modo Totem inativo (clique pra ativar — cobrança extra)"}
-            >
-              {togglingTotem ? <Loader2 className="animate-spin" size={14} /> : <Smartphone size={14} />}
-            </button>
-            {addonTotem && (
-              <button
-                onClick={reindexarTotem}
-                disabled={reindexando}
-                className="p-1.5 text-cyan-300 hover:bg-cyan-600/20 rounded transition-colors disabled:opacity-50"
-                title="Re-indexar rostos dos funcionários (AWS Rekognition)"
-              >
-                {reindexando ? <Loader2 className="animate-spin" size={14} /> : <ScanFace size={14} />}
-              </button>
-            )}
-            <Link href={`/saas/${empresa.id}`} className="p-1.5 text-purple-400 hover:bg-purple-600/20 rounded transition-colors" title="Config Empresa">
-              <Building2 size={14} />
-            </Link>
-            <button
-              onClick={() => onAlternarStatus(empresa.id, empresa.nome, empresa.status)}
-              className={`p-1.5 rounded transition-colors ${empresa.status === "ATIVO" ? "text-orange-400 hover:bg-orange-600/20" : "text-emerald-400 hover:bg-emerald-600/20"}`}
-              title={empresa.status === "ATIVO" ? "Bloquear" : "Ativar"}
-            >
-              {empresa.status === "ATIVO" ? <Ban size={14} /> : <PlayCircle size={14} />}
-            </button>
-            <button onClick={() => onExcluir(empresa.id, empresa.nome)} className="p-1.5 text-red-400 hover:bg-red-600/20 rounded transition-colors" title="Excluir">
-              <Trash2 size={14} />
-            </button>
           </div>
         </td>
       </tr>
