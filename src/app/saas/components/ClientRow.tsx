@@ -91,15 +91,23 @@ export default function ClientRow({
   const [menuAberto, setMenuAberto] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
   const [montado, setMontado] = useState(false);
+  const MENU_HEIGHT = 320; // altura aproximada do dropdown (suficiente pra todos os itens)
 
   useEffect(() => { setMontado(true); }, []);
 
   useLayoutEffect(() => {
     if (!menuAberto || !triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
-    setMenuPos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+    const espacoAbaixo = window.innerHeight - r.bottom;
+    const right = window.innerWidth - r.right;
+    if (espacoAbaixo < MENU_HEIGHT && r.top > MENU_HEIGHT) {
+      // Sem espaço abaixo → abre pra cima
+      setMenuPos({ bottom: window.innerHeight - r.top + 6, right });
+    } else {
+      setMenuPos({ top: r.bottom + 6, right });
+    }
   }, [menuAberto]);
 
   useEffect(() => {
@@ -262,6 +270,23 @@ export default function ClientRow({
               <DollarSign size={13} /> <span className="hidden lg:inline">Fatura</span>
             </button>
 
+            <button
+              onClick={toggleTotem}
+              disabled={togglingTotem}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors disabled:opacity-50 ${addonTotem
+                ? 'text-cyan-400 hover:bg-cyan-600/15 border-cyan-500/30 bg-cyan-500/5'
+                : 'text-text-faint hover:text-text-secondary hover:bg-hover-bg border-border-subtle'}`}
+              title={addonTotem ? 'Modo Totem ATIVO — clique para desativar' : 'Modo Totem inativo — clique para ativar (cobrança extra)'}
+            >
+              {togglingTotem
+                ? <Loader2 className="animate-spin" size={13} />
+                : <Smartphone size={13} />}
+              <span className="hidden lg:inline">Totem</span>
+              <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${addonTotem ? 'bg-cyan-500/25 text-cyan-200' : 'bg-elevated text-text-faint'}`}>
+                {addonTotem ? 'ON' : 'OFF'}
+              </span>
+            </button>
+
             {/* Menu de ações secundárias */}
             <button
               ref={triggerRef}
@@ -276,8 +301,8 @@ export default function ClientRow({
             {montado && menuAberto && menuPos && createPortal(
               <div
                 ref={menuRef}
-                style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
-                className="w-60 bg-page border border-border-default rounded-xl shadow-2xl z-[60] py-1.5 animate-in fade-in slide-in-from-top-2 duration-150"
+                style={{ position: 'fixed', top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}
+                className={`w-60 bg-page border border-border-default rounded-xl shadow-2xl z-[60] py-1.5 animate-in fade-in duration-150 ${menuPos.bottom !== undefined ? 'slide-in-from-bottom-2' : 'slide-in-from-top-2'}`}
               >
                 {!estaPago && (
                   <button
@@ -309,33 +334,20 @@ export default function ClientRow({
                   <span>Vincular como filial...</span>
                 </button>
 
-                <div className="my-1 border-t border-border-subtle" />
-
-                <button
-                  onClick={() => { toggleTotem(); }}
-                  disabled={togglingTotem}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-cyan-600/10 hover:text-cyan-400 transition-colors disabled:opacity-50 text-left"
-                >
-                  {togglingTotem
-                    ? <Loader2 className="animate-spin shrink-0" size={14} />
-                    : <Smartphone size={14} className={`shrink-0 ${addonTotem ? 'text-cyan-400' : 'text-text-faint'}`} />}
-                  <span className="flex-1">Modo Totem</span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${addonTotem ? 'bg-cyan-500/20 text-cyan-300' : 'bg-elevated text-text-faint'}`}>
-                    {addonTotem ? 'ATIVO' : 'OFF'}
-                  </span>
-                </button>
-
                 {addonTotem && (
-                  <button
-                    onClick={() => { setMenuAberto(false); reindexarTotem(); }}
-                    disabled={reindexando}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-cyan-600/10 hover:text-cyan-300 transition-colors disabled:opacity-50 text-left"
-                  >
-                    {reindexando
-                      ? <Loader2 className="animate-spin shrink-0" size={14} />
-                      : <ScanFace size={14} className="shrink-0 text-cyan-300" />}
-                    <span>Re-indexar rostos (AWS)</span>
-                  </button>
+                  <>
+                    <div className="my-1 border-t border-border-subtle" />
+                    <button
+                      onClick={() => { setMenuAberto(false); reindexarTotem(); }}
+                      disabled={reindexando}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:bg-cyan-600/10 hover:text-cyan-300 transition-colors disabled:opacity-50 text-left"
+                    >
+                      {reindexando
+                        ? <Loader2 className="animate-spin shrink-0" size={14} />
+                        : <ScanFace size={14} className="shrink-0 text-cyan-300" />}
+                      <span>Re-indexar rostos (AWS)</span>
+                    </button>
+                  </>
                 )}
 
                 <div className="my-1 border-t border-border-subtle" />
