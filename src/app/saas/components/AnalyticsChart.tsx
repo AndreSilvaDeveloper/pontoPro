@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Eye, UserPlus, CreditCard, TrendingUp, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+
+const STORAGE_KEY = 'saas_analytics_aberto';
 
 type AnalyticsData = {
   data: string;
@@ -21,7 +23,22 @@ type Periodo = '7d' | '30d';
 
 export default function AnalyticsChart({ analitico, loading }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>('7d');
-  const [aberto, setAberto] = useState(true);
+  const [aberto, setAberto] = useState(false);
+
+  // Recupera preferência salva (default: fechado)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(STORAGE_KEY) === '1') setAberto(true);
+    } catch { /* ignora */ }
+  }, []);
+
+  const toggleAberto = () => {
+    setAberto(v => {
+      const nv = !v;
+      try { localStorage.setItem(STORAGE_KEY, nv ? '1' : '0'); } catch { /* ignora */ }
+      return nv;
+    });
+  };
 
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
@@ -67,21 +84,24 @@ export default function AnalyticsChart({ analitico, loading }: Props) {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
       <button
-        onClick={() => setAberto(!aberto)}
-        className="w-full flex items-center justify-between bg-surface hover:bg-hover-bg border border-border-subtle rounded-2xl p-4 transition-colors"
+        onClick={toggleAberto}
+        className="w-full flex items-center justify-between bg-surface hover:bg-hover-bg border border-border-subtle rounded-2xl p-4 transition-colors group"
       >
         <div className="flex items-center gap-3">
-          <div className="bg-purple-500/20 p-2 rounded-xl">
+          <div className="bg-purple-500/20 p-2 rounded-xl group-hover:bg-purple-500/30 transition-colors">
             <BarChart3 size={20} className="text-purple-400" />
           </div>
           <div className="text-left">
-            <p className="text-sm font-bold text-text-primary">Analytics</p>
+            <p className="text-sm font-bold text-text-primary">Analytics de marketing</p>
             <p className="text-[11px] text-text-faint">
-              {dadosHoje ? `Hoje: ${dadosHoje.visitasLanding} visitas, ${dadosHoje.signups} signups` : 'Sem dados hoje'}
+              {dadosHoje ? `Hoje: ${dadosHoje.visitasLanding} visitas · ${dadosHoje.signups} signups` : 'Visitas, signups e taxa de conversão dos últimos 30 dias'}
             </p>
           </div>
         </div>
-        {aberto ? <ChevronUp size={18} className="text-text-faint" /> : <ChevronDown size={18} className="text-text-faint" />}
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline text-[11px] text-text-muted">{aberto ? 'Recolher' : 'Expandir'}</span>
+          {aberto ? <ChevronUp size={18} className="text-text-faint" /> : <ChevronDown size={18} className="text-text-faint" />}
+        </div>
       </button>
 
       {aberto && (
