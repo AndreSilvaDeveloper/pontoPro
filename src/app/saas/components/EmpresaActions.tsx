@@ -54,20 +54,37 @@ export default function EmpresaActions({
   const [menuAberto, setMenuAberto] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; left?: number; right?: number } | null>(null);
   const [montado, setMontado] = useState(false);
+  const MENU_WIDTH = 240; // w-60
+  const MARGIN = 8;
 
   useEffect(() => { setMontado(true); }, []);
 
   useLayoutEffect(() => {
     if (!menuAberto || !triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
-    const espacoAbaixo = window.innerHeight - r.bottom;
-    const right = window.innerWidth - r.right;
-    if (espacoAbaixo < MENU_HEIGHT && r.top > MENU_HEIGHT) {
-      setMenuPos({ bottom: window.innerHeight - r.top + 6, right });
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Horizontal: prefere alinhar à direita do trigger; se não couber, alinha à esquerda
+    let horizontal: { left?: number; right?: number };
+    if (r.right - MENU_WIDTH >= MARGIN) {
+      horizontal = { right: vw - r.right };
     } else {
-      setMenuPos({ top: r.bottom + 6, right });
+      let left = Math.max(MARGIN, r.left);
+      if (left + MENU_WIDTH > vw - MARGIN) {
+        left = Math.max(MARGIN, vw - MENU_WIDTH - MARGIN);
+      }
+      horizontal = { left };
+    }
+
+    // Vertical: prefere abaixo; se não couber e tiver mais espaço acima, abre pra cima
+    const espacoAbaixo = vh - r.bottom;
+    if (espacoAbaixo < MENU_HEIGHT && r.top > espacoAbaixo) {
+      setMenuPos({ bottom: vh - r.top + 6, ...horizontal });
+    } else {
+      setMenuPos({ top: r.bottom + 6, ...horizontal });
     }
   }, [menuAberto]);
 
@@ -188,7 +205,7 @@ export default function EmpresaActions({
       {montado && menuAberto && menuPos && createPortal(
         <div
           ref={menuRef}
-          style={{ position: 'fixed', top: menuPos.top, bottom: menuPos.bottom, right: menuPos.right }}
+          style={{ position: 'fixed', top: menuPos.top, bottom: menuPos.bottom, left: menuPos.left, right: menuPos.right }}
           className={`w-60 bg-page border border-border-default rounded-xl shadow-2xl z-[60] py-1.5 animate-in fade-in duration-150 ${menuPos.bottom !== undefined ? 'slide-in-from-bottom-2' : 'slide-in-from-top-2'}`}
         >
           {!estaPago && (
