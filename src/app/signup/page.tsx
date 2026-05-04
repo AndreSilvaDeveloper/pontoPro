@@ -327,7 +327,7 @@ function SignupForm() {
                     <Input
                       id="password"
                       value={senha}
-                      onChange={(e) => { setSenha(e.target.value); setSenha2(e.target.value); }}
+                      onChange={(e) => setSenha(e.target.value)}
                       type={showSenha ? 'text' : 'password'}
                       placeholder="Mínimo 8 caracteres"
                       className="pl-10 border-purple-500/20 bg-page/50 pr-10 text-text-primary placeholder:text-text-faint focus:border-purple-500/50 focus:ring-purple-500/50"
@@ -338,10 +338,38 @@ function SignupForm() {
                       type="button"
                       onClick={() => setShowSenha((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
+                      aria-label={showSenha ? 'Ocultar senha' : 'Mostrar senha'}
                     >
                       {showSenha ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
                     </button>
                   </div>
+                </div>
+
+                {/* Confirmação de senha */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="password2" className="text-sm font-medium text-text-secondary">
+                    CONFIRMAR SENHA
+                  </Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-text-faint" />
+                    <Input
+                      id="password2"
+                      value={senha2}
+                      onChange={(e) => setSenha2(e.target.value)}
+                      type={showSenha ? 'text' : 'password'}
+                      placeholder="Repita a senha"
+                      className={`pl-10 bg-page/50 pr-10 text-text-primary placeholder:text-text-faint focus:ring-purple-500/50 ${
+                        senha2.length > 0 && senha !== senha2
+                          ? 'border-red-500/40 focus:border-red-500'
+                          : 'border-purple-500/20 focus:border-purple-500/50'
+                      }`}
+                      required
+                      minLength={8}
+                    />
+                  </div>
+                  {senha2.length > 0 && senha !== senha2 && (
+                    <p className="text-xs text-red-400">As senhas não coincidem.</p>
+                  )}
                 </div>
 
                 {/* Termos */}

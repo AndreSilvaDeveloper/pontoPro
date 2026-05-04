@@ -23,19 +23,12 @@ export const authOptions: NextAuthOptions = {
       },
 
       async authorize(credentials) {
-        console.log("=== AUTH START ===");
-
         if (!credentials?.email || !credentials?.password) {
-          console.log("FAIL: missing credentials");
           return null;
         }
 
         const email = credentials.email.trim();
         const password = credentials.password.trim();
-
-        console.log("EMAIL_RAW:", JSON.stringify(credentials.email));
-        console.log("EMAIL_NORM:", JSON.stringify(email));
-        console.log("PASS_LEN:", password.length);
 
         // (A) BUSCA USER
         const user = await prisma.usuario.findFirst({
@@ -58,31 +51,13 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        console.log("USER_FOUND?", !!user);
-        console.log(
-          "USER_DATA:",
-          user
-            ? {
-                id: user.id,
-                email: user.email,
-                cargo: user.cargo,
-                empresaId: user.empresaId,
-                hasSenha: !!user.senha,
-              }
-            : null
-        );
-
         if (!user?.senha) {
-          console.log("FAIL: user not found OR missing senha");
           return null;
         }
 
         // (B) BCRYPT
         const ok = await bcrypt.compare(password, user.senha);
-        console.log("BCRYPT_OK?", ok);
-
         if (!ok) {
-          console.log("FAIL: wrong password (bcrypt)");
           return null;
         }
 
@@ -114,7 +89,6 @@ export const authOptions: NextAuthOptions = {
 
         // (C) SUPER_ADMIN
         if (user.cargo === "SUPER_ADMIN") {
-          console.log("OK: SUPER_ADMIN");
           return {
             id: user.id,
             name: user.nome,
@@ -131,7 +105,6 @@ export const authOptions: NextAuthOptions = {
 
         // (C2) REVENDEDOR
         if (user.cargo === "REVENDEDOR") {
-          console.log("OK: REVENDEDOR");
           return {
             id: user.id,
             name: user.nome,
@@ -148,7 +121,6 @@ export const authOptions: NextAuthOptions = {
 
         // (D) empresaId obrigatório
         if (!user.empresaId) {
-          console.log("FAIL: user without empresaId");
           return null;
         }
 
@@ -169,20 +141,6 @@ export const authOptions: NextAuthOptions = {
             cobrancaWhatsapp: true,
           },
         });
-
-        console.log(
-          "EMPRESA_FOUND?",
-          !!empresaUser,
-          empresaUser
-            ? {
-                id: empresaUser.id,
-                nome: empresaUser.nome,
-                status: empresaUser.status,
-                matrizId: empresaUser.matrizId,
-                cobrancaAtiva: empresaUser.cobrancaAtiva,
-              }
-            : null
-        );
 
         let empresa: any = empresaUser;
 
@@ -205,42 +163,16 @@ export const authOptions: NextAuthOptions = {
             },
           });
 
-          console.log(
-            "MATRIZ_FOUND?",
-            !!matriz,
-            matriz
-              ? {
-                  id: matriz.id,
-                  nome: matriz.nome,
-                  status: matriz.status,
-                  cobrancaAtiva: matriz.cobrancaAtiva,
-                }
-              : null
-          );
-
           if (matriz) empresa = matriz;
         }
 
         if (!empresa) {
-          console.log("FAIL: empresa not found after matriz logic");
           return null;
         }
 
-        // (F) billing
-        const st = getBillingStatus(empresa as any);
-        console.log("BILLING_STATUS:", {
-          blocked: st.blocked,
-          code: st.code,
-          message: st.message,
-        });
-
-        // Billing bloqueado: permite login (sessão é criada),
-        // o redirect para /acesso_bloqueado acontece no client/layout.
-        if (st.blocked) {
-          console.log("BILLING_BLOCK: login permitido, redirect será feito no client");
-        } else {
-          console.log("OK: LOGIN SUCCESS");
-        }
+        // (F) billing — calculado mesmo sem log: o redirect pra /acesso_bloqueado
+        // acontece no client com base na session callback abaixo.
+        getBillingStatus(empresa as any);
 
         return {
           id: user.id,

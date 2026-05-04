@@ -1,5 +1,6 @@
 import { enviarEmailSeguro } from './email';
 import { enviarSMS, enviarWhatsApp } from './sms';
+import { criarNotificacaoSuperAdmin } from './notificacaoSuperAdmin';
 
 const ALERT_EMAIL = process.env.LEAD_ALERT_EMAIL || '';
 const ALERT_PHONE = process.env.LEAD_ALERT_PHONE || '';
@@ -76,6 +77,31 @@ function montarHtml(input: NotificarLeadInput): string {
  */
 export async function notificarLead(input: NotificarLeadInput): Promise<void> {
   const tarefas: Promise<unknown>[] = [];
+
+  // Notificação no painel SaaS (in-app + push)
+  const tipoNotif = input.origem === 'SIGNUP' ? 'NOVA_EMPRESA' : 'LEAD_NOVO';
+  const tituloNotif = input.origem === 'SIGNUP'
+    ? `Novo cadastro: ${input.empresa || input.nome}`
+    : `Novo lead: ${input.nome}`;
+  const partesMensagem = [
+    input.nome,
+    input.whatsapp || input.email || null,
+    input.empresa || null,
+  ].filter(Boolean);
+  criarNotificacaoSuperAdmin({
+    tipo: tipoNotif,
+    titulo: tituloNotif,
+    mensagem: partesMensagem.join(' · '),
+    url: '/saas/leads',
+    prioridade: 'ALTA',
+    metadata: {
+      origem: input.origem,
+      nome: input.nome,
+      email: input.email,
+      whatsapp: input.whatsapp,
+      empresa: input.empresa,
+    },
+  }).catch(() => {});
 
   if (ALERT_EMAIL) {
     const assunto = `[WorkID] Novo lead — ${ROTULO_ORIGEM[input.origem]}: ${input.nome}`;

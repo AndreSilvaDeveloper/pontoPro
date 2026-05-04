@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { notificarLead } from '@/lib/leadAlert';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +10,16 @@ function onlyDigits(v: string) {
 }
 
 export async function POST(req: Request) {
+  // Rate-limit: máx 5 leads por IP em 10 minutos
+  const ip = getClientIp(req);
+  const rl = checkRateLimit({ key: `agendar-demo:${ip}`, max: 5, windowMs: 10 * 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, erro: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec ?? 60) } }
+    );
+  }
+
   try {
     const body = await req.json();
 
@@ -60,6 +71,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, leadId: lead.id });
   } catch (e) {
     console.error('[agendar-demo] erro:', e);
-    return NextResponse.json({ ok: false, erro: 'Erro interno.' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, erro: 'Não foi possível registrar seu agendamento agora. Tente novamente em alguns instantes.' },
+      { status: 500 }
+    );
   }
 }

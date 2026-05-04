@@ -96,3 +96,24 @@ export async function enviarPushAdmins(empresaId: string, payload: PushPayload) 
     console.error(`❌ Falha ao enviar push para admins:`, error);
   }
 }
+
+/**
+ * Envia push para todos os super admins (operadores do SaaS).
+ * Usado para alertar sobre eventos globais: novo lead, pagamento, novo cadastro.
+ */
+export async function enviarPushSuperAdmins(payload: PushPayload) {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
+
+  try {
+    const supers = await prisma.usuario.findMany({
+      where: { cargo: 'SUPER_ADMIN' },
+      select: { id: true },
+    });
+
+    await Promise.allSettled(
+      supers.map(s => enviarPushSeguro(s.id, payload))
+    );
+  } catch (error) {
+    console.error(`❌ Falha ao enviar push para super admins:`, error);
+  }
+}

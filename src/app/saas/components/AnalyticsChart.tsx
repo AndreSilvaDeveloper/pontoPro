@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Eye, UserPlus, CreditCard, TrendingUp, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
+
+const STORAGE_KEY = 'saas_analytics_aberto';
 
 type AnalyticsData = {
   data: string;
@@ -15,13 +17,31 @@ type AnalyticsData = {
 type Props = {
   analitico: AnalyticsData[] | undefined;
   loading: boolean;
+  /** Quando true, sempre renderiza expandido e oculta o header colapsável (rota dedicada). */
+  forceOpen?: boolean;
 };
 
 type Periodo = '7d' | '30d';
 
-export default function AnalyticsChart({ analitico, loading }: Props) {
+export default function AnalyticsChart({ analitico, loading, forceOpen = false }: Props) {
   const [periodo, setPeriodo] = useState<Periodo>('7d');
-  const [aberto, setAberto] = useState(true);
+  const [aberto, setAberto] = useState(false);
+
+  // Recupera preferência salva (default: fechado). Ignorada se forceOpen.
+  useEffect(() => {
+    if (forceOpen) return;
+    try {
+      if (localStorage.getItem(STORAGE_KEY) === '1') setAberto(true);
+    } catch { /* ignora */ }
+  }, [forceOpen]);
+
+  const toggleAberto = () => {
+    setAberto(v => {
+      const nv = !v;
+      try { localStorage.setItem(STORAGE_KEY, nv ? '1' : '0'); } catch { /* ignora */ }
+      return nv;
+    });
+  };
 
   const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
@@ -64,28 +84,35 @@ export default function AnalyticsChart({ analitico, loading }: Props) {
     );
   }
 
+  const efetivamenteAberto = forceOpen || aberto;
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
-      <button
-        onClick={() => setAberto(!aberto)}
-        className="w-full flex items-center justify-between bg-surface hover:bg-hover-bg border border-border-subtle rounded-2xl p-4 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="bg-purple-500/20 p-2 rounded-xl">
-            <BarChart3 size={20} className="text-purple-400" />
+      {!forceOpen && (
+        <button
+          onClick={toggleAberto}
+          className="w-full flex items-center justify-between bg-surface hover:bg-hover-bg border border-border-subtle rounded-2xl p-4 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="bg-purple-500/20 p-2 rounded-xl group-hover:bg-purple-500/30 transition-colors">
+              <BarChart3 size={20} className="text-purple-400" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-text-primary">Analytics de marketing</p>
+              <p className="text-[11px] text-text-faint">
+                {dadosHoje ? `Hoje: ${dadosHoje.visitasLanding} visitas · ${dadosHoje.signups} signups` : 'Visitas, signups e taxa de conversão dos últimos 30 dias'}
+              </p>
+            </div>
           </div>
-          <div className="text-left">
-            <p className="text-sm font-bold text-text-primary">Analytics</p>
-            <p className="text-[11px] text-text-faint">
-              {dadosHoje ? `Hoje: ${dadosHoje.visitasLanding} visitas, ${dadosHoje.signups} signups` : 'Sem dados hoje'}
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-[11px] text-text-muted">{aberto ? 'Recolher' : 'Expandir'}</span>
+            {aberto ? <ChevronUp size={18} className="text-text-faint" /> : <ChevronDown size={18} className="text-text-faint" />}
           </div>
-        </div>
-        {aberto ? <ChevronUp size={18} className="text-text-faint" /> : <ChevronDown size={18} className="text-text-faint" />}
-      </button>
+        </button>
+      )}
 
-      {aberto && (
-        <div className="mt-2 space-y-4">
+      {efetivamenteAberto && (
+        <div className={forceOpen ? 'space-y-4' : 'mt-2 space-y-4'}>
           {/* Cards resumo */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <MiniCard icon={<Eye size={16} />} cor="text-purple-400" bg="bg-purple-500/10" label="Visitas" valor={totais.visitas} sub={dadosHoje ? `${dadosHoje.visitasLanding} hoje` : undefined} />
@@ -122,28 +149,32 @@ export default function AnalyticsChart({ analitico, loading }: Props) {
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="gradVisitas" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.5} />
                         <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="gradSignups" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.5} />
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
+                      <linearGradient id="gradConversoes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                      </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={{ stroke: '#334155' }} tickLine={false} />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#e2e8f0' }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,.3)' }}
                       labelFormatter={(label: string) => `Dia ${label}`}
                       formatter={(value: number, name: string) => {
                         const labels: Record<string, string> = { visitasLanding: 'Visitas', visitasSignup: 'Pag. Signup', signups: 'Signups', conversoes: 'Conversoes' };
                         return [value, labels[name] || name];
                       }}
                     />
-                    <Area type="monotone" dataKey="visitasLanding" stroke="#a855f7" strokeWidth={2} fill="url(#gradVisitas)" name="visitasLanding" />
-                    <Area type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={2} fill="url(#gradSignups)" name="signups" />
-                    <Area type="monotone" dataKey="conversoes" stroke="#f59e0b" strokeWidth={1.5} fill="transparent" name="conversoes" />
+                    <Area type="monotone" dataKey="visitasLanding" stroke="#a855f7" strokeWidth={2.5} fill="url(#gradVisitas)" name="visitasLanding" activeDot={{ r: 5, strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={2.5} fill="url(#gradSignups)" name="signups" activeDot={{ r: 5, strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="conversoes" stroke="#f59e0b" strokeWidth={2} fill="url(#gradConversoes)" name="conversoes" activeDot={{ r: 5, strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

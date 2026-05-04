@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { RefreshCw, Search, Loader2 } from "lucide-react";
 import ClientRow, { classificarStatus } from "./ClientRow";
+import EmpresaActions from "./EmpresaActions";
 
 type StatusFilter = "TODOS" | "ATIVO" | "TRIAL" | "INADIMPLENTE" | "BLOQUEADO";
 
@@ -46,6 +47,19 @@ export default function ClientTable({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("TODOS");
   const [sortKey, setSortKey] = useState<SortKey>("nome");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Recebe filtro do InsightsBoard (ou outro componente externo) via evento custom
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const status = detail?.status;
+      if (status === 'ATIVO' || status === 'TRIAL' || status === 'INADIMPLENTE' || status === 'BLOQUEADO' || status === 'TODOS') {
+        setStatusFilter(status);
+      }
+    };
+    window.addEventListener('saas:filter', handler);
+    return () => window.removeEventListener('saas:filter', handler);
+  }, []);
 
   // Contadores por status
   const contadores = useMemo(() => {
@@ -141,7 +155,7 @@ export default function ClientTable({
   );
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-2xl backdrop-blur overflow-hidden">
+    <div id="client-table" className="bg-surface border border-border-subtle rounded-2xl backdrop-blur overflow-hidden scroll-mt-24">
       {/* Barra de filtros */}
       <div className="p-4 border-b border-border-subtle">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
@@ -261,15 +275,17 @@ export default function ClientTable({
             }[status];
             const { calcularFinanceiro } = require("@/lib/saas-financeiro");
             const fin = calcularFinanceiro(emp);
+            const pagoAte = emp.pagoAte ? new Date(emp.pagoAte) : null;
+            const estaPago = !!(pagoAte && pagoAte >= new Date());
 
             return (
               <div key={emp.id} className="bg-elevated border border-border-subtle rounded-xl p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="text-sm font-bold text-text-primary">{emp.nome}</p>
+                  <div className="min-w-0 pr-2">
+                    <p className="text-sm font-bold text-text-primary truncate">{emp.nome}</p>
                     <p className="text-[10px] text-text-faint">{emp.cnpj || "Sem CNPJ"}</p>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${sCfg.cls}`}>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold shrink-0 ${sCfg.cls}`}>
                     {sCfg.label}
                   </span>
                 </div>
@@ -280,14 +296,18 @@ export default function ClientTable({
                     {fin.valorFinal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  <button onClick={() => onOpenEquipe(emp)} className="px-2 py-1 text-[10px] bg-blue-600/20 text-blue-400 rounded">Equipe</button>
-                  <button onClick={() => onOpenFatura(emp)} className="px-2 py-1 text-[10px] bg-emerald-600/20 text-emerald-400 rounded">Fatura</button>
-                  <button onClick={() => onAlternarStatus(emp.id, emp.nome, emp.status)} className="px-2 py-1 text-[10px] bg-orange-600/20 text-orange-400 rounded">
-                    {emp.status === "ATIVO" ? "Bloquear" : "Ativar"}
-                  </button>
-                  <button onClick={() => onExcluir(emp.id, emp.nome)} className="px-2 py-1 text-[10px] bg-red-600/20 text-red-400 rounded">Excluir</button>
-                </div>
+                <EmpresaActions
+                  empresa={emp}
+                  estaPago={estaPago}
+                  loadingPagamento={loadingPagamento}
+                  onOpenEquipe={onOpenEquipe}
+                  onOpenFatura={onOpenFatura}
+                  onAlternarStatus={onAlternarStatus}
+                  onExcluir={onExcluir}
+                  onConfirmarPagamento={onConfirmarPagamento}
+                  onVincular={onVincular}
+                  layout="card"
+                />
               </div>
             );
           })

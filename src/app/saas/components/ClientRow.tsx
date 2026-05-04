@@ -2,23 +2,13 @@
 
 import { useState } from "react";
 import {
-  Building2,
   ChevronDown,
   ChevronRight,
   Users,
-  DollarSign,
-  CheckCircle,
-  Ban,
-  PlayCircle,
   Trash2,
-  Link as LinkIcon,
-  Loader2,
-  Smartphone,
-  ScanFace,
 } from "lucide-react";
-import { toast } from "sonner";
-import Link from "next/link";
 import { calcularFinanceiro } from "@/lib/saas-financeiro";
+import EmpresaActions from "./EmpresaActions";
 
 type StatusTag = "ATIVO" | "TRIAL" | "INADIMPLENTE" | "BLOQUEADO";
 
@@ -78,50 +68,9 @@ export default function ClientRow({
   const planoNome = empresa.plano || "PROFESSIONAL";
 
   const pagoAte = empresa.pagoAte ? new Date(empresa.pagoAte) : null;
-  const estaPago = pagoAte && pagoAte >= new Date();
+  const estaPago = !!(pagoAte && pagoAte >= new Date());
 
   const hasFiliais = empresa.filiais && empresa.filiais.length > 0;
-
-  const [togglingTotem, setTogglingTotem] = useState(false);
-  const [reindexando, setReindexando] = useState(false);
-  const [addonTotem, setAddonTotem] = useState<boolean>(empresa.addonTotem === true);
-  const reindexarTotem = async () => {
-    if (!confirm(`Re-indexar rostos de TODOS os funcionários (com foto) de "${empresa.nome}" e filiais? Pode demorar alguns segundos.`)) return;
-    setReindexando(true);
-    try {
-      const res = await fetch(`/api/saas/empresa/${empresa.id}/reindexar-totem`, { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        toast.success(`Indexação concluída: ${data.indexados}/${data.total} OK${data.falhas ? ` · ${data.falhas} falha(s)` : ''}.`);
-      } else {
-        toast.error(data?.mensagem || data?.erro || 'Erro ao re-indexar.');
-      }
-    } catch {
-      toast.error('Erro ao re-indexar.');
-    } finally {
-      setReindexando(false);
-    }
-  };
-  const toggleTotem = async () => {
-    const novo = !addonTotem;
-    if (!confirm(`${novo ? 'Ativar' : 'Desativar'} Modo Totem para "${empresa.nome}"? (cobrança extra é negociada com o cliente)`)) return;
-    setTogglingTotem(true);
-    try {
-      const res = await fetch(`/api/saas/empresa/${empresa.id}/addon-totem`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ativo: novo }),
-      });
-      if (res.ok) {
-        setAddonTotem(novo);
-        toast.success(`Modo Totem ${novo ? 'ativado' : 'desativado'}.`);
-      } else {
-        toast.error('Erro ao alterar.');
-      }
-    } finally {
-      setTogglingTotem(false);
-    }
-  };
 
   const formatDate = (d: any) => {
     if (!d) return "—";
@@ -208,62 +157,18 @@ export default function ClientRow({
 
         {/* Ações */}
         <td className="px-3 py-3">
-          <div className="flex items-center gap-1 justify-end">
-            <button onClick={() => onOpenEquipe(empresa)} className="p-1.5 text-blue-400 hover:bg-blue-600/20 rounded transition-colors" title="Equipe">
-              <Users size={14} />
-            </button>
-            <button onClick={() => onOpenFatura(empresa)} className="p-1.5 text-emerald-400 hover:bg-emerald-600/20 rounded transition-colors" title="Fatura">
-              <DollarSign size={14} />
-            </button>
-            {!estaPago && (
-              <button
-                onClick={() => onConfirmarPagamento(empresa.id)}
-                disabled={loadingPagamento === empresa.id}
-                className="p-1.5 text-slate-400 hover:bg-emerald-600/20 hover:text-emerald-400 rounded transition-colors"
-                title="Confirmar Pagamento"
-              >
-                {loadingPagamento === empresa.id ? (
-                  <Loader2 className="animate-spin" size={14} />
-                ) : (
-                  <CheckCircle size={14} />
-                )}
-              </button>
-            )}
-            <button onClick={() => onVincular(empresa)} className="p-1.5 text-amber-400 hover:bg-amber-600/20 rounded transition-colors" title="Vincular Matriz">
-              <LinkIcon size={14} />
-            </button>
-            <button
-              onClick={toggleTotem}
-              disabled={togglingTotem}
-              className={`p-1.5 rounded transition-colors ${addonTotem ? "text-cyan-400 hover:bg-cyan-600/20" : "text-slate-500 hover:bg-slate-600/20"}`}
-              title={addonTotem ? "Modo Totem ATIVO (clique pra desativar)" : "Modo Totem inativo (clique pra ativar — cobrança extra)"}
-            >
-              {togglingTotem ? <Loader2 className="animate-spin" size={14} /> : <Smartphone size={14} />}
-            </button>
-            {addonTotem && (
-              <button
-                onClick={reindexarTotem}
-                disabled={reindexando}
-                className="p-1.5 text-cyan-300 hover:bg-cyan-600/20 rounded transition-colors disabled:opacity-50"
-                title="Re-indexar rostos dos funcionários (AWS Rekognition)"
-              >
-                {reindexando ? <Loader2 className="animate-spin" size={14} /> : <ScanFace size={14} />}
-              </button>
-            )}
-            <Link href={`/saas/${empresa.id}`} className="p-1.5 text-purple-400 hover:bg-purple-600/20 rounded transition-colors" title="Config Empresa">
-              <Building2 size={14} />
-            </Link>
-            <button
-              onClick={() => onAlternarStatus(empresa.id, empresa.nome, empresa.status)}
-              className={`p-1.5 rounded transition-colors ${empresa.status === "ATIVO" ? "text-orange-400 hover:bg-orange-600/20" : "text-emerald-400 hover:bg-emerald-600/20"}`}
-              title={empresa.status === "ATIVO" ? "Bloquear" : "Ativar"}
-            >
-              {empresa.status === "ATIVO" ? <Ban size={14} /> : <PlayCircle size={14} />}
-            </button>
-            <button onClick={() => onExcluir(empresa.id, empresa.nome)} className="p-1.5 text-red-400 hover:bg-red-600/20 rounded transition-colors" title="Excluir">
-              <Trash2 size={14} />
-            </button>
-          </div>
+          <EmpresaActions
+            empresa={empresa}
+            estaPago={estaPago}
+            loadingPagamento={loadingPagamento}
+            onOpenEquipe={onOpenEquipe}
+            onOpenFatura={onOpenFatura}
+            onAlternarStatus={onAlternarStatus}
+            onExcluir={onExcluir}
+            onConfirmarPagamento={onConfirmarPagamento}
+            onVincular={onVincular}
+            layout="row"
+          />
         </td>
       </tr>
 

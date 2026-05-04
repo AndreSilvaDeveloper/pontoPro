@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Camera, Clock, CheckCircle2, AlertCircle, Loader2, WifiOff, CloudUpload } from 'lucide-react';
+import {
+  enqueueTotemPonto,
+  listPendentesTotem,
+  sincronizarTodosTotem,
+} from '@/lib/offline/totemQueue';
 
 const STORAGE_KEY = 'workid_totem_token';
 const STORAGE_KEY_INFO = 'workid_totem_info';
@@ -18,6 +23,7 @@ type Estado =
   | { fase: 'capturando' }
   | { fase: 'enviando' }
   | { fase: 'sucesso'; nome: string; tipo: string; tipoLabel: string; horario: string }
+  | { fase: 'sucesso_offline'; horario: string }
   | { fase: 'erro'; mensagem: string };
 
 function relogio(d: Date) {
@@ -80,10 +86,16 @@ export default function TotemPage() {
   const [estado, setEstado] = useState<Estado>({ fase: 'idle' });
   const [agora, setAgora] = useState(new Date());
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [online, setOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+  const [pendentes, setPendentes] = useState(0);
+  const [sincronizando, setSincronizando] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sincronizandoRef = useRef(false);
 
   // Carrega sessão ou redireciona pra parear
   useEffect(() => {
@@ -119,9 +131,77 @@ export default function TotemPage() {
     streamRef.current = null;
   }, []);
 
+  const recarregarPendentes = useCallback(async () => {
+    const lista = await listPendentesTotem();
+    setPendentes(lista.length);
+  }, []);
+
+  const drenarFila = useCallback(async () => {
+    if (sincronizandoRef.current) return;
+    sincronizandoRef.current = true;
+    setSincronizando(true);
+    try {
+      await sincronizarTodosTotem();
+      await recarregarPendentes();
+    } catch (e) {
+      console.error('[totem] erro ao sincronizar fila:', e);
+    } finally {
+      sincronizandoRef.current = false;
+      setSincronizando(false);
+    }
+  }, [recarregarPendentes]);
+
+  // Listeners online/offline + sync ao voltar online
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnline(true);
+      drenarFila();
+    };
+    const handleOffline = () => setOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    recarregarPendentes();
+    if (typeof navigator !== 'undefined' && navigator.onLine) drenarFila();
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [drenarFila, recarregarPendentes]);
+
+  // Tenta drenar a cada 60s quando há pendentes e estamos online
+  useEffect(() => {
+    if (pendentes === 0 || !online) return;
+    const t = setInterval(() => drenarFila(), 60000);
+    return () => clearInterval(t);
+  }, [pendentes, online, drenarFila]);
+
+  const salvarOffline = useCallback(async (fotoBase64: string, token: string) => {
+    const dataHoraOffline = new Date().toISOString();
+    await enqueueTotemPonto({ token, fotoBase64, dataHoraOffline });
+    await recarregarPendentes();
+    return dataHoraOffline;
+  }, [recarregarPendentes]);
+
   const enviarFoto = useCallback(async (fotoBase64: string) => {
     if (!sessao) return;
     setEstado({ fase: 'enviando' });
+
+    // Se já estamos sabidamente offline, vai direto pra fila — não tenta nem requisição.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      try {
+        const ts = await salvarOffline(fotoBase64, sessao.token);
+        pararCamera();
+        const horario = new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        setEstado({ fase: 'sucesso_offline', horario });
+        setTimeout(() => setEstado({ fase: 'idle' }), 5000);
+      } catch (e) {
+        pararCamera();
+        setEstado({ fase: 'erro', mensagem: 'Sem internet e falha ao salvar localmente.' });
+        setTimeout(() => setEstado({ fase: 'idle' }), 4000);
+      }
+      return;
+    }
+
     try {
       const res = await fetch('/api/totem/bater-ponto', {
         method: 'POST',
@@ -157,11 +237,20 @@ export default function TotemPage() {
         setTimeout(() => setEstado({ fase: 'idle' }), 4000);
       }
     } catch (err) {
-      pararCamera();
-      setEstado({ fase: 'erro', mensagem: 'Sem conexão. Verifique a internet.' });
-      setTimeout(() => setEstado({ fase: 'idle' }), 4000);
+      // Erro de rede com navigator.onLine == true (DNS, servidor caiu, etc) — também enfileira.
+      try {
+        const ts = await salvarOffline(fotoBase64, sessao.token);
+        pararCamera();
+        const horario = new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        setEstado({ fase: 'sucesso_offline', horario });
+        setTimeout(() => setEstado({ fase: 'idle' }), 5000);
+      } catch (e) {
+        pararCamera();
+        setEstado({ fase: 'erro', mensagem: 'Sem conexão e falha ao salvar localmente.' });
+        setTimeout(() => setEstado({ fase: 'idle' }), 4000);
+      }
     }
-  }, [sessao, pararCamera, router]);
+  }, [sessao, pararCamera, router, salvarOffline]);
 
   const tirarFoto = useCallback(() => {
     const video = videoRef.current;
@@ -226,17 +315,38 @@ export default function TotemPage() {
           <div className="text-sm uppercase tracking-widest text-purple-300/80">{sessao.empresaNome}</div>
           <div className="text-xs text-white/40 mt-0.5">Totem: {sessao.totemNome}</div>
         </div>
-        <button
-          onClick={() => {
-            if (!confirm('Sair do modo Totem? Você precisará parear de novo.')) return;
-            window.localStorage.removeItem(STORAGE_KEY);
-            window.localStorage.removeItem(STORAGE_KEY_INFO);
-            router.replace('/totem/parear');
-          }}
-          className="text-xs text-white/30 hover:text-white/60"
-        >
-          sair
-        </button>
+        <div className="flex items-center gap-3">
+          {!online && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold">
+              <WifiOff size={14} />
+              <span>Sem internet</span>
+            </div>
+          )}
+          {pendentes > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs font-bold"
+              title={`${pendentes} batida(s) aguardando sincronização`}
+            >
+              {sincronizando ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <CloudUpload size={14} />
+              )}
+              <span>{pendentes} pendente{pendentes > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          <button
+            onClick={() => {
+              if (!confirm('Sair do modo Totem? Você precisará parear de novo.')) return;
+              window.localStorage.removeItem(STORAGE_KEY);
+              window.localStorage.removeItem(STORAGE_KEY_INFO);
+              router.replace('/totem/parear');
+            }}
+            className="text-xs text-white/30 hover:text-white/60"
+          >
+            sair
+          </button>
+        </div>
       </header>
 
       {/* Conteúdo central */}
@@ -312,6 +422,23 @@ export default function TotemPage() {
             </div>
           );
         })()}
+
+        {/* Estado SUCESSO_OFFLINE — registrado mas identidade só será confirmada online */}
+        {estado.fase === 'sucesso_offline' && (
+          <div className="text-center animate-in fade-in zoom-in-95 duration-500">
+            <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-amber-500/20 mb-6">
+              <CloudUpload size={80} className="text-amber-300" />
+            </div>
+            <h1 className="text-4xl md:text-5xl font-extrabold mb-3">Ponto registrado offline</h1>
+            <p className="text-xl text-white/80 mb-4 max-w-xl mx-auto">
+              Sua identidade será confirmada automaticamente quando voltar a internet.
+            </p>
+            <div className="inline-flex items-center gap-2 mt-2 px-6 py-3 rounded-full bg-white/5 border border-white/10">
+              <Clock size={20} className="text-amber-300" />
+              <span className="text-2xl font-bold tabular-nums">{estado.horario}</span>
+            </div>
+          </div>
+        )}
 
         {/* Estado ERRO */}
         {estado.fase === 'erro' && (

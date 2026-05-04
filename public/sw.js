@@ -106,6 +106,13 @@ self.addEventListener('push', function(event) {
     renotify: true,
   };
 
+  // Avisa abas abertas do app via BroadcastChannel (toast in-app + refresh sino)
+  try {
+    var bc = new BroadcastChannel('workid-push');
+    bc.postMessage({ type: 'push', payload: data, receivedAt: Date.now() });
+    bc.close();
+  } catch (e) { /* navegadores sem BroadcastChannel: ignora */ }
+
   event.waitUntil(
     self.registration.showNotification(data.title, options)
   );

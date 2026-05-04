@@ -116,6 +116,26 @@ model Usuario {
 
   fechamentosFuncionario  Fechamento[] @relation("fechamento_funcionario")
   fechamentosCriados      Fechamento[] @relation("fechamento_admin")
+
+  notificacoes            Notificacao[] @relation("notif_destinatario")
+}
+
+model Notificacao {
+  id              String    @id @default(cuid())
+  destinatarioId  String?
+  tipo            String
+  prioridade      String    @default("NORMAL")
+  titulo          String
+  mensagem        String
+  url             String?
+  metadata        Json?
+  lida            Boolean   @default(false)
+  lidaEm          DateTime?
+  criadoEm        DateTime  @default(now())
+  destinatario    Usuario?  @relation("notif_destinatario", fields: [destinatarioId], references: [id], onDelete: Cascade)
+
+  @@index([destinatarioId, lida, criadoEm])
+  @@index([tipo, criadoEm])
 }
 
 model Fechamento {

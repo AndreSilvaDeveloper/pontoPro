@@ -7,25 +7,30 @@ import {
   FileText,
   Loader2,
   X,
-  UserPlus,
   Link as LinkIcon,
   Plus,
   Handshake,
   Inbox,
+  Search,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
 import { gerarRelatorioGeral } from "@/lib/saas-pdf";
 
-import StatsCards, { type DashboardStats } from "./components/StatsCards";
+import StatsStrip, { type DashboardStats } from "./components/StatsStrip";
+import InsightsBoard from "./components/InsightsBoard";
 import ClientTable from "./components/ClientTable";
 import ModalEquipe from "./components/ModalEquipe";
 import ModalFatura from "./components/ModalFatura";
-import AlertNovaEmpresa from "./components/AlertNovaEmpresa";
-import AlertPagamento from "./components/AlertPagamento";
-import AnalyticsChart from "./components/AnalyticsChart";
+import BellDropdown from "./components/BellDropdown";
+import PushToastListener from "./components/PushToastListener";
+import PushPermissionPrompt from "./components/PushPermissionPrompt";
+import CommandPalette from "./components/CommandPalette";
+import DashboardHero from "./components/DashboardHero";
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -50,24 +55,11 @@ export default function SuperAdminPage() {
   const [adminData, setAdminData] = useState({ nome: "", email: "", senha: "123" });
   const [loadingAdmin, setLoadingAdmin] = useState(false);
 
-  // Leads novos (badge no botão "Leads")
-  const [leadsNovos, setLeadsNovos] = useState<number>(0);
-
   // === CARREGAMENTO INICIAL ===
   useEffect(() => {
     listarEmpresas();
     carregarStats();
-    carregarLeadsNovos();
   }, []);
-
-  const carregarLeadsNovos = async () => {
-    try {
-      const res = await axios.get("/api/saas/leads?status=NOVO");
-      setLeadsNovos(res.data?.resumo?.totalNovos ?? 0);
-    } catch {
-      // silencioso
-    }
-  };
 
   const listarEmpresas = async () => {
     setLoadingListar(true);
@@ -213,11 +205,14 @@ export default function SuperAdminPage() {
     <div className="min-h-screen bg-page text-text-primary">
       <ImpersonationBanner />
 
-      {/* Alerta de novos cadastros */}
-      <AlertNovaEmpresa empresasRecentes={stats?.empresasRecentes || []} />
+      {/* Prompt de permissão de notificação */}
+      <PushPermissionPrompt />
 
-      {/* Alerta de pagamentos recebidos */}
-      <AlertPagamento pagamentosRecentes={stats?.pagamentosRecentes || []} />
+      {/* Toast in-app quando push chega com painel aberto */}
+      <PushToastListener />
+
+      {/* Cmd+K busca rápida */}
+      <CommandPalette empresas={empresas} />
 
       {/* Decorative blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -229,7 +224,7 @@ export default function SuperAdminPage() {
       <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="WorkID" className="w-8 h-8 rounded-lg object-cover" />
+            <Image src="/logo.png" alt="WorkID" width={32} height={32} className="w-8 h-8 rounded-lg object-cover" priority />
             <div>
               <h1 className="text-lg font-bold text-text-primary">WorkID</h1>
               <p className="text-[10px] text-text-muted uppercase tracking-widest">Painel Super Admin</p>
@@ -237,35 +232,54 @@ export default function SuperAdminPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Busca rápida (atalho Cmd+K) */}
             <button
-              onClick={handleRelatorioGeral}
-              className="flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+              className="hidden md:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-faint px-3 py-2 rounded-xl border border-border-subtle text-xs transition-colors"
+              title="Busca rápida"
             >
-              <FileText size={16} /> <span className="hidden sm:inline">Relatório PDF</span>
+              <Search size={14} />
+              <span>Buscar</span>
+              <kbd className="bg-page text-[10px] px-1.5 py-0.5 rounded border border-border-subtle ml-1">⌘K</kbd>
             </button>
+
+            <BellDropdown />
 
             <Link
               href="/saas/leads"
-              className="relative flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              title="Leads"
             >
-              <Inbox size={16} /> <span className="hidden sm:inline">Leads</span>
-              {leadsNovos > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1.5 rounded-full bg-purple-600 text-white text-[10px] font-bold flex items-center justify-center">
-                  {leadsNovos > 99 ? '99+' : leadsNovos}
-                </span>
-              )}
+              <Inbox size={16} />
+            </Link>
+
+            <Link
+              href="/saas/analytics"
+              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              title="Analytics de marketing"
+            >
+              <BarChart3 size={16} />
             </Link>
 
             <Link
               href="/saas/revendedores"
-              className="flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              title="Revendedores"
             >
-              <Handshake size={16} /> <span className="hidden sm:inline">Revendedores</span>
+              <Handshake size={16} />
             </Link>
+
+            <button
+              onClick={handleRelatorioGeral}
+              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              title="Relatório geral PDF"
+            >
+              <FileText size={16} />
+            </button>
 
             <Link
               href="/saas/venda"
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-purple-600/20"
             >
               <Plus size={16} /> <span className="hidden sm:inline">Nova Venda</span>
             </Link>
@@ -282,10 +296,17 @@ export default function SuperAdminPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 relative z-10">
-        <StatsCards stats={stats} loading={loadingStats} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5 relative z-10">
+        <DashboardHero
+          mrr={stats?.mrr}
+          totalAtivos={stats?.totalAtivos}
+          totalEmpresas={stats?.totalEmpresas}
+          loading={loadingStats}
+        />
 
-        <AnalyticsChart analitico={stats?.analitico} loading={loadingStats} />
+        <InsightsBoard stats={stats} empresas={empresas} loading={loadingStats || loadingListar} />
+
+        <StatsStrip stats={stats} loading={loadingStats} />
 
         <ClientTable
           empresas={empresas}

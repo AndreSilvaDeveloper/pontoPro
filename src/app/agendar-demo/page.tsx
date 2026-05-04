@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { ArrowLeft, Calendar, Clock, User, Phone, Send, CheckCircle2, MessageCircle } from 'lucide-react';
 import { LINKS } from '@/config/links';
 import { trackEvent, trackLead } from '@/lib/analytics';
+import { mascaraTelefone, telefoneValido } from '@/utils/mascaraTelefone';
 
 const HORARIOS = [
   '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
@@ -51,7 +52,7 @@ export default function AgendarDemo() {
   const dias = getProximosDias(10);
 
   const enviar = async () => {
-    if (!nome.trim() || !whatsapp.trim() || !dataSelecionada || !horario) return;
+    if (!nome.trim() || !telefoneValido(whatsapp) || !dataSelecionada || !horario) return;
 
     const dataFormatada = formatDataCompleta(dataSelecionada);
 
@@ -145,7 +146,7 @@ export default function AgendarDemo() {
     );
   }
 
-  const podEnviar = nome.trim() && whatsapp.trim() && dataSelecionada && horario;
+  const podEnviar = nome.trim() && telefoneValido(whatsapp) && dataSelecionada && horario;
 
   return (
     <div className="min-h-screen bg-[#0a0e27]">
@@ -207,11 +208,19 @@ export default function AgendarDemo() {
             </label>
             <input
               type="tel"
+              inputMode="tel"
               value={whatsapp}
-              onChange={e => setWhatsapp(e.target.value)}
+              onChange={e => setWhatsapp(mascaraTelefone(e.target.value))}
               placeholder="(32) 99999-9999"
-              className="w-full bg-purple-950/20 border border-purple-500/20 hover:border-purple-500/40 focus:border-purple-500 rounded-xl p-4 text-white placeholder-gray-600 outline-none transition-colors"
+              required
+              aria-label="WhatsApp com DDD"
+              className={`w-full bg-purple-950/20 border ${
+                whatsapp && !telefoneValido(whatsapp) ? 'border-red-500/60' : 'border-purple-500/20 hover:border-purple-500/40 focus:border-purple-500'
+              } rounded-xl p-4 text-white placeholder-gray-600 outline-none transition-colors`}
             />
+            {whatsapp && !telefoneValido(whatsapp) && (
+              <p className="text-xs text-red-400">Informe um telefone válido com DDD.</p>
+            )}
           </div>
 
           {/* Empresa (opcional) */}
