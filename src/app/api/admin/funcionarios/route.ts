@@ -101,8 +101,12 @@ export async function POST(request: Request) {
     // Se admin enviou foto, não precisa exigir do funcionário
     const deveCadastrarFoto = fotoPerfilUrl ? false : exigirFotoFuncionario;
 
-    // 4. Senha e Hash
-    const senhaInicial = '1234';
+    // 4. Senha e Hash — gera senha provisória forte (8 chars alfanuméricos sem ambiguidade)
+    const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sem 0/O/1/I/L pra evitar erro de leitura
+    let senhaInicial = '';
+    const arr = new Uint32Array(8);
+    crypto.getRandomValues(arr);
+    for (const n of arr) senhaInicial += ALFABETO[n % ALFABETO.length];
     const hashedPassword = await hash(senhaInicial, 10);
 
     // 5. JSON Parse (Jornada/Locais)

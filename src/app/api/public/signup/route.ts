@@ -197,7 +197,10 @@ export async function POST(req: Request) {
 
     console.error("signup error:", e);
     return NextResponse.json(
-      { ok: false, erro: "Erro interno ao cadastrar." },
+      {
+        ok: false,
+        erro: 'Não foi possível concluir o cadastro agora. Verifique os dados ou tente novamente em alguns minutos. Se persistir, fale com o suporte.',
+      },
       { status: 500 }
     );
   }

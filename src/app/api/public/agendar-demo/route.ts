@@ -71,6 +71,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, leadId: lead.id });
   } catch (e) {
     console.error('[agendar-demo] erro:', e);
-    return NextResponse.json({ ok: false, erro: 'Erro interno.' }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, erro: 'Não foi possível registrar seu agendamento agora. Tente novamente em alguns instantes.' },
+      { status: 500 }
+    );
   }
 }

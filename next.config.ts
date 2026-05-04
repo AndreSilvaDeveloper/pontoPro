@@ -16,10 +16,6 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'ontimeia.com',
-      },
-      {
-        protocol: 'https',
         hostname: 'workid.com.br',
       },
       {
