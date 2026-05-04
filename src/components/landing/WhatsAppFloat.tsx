@@ -14,6 +14,7 @@ export default function WhatsAppFloat() {
         <div className="relative bg-white text-gray-800 px-4 py-2.5 rounded-2xl rounded-br-md shadow-xl text-sm font-medium max-w-[220px] animate-in fade-in slide-in-from-bottom-4 duration-500">
           <button
             onClick={() => setTooltip(false)}
+            aria-label="Fechar dica"
             className="absolute -top-3 -right-3 w-8 h-8 min-w-[44px] min-h-[44px] bg-gray-200 text-gray-500 rounded-full flex items-center justify-center hover:bg-gray-300 transition-colors"
           >
             <X size={10} />
@@ -27,6 +28,7 @@ export default function WhatsAppFloat() {
         href={waLink(LINKS.whatsapp.messages.suporteGeral)}
         target="_blank"
         rel="noopener noreferrer"
+        aria-label="Fale conosco no WhatsApp"
         className="w-14 h-14 bg-[#25D366] hover:bg-[#20BD5A] rounded-full flex items-center justify-center shadow-2xl shadow-green-900/30 transition-all hover:scale-110 active:scale-95"
         title="Fale conosco no WhatsApp"
       >
