@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { RefreshCw, Search, Loader2 } from "lucide-react";
 import ClientRow, { classificarStatus } from "./ClientRow";
 import EmpresaActions from "./EmpresaActions";
@@ -47,6 +47,19 @@ export default function ClientTable({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("TODOS");
   const [sortKey, setSortKey] = useState<SortKey>("nome");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Recebe filtro do InsightsBoard (ou outro componente externo) via evento custom
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const status = detail?.status;
+      if (status === 'ATIVO' || status === 'TRIAL' || status === 'INADIMPLENTE' || status === 'BLOQUEADO' || status === 'TODOS') {
+        setStatusFilter(status);
+      }
+    };
+    window.addEventListener('saas:filter', handler);
+    return () => window.removeEventListener('saas:filter', handler);
+  }, []);
 
   // Contadores por status
   const contadores = useMemo(() => {
@@ -142,7 +155,7 @@ export default function ClientTable({
   );
 
   return (
-    <div className="bg-surface border border-border-subtle rounded-2xl backdrop-blur overflow-hidden">
+    <div id="client-table" className="bg-surface border border-border-subtle rounded-2xl backdrop-blur overflow-hidden scroll-mt-24">
       {/* Barra de filtros */}
       <div className="p-4 border-b border-border-subtle">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">

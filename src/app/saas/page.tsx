@@ -12,6 +12,7 @@ import {
   Handshake,
   Inbox,
   Search,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
@@ -19,11 +20,11 @@ import { useRouter } from "next/navigation";
 import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
 import { gerarRelatorioGeral } from "@/lib/saas-pdf";
 
-import StatsCards, { type DashboardStats } from "./components/StatsCards";
+import StatsStrip, { type DashboardStats } from "./components/StatsStrip";
+import InsightsBoard from "./components/InsightsBoard";
 import ClientTable from "./components/ClientTable";
 import ModalEquipe from "./components/ModalEquipe";
 import ModalFatura from "./components/ModalFatura";
-import AnalyticsChart from "./components/AnalyticsChart";
 import BellDropdown from "./components/BellDropdown";
 import PushToastListener from "./components/PushToastListener";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
@@ -252,6 +253,14 @@ export default function SuperAdminPage() {
             </Link>
 
             <Link
+              href="/saas/analytics"
+              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              title="Analytics de marketing"
+            >
+              <BarChart3 size={16} />
+            </Link>
+
+            <Link
               href="/saas/revendedores"
               className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
               title="Revendedores"
@@ -286,7 +295,7 @@ export default function SuperAdminPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5 relative z-10">
         <DashboardHero
           mrr={stats?.mrr}
           totalAtivos={stats?.totalAtivos}
@@ -294,9 +303,9 @@ export default function SuperAdminPage() {
           loading={loadingStats}
         />
 
-        <StatsCards stats={stats} loading={loadingStats} />
+        <InsightsBoard stats={stats} empresas={empresas} loading={loadingStats || loadingListar} />
 
-        <AnalyticsChart analitico={stats?.analitico} loading={loadingStats} />
+        <StatsStrip stats={stats} loading={loadingStats} />
 
         <ClientTable
           empresas={empresas}
