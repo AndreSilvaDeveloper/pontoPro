@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { criarNotificacaoSuperAdmin } from "@/lib/notificacaoSuperAdmin";
 
 export const runtime = "nodejs";
 
@@ -56,6 +57,16 @@ export async function POST(req: Request) {
 
     const agora = new Date();
 
+    // Busca nome da empresa pra usar nas notificações
+    const empresaInfo = await prisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: { nome: true },
+    });
+    const nomeEmpresa = empresaInfo?.nome || empresaId;
+    const valorPagamento = typeof payment?.value === 'number'
+      ? payment.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      : null;
+
     // ✅ Pagamento confirmado/recebido: libera e estende assinatura
     if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
       // regra simples: paga por +30 dias a partir de hoje
@@ -72,18 +83,41 @@ export async function POST(req: Request) {
         },
       });
 
+      criarNotificacaoSuperAdmin({
+        tipo: 'PAGAMENTO_RECEBIDO',
+        titulo: `Pagamento recebido${valorPagamento ? ` · ${valorPagamento}` : ''}`,
+        mensagem: `${nomeEmpresa} pagou. Próximo vencimento: ${novoPagoAte.toLocaleDateString('pt-BR')}.`,
+        url: `/saas/${empresaId}`,
+        prioridade: 'NORMAL',
+        metadata: { empresaId, paymentId, valor: payment?.value, event },
+      });
+
       return NextResponse.json({ ok: true, action: "unblocked", empresaId, pagoAte: novoPagoAte.toISOString() });
     }
 
     // ⚠️ Cobrança vencida: registra vencimento (bloqueio real será pelo PASSO 2)
     if (event === "PAYMENT_OVERDUE") {
-      // grava dataUltimoPagamento null não é ideal, então só mantém como está
-      // você pode gravar algum campo "lastOverdueAt" se quiser no futuro
+      criarNotificacaoSuperAdmin({
+        tipo: 'PAGAMENTO_VENCIDO',
+        titulo: `Pagamento vencido${valorPagamento ? ` · ${valorPagamento}` : ''}`,
+        mensagem: `${nomeEmpresa} ficou inadimplente. Considere acionar o cliente.`,
+        url: `/saas/${empresaId}`,
+        prioridade: 'ALTA',
+        metadata: { empresaId, paymentId, valor: payment?.value, event },
+      });
       return NextResponse.json({ ok: true, action: "marked_overdue", empresaId });
     }
 
     // Estorno / apagada: registra; bloqueio fica pelo PASSO 2
     if (event === "PAYMENT_REFUNDED" || event === "PAYMENT_DELETED") {
+      criarNotificacaoSuperAdmin({
+        tipo: 'PAGAMENTO_ESTORNADO',
+        titulo: `Pagamento ${event === 'PAYMENT_REFUNDED' ? 'estornado' : 'cancelado'}${valorPagamento ? ` · ${valorPagamento}` : ''}`,
+        mensagem: `${nomeEmpresa} — verificar regularização.`,
+        url: `/saas/${empresaId}`,
+        prioridade: 'ALTA',
+        metadata: { empresaId, paymentId, valor: payment?.value, event },
+      });
       return NextResponse.json({ ok: true, action: "marked_refunded_or_deleted", empresaId });
     }
 

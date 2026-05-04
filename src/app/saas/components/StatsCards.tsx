@@ -88,27 +88,32 @@ export default function StatsCards({ stats, loading }: Props) {
       {cards.map((card) => {
         const colors = colorMap[card.color];
         const Icon = card.icon;
+        const isLoading = loading || !stats;
 
         return (
           <div
             key={card.key}
-            className="bg-surface border border-border-subtle rounded-2xl p-5 backdrop-blur"
+            className="bg-surface border border-border-subtle rounded-2xl p-5 backdrop-blur transition-all hover:border-border-default"
           >
             <div className="flex items-center gap-2 mb-3">
-              <div className={`p-2 rounded-lg ${colors.bg}`}>
+              <div className={`p-2 rounded-lg ${colors.bg} ${isLoading ? 'opacity-60' : ''}`}>
                 <Icon size={16} className={colors.icon} />
               </div>
             </div>
 
-            {loading || !stats ? (
-              <div className="animate-pulse bg-elevated-solid rounded h-8 w-20" />
+            {isLoading ? (
+              <>
+                <div className="animate-pulse bg-elevated-solid/70 rounded-md h-7 w-24" />
+                <div className="animate-pulse bg-elevated-solid/40 rounded h-3 w-16 mt-2.5" />
+              </>
             ) : (
-              <p className={`text-2xl font-bold ${colors.text}`}>
-                {card.format(stats[card.key])}
-              </p>
+              <>
+                <p className={`text-2xl font-bold ${colors.text}`}>
+                  {card.format(stats[card.key])}
+                </p>
+                <p className="text-xs text-text-muted mt-1">{card.label}</p>
+              </>
             )}
-
-            <p className="text-xs text-text-muted mt-1">{card.label}</p>
           </div>
         );
       })}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { criarNotificacaoSuperAdmin } from "@/lib/notificacaoSuperAdmin";
 
 export const runtime = "nodejs";
 
@@ -245,6 +246,22 @@ export async function POST(req: Request) {
       paymentId: payment?.id ?? null,
       externalReference: payment?.externalReference ?? null,
       dueDate: payment?.dueDate ?? null,
+    });
+
+    const empNome = await prisma.empresa.findUnique({
+      where: { id: targetEmpresaId },
+      select: { nome: true },
+    });
+    const valorFmt = typeof payment?.value === 'number'
+      ? payment.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      : null;
+    criarNotificacaoSuperAdmin({
+      tipo: 'PAGAMENTO_RECEBIDO',
+      titulo: `Pagamento recebido${valorFmt ? ` · ${valorFmt}` : ''}`,
+      mensagem: `${empNome?.nome || targetEmpresaId} pagou.${paidUntil ? ` Vigente até ${paidUntil.toLocaleDateString('pt-BR')}.` : ''}`,
+      url: `/saas/${targetEmpresaId}`,
+      prioridade: 'NORMAL',
+      metadata: { empresaId: targetEmpresaId, paymentId: payment?.id, valor: payment?.value, event },
     });
 
     return NextResponse.json({

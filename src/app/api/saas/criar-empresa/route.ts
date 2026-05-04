@@ -7,6 +7,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { enviarEmailSeguro } from "@/lib/email";
 import { validarCNPJ } from "@/utils/cnpj";
 import { BASE_URL } from "@/config/site";
+import { criarNotificacaoSuperAdmin } from "@/lib/notificacaoSuperAdmin";
 
 export const runtime = "nodejs";
 
@@ -127,6 +128,15 @@ export async function POST(request: Request) {
     `;
 
     await enviarEmailSeguro(emailDono, "Sua empresa foi ativada! 🚀", htmlEmail);
+
+    criarNotificacaoSuperAdmin({
+      tipo: 'NOVA_VENDA',
+      titulo: `Nova venda registrada: ${empresa.nome}`,
+      mensagem: `Plano ${empresa.plano || 'PROFESSIONAL'} · Trial até ${trialAte.toLocaleDateString('pt-BR')} · 1ª fatura ${primeiraFaturaVenceEm.toLocaleDateString('pt-BR')}`,
+      url: `/saas/${empresa.id}`,
+      prioridade: 'ALTA',
+      metadata: { empresaId: empresa.id, plano: empresa.plano, donoEmail: emailDono },
+    });
 
     return NextResponse.json({
       success: true,
