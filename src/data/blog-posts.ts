@@ -1467,6 +1467,534 @@ export const blogPosts: BlogPost[] = [
       </div>
     `,
   },
+  {
+    slug: "adicional-noturno-como-calcular-clt-2026",
+    title: "Adicional noturno: como calcular pela CLT em 2026 (com exemplos)",
+    description:
+      "Entenda como calcular o adicional noturno na CLT, qual o percentual mínimo, hora reduzida noturna e exemplos práticos para urbano e rural em 2026.",
+    date: "2026-05-04",
+    readTime: "9 min",
+    category: "Guia Prático",
+    tags: ["adicional noturno", "CLT", "folha de pagamento", "jornada"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O que é o adicional noturno</h2>
+      <p>O <strong>adicional noturno</strong> é o acréscimo obrigatório no salário-hora do colaborador que trabalha em horário considerado noturno pela CLT. A lei reconhece que o trabalho à noite é mais desgastante e exige uma compensação financeira mínima.</p>
+      <p>Esse adicional é cumulativo com hora extra, adicional de insalubridade e outros benefícios — ou seja: se o funcionário fizer hora extra à noite, ele recebe os dois adicionais aplicados sobre o mesmo período.</p>
+
+      <h2>Qual o horário noturno pela CLT</h2>
+      <p>O horário noturno depende da atividade:</p>
+      <ul>
+        <li><strong>Urbano (art. 73 da CLT):</strong> das <strong>22h às 5h</strong>.</li>
+        <li><strong>Rural na lavoura:</strong> das <strong>21h às 5h</strong>.</li>
+        <li><strong>Rural na pecuária:</strong> das <strong>20h às 4h</strong>.</li>
+      </ul>
+      <p>Quem trabalha parte do turno em horário noturno tem direito ao adicional apenas sobre as horas trabalhadas dentro daquele intervalo.</p>
+
+      <h2>Qual o percentual mínimo do adicional noturno</h2>
+      <p>A CLT garante <strong>20% mínimo</strong> sobre a hora normal para trabalhadores urbanos. Convenções coletivas podem aumentar esse percentual (alguns sindicatos negociam 25%, 30% ou mais). Para trabalhadores rurais, o adicional é de <strong>25%</strong>.</p>
+
+      <h2>Hora noturna reduzida: o detalhe que muita gente esquece</h2>
+      <p>A CLT considera que cada hora noturna no horário urbano dura apenas <strong>52 minutos e 30 segundos</strong> em vez dos 60 minutos convencionais. Isso significa que, em 7 horas trabalhadas das 22h às 5h, o funcionário recebe como se tivesse trabalhado 8 horas. Esse cálculo é feito automaticamente em sistemas de <a href="/blog/o-que-e-ponto-digital-como-funciona">ponto digital</a> bem configurados.</p>
+
+      <h2>Como calcular o adicional noturno passo a passo</h2>
+      <p>Para um colaborador urbano com salário de R$ 2.200 e jornada de 220 horas/mês que trabalhou 4 horas no horário noturno:</p>
+      <ol>
+        <li><strong>Hora normal:</strong> R$ 2.200 ÷ 220 = R$ 10,00.</li>
+        <li><strong>Adicional noturno (20%):</strong> R$ 10,00 × 0,20 = R$ 2,00 por hora.</li>
+        <li><strong>Hora noturna ajustada:</strong> R$ 10,00 + R$ 2,00 = R$ 12,00.</li>
+        <li><strong>Total das 4 horas noturnas:</strong> R$ 12,00 × 4 = R$ 48,00.</li>
+      </ol>
+      <p>Se essas 4 horas também forem extras (acima da jornada contratada), você soma o adicional de hora extra (mínimo 50%) <em>sobre a hora já com adicional noturno</em>. Esse cálculo composto é uma das fontes mais comuns de erros em folha. Veja também <a href="/blog/como-calcular-hora-extra-clt">como calcular hora extra pela CLT</a>.</p>
+
+      <h2>Adicional noturno em jornadas especiais</h2>
+      <p>Em escalas como a <a href="/blog/jornada-12x36-como-funciona-controle-ponto">12x36</a>, o adicional incide sobre todas as horas trabalhadas dentro do horário noturno. Já em jornadas 6x1 ou 5x2, o cálculo segue a regra geral.</p>
+
+      <h2>O que diz o eSocial</h2>
+      <p>No eSocial, o adicional noturno deve ser informado no evento S-1010 (rubricas) com a natureza correta. Se sua empresa ainda calcula manualmente, há risco real de inconsistência entre folha e eSocial — o que gera notificação e multa.</p>
+
+      <h2>Como o WorkID calcula o adicional noturno automaticamente</h2>
+      <p>O WorkID identifica automaticamente quais horas foram trabalhadas dentro do intervalo noturno (urbano ou rural) e aplica o adicional correto, incluindo a hora reduzida. O <a href="/blog/banco-de-horas-como-calcular-gerenciar">espelho de ponto</a> mostra cada hora separadamente: noturna, extra noturna, e normal — pronto pro contador.</p>
+
+      <h2>Conclusão</h2>
+      <p>O adicional noturno parece simples, mas o cálculo composto com hora extra e a hora noturna reduzida pegam muita empresa de surpresa. Automatizar isso evita erros, reduz risco trabalhista e economiza horas do RH.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Pare de calcular adicional noturno na mão</p>
+        <p>O WorkID identifica e calcula automaticamente todos os adicionais — noturno, hora extra, DSR. Teste 14 dias grátis.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "espelho-de-ponto-o-que-e-como-ler",
+    title: "Espelho de ponto: o que é, como ler e por que é obrigatório",
+    description:
+      "Entenda o que é o espelho de ponto, como interpretar cada coluna, qual a diferença pra folha de ponto e por que ele protege empresa e funcionário.",
+    date: "2026-05-02",
+    readTime: "8 min",
+    category: "Guia",
+    tags: ["espelho de ponto", "controle de ponto", "RH", "Portaria 671"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O que é espelho de ponto</h2>
+      <p>O <strong>espelho de ponto</strong> é o documento que consolida toda a jornada de trabalho de um colaborador em determinado período (geralmente o mês). Ele mostra dia a dia: entradas, saídas, intervalos, horas trabalhadas, faltas, atrasos, hora extra, banco de horas e qualquer ocorrência registrada.</p>
+      <p>Diferente da batida individual, o espelho é o "extrato" da jornada — o documento que vai pro contador, pra fiscalização, e que serve de prova em caso de reclamação trabalhista.</p>
+
+      <h2>Espelho de ponto vs folha de ponto: qual a diferença</h2>
+      <ul>
+        <li><strong>Folha de ponto:</strong> o formulário onde o funcionário ASSINA suas marcações (geralmente em papel). É o documento "bruto".</li>
+        <li><strong>Espelho de ponto:</strong> o relatório CALCULADO a partir das marcações. Mostra totalizadores, saldo de banco de horas, faltas, etc. É o documento "tratado".</li>
+      </ul>
+      <p>Em sistemas de <a href="/blog/o-que-e-ponto-digital-como-funciona">ponto digital</a>, os dois se fundem: as batidas ficam no banco de dados (com geolocalização e foto) e o espelho é gerado em PDF a partir delas.</p>
+
+      <h2>Como ler um espelho de ponto: as colunas explicadas</h2>
+      <p>Um espelho profissional traz, por dia trabalhado:</p>
+      <ul>
+        <li><strong>Data e dia da semana</strong> — referência cronológica.</li>
+        <li><strong>Marcações (E1, S1, E2, S2…):</strong> pares de entrada e saída. E1/S1 normalmente é o turno principal; E2/S2 o retorno do almoço.</li>
+        <li><strong>Trabalhado:</strong> total de horas trabalhadas no dia.</li>
+        <li><strong>Meta (jornada):</strong> quanto o funcionário deveria trabalhar naquele dia.</li>
+        <li><strong>Saldo:</strong> diferença entre trabalhado e meta. Positivo vira hora extra ou crédito; negativo vira débito.</li>
+        <li><strong>Status:</strong> normal, falta, ausência justificada, feriado, atestado.</li>
+      </ul>
+
+      <h2>Quem é obrigado a manter espelho de ponto</h2>
+      <p>Pela CLT e pela <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a>, empresas com mais de 20 funcionários precisam ter controle de jornada e, portanto, gerar espelho. Mas mesmo empresas menores ganham proteção jurídica ao manter espelho organizado — em uma reclamação trabalhista, a falta de espelho geralmente faz o juiz aceitar as horas alegadas pelo funcionário.</p>
+
+      <h2>Por quanto tempo guardar o espelho de ponto</h2>
+      <p>O prazo prescricional trabalhista é de <strong>5 anos durante o contrato + 2 anos após o término</strong>. Na prática, recomendamos guardar por <strong>5 anos</strong> de forma acessível e até <strong>10 anos</strong> arquivado. Sistemas digitais cumprem isso automaticamente.</p>
+
+      <h2>Funcionário precisa assinar o espelho de ponto?</h2>
+      <p>A assinatura mensal do funcionário no espelho é uma boa prática que dá força jurídica máxima. Em papel, é literal. No digital, vira <strong>assinatura eletrônica</strong> com confirmação de senha + IP + carimbo de tempo. O WorkID tem um <a href="/blog/quanto-custa-sistema-ponto-eletronico-digital">fluxo de fechamento mensal</a> em que o admin gera o espelho, o funcionário revisa e confirma com senha — gerando um documento com validade legal.</p>
+
+      <h2>Erros mais comuns em espelho de ponto</h2>
+      <ul>
+        <li>Marcações faltantes (a famosa "ponte" entre entrada e saída sem intervalo registrado).</li>
+        <li>Hora noturna não destacada (perde 20% que devia ter pago).</li>
+        <li>Falta sem justificativa marcada como "presente" — vira hora extra fantasma.</li>
+        <li>Não bater o saldo de banco de horas com o que foi pago.</li>
+      </ul>
+
+      <h2>Conclusão</h2>
+      <p>Espelho de ponto não é burocracia — é o seu seguro contra disputas trabalhistas e a base pra uma folha de pagamento correta. Em sistemas modernos, ele é gerado automaticamente, revisado pelo funcionário e arquivado por anos sem esforço.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Espelho de ponto completo, em 1 clique</p>
+        <p>O WorkID gera o espelho em PDF, com assinatura digital do funcionário e validade jurídica. Teste 14 dias grátis.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "geofencing-controle-de-ponto-como-funciona",
+    title: "Geofencing no controle de ponto: o que é e como funciona",
+    description:
+      "Geofencing é a tecnologia que cria cercas virtuais por GPS para validar onde o ponto é batido. Saiba como funciona, vantagens e cuidados na implantação.",
+    date: "2026-04-30",
+    readTime: "7 min",
+    category: "Tecnologia",
+    tags: ["geofencing", "GPS", "controle de ponto", "tecnologia"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O que é geofencing</h2>
+      <p><strong>Geofencing</strong> (ou "cerca virtual") é uma tecnologia que define uma área geográfica delimitada por coordenadas GPS. Quando combinada com controle de ponto, ela permite que o sistema só aceite a batida se o funcionário estiver dentro da área autorizada.</p>
+      <p>É o mesmo princípio que o iFood usa pra mostrar restaurantes próximos, ou que a Uber usa pra calcular trajeto: latitude e longitude, com um raio em volta.</p>
+
+      <h2>Como o geofencing funciona no ponto eletrônico</h2>
+      <p>Em sistemas como o WorkID, o admin cadastra:</p>
+      <ul>
+        <li><strong>Coordenadas centrais</strong> da empresa (ou múltiplos locais para equipes externas).</li>
+        <li><strong>Raio aceito</strong> em metros (geralmente 50m a 200m).</li>
+      </ul>
+      <p>Quando o colaborador abre o app pra bater o ponto, o celular envia a posição GPS. O sistema calcula a distância até o ponto central — se estiver dentro do raio, libera. Se estiver fora, bloqueia ou solicita justificativa, dependendo da configuração.</p>
+
+      <h2>Diferença entre geolocalização simples e geofencing</h2>
+      <ul>
+        <li><strong>Geolocalização simples:</strong> registra onde o ponto foi batido (pra auditoria), mas aceita qualquer local.</li>
+        <li><strong>Geofencing:</strong> restringe ATIVAMENTE onde a batida pode acontecer. Mais rigoroso.</li>
+      </ul>
+      <p>Pra empresa com risco de fraude, geofencing é essencial. Pra empresa com equipe de campo (vendedores, técnicos, motoristas), pode ser flexibilizado por rota ou liberado.</p>
+
+      <h2>Precisão do GPS: o que esperar</h2>
+      <p>O GPS de celulares modernos tem precisão de 5 a 20 metros em ambiente externo. Em ambiente fechado (dentro de prédios), a precisão pode cair pra 50-100m. Por isso é importante calibrar o raio de geofencing com folga — não use 30m em escritório dentro de shopping center.</p>
+      <p>Saiba mais em <a href="/blog/ponto-eletronico-gps-como-funciona-legal">ponto eletrônico por GPS: como funciona e é legal</a>.</p>
+
+      <h2>Vantagens do geofencing</h2>
+      <ul>
+        <li><strong>Reduz drasticamente fraudes</strong> de "bater ponto pelo amigo" remotamente.</li>
+        <li><strong>Garante presença real</strong> no local de trabalho.</li>
+        <li><strong>Permite múltiplos locais</strong> (matriz, filiais, obras, clientes).</li>
+        <li><strong>Auditável:</strong> cada batida traz a coordenada exata, gravada pra sempre.</li>
+      </ul>
+
+      <h2>Cuidados na implantação</h2>
+      <p>Geofencing não é "ligou e funciona". Atenção a:</p>
+      <ul>
+        <li><strong>Permissão de localização:</strong> o funcionário precisa autorizar GPS no celular. No iOS isso requer dar permissão "ao usar o app" mais explicitamente.</li>
+        <li><strong>Raio adequado:</strong> muito apertado = falsos negativos; muito largo = perde o propósito.</li>
+        <li><strong>Equipes externas:</strong> ajuste pra cada local de trabalho (obra, casa do cliente, etc.) ou libere ponto livre com justificativa.</li>
+        <li><strong>Modo offline:</strong> se o funcionário ficar sem internet, o sistema deve guardar a batida com geolocalização e sincronizar depois.</li>
+      </ul>
+
+      <h2>Geofencing é legal?</h2>
+      <p>Sim. A <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a> permite o uso de GPS como mecanismo de validação. A <a href="/blog/ponto-eletronico-lgpd-o-que-saber">LGPD</a> exige apenas que o funcionário seja informado de que sua localização está sendo coletada (transparência) e que o dado seja usado só pra finalidade declarada.</p>
+
+      <h2>Conclusão</h2>
+      <p>Geofencing é a peça que separa controle de ponto sério de controle de ponto fingido. Combinado com <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">reconhecimento facial</a> ou foto da câmera, gera uma trilha de auditoria praticamente inviolável. Em 2026, é o padrão pra empresas que levam controle de jornada a sério.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Geofencing nativo, configuração em 1 minuto</p>
+        <p>WorkID já vem com cerca virtual configurável por funcionário. Defina raio, locais adicionais e libere ponto livre quando precisar. 14 dias grátis.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "ponto-eletronico-construcao-civil-obra",
+    title: "Ponto eletrônico para construção civil e obras: guia completo",
+    description:
+      "Como controlar o ponto de operários em obras com múltiplos canteiros, equipes externas e rotatividade alta. Guia prático para empresas da construção.",
+    date: "2026-04-28",
+    readTime: "9 min",
+    category: "Guia",
+    tags: ["construção civil", "obra", "ponto digital", "equipe externa"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>Por que controlar o ponto na obra é diferente</h2>
+      <p>A construção civil tem características que tornam o controle de jornada particularmente complicado: <strong>múltiplos canteiros</strong>, <strong>equipes que trocam de obra</strong>, <strong>conexão de internet ruim no local</strong>, <strong>operários sem PC</strong>, e uma <strong>rotatividade altíssima</strong>. Sistemas tradicionais de relógio biométrico simplesmente não cabem.</p>
+
+      <h2>Os erros que custam caro na construção</h2>
+      <ul>
+        <li><strong>Anotação manual em cadernos:</strong> rasura, esquecimento, contestação na justiça.</li>
+        <li><strong>Ponto pelo encarregado:</strong> conflito de interesse, fácil de fraudar.</li>
+        <li><strong>Sem prova de presença em obras externas:</strong> reclamação trabalhista de "estive na obra X" sem refutação.</li>
+      </ul>
+      <p>Cada um desses pontos pode virar processo trabalhista que custa de R$ 5 mil a R$ 50 mil por funcionário.</p>
+
+      <h2>O que sua solução de ponto precisa ter para construção civil</h2>
+      <ol>
+        <li><strong>Ponto pelo celular do operário:</strong> sem necessidade de hardware no canteiro.</li>
+        <li><strong>Múltiplos locais autorizados:</strong> cada obra com sua <a href="/blog/geofencing-controle-de-ponto-como-funciona">cerca virtual</a> própria.</li>
+        <li><strong>Modo offline:</strong> funciona mesmo onde a internet falha; sincroniza quando conectar.</li>
+        <li><strong><a href="/blog/reconhecimento-facial-ponto-vale-a-pena">Reconhecimento facial</a> ou totem na entrada:</strong> evita "bater ponto pelo amigo".</li>
+        <li><strong>Cadastro rápido de novos operários:</strong> rotatividade alta exige onboarding em minutos.</li>
+        <li><strong>Acesso pelo celular sem instalar app:</strong> PWA simplifica imensamente.</li>
+      </ol>
+
+      <h2>Como o WorkID resolve cada problema</h2>
+      <p>O WorkID foi desenhado pra cenários distribuídos. No setor de construção civil você consegue:</p>
+      <ul>
+        <li>Cadastrar cada obra como <strong>local adicional</strong>; o operário bate ponto em qualquer uma sem reconfigurar nada.</li>
+        <li>Usar o <strong>Modo Totem</strong> em um tablet barato na entrada da obra principal — operário olha pra câmera, sistema reconhece pelo rosto e bate o ponto. Sem digitar senha.</li>
+        <li>Liberar <strong>ponto livre</strong> para encarregados ou medidores que circulam entre obras.</li>
+        <li>Gerar <strong>folha de ponto consolidada</strong> por obra (importante pra fechamento contábil de cada empreendimento).</li>
+      </ul>
+
+      <h2>Custos: cabe no bolso da construtora pequena?</h2>
+      <p>Sim. A maior dor de quem está começando é o investimento inicial. Como sistemas digitais não exigem hardware, você paga só pelo software por funcionário. <a href="/blog/quanto-custa-sistema-ponto-eletronico-digital">Veja a faixa de preços</a>: a partir de R$ 9,90/funcionário/mês. Numa obra com 15 operários, são R$ 148,50/mês — menos do que uma diária de pedreiro.</p>
+
+      <h2>Como adequar a obra à <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a></h2>
+      <p>O REP-P (programa de registro) é o tipo certo pra construção civil — não exige relógio físico, aceita ponto pelo celular e cumpre todas as exigências de inviolabilidade e <a href="/blog/ponto-eletronico-gps-como-funciona-legal">geolocalização</a>. Em fiscalização, o que importa é mostrar:</p>
+      <ul>
+        <li>Espelho de ponto consolidado por funcionário, mês a mês.</li>
+        <li>Comprovante de cada batida (fica salvo automaticamente no sistema).</li>
+        <li>Arquivo Fonte de Dados (AFD) gerado pelo sistema, no formato do MTE.</li>
+      </ul>
+
+      <h2>Plano de implantação em obra</h2>
+      <ol>
+        <li><strong>Semana 1:</strong> cadastrar canteiros e funcionários atuais. Treinar encarregados.</li>
+        <li><strong>Semana 2:</strong> rodar paralelo (mantém método antigo e o novo simultâneos).</li>
+        <li><strong>Semana 3:</strong> migrar 100%. Conferir folha de pagamento batendo com o sistema.</li>
+        <li><strong>Mês 2:</strong> usar relatórios pra entender padrões — atrasos, faltas, hora extra por equipe ou empreitada.</li>
+      </ol>
+      <p>Veja também: <a href="/blog/como-implantar-ponto-digital-7-dias">como implantar ponto digital em 7 dias</a>.</p>
+
+      <h2>Conclusão</h2>
+      <p>Construção civil sofre demais com controle de ponto manual. Migrar pra digital reduz risco trabalhista, melhora a relação com fiscalização e dá visibilidade real do que acontece em cada obra. E não custa caro.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Construtora? Teste o WorkID em 1 obra primeiro</p>
+        <p>14 dias grátis, cadastra uma obra-piloto e vê como o controle fica. Depois replica nas outras.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "ponto-eletronico-restaurantes-bares",
+    title: "Ponto eletrônico para restaurantes e bares: o guia 2026",
+    description:
+      "Restaurante e bar têm escalas, hora extra constante e muita rotatividade. Veja como o ponto digital simplifica o RH e cumpre a CLT no setor de food service.",
+    date: "2026-04-26",
+    readTime: "8 min",
+    category: "Guia",
+    tags: ["restaurante", "bar", "food service", "ponto digital"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>Por que restaurante e bar precisam de ponto bem feito</h2>
+      <p>Quem opera restaurante ou bar conhece o cenário: <strong>turnos mistos</strong>, <strong>extras constantes</strong>, <strong>fechamento depois da meia-noite</strong> (e adicional noturno!), <strong>folguistas que cobrem feriado</strong>, e uma rotatividade que assusta. Sem controle de ponto sério, você convida três coisas: erro de folha, dívida trabalhista e fiscalização.</p>
+
+      <h2>Os 5 problemas mais comuns no setor</h2>
+      <ol>
+        <li><strong>Adicional noturno não calculado:</strong> turno fecha às 1h da manhã e ninguém pagou os 20% sobre as horas após 22h. Veja <a href="/blog/adicional-noturno-como-calcular-clt-2026">como calcular adicional noturno</a>.</li>
+        <li><strong>Hora extra paga errado:</strong> 50% sobre hora normal vira 50% sobre hora cheia (sem adicional noturno embutido) — pagamento a maior ou a menor.</li>
+        <li><strong>Intervalo intrajornada não controlado:</strong> CLT exige 1h pra jornada acima de 6h; bar quase nunca tem isso bem registrado.</li>
+        <li><strong>Folga em feriado misturada:</strong> compensação não controlada, vira processo.</li>
+        <li><strong>Funcionário "fantasma" no caixa:</strong> ponto batido pelo gerente pra cobrir falta.</li>
+      </ol>
+
+      <h2>O que ponto digital muda no dia a dia</h2>
+      <ul>
+        <li><strong>Bate ponto no celular do funcionário:</strong> sem fila no relógio, sem cartão pra perder.</li>
+        <li><strong>Confere foto e GPS:</strong> impossível bater ponto em casa fingindo que tá no estabelecimento.</li>
+        <li><strong>Adicional noturno calculado automaticamente:</strong> sistema identifica horas após 22h e aplica os 20%.</li>
+        <li><strong>Folguistas com escala definida:</strong> a jornada de cada um pode ter escalas diferentes (6x1, 5x2, etc.).</li>
+        <li><strong>Modo Totem na entrada:</strong> tablet com reconhecimento facial pra quem prefere central.</li>
+      </ul>
+
+      <h2>Casos de uso reais em food service</h2>
+      <h3>1. Garçons em restaurante com filial</h3>
+      <p>Cada filial tem seu local cadastrado com cerca virtual. O garçom é único no sistema, mas pode bater ponto na filial onde está trabalhando naquele dia (Centro ou Shopping). Folha consolidada por colaborador, custo separado por filial.</p>
+      <h3>2. Cozinheiros em jornada noturna</h3>
+      <p>Entram às 18h, saem às 2h. Sistema identifica que 4 horas (22h às 2h) são noturnas e aplica os 20% automaticamente. Espelho de ponto separa: 8h trabalhadas, sendo 4h normais e 4h noturnas.</p>
+      <h3>3. Bartender com escala 5x2</h3>
+      <p>Define-se a escala (segunda a sexta, 18h às 2h). Sistema sabe quais dias são folga; não cobra ponto nos dias livres.</p>
+
+      <h2>Modo Totem na entrada do restaurante</h2>
+      <p>Coloca um tablet velho na entrada da cozinha. Funcionário chega, olha pra câmera, sistema reconhece o rosto e bate o ponto. Sem digitar nada. Saída idem. Custa zero a mais e elimina 90% do problema de fraude. Veja como funciona o <a href="/blog/reconhecimento-facial-ponto-vale-a-pena">reconhecimento facial no ponto</a>.</p>
+
+      <h2>Quanto custa pra uma operação de 10-15 funcionários</h2>
+      <p>Plano Professional do WorkID: R$ 99,90 fixos + R$ 9,90 por funcionário extra acima do incluído. Pra 15 colaboradores: aprox. R$ 150-180/mês. Menos do que uma diária de cozinheiro. <a href="/blog/quanto-custa-sistema-ponto-eletronico-digital">Compare com outros sistemas</a>.</p>
+
+      <h2>Conformidade com a Portaria 671</h2>
+      <p>Sistemas como o WorkID atendem ao REP-P, gerando AFD e relatórios prontos pra fiscalização. A <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a> permite ponto pelo celular desde que tenha inviolabilidade e comprovante. Tudo isso vem nativo.</p>
+
+      <h2>Conclusão</h2>
+      <p>Restaurante e bar são exatamente o tipo de operação que mais sofre com ponto manual e mais ganha com digital. Adicional noturno automático e cálculo correto de hora extra já pagam o sistema em duas folhas. E o mais importante: dorme tranquilo nas vésperas de fiscalização do MTE.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Restaurante ou bar? Teste antes de fechar a folha do mês</p>
+        <p>14 dias grátis. Cadastra a equipe atual e vê o adicional noturno calculado correto antes da próxima folha.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "como-provar-horas-extras-justica-do-trabalho",
+    title: "Como provar horas extras na Justiça do Trabalho (2026)",
+    description:
+      "Saiba como provar horas extras em uma reclamação trabalhista, quais são as evidências aceitas e como o ponto eletrônico digital protege empresa e funcionário.",
+    date: "2026-04-24",
+    readTime: "9 min",
+    category: "Legislação",
+    tags: ["horas extras", "justiça do trabalho", "prova", "CLT"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O ônus da prova nas horas extras</h2>
+      <p>Pela Súmula 338 do TST, em empresas com mais de 20 funcionários, a obrigação de manter o controle de jornada é do <strong>empregador</strong>. Quando o empregador não apresenta os registros, presume-se verdadeira a jornada alegada pelo funcionário na petição inicial. Em outras palavras: <strong>se você não tem ponto, perde por omissão</strong>.</p>
+
+      <h2>O que conta como prova de horas extras</h2>
+      <p>Em ordem decrescente de força jurídica:</p>
+      <ol>
+        <li><strong>Espelho de ponto eletrônico</strong> com inviolabilidade — registros impossíveis de adulterar a posteriori.</li>
+        <li><strong>Folha de ponto assinada pelo funcionário</strong> ao final do mês.</li>
+        <li><strong>E-mails, mensagens de WhatsApp</strong> trocados com gestor mostrando trabalho fora do horário.</li>
+        <li><strong>Testemunhas:</strong> colegas que viram a jornada efetivamente cumprida.</li>
+        <li><strong>Anotações pessoais do funcionário:</strong> caderno, agenda — força fraca, mas pode ajudar.</li>
+      </ol>
+
+      <h2>Como o juiz analisa o ponto eletrônico</h2>
+      <p>O juiz olha três coisas:</p>
+      <ul>
+        <li><strong>Inviolabilidade:</strong> o sistema permite adulterar batida sem deixar log? Se sim, perde força.</li>
+        <li><strong>Comprovante:</strong> o funcionário recebia comprovação de cada batida?</li>
+        <li><strong>Aderência à <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a>:</strong> sistema gera AFD, atende REP-P, etc.</li>
+      </ul>
+      <p>Sistemas que cumprem tudo são raramente questionados. Os que não cumprem, viram bola de neve em audiência.</p>
+
+      <h2>O perigo do ponto britânico</h2>
+      <p>"Ponto britânico" é a marcação SEM variação — todo dia entra 8h, saí às 18h, mesmo a hora exata. Juízes consideram isso indício de fraude (impossível na prática). A jurisprudência diz que esse ponto é "imprestável" e o funcionário pode alegar a jornada que quiser. Sistemas digitais resolvem isso registrando a hora exata da batida.</p>
+
+      <h2>Hora extra "tácita" e supressão de horas</h2>
+      <p>Mesmo quando a empresa afirma não autorizar hora extra, se o funcionário trabalhou e a empresa <em>tolerou</em>, há direito ao pagamento. Provas dessa "hora extra tácita" incluem:</p>
+      <ul>
+        <li>Mensagens de chefia respondendo fora do expediente.</li>
+        <li>Tarefas atribuídas com prazo que exigia overtime.</li>
+        <li>Login no sistema da empresa após horário (logs de servidor).</li>
+      </ul>
+
+      <h2>Dispensa de controle de ponto: cuidado</h2>
+      <p>Cargo de gestão (art. 62, II da CLT) não tem direito a hora extra — mas a interpretação é restritiva. O funcionário precisa ter <strong>poder real de mando, gestão e fidúcia</strong>. Não basta ter o cargo "Gerente" no contracheque. Em audiência, o juiz pergunta: você contratava? demitia? definia salários? Se a resposta for "não", há hora extra a pagar.</p>
+
+      <h2>Banco de horas: prova de quitação</h2>
+      <p>Se você tem banco de horas com seu funcionário, deve provar dois pontos:</p>
+      <ol>
+        <li>Existência do acordo (convenção coletiva ou individual escrito).</li>
+        <li>Compensação efetivamente realizada — quando, qual saldo, qual hora compensou qual.</li>
+      </ol>
+      <p>Sem isso, o saldo positivo vira hora extra pura. Veja <a href="/blog/banco-de-horas-como-calcular-gerenciar">como calcular e gerenciar banco de horas</a>.</p>
+
+      <h2>Como o ponto digital protege a empresa</h2>
+      <ul>
+        <li>Cada batida tem geolocalização e foto: prova de PRESENÇA, não só de marcação.</li>
+        <li>Inviolabilidade nativa: o histórico de alterações é registrado.</li>
+        <li>Espelho de ponto com <strong>assinatura digital do funcionário</strong> mensal: o juiz adora ver.</li>
+        <li>AFD pronto pra entrega em fiscalização.</li>
+      </ul>
+
+      <h2>Conclusão</h2>
+      <p>Em 2026, defender uma reclamação de horas extras sem ponto eletrônico digital é defender no escuro. Investir em controle sério custa pouco e economiza muito na justiça — empresa que tem o registro raramente precisa pagar reclamação, e quando precisa, paga só o que realmente é devido.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Não defenda processo trabalhista no escuro</p>
+        <p>WorkID guarda 5+ anos de histórico, com geolocalização e assinatura digital. Comece a se proteger hoje.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "multas-trabalhistas-ponto-incorreto-2026",
+    title: "Multas trabalhistas por ponto incorreto: o guia 2026",
+    description:
+      "Quanto custa uma fiscalização do MTE encontrar irregularidades no ponto? Veja as multas mais comuns, valores e como evitar com sistema digital.",
+    date: "2026-04-22",
+    readTime: "8 min",
+    category: "Legislação",
+    tags: ["multas trabalhistas", "MTE", "fiscalização", "compliance"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O que a fiscalização do MTE procura</h2>
+      <p>Quando um Auditor Fiscal do Trabalho aparece na sua empresa, ele tem um checklist específico para o controle de ponto. Os itens mais comuns:</p>
+      <ul>
+        <li>Existência de controle de jornada (obrigatório se mais de 20 funcionários).</li>
+        <li>Aderência à <a href="/blog/portaria-671-controle-de-ponto">Portaria 671</a> (REP correto).</li>
+        <li>Geração de AFD acessível.</li>
+        <li>Pagamento correto de horas extras e adicionais.</li>
+        <li>Respeito a intervalos intrajornada e interjornada.</li>
+        <li>Limite legal de jornada.</li>
+      </ul>
+
+      <h2>As multas mais comuns e seus valores</h2>
+      <p>As multas variam conforme o porte da empresa e a gravidade. Os valores abaixo são por funcionário/infração e refletem a tabela CLT:</p>
+      <ul>
+        <li><strong>Não manter controle de jornada:</strong> R$ 40,25 a R$ 4.025,00 por funcionário (art. 74, §2º + art. 47).</li>
+        <li><strong>Sistema de ponto não atendendo Portaria 671:</strong> R$ 402,53 a R$ 4.025,33 por colaborador prejudicado.</li>
+        <li><strong>Não pagar hora extra corretamente:</strong> dobro do valor devido + multa adicional.</li>
+        <li><strong>Não conceder intervalo intrajornada:</strong> 50% sobre cada hora suprimida + multa.</li>
+        <li><strong>Não respeitar interjornada (11h entre dois dias):</strong> hora extra + multa.</li>
+        <li><strong>Adicional noturno não pago:</strong> retroativo de 5 anos + 50% de multa, mais correção monetária.</li>
+      </ul>
+      <p>O cálculo é por <strong>funcionário</strong>, não por empresa. Em uma fiscalização que pega 30 colaboradores irregulares, mesmo a multa "leve" multiplica.</p>
+
+      <h2>O que aumenta a multa</h2>
+      <ul>
+        <li><strong>Reincidência:</strong> dobra automaticamente.</li>
+        <li><strong>Falta de boa-fé:</strong> rasura, ponto britânico, testemunha mentindo.</li>
+        <li><strong>Extensão temporal:</strong> mais tempo de irregularidade, mais alto o piso.</li>
+      </ul>
+
+      <h2>Como o sistema digital reduz risco de multa</h2>
+      <ul>
+        <li><strong>Inviolabilidade nativa</strong> elimina o "ponto britânico".</li>
+        <li><strong>AFD pronto</strong> em segundos, gerado pelo sistema (não precisa terceirizar pra contador).</li>
+        <li><strong>Cálculo automático</strong> de adicional noturno, hora extra e intervalos.</li>
+        <li><strong>Auditoria por geolocalização e foto</strong> — defesa robusta contra alegações.</li>
+      </ul>
+      <p>Em fiscalização real, ter o sistema certo e o relatório à mão geralmente termina o processo em advertência. Sem sistema, vira auto de infração.</p>
+
+      <h2>O custo invisível: ações trabalhistas</h2>
+      <p>A multa do MTE é uma parte. A outra parte são as <strong>reclamações trabalhistas individuais</strong> que florescem quando a empresa tem ponto bagunçado. Cada uma costuma custar R$ 5 mil a R$ 50 mil em condenação + honorários, e até R$ 100 mil em casos extremos. Saiba <a href="/blog/como-provar-horas-extras-justica-do-trabalho">como o controle de ponto protege na justiça</a>.</p>
+
+      <h2>Multa do eSocial</h2>
+      <p>Independente do MTE, o eSocial tem multas próprias por inconsistência entre folha e jornada declarada. Tipicamente R$ 201,27 a R$ 402,54 por evento errado. Pra uma empresa com 40 funcionários e 12 meses de erro, vira R$ 96 mil só de eSocial.</p>
+
+      <h2>Plano de adequação rápida</h2>
+      <ol>
+        <li><strong>Hoje:</strong> avaliar se sistema atual gera AFD e atende Portaria 671.</li>
+        <li><strong>Esta semana:</strong> migrar pra sistema homologado (digital, REP-P).</li>
+        <li><strong>Próximas 2 semanas:</strong> recalcular folhas dos últimos 5 anos pra ver passivo trabalhista oculto.</li>
+        <li><strong>Próximo mês:</strong> rodar primeira folha 100% no sistema novo.</li>
+      </ol>
+      <p>Veja como <a href="/blog/como-implantar-ponto-digital-7-dias">implantar ponto digital em 7 dias</a>.</p>
+
+      <h2>Conclusão</h2>
+      <p>Não é "se" sua empresa será fiscalizada — é "quando". Empresas com ponto digital saem ilesas; empresas sem, pagam pesado. Investir R$ 100-300 por mês em um sistema decente é o melhor seguro contra multa e processo trabalhista que existe.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Pague R$ 99,90/mês e durma tranquilo</p>
+        <p>Sistema homologado, AFD automático, espelho com assinatura digital. Teste 14 dias grátis no WorkID.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
+  {
+    slug: "fechamento-mensal-de-ponto-passo-a-passo",
+    title: "Fechamento mensal de ponto: o passo a passo completo (2026)",
+    description:
+      "Aprenda a fazer o fechamento de ponto no fim do mês: revisão de batidas, correções, validação do funcionário, geração de espelho e envio para folha.",
+    date: "2026-04-20",
+    readTime: "8 min",
+    category: "Guia Prático",
+    tags: ["fechamento de ponto", "espelho", "folha de pagamento", "RH"],
+    ogImage: "/images/og-image.png",
+    content: `
+      <h2>O que é o fechamento de ponto</h2>
+      <p>O <strong>fechamento de ponto</strong> é o ritual mensal (ou quinzenal) em que o RH consolida todas as batidas do período, corrige inconsistências, totaliza horas trabalhadas, hora extra, banco de horas, faltas e ausências, e produz o <a href="/blog/espelho-de-ponto-o-que-e-como-ler">espelho de ponto</a> definitivo de cada funcionário. Esse espelho alimenta a folha de pagamento.</p>
+      <p>Bem feito, vira rotina de 1-2 horas por mês. Mal feito, vira semana inteira de RH apagando incêndio.</p>
+
+      <h2>Quando fazer o fechamento</h2>
+      <p>Empresas costumam fechar:</p>
+      <ul>
+        <li>Do <strong>dia 26 ao 25 do mês seguinte</strong> (mais comum).</li>
+        <li>Do <strong>dia 21 ao 20</strong>.</li>
+        <li>Do <strong>dia 1 ao último dia</strong> do mês (mais simples, mas exige folha mais rápida).</li>
+      </ul>
+      <p>O período influencia a data limite pro RH conseguir gerar a folha a tempo do pagamento. Não tem fórmula mágica — escolhe o que dá folga pro time.</p>
+
+      <h2>Passo a passo do fechamento</h2>
+      <h3>1. Revisão de batidas faltantes (dia 1 do fechamento)</h3>
+      <p>Olhe o relatório de pendências: dias com menos batidas que o esperado, justificativas faltantes, atestados não anexados. Corrija junto com cada gestor de área.</p>
+      <h3>2. Validação de ausências e atestados</h3>
+      <p>Confira cada ausência: tem documento anexado? Foi aprovada? O <a href="/blog/atestado-medico-digital-como-validar">atestado é válido</a>? Marca tudo no sistema.</p>
+      <h3>3. Banco de horas e compensações</h3>
+      <p>Veja o saldo do mês de cada um. Houve compensação contratada? Se sim, marca. <a href="/blog/banco-de-horas-como-calcular-gerenciar">Como calcular banco de horas corretamente</a>.</p>
+      <h3>4. Hora extra autorizada</h3>
+      <p>Hora extra não autorizada formalmente vira "tácita" e o juiz pode reconhecer. Documente cada hora extra com justificativa do gestor.</p>
+      <h3>5. Geração do espelho preliminar</h3>
+      <p>Sistema fecha o período (24h-48h antes) e gera espelho preview. RH revisa cada um, comparando com o que esperava.</p>
+      <h3>6. Envio para validação do funcionário</h3>
+      <p>Aqui é onde o ponto digital brilha. Em vez de imprimir e pedir assinatura, o funcionário recebe notificação no celular, abre o espelho, confirma com senha (assinatura digital) ou contesta com motivo. Tudo registrado.</p>
+      <h3>7. Geração do espelho definitivo</h3>
+      <p>Após confirmação, o sistema "trava" o espelho. Vira documento jurídico imutável (com IP, hora exata, evidência da senha).</p>
+      <h3>8. Exportação para folha de pagamento</h3>
+      <p>Sistema gera arquivo com totais de hora normal, hora extra (50% e 100%), adicional noturno, faltas, atrasos e DSR. Importa direto no software de folha (ou envia pro contador).</p>
+
+      <h2>Os erros que mais quebram fechamento</h2>
+      <ul>
+        <li><strong>Adicional noturno esquecido</strong> em quem trabalhou após 22h. Veja <a href="/blog/adicional-noturno-como-calcular-clt-2026">como calcular adicional noturno</a>.</li>
+        <li><strong>Compensação de banco com saldo errado</strong> — somar hora extra normal como se fosse banco.</li>
+        <li><strong>Ausências em feriado</strong> contadas como faltas (deveria ser DSR pago).</li>
+        <li><strong>Funcionário não recebe espelho</strong> — perde força jurídica.</li>
+      </ul>
+
+      <h2>Quanto tempo deveria levar</h2>
+      <p>Empresa com 50 funcionários, sistema digital bem configurado: <strong>2 a 4 horas de RH/mês</strong>. Em sistemas manuais, é facilmente 20-30 horas pra mesma operação.</p>
+
+      <h2>Assinatura digital do funcionário: o detalhe que importa</h2>
+      <p>O passo onde o funcionário confirma o espelho com a senha é o que dá <strong>validade jurídica máxima</strong>. O sistema captura: usuário, IP, user-agent, data/hora UTC, e a evidência criptográfica de que a senha foi conferida. Em juízo, isso é prova fortíssima.</p>
+      <p>Se o funcionário discordar, ele pode <strong>contestar</strong> com motivo escrito. RH revisa, ajusta se necessário, e refaz o ciclo.</p>
+
+      <h2>Conclusão</h2>
+      <p>Fechamento de ponto bem feito é a diferença entre folha tranquila e dor de cabeça mensal. Sistema digital corta 80% do trabalho manual, dá segurança jurídica e ainda gera o arquivo pronto pro contador. Investir em uma rotina robusta é o melhor uso de tempo que o RH pode fazer.</p>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; border-radius: 1rem; background: rgba(124, 58, 237, 0.1); border: 1px solid rgba(124, 58, 237, 0.3);">
+        <p style="font-size: 1.1rem; font-weight: 600; color: #a855f7; margin-bottom: 0.5rem;">Fechamento mensal em 1 clique</p>
+        <p>WorkID gera espelho com assinatura digital do funcionário e exporta pro contador. 14 dias grátis pra testar.</p>
+        <a href="/signup" style="display: inline-block; margin-top: 0.75rem; padding: 0.75rem 1.5rem; background: #7c3aed; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Começar teste grátis &rarr;</a>
+      </div>
+    `,
+  },
 ];
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
