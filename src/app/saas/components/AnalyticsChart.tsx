@@ -122,28 +122,32 @@ export default function AnalyticsChart({ analitico, loading }: Props) {
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="gradVisitas" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.5} />
                         <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="gradSignups" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.5} />
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
+                      <linearGradient id="gradConversoes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                      </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={{ stroke: '#334155' }} tickLine={false} />
                     <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#e2e8f0' }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px', fontSize: '12px', color: '#e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,.3)' }}
                       labelFormatter={(label: string) => `Dia ${label}`}
                       formatter={(value: number, name: string) => {
                         const labels: Record<string, string> = { visitasLanding: 'Visitas', visitasSignup: 'Pag. Signup', signups: 'Signups', conversoes: 'Conversoes' };
                         return [value, labels[name] || name];
                       }}
                     />
-                    <Area type="monotone" dataKey="visitasLanding" stroke="#a855f7" strokeWidth={2} fill="url(#gradVisitas)" name="visitasLanding" />
-                    <Area type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={2} fill="url(#gradSignups)" name="signups" />
-                    <Area type="monotone" dataKey="conversoes" stroke="#f59e0b" strokeWidth={1.5} fill="transparent" name="conversoes" />
+                    <Area type="monotone" dataKey="visitasLanding" stroke="#a855f7" strokeWidth={2.5} fill="url(#gradVisitas)" name="visitasLanding" activeDot={{ r: 5, strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="signups" stroke="#10b981" strokeWidth={2.5} fill="url(#gradSignups)" name="signups" activeDot={{ r: 5, strokeWidth: 2 }} />
+                    <Area type="monotone" dataKey="conversoes" stroke="#f59e0b" strokeWidth={2} fill="url(#gradConversoes)" name="conversoes" activeDot={{ r: 5, strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

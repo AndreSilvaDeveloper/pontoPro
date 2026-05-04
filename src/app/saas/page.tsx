@@ -28,6 +28,7 @@ import BellDropdown from "./components/BellDropdown";
 import PushToastListener from "./components/PushToastListener";
 import PushPermissionPrompt from "./components/PushPermissionPrompt";
 import CommandPalette from "./components/CommandPalette";
+import DashboardHero from "./components/DashboardHero";
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -286,6 +287,13 @@ export default function SuperAdminPage() {
 
       {/* Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 relative z-10">
+        <DashboardHero
+          mrr={stats?.mrr}
+          totalAtivos={stats?.totalAtivos}
+          totalEmpresas={stats?.totalEmpresas}
+          loading={loadingStats}
+        />
+
         <StatsCards stats={stats} loading={loadingStats} />
 
         <AnalyticsChart analitico={stats?.analitico} loading={loadingStats} />
