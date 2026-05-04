@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,15 +38,17 @@ import { MobileMenu } from "@/components/landing/mobile-menu";
 import { DesktopMenu } from "@/components/landing/desktop-menu";
 import { PricingSection } from "@/components/landing/pricing-section";
 import { TotemSection } from "@/components/landing/totem-section";
-import ROICalculator from "@/components/landing/ROICalculator";
+
+// Componentes pesados ou não-críticos pro LCP — carregam só após interação
+const ROICalculator = dynamic(() => import("@/components/landing/ROICalculator"), { ssr: false });
+const GalleryCarousel = dynamic(() => import("@/components/landing/gallery-carousel").then(m => m.GalleryCarousel), { ssr: false });
+const WhatsAppFloat = dynamic(() => import("@/components/landing/WhatsAppFloat"), { ssr: false });
+const ExitIntentPopup = dynamic(() => import("@/components/landing/ExitIntentPopup"), { ssr: false });
+const RevealOnScroll = dynamic(() => import("@/components/landing/RevealOnScroll"), { ssr: false });
 
 import { LINKS, waLink } from '@/config/links'
 import { BASE_URL } from '@/config/site'
-import { GalleryCarousel } from "@/components/landing/gallery-carousel";
-import WhatsAppFloat from "@/components/landing/WhatsAppFloat";
-import ExitIntentPopup from "@/components/landing/ExitIntentPopup";
 import { getLatestPosts } from "@/data/blog-posts";
-import RevealOnScroll from "@/components/landing/RevealOnScroll";
 
 const SCHEMA_ORG = {
   "@context": "https://schema.org",

@@ -15,6 +15,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
@@ -223,7 +224,7 @@ export default function SuperAdminPage() {
       <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="WorkID" className="w-8 h-8 rounded-lg object-cover" />
+            <Image src="/logo.png" alt="WorkID" width={32} height={32} className="w-8 h-8 rounded-lg object-cover" priority />
             <div>
               <h1 className="text-lg font-bold text-text-primary">WorkID</h1>
               <p className="text-[10px] text-text-muted uppercase tracking-widest">Painel Super Admin</p>
