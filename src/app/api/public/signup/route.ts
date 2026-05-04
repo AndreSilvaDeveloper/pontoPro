@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { PLANOS, PLANO_DEFAULT, type PlanoId } from "@/config/planos";
 import { validarCNPJ } from "@/utils/cnpj";
 import { notificarLead } from "@/lib/leadAlert";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,16 @@ function addDays(date: Date, days: number) {
 }
 
 export async function POST(req: Request) {
+  // Rate-limit: máx 3 signups por IP em 15 minutos (signup é mais caro)
+  const ip = getClientIp(req);
+  const rl = checkRateLimit({ key: `signup:${ip}`, max: 3, windowMs: 15 * 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, erro: 'Muitas tentativas de cadastro. Tente novamente em alguns minutos.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec ?? 60) } }
+    );
+  }
+
   try {
     const body = await req.json();
 
