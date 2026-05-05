@@ -21,12 +21,8 @@ export default function AnalyticsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-page text-text-primary">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
-      </div>
-
-      <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+    <>
+      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <Link
             href="/saas"
@@ -47,6 +43,6 @@ export default function AnalyticsPage() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 relative z-10">
         <AnalyticsChart analitico={stats?.analitico} loading={loading} forceOpen />
       </main>
-    </div>
+    </>
   );
 }

@@ -344,7 +344,7 @@ export default function ConfigEmpresaPage() {
   const removeCustom = (i: number) => setCustom(custom.filter((_, idx) => idx !== i));
 
   if (loading) return (
-    <div className="min-h-screen bg-page text-text-primary flex items-center justify-center">
+    <div className="min-h-[60vh] flex items-center justify-center">
       <div className="animate-pulse text-text-muted">Carregando...</div>
     </div>
   );
@@ -352,8 +352,7 @@ export default function ConfigEmpresaPage() {
   const planoConfig = PLANOS[empresa?.plano as PlanoId] || PLANOS.PROFESSIONAL;
 
   return (
-    <div className="min-h-screen bg-page text-text-primary">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
         {/* === HEADER === */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -938,7 +937,6 @@ export default function ConfigEmpresaPage() {
           </div>
         )}
 
-      </div>
     </div>
   );
 }

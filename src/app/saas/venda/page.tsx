@@ -78,15 +78,8 @@ export default function NovaVendaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-page text-text-primary">
-      {/* Decorative blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]" />
-      </div>
-
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+    <>
+      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
           <Link
             href="/saas"
@@ -262,6 +255,6 @@ export default function NovaVendaPage() {
           </>
         )}
       </main>
-    </div>
+    </>
   );
 }
