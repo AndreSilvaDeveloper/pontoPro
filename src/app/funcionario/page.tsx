@@ -984,6 +984,7 @@ export default function Home() {
                     audio={false}
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
+                    mirrored
                     videoConstraints={{ facingMode: forcarFrontal ? { exact: 'user' } : 'user' }}
                     className="w-full h-full object-cover"
                     onUserMediaError={() => {
