@@ -20,6 +20,7 @@ import {
   PanelLeftOpen,
   Megaphone,
   ScrollText,
+  DollarSign,
 } from 'lucide-react';
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner';
 import BellDropdown from './BellDropdown';
@@ -48,6 +49,12 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { href: '/saas/leads', label: 'Leads', icon: Inbox },
       { href: '/saas/venda', label: 'Nova Venda', icon: Plus },
       { href: '/saas/revendedores', label: 'Revendedores', icon: Handshake },
+    ],
+  },
+  {
+    title: 'FINANCEIRO',
+    items: [
+      { href: '/saas/financeiro', label: 'Visão geral', icon: DollarSign },
     ],
   },
   {
