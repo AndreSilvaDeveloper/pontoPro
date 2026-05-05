@@ -191,6 +191,133 @@ export function calcularDesconto(
 }
 
 /**
+ * Detalhes do cupom ativo aplicado à empresa, com cálculo do desconto sobre um valor base.
+ */
+export type CupomAtivoInfo = {
+  uso: { id: string; cupomId: string; parcelasAplicadas: number; parcelasMax: number; valorAplicadoTotal: number };
+  cupom: { id: string; codigo: string; nome: string; tipo: TipoCupom; valor: number; duracaoMeses: number; descricao: string | null };
+  desconto: number;                      // valor monetário descontado nesta cobrança
+  valorOriginal: number;                 // valor cheio
+  valorComDesconto: number;              // valor a cobrar
+  parcelasRestantes: number;             // quantas ainda terão desconto (incluindo a atual se aplicável)
+  resumoTexto: string;                   // ex: "50% off — 3 primeiras parcelas"
+};
+
+/**
+ * Lê o cupom ativo de uma empresa (CupomUso onde parcelasAplicadas < parcelasMax e cupom ainda ativo).
+ * Retorna null se não houver cupom aplicável agora.
+ */
+export async function getCupomAtivoEmpresa(empresaId: string) {
+  if (!empresaId) return null;
+  try {
+    const uso = await (prisma as any).cupomUso.findFirst({
+      where: {
+        empresaId,
+        cupom: { ativo: true },
+      },
+      include: { cupom: true },
+      orderBy: { ativadoEm: 'desc' },
+    });
+    if (!uso) return null;
+    if (uso.parcelasAplicadas >= uso.parcelasMax) return null;
+    return uso;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Calcula o valor com desconto do cupom ativo (se houver). Não consome parcela — só calcula.
+ * Usado em gerar boleto, exibir preço pra admin/super-admin, etc.
+ *
+ * Para PERCENTUAL/VALOR_FIXO: aplica desconto no valor.
+ * Para MESES_GRATIS: zera o valor (mês grátis efetivo).
+ * Para TRIAL_ESTENDIDO: não altera valor (efeito é só estender trial).
+ */
+export async function aplicarDescontoCupomEmpresa(
+  empresaId: string,
+  valorOriginal: number
+): Promise<CupomAtivoInfo | null> {
+  const uso = await getCupomAtivoEmpresa(empresaId);
+  if (!uso) return null;
+
+  const cupom = uso.cupom;
+  const valor = Number(cupom.valor);
+  const original = Number(valorOriginal.toFixed(2));
+  let desconto = 0;
+  let resumoTexto = '';
+  const dur = cupom.duracaoMeses === -1 ? 'sempre' : cupom.duracaoMeses === 1 ? '1ª parcela' : `${cupom.duracaoMeses} primeiras parcelas`;
+
+  switch (cupom.tipo as TipoCupom) {
+    case 'PERCENTUAL':
+      desconto = Number((original * (valor / 100)).toFixed(2));
+      resumoTexto = `${valor}% off — ${dur}`;
+      break;
+    case 'VALOR_FIXO':
+      desconto = Math.min(valor, original);
+      resumoTexto = `R$ ${valor.toFixed(2).replace('.', ',')} off — ${dur}`;
+      break;
+    case 'MESES_GRATIS':
+      desconto = original;
+      resumoTexto = `${valor} ${valor === 1 ? 'mês grátis' : 'meses grátis'}`;
+      break;
+    case 'TRIAL_ESTENDIDO':
+      desconto = 0;
+      resumoTexto = `+${valor} dias de trial (já consumido no signup)`;
+      break;
+  }
+
+  return {
+    uso: {
+      id: uso.id,
+      cupomId: uso.cupomId,
+      parcelasAplicadas: uso.parcelasAplicadas,
+      parcelasMax: uso.parcelasMax,
+      valorAplicadoTotal: Number(uso.valorAplicadoTotal),
+    },
+    cupom: {
+      id: cupom.id,
+      codigo: cupom.codigo,
+      nome: cupom.nome,
+      tipo: cupom.tipo,
+      valor,
+      duracaoMeses: cupom.duracaoMeses,
+      descricao: cupom.descricao,
+    },
+    desconto,
+    valorOriginal: original,
+    valorComDesconto: Number((original - desconto).toFixed(2)),
+    parcelasRestantes: Math.max(0, uso.parcelasMax - uso.parcelasAplicadas),
+    resumoTexto,
+  };
+}
+
+/**
+ * Consome 1 parcela do cupom ativo da empresa. Chamar QUANDO o pagamento é
+ * efetivamente confirmado (webhook PAYMENT_RECEIVED). Idempotência: incrementa
+ * apenas se ainda há parcelas restantes.
+ */
+export async function consumirParcelaCupomEmpresa(empresaId: string, valorAplicado: number) {
+  try {
+    const uso = await getCupomAtivoEmpresa(empresaId);
+    if (!uso) return null;
+    const novoTotal = Number((Number(uso.valorAplicadoTotal) + valorAplicado).toFixed(2));
+    const novasParcelas = uso.parcelasAplicadas + 1;
+    return await (prisma as any).cupomUso.update({
+      where: { id: uso.id },
+      data: {
+        parcelasAplicadas: novasParcelas,
+        valorAplicadoTotal: novoTotal,
+        expiradoEm: novasParcelas >= uso.parcelasMax ? new Date() : null,
+      },
+    });
+  } catch (e) {
+    console.error('consumirParcelaCupomEmpresa falhou:', e);
+    return null;
+  }
+}
+
+/**
  * Aplica o cupom a uma empresa, criando um CupomUso e incrementando o contador.
  * Idempotente via constraint @@unique([cupomId, empresaId]).
  */

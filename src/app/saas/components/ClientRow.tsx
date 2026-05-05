@@ -109,9 +109,19 @@ export default function ClientRow({
 
         {/* Plano */}
         <td className="px-4 py-3">
-          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${pCfg.cls}`}>
-            {planoNome}
-          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${pCfg.cls}`}>
+              {planoNome}
+            </span>
+            {empresa.cupomAtivo && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                title={`Cupom ${empresa.cupomAtivo.codigo} — ${empresa.cupomAtivo.parcelasRestantes} parcelas restantes`}
+              >
+                🏷 {empresa.cupomAtivo.codigo}
+              </span>
+            )}
+          </div>
         </td>
 
         {/* Status */}

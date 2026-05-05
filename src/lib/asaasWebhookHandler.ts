@@ -203,6 +203,14 @@ export async function processarWebhookAsaas(req: Request): Promise<NextResponse>
       } as any,
     });
 
+    // Consome 1 parcela do cupom ativo (se houver) — desconto se aplica nesta parcela
+    try {
+      const { consumirParcelaCupomEmpresa } = await import('@/lib/cupons');
+      await consumirParcelaCupomEmpresa(targetEmpresaId, Number(payment?.value ?? 0));
+    } catch (e) {
+      console.error('Erro consumindo parcela do cupom:', e);
+    }
+
     const targetNome = (await prisma.empresa.findUnique({
       where: { id: targetEmpresaId },
       select: { nome: true },

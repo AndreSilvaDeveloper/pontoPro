@@ -57,7 +57,25 @@ export async function GET(_request: NextRequest, context: Ctx) {
     ? JSON.parse(JSON.stringify(empresa.configuracoes))
     : {};
 
-  return NextResponse.json({ ok: true, empresa: { ...empresa, configuracoes: configs } });
+  // Calcula valor base + cupom ativo pra exibição
+  const { calcularValorEmpresa } = await import('@/config/planos');
+  const ids = [empresa.id, ...empresa.filiais.map(f => f.id)];
+  const ADMIN_CARGOS = ['ADMIN', 'DONO', 'SUPER_ADMIN'];
+  const totalFuncs = await prisma.usuario.count({
+    where: { empresaId: { in: ids }, cargo: { notIn: ADMIN_CARGOS as any } },
+  });
+  const totalAdmins = empresa.usuarios.length;
+  const calc = calcularValorEmpresa(empresa as any, totalFuncs, totalAdmins, empresa.filiais.length);
+
+  const { aplicarDescontoCupomEmpresa } = await import('@/lib/cupons');
+  const cupom = await aplicarDescontoCupomEmpresa(empresa.id, calc.totalMensal);
+
+  return NextResponse.json({
+    ok: true,
+    empresa: { ...empresa, configuracoes: configs },
+    valor: { totalMensal: calc.totalMensal, total: calc.total, cycle: calc.cycle },
+    cupom,
+  });
 }
 
 export async function PUT(request: NextRequest, context: Ctx) {

@@ -127,10 +127,16 @@ export async function GET() {
   const custoAdmins = Number((adminsExcedentes * planoConfig.extraAdmin).toFixed(2));
   const custoTotem = calculo.totem;
 
-  const valorFinal = calculo.total;
+  const valorOriginal = calculo.total;
+
+  // Aplica cupom ativo (se houver) — valor exibido na tela do admin já inclui o desconto
+  const { aplicarDescontoCupomEmpresa } = await import('@/lib/cupons');
+  const cupomInfo = await aplicarDescontoCupomEmpresa(billingEmpresa.id, valorOriginal);
+  const valorFinal = cupomInfo ? cupomInfo.valorComDesconto : valorOriginal;
 
   return NextResponse.json({
     ok: true,
+    cupom: cupomInfo,
     empresa: {
       id: billingEmpresa.id,
       nome: billingEmpresa.nome,
