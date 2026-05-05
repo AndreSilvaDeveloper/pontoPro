@@ -110,9 +110,12 @@ export async function POST(req: Request) {
       // Cupom inválido: ignora silenciosamente em vez de bloquear o signup
     }
 
-    // ✅ Trial padrão 14 dias (+ bonus se cupom TRIAL_ESTENDIDO) + 1ª fatura vence 1 dia após o fim do trial
+    // ✅ Trial — lê das configs (default 14) + bonus se cupom TRIAL_ESTENDIDO
+    const { getConfigNumber, CONFIGS } = await import('@/lib/configs');
+    const trialDiasPadrao = await getConfigNumber(CONFIGS.TRIAL_DIAS_PADRAO, 14);
+    const diaVencimentoPadrao = await getConfigNumber(CONFIGS.COBRANCA_DIA_VENCIMENTO, 15);
     const agora = new Date();
-    const trialAte = addDays(agora, 14 + trialBonusDias);
+    const trialAte = addDays(agora, trialDiasPadrao + trialBonusDias);
     const primeiraFaturaVenceEm = addDays(trialAte, 1);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -142,7 +145,7 @@ export async function POST(req: Request) {
           billingAnchorAt: primeiraFaturaVenceEm,
 
           // mantém default, mas não vamos depender dele para o primeiro ciclo
-          diaVencimento: 15,
+          diaVencimento: diaVencimentoPadrao,
           cobrancaWhatsapp: telefone || null,
         } as any,
       });

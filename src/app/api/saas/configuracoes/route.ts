@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/db';
 import { PLANOS } from '@/config/planos';
+import { invalidateConfig } from '@/lib/configs';
 
 export const runtime = 'nodejs';
 
@@ -94,6 +95,8 @@ export async function PUT(req: Request) {
       descricao: body.descricao || null,
     },
   });
+
+  invalidateConfig(String(body.chave));
 
   if (existente && existente.valor !== String(body.valor)) {
     await prisma.logAuditoria.create({
