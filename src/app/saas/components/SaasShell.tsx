@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Megaphone,
+  ScrollText,
 } from 'lucide-react';
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner';
 import BellDropdown from './BellDropdown';
@@ -53,6 +54,12 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'ANÁLISE',
     items: [
       { href: '/saas/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'SUPORTE',
+    items: [
+      { href: '/saas/logs', label: 'Logs', icon: ScrollText },
     ],
   },
 ];
