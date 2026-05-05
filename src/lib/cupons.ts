@@ -12,6 +12,8 @@ export type CupomPublico = {
   descricao: string | null;
   destaque: string | null;
   validoAte: string | null;
+  apenasPlanos: string[];
+  apenasCiclo: string | null;
 };
 
 export type ResultadoValidacao =
@@ -72,6 +74,8 @@ export async function listarCuponsPublicos(): Promise<CupomPublico[]> {
       descricao: c.descricao,
       destaque: c.destaque,
       validoAte: c.validoAte ? c.validoAte.toISOString() : null,
+      apenasPlanos: Array.isArray(c.apenasPlanos) ? c.apenasPlanos : [],
+      apenasCiclo: c.apenasCiclo,
     }));
 }
 
@@ -133,6 +137,8 @@ export async function validarCupom(
     descricao: cupom.descricao,
     destaque: cupom.destaque,
     validoAte: cupom.validoAte ? cupom.validoAte.toISOString() : null,
+    apenasPlanos: Array.isArray(cupom.apenasPlanos) ? cupom.apenasPlanos : [],
+    apenasCiclo: cupom.apenasCiclo,
   };
 
   // Calcula preview se temos valor mensal

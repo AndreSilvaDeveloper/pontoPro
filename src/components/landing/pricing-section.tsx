@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, X, Crown } from "lucide-react";
+import { Check, X, Crown, Tag, Copy, Check as CheckIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,77 @@ import {
 } from "@/config/planos";
 
 type PlanoLanding = PlanoConfig & { ordem: number; destaque: boolean; visivel: boolean };
+
+type CupomLanding = {
+  id: string;
+  codigo: string;
+  nome: string;
+  tipo: 'PERCENTUAL' | 'VALOR_FIXO' | 'MESES_GRATIS' | 'TRIAL_ESTENDIDO';
+  valor: number;
+  duracaoMeses: number;
+  descricao: string | null;
+  destaque: string | null;
+};
+
+/**
+ * Encontra o cupom de maior valor monetário aplicável a um plano específico.
+ * Filtra por:
+ * - cupons sem restrição de plano (apenasPlanos vazio) OU que incluem o plano atual
+ * - retorna o que oferece maior desconto sobre o preço mensal
+ */
+function melhorCupomParaPlano(cupons: CupomLanding[], plano: PlanoLanding, planosAplicaveis: Record<string, string[]>): CupomLanding | null {
+  const aplicaveis = cupons.filter(c => {
+    const restritos = planosAplicaveis[c.id] || [];
+    return restritos.length === 0 || restritos.includes(plano.id);
+  });
+  if (aplicaveis.length === 0) return null;
+
+  const score = (c: CupomLanding) => {
+    if (c.tipo === 'PERCENTUAL') return plano.preco * (c.valor / 100);
+    if (c.tipo === 'VALOR_FIXO') return Math.min(c.valor, plano.preco);
+    if (c.tipo === 'MESES_GRATIS') return plano.preco * c.valor;
+    if (c.tipo === 'TRIAL_ESTENDIDO') return c.valor * 0.5; // baixo (trial é benefício, não desconto direto)
+    return 0;
+  };
+  return aplicaveis.sort((a, b) => score(b) - score(a))[0];
+}
+
+function aplicarDesconto(plano: PlanoLanding, cupom: CupomLanding | null, valorOriginal: number): {
+  valorComDesconto: number;
+  resumoPequeno: string;
+  duracaoTexto: string;
+} | null {
+  if (!cupom) return null;
+
+  const dur = cupom.duracaoMeses === -1
+    ? 'sempre'
+    : cupom.duracaoMeses === 1
+      ? '1ª parcela'
+      : `${cupom.duracaoMeses} primeiras parcelas`;
+
+  switch (cupom.tipo) {
+    case 'PERCENTUAL': {
+      const v = Number((valorOriginal * (1 - cupom.valor / 100)).toFixed(2));
+      return { valorComDesconto: v, resumoPequeno: `${cupom.valor}% off`, duracaoTexto: dur };
+    }
+    case 'VALOR_FIXO': {
+      const v = Number(Math.max(0, valorOriginal - cupom.valor).toFixed(2));
+      return { valorComDesconto: v, resumoPequeno: `R$ ${cupom.valor.toFixed(2).replace('.', ',')} off`, duracaoTexto: dur };
+    }
+    case 'MESES_GRATIS':
+      return {
+        valorComDesconto: 0,
+        resumoPequeno: `${cupom.valor} ${cupom.valor === 1 ? 'mês grátis' : 'meses grátis'}`,
+        duracaoTexto: 'após o trial',
+      };
+    case 'TRIAL_ESTENDIDO':
+      return {
+        valorComDesconto: valorOriginal,
+        resumoPequeno: `+${cupom.valor} dias de teste`,
+        duracaoTexto: 'gratuito',
+      };
+  }
+}
 
 const PLANOS_FALLBACK: PlanoLanding[] = (["STARTER", "PROFESSIONAL", "ENTERPRISE"] as PlanoId[]).map((id, i) => ({
   ...PLANOS[id],
@@ -72,6 +143,9 @@ function FeatureValue({ value }: { value: string | boolean }) {
 export function PricingSection() {
   const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
   const [planos, setPlanos] = useState<PlanoLanding[]>(PLANOS_FALLBACK);
+  const [cupons, setCupons] = useState<CupomLanding[]>([]);
+  const [planosAplicaveis, setPlanosAplicaveis] = useState<Record<string, string[]>>({});
+  const [copiado, setCopiado] = useState<string | null>(null);
   const isYearly = cycle === "YEARLY";
 
   useEffect(() => {
@@ -87,7 +161,25 @@ export function PricingSection() {
         }
       })
       .catch(() => { /* fallback já está em estado inicial */ });
+
+    fetch("/api/cupons/landing")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (d?.cupons?.length) {
+          setCupons(d.cupons);
+          const map: Record<string, string[]> = {};
+          for (const c of d.cupons) map[c.id] = Array.isArray(c.apenasPlanos) ? c.apenasPlanos : [];
+          setPlanosAplicaveis(map);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const copiar = (codigo: string) => {
+    navigator.clipboard.writeText(codigo);
+    setCopiado(codigo);
+    setTimeout(() => setCopiado(null), 1500);
+  };
 
   return (
     <section id="pricing" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
@@ -142,6 +234,9 @@ export function PricingSection() {
             const displayPriceFormatted = displayPrice.toFixed(2).replace(".", ",");
             const [intPart, decPart] = displayPriceFormatted.split(",");
 
+            const cupomDoPlano = melhorCupomParaPlano(cupons, plano, planosAplicaveis);
+            const descontoInfo = aplicarDesconto(plano, cupomDoPlano, plano.preco);
+
             return (
               <div
                 key={planoId}
@@ -192,6 +287,44 @@ export function PricingSection() {
                     </p>
                   )}
                 </div>
+
+                {/* Cupom inline */}
+                {cupomDoPlano && descontoInfo && (
+                  <div className="mb-5 -mt-2 p-3 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/30">
+                    <div className="flex items-start gap-2">
+                      <Tag size={14} className="text-amber-300 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        {cupomDoPlano.destaque && (
+                          <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 mr-1.5 mb-1">
+                            {cupomDoPlano.destaque}
+                          </span>
+                        )}
+                        <p className="text-[12px] leading-snug text-amber-100">
+                          {(cupomDoPlano.tipo === 'PERCENTUAL' || cupomDoPlano.tipo === 'VALOR_FIXO') ? (
+                            <>
+                              Pague <strong className="text-white">R$ {descontoInfo.valorComDesconto.toFixed(2).replace('.', ',')}</strong>
+                              {' '}nas <strong className="text-white">{descontoInfo.duracaoTexto}</strong>
+                              <span className="text-amber-300/70 ml-1">({descontoInfo.resumoPequeno})</span>
+                            </>
+                          ) : (
+                            <strong className="text-white">{descontoInfo.resumoPequeno}</strong>
+                          )}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => copiar(cupomDoPlano.codigo)}
+                          className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-mono font-bold text-amber-200 hover:text-amber-100 transition-colors"
+                        >
+                          {copiado === cupomDoPlano.codigo ? (
+                            <><CheckIcon size={10} /> Copiado!</>
+                          ) : (
+                            <>Use {cupomDoPlano.codigo} <Copy size={10} /></>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* CTA */}
                 <Button
