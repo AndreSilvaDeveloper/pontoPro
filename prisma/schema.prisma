@@ -138,6 +138,18 @@ model Notificacao {
   @@index([tipo, criadoEm])
 }
 
+model ConfigSistema {
+  id           String   @id @default(cuid())
+  chave        String   @unique
+  valor        String   @db.Text
+  tipo         String   @default("texto")
+  descricao    String?
+  categoria    String?  @default("geral")
+  atualizadoEm DateTime @updatedAt
+
+  @@index([categoria])
+}
+
 model Fechamento {
   id              String   @id @default(cuid())
   empresaId       String

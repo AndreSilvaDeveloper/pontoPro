@@ -21,6 +21,7 @@ import {
   Megaphone,
   ScrollText,
   DollarSign,
+  Settings,
 } from 'lucide-react';
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner';
 import BellDropdown from './BellDropdown';
@@ -67,6 +68,12 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'SUPORTE',
     items: [
       { href: '/saas/logs', label: 'Logs', icon: ScrollText },
+    ],
+  },
+  {
+    title: 'SISTEMA',
+    items: [
+      { href: '/saas/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },
 ];
