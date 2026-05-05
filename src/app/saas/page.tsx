@@ -91,8 +91,8 @@ export default function SuperAdminPage() {
     try {
       await axios.post("/api/admin/impersonate", { userId: user.id });
       setModalEquipeOpen(false);
-      if (user.cargo === "FUNCIONARIO") router.push("/funcionario");
-      else router.push("/admin");
+      const dest = user.cargo === "FUNCIONARIO" ? "/funcionario" : "/admin";
+      window.location.href = dest;
     } catch {
       alert("Não foi possível entrar como este usuário.");
     }
