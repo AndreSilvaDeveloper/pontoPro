@@ -23,6 +23,7 @@ import {
   DollarSign,
   Settings,
   Package,
+  Tag,
 } from 'lucide-react';
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner';
 import BellDropdown from './BellDropdown';
@@ -57,6 +58,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'FINANCEIRO',
     items: [
       { href: '/saas/financeiro', label: 'Visão geral', icon: DollarSign },
+      { href: '/saas/cupons', label: 'Cupons', icon: Tag },
     ],
   },
   {

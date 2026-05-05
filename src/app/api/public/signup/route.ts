@@ -96,9 +96,23 @@ export async function POST(req: Request) {
 
     const senhaHash = await bcrypt.hash(password, 10);
 
-    // ✅ Trial de 14 dias + 1ª fatura vence 1 dia após o fim do trial (15 dias após criação)
+    // ✅ Cupom (opcional) — valida antes de criar a empresa
+    const codigoCupomRaw = String(body?.cupom || '').trim().toUpperCase();
+    let cupomValido: any = null;
+    let trialBonusDias = 0;
+    if (codigoCupomRaw) {
+      const { validarCupom } = await import('@/lib/cupons');
+      const r = await validarCupom(codigoCupomRaw, { plano, ciclo: 'MONTHLY' });
+      if (r.ok) {
+        cupomValido = r.cupom;
+        if (r.cupom.tipo === 'TRIAL_ESTENDIDO') trialBonusDias = r.cupom.valor;
+      }
+      // Cupom inválido: ignora silenciosamente em vez de bloquear o signup
+    }
+
+    // ✅ Trial padrão 14 dias (+ bonus se cupom TRIAL_ESTENDIDO) + 1ª fatura vence 1 dia após o fim do trial
     const agora = new Date();
-    const trialAte = addDays(agora, 14);
+    const trialAte = addDays(agora, 14 + trialBonusDias);
     const primeiraFaturaVenceEm = addDays(trialAte, 1);
 
     const result = await prisma.$transaction(async (tx) => {
@@ -144,6 +158,25 @@ export async function POST(req: Request) {
           telefone: telefone || null,
         } as any,
       });
+
+      // Aplica cupom (se válido) registrando CupomUso. Não falha se der erro.
+      if (cupomValido) {
+        try {
+          const parcelasMax = cupomValido.duracaoMeses === -1 ? 9999 : cupomValido.duracaoMeses;
+          await tx.cupomUso.create({
+            data: {
+              cupomId: cupomValido.id,
+              empresaId: empresa.id,
+              parcelasAplicadas: 0,
+              parcelasMax,
+            },
+          });
+          await tx.cupom.update({
+            where: { id: cupomValido.id },
+            data: { usos: { increment: 1 } },
+          });
+        } catch {}
+      }
 
       return { empresaId: empresa.id, usuarioId: usuario.id };
     });

@@ -45,6 +45,7 @@ const GalleryCarousel = dynamic(() => import("@/components/landing/gallery-carou
 const WhatsAppFloat = dynamic(() => import("@/components/landing/WhatsAppFloat"), { ssr: false });
 const ExitIntentPopup = dynamic(() => import("@/components/landing/ExitIntentPopup"), { ssr: false });
 const RevealOnScroll = dynamic(() => import("@/components/landing/RevealOnScroll"), { ssr: false });
+const CuponsBanner = dynamic(() => import("@/components/landing/cupons-banner"), { ssr: false });
 
 import { LINKS, waLink } from '@/config/links'
 import { BASE_URL } from '@/config/site'
@@ -218,6 +219,8 @@ export default function LandingPage() {
 
       {/* Animated Grid Background */}
       <div className="fixed inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none" />
+
+      <CuponsBanner />
 
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-purple-500/10 bg-[#0a0e27]/80 backdrop-blur-xl">
