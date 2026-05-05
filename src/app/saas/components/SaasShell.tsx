@@ -22,6 +22,7 @@ import {
   ScrollText,
   DollarSign,
   Settings,
+  Package,
 } from 'lucide-react';
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner';
 import BellDropdown from './BellDropdown';
@@ -73,6 +74,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'SISTEMA',
     items: [
+      { href: '/saas/planos', label: 'Planos', icon: Package },
       { href: '/saas/configuracoes', label: 'Configurações', icon: Settings },
     ],
   },

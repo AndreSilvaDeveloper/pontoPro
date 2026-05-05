@@ -1,74 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, X, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PLANOS, getPrecoAnual, type PlanoId, type BillingCycle } from "@/config/planos";
+import {
+  PLANOS,
+  getPrecoAnual,
+  type PlanoId,
+  type BillingCycle,
+  type PlanoConfig,
+  ANNUAL_DISCOUNT,
+} from "@/config/planos";
 
-const PLANOS_ORDER: PlanoId[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+type PlanoLanding = PlanoConfig & { ordem: number; destaque: boolean; visivel: boolean };
 
-const FEATURES: {
-  label: string;
-  getValue: (plano: PlanoId) => string | boolean;
-}[] = [
-  {
-    label: "Funcionários inclusos",
-    getValue: (p) => `Até ${PLANOS[p].maxFuncionarios}`,
-  },
-  {
-    label: "Administradores",
-    getValue: (p) => `${PLANOS[p].maxAdmins}`,
-  },
-  {
-    label: "Filiais",
-    getValue: (p) =>
-      PLANOS[p].maxFiliais < 0
-        ? "Ilimitadas"
-        : PLANOS[p].maxFiliais === 0
-          ? "Apenas sede"
-          : `Até ${PLANOS[p].maxFiliais}`,
-  },
-  {
-    label: "Funcionário extra",
-    getValue: (p) => `R$ ${PLANOS[p].extraFuncionario.toFixed(2).replace(".", ",")}/cada`,
-  },
-  {
-    label: "Admin extra",
-    getValue: (p) => `R$ ${PLANOS[p].extraAdmin.toFixed(2).replace(".", ",")}/cada`,
-  },
-  {
-    label: "Filial extra",
-    getValue: (p) =>
-      PLANOS[p].maxFiliais < 0
-        ? "Ilimitadas"
-        : `R$ ${PLANOS[p].extraFilial.toFixed(2).replace(".", ",")}/cada`,
-  },
-  {
-    label: "Reconhecimento facial",
-    getValue: (p) => PLANOS[p].reconhecimentoFacial,
-  },
-  {
-    label: "Modo Totem (tablet)",
-    getValue: (p) =>
-      PLANOS[p].totemIncluso
+const PLANOS_FALLBACK: PlanoLanding[] = (["STARTER", "PROFESSIONAL", "ENTERPRISE"] as PlanoId[]).map((id, i) => ({
+  ...PLANOS[id],
+  ordem: i + 1,
+  destaque: id === "PROFESSIONAL",
+  visivel: true,
+}));
+
+function buildFeatures(plano: PlanoLanding): { label: string; value: string | boolean }[] {
+  return [
+    { label: "Funcionários inclusos", value: `Até ${plano.maxFuncionarios}` },
+    { label: "Administradores", value: `${plano.maxAdmins}` },
+    {
+      label: "Filiais",
+      value:
+        plano.maxFiliais < 0
+          ? "Ilimitadas"
+          : plano.maxFiliais === 0
+            ? "Apenas sede"
+            : `Até ${plano.maxFiliais}`,
+    },
+    { label: "Funcionário extra", value: `R$ ${plano.extraFuncionario.toFixed(2).replace(".", ",")}/cada` },
+    { label: "Admin extra", value: `R$ ${plano.extraAdmin.toFixed(2).replace(".", ",")}/cada` },
+    {
+      label: "Filial extra",
+      value:
+        plano.maxFiliais < 0
+          ? "Ilimitadas"
+          : `R$ ${plano.extraFilial.toFixed(2).replace(".", ",")}/cada`,
+    },
+    { label: "Reconhecimento facial", value: plano.reconhecimentoFacial },
+    {
+      label: "Modo Totem (tablet)",
+      value: plano.totemIncluso
         ? true
-        : `+R$ ${PLANOS[p].totemAddonMatriz.toFixed(2).replace(".", ",")}/mês`,
-  },
-  {
-    label: "Relatórios PDF",
-    getValue: (p) => PLANOS[p].relatoriosPdf === "COMPLETO" ? "Completo" : "Básico",
-  },
-  {
-    label: "Suporte prioritário",
-    getValue: (p) => PLANOS[p].suporte === "PRIORITARIO",
-  },
-  {
-    label: "Suporte WhatsApp",
-    getValue: (p) => PLANOS[p].suporte !== "EMAIL",
-  },
-];
+        : `+R$ ${plano.totemAddonMatriz.toFixed(2).replace(".", ",")}/mês`,
+    },
+    { label: "Relatórios PDF", value: plano.relatoriosPdf === "COMPLETO" ? "Completo" : "Básico" },
+    { label: "Suporte prioritário", value: plano.suporte === "PRIORITARIO" },
+    { label: "Suporte WhatsApp", value: plano.suporte !== "EMAIL" },
+  ];
+}
 
 function FeatureValue({ value }: { value: string | boolean }) {
   if (typeof value === "boolean") {
@@ -83,7 +71,23 @@ function FeatureValue({ value }: { value: string | boolean }) {
 
 export function PricingSection() {
   const [cycle, setCycle] = useState<BillingCycle>("MONTHLY");
+  const [planos, setPlanos] = useState<PlanoLanding[]>(PLANOS_FALLBACK);
   const isYearly = cycle === "YEARLY";
+
+  useEffect(() => {
+    fetch("/api/planos/publico")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.planos?.length) {
+          setPlanos(
+            d.planos
+              .filter((p: PlanoLanding) => p.visivel)
+              .sort((a: PlanoLanding, b: PlanoLanding) => a.ordem - b.ordem)
+          );
+        }
+      })
+      .catch(() => { /* fallback já está em estado inicial */ });
+  }, []);
 
   return (
     <section id="pricing" className="relative z-10 px-4 py-12 md:px-6 md:py-16 lg:py-20">
@@ -128,10 +132,10 @@ export function PricingSection() {
         </div>
 
         {/* Cards Grid */}
-        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
-          {PLANOS_ORDER.map((planoId) => {
-            const plano = PLANOS[planoId];
-            const isPopular = planoId === "PROFESSIONAL";
+        <div className={`mx-auto grid max-w-5xl gap-6 ${planos.length === 1 ? '' : planos.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+          {planos.map((plano) => {
+            const planoId = plano.id;
+            const isPopular = plano.destaque;
             const anual = getPrecoAnual(plano);
 
             const displayPrice = isYearly ? anual.anual : plano.preco;
@@ -205,18 +209,15 @@ export function PricingSection() {
 
                 {/* Features */}
                 <div className="flex-1 space-y-3">
-                  {FEATURES.map((feature) => {
-                    const value = feature.getValue(planoId);
-                    return (
-                      <div
-                        key={feature.label}
-                        className="flex items-center justify-between gap-2 border-b border-purple-500/10 pb-2 last:border-0"
-                      >
-                        <span className="text-sm text-gray-400">{feature.label}</span>
-                        <FeatureValue value={value} />
-                      </div>
-                    );
-                  })}
+                  {buildFeatures(plano).map((feature) => (
+                    <div
+                      key={feature.label}
+                      className="flex items-center justify-between gap-2 border-b border-purple-500/10 pb-2 last:border-0"
+                    >
+                      <span className="text-sm text-gray-400">{feature.label}</span>
+                      <FeatureValue value={feature.value} />
+                    </div>
+                  ))}
                 </div>
               </div>
             );
