@@ -81,7 +81,7 @@ export default function CuponsPill() {
   if (fechado || cupons.length === 0) return null;
 
   return (
-    <div ref={popoverRef} className="fixed bottom-24 right-6 z-40">
+    <div ref={popoverRef} className="fixed bottom-44 right-6 z-40">
       {/* Popover expandido */}
       {aberto && (
         <div className="absolute bottom-full right-0 mb-2 w-80 max-w-[calc(100vw-3rem)] bg-[#0e1330] border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
