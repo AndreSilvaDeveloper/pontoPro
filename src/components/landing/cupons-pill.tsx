@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Tag, Copy, Check, ChevronDown, X, Gift } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Tag, Copy, Check, ChevronDown, X, Gift, Sparkles } from 'lucide-react';
 
 type CupomLanding = {
   id: string;
@@ -15,6 +15,25 @@ type CupomLanding = {
 };
 
 const STORAGE_KEY = 'cupom-pill-fechado';
+
+function ofertaCurta(c: CupomLanding): string {
+  switch (c.tipo) {
+    case 'PERCENTUAL': return `${c.valor}% OFF`;
+    case 'VALOR_FIXO': return `R$${c.valor.toFixed(0)} OFF`;
+    case 'MESES_GRATIS': return c.valor === 1 ? '1 MÊS GRÁTIS' : `${c.valor} MESES GRÁTIS`;
+    case 'TRIAL_ESTENDIDO': return `+${c.valor} DIAS`;
+  }
+}
+
+function pontuarCupom(c: CupomLanding): number {
+  // pontuação simples pra escolher o "mais chamativo"
+  switch (c.tipo) {
+    case 'PERCENTUAL': return c.valor * 10;
+    case 'VALOR_FIXO': return c.valor;
+    case 'MESES_GRATIS': return c.valor * 50;
+    case 'TRIAL_ESTENDIDO': return c.valor;
+  }
+}
 
 function descricaoCurta(c: CupomLanding): string {
   switch (c.tipo) {
@@ -37,6 +56,7 @@ export default function CuponsPill() {
   const [cupons, setCupons] = useState<CupomLanding[]>([]);
   const [fechado, setFechado] = useState(false);
   const [aberto, setAberto] = useState(false);
+  const [bouncing, setBouncing] = useState(false);
   const [copiado, setCopiado] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +72,31 @@ export default function CuponsPill() {
       })
       .catch(() => {});
   }, []);
+
+  // Bounce a cada 5s — chama atenção sem ser irritante
+  useEffect(() => {
+    if (fechado || aberto || cupons.length === 0) return;
+    const i = setInterval(() => {
+      setBouncing(true);
+      setTimeout(() => setBouncing(false), 1500);
+    }, 5000);
+    return () => clearInterval(i);
+  }, [fechado, aberto, cupons.length]);
+
+  // Bounce inicial após 1.5s pra atrair o olhar (e depois entra no ciclo)
+  useEffect(() => {
+    if (fechado || cupons.length === 0) return;
+    const t = setTimeout(() => {
+      setBouncing(true);
+      setTimeout(() => setBouncing(false), 1500);
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [fechado, cupons.length]);
+
+  const melhorCupom = useMemo(() => {
+    if (cupons.length === 0) return null;
+    return [...cupons].sort((a, b) => pontuarCupom(b) - pontuarCupom(a))[0];
+  }, [cupons]);
 
   // Fecha popover ao clicar fora
   useEffect(() => {
@@ -132,26 +177,47 @@ export default function CuponsPill() {
         </div>
       )}
 
-      {/* Pill fechada */}
-      <button
-        onClick={() => setAberto(v => !v)}
-        className={`group flex items-center gap-2 px-3.5 py-2 rounded-full border shadow-lg transition-all backdrop-blur-md ${
-          aberto
-            ? 'bg-purple-600 border-purple-400 text-white shadow-purple-500/40'
-            : 'bg-[#0e1330]/90 border-purple-500/40 text-purple-200 hover:bg-purple-950/80 hover:border-purple-500/60'
-        }`}
-        aria-label="Mostrar cupons disponíveis"
-      >
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75 animate-ping" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300" />
-        </span>
-        <Tag size={13} className="text-amber-300" />
-        <span className="text-xs font-bold">
-          {cupons.length === 1 ? 'Cupom ativo' : `${cupons.length} cupons`}
-        </span>
-        <ChevronDown size={12} className={`transition-transform ${aberto ? 'rotate-180' : ''}`} />
-      </button>
+      {/* Pill fechada — chamativa */}
+      <div className="relative">
+        {/* Halo glow pulsante atrás da pill */}
+        {!aberto && (
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 opacity-50 blur-xl animate-pulse pointer-events-none" />
+        )}
+
+        <button
+          onClick={() => setAberto(v => !v)}
+          className={`relative flex items-center gap-2 pl-3 pr-3.5 py-2.5 rounded-full border-2 font-bold transition-all ${
+            aberto
+              ? 'bg-purple-600 border-purple-400 text-white shadow-2xl shadow-purple-500/50'
+              : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 border-amber-300 text-white shadow-2xl shadow-amber-500/60 hover:scale-105 hover:shadow-amber-400/80'
+          } ${bouncing && !aberto ? 'animate-bounce' : ''}`}
+          aria-label="Ver cupons de desconto"
+        >
+          <span className="relative flex items-center justify-center">
+            <Sparkles size={14} className="text-white drop-shadow" />
+            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-yellow-200 rounded-full animate-ping" />
+          </span>
+
+          {melhorCupom && !aberto ? (
+            <span className="text-xs font-extrabold tracking-wide whitespace-nowrap">
+              {ofertaCurta(melhorCupom)}
+            </span>
+          ) : (
+            <span className="text-xs font-bold">
+              {cupons.length === 1 ? 'Cupom ativo' : `${cupons.length} cupons`}
+            </span>
+          )}
+
+          <ChevronDown size={12} className={`transition-transform ${aberto ? 'rotate-180' : ''}`} />
+
+          {/* Badge contador (se múltiplos cupons) */}
+          {!aberto && cupons.length > 1 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 border-2 border-white text-[10px] font-extrabold text-white flex items-center justify-center shadow-lg">
+              {cupons.length}
+            </span>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
