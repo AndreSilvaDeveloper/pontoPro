@@ -263,6 +263,51 @@ function ConfigRow({ config, onSave }: { config: Config; onSave: (chave: string,
     setEditando(false);
   };
 
+  // Tipo booleano: toggle inline (não usa "editando")
+  if (config.tipo === 'booleano') {
+    const ativo = config.valor === 'true' || config.valor === '1';
+    const togglar = async () => {
+      setSalvando(true);
+      try {
+        await onSave(config.chave, ativo ? 'false' : 'true');
+      } catch {
+        alert('Erro ao salvar.');
+      } finally {
+        setSalvando(false);
+      }
+    };
+    return (
+      <div className="px-5 py-3 flex items-center gap-3 hover:bg-hover-bg transition-colors">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <code className="text-[12px] font-mono text-purple-300">{config.chave}</code>
+            <span className="text-[10px] text-text-faint uppercase tracking-wider">booleano</span>
+          </div>
+          {config.descricao && (
+            <p className="text-[11px] text-text-muted mt-0.5">{config.descricao}</p>
+          )}
+        </div>
+        <button
+          onClick={togglar}
+          disabled={salvando}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+            ativo ? 'bg-emerald-500' : 'bg-elevated-solid'
+          }`}
+          title={ativo ? 'Desativar' : 'Ativar'}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              ativo ? 'translate-x-6' : 'translate-x-1'
+            }`}
+          />
+          {salvando && (
+            <Loader2 size={10} className="absolute right-1 top-1 animate-spin text-white" />
+          )}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="px-5 py-3 flex items-start gap-3 hover:bg-hover-bg transition-colors">
       <div className="flex-1 min-w-0">

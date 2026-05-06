@@ -54,18 +54,11 @@ export async function enviarWhatsApp(telefone: string, mensagem: string): Promis
 }
 
 /**
- * Envia código de verificação — tenta WhatsApp primeiro, fallback para SMS
+ * Envia código de verificação por SMS.
+ * (WhatsApp desligado por enquanto — reativar quando WhatsApp Business API estiver fora do sandbox.)
  */
 export async function enviarCodigo(telefone: string, codigo: string): Promise<{ ok: boolean; canal: 'whatsapp' | 'sms' }> {
   const mensagem = `${codigo} e seu codigo WorkID. Nao compartilhe com ninguem.`;
-
-  // Tenta WhatsApp primeiro (mais barato)
-  if (TWILIO_WHATSAPP) {
-    const whatsOk = await enviarWhatsApp(telefone, mensagem);
-    if (whatsOk) return { ok: true, canal: 'whatsapp' };
-  }
-
-  // Fallback para SMS
   const smsOk = await enviarSMS(telefone, mensagem);
   return { ok: smsOk, canal: 'sms' };
 }

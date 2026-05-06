@@ -13,6 +13,7 @@ const CONFIGS_PADRAO = [
   { chave: 'cobranca.dia_vencimento_padrao', valor: '15', tipo: 'numero', categoria: 'operacional', descricao: 'Dia do mês usado como padrão para novas empresas' },
   { chave: 'cobranca.tolerancia_dias', valor: '10', tipo: 'numero', categoria: 'operacional', descricao: 'Dias de tolerância antes de bloquear acesso por inadimplência' },
   { chave: 'revendedor.comissao_padrao', valor: '20', tipo: 'numero', categoria: 'operacional', descricao: 'Percentual de comissão padrão (%) para novos revendedores' },
+  { chave: 'signup.verificar_whatsapp', valor: 'false', tipo: 'booleano', categoria: 'operacional', descricao: 'Exige confirmação por código (SMS) do número informado no cadastro de novos clientes' },
 
   // Mensagens (templates)
   { chave: 'mensagem.cobranca_atraso', valor: 'Olá! Vi que sua mensalidade do WorkID está em atraso. Posso te ajudar com o pagamento?', tipo: 'texto', categoria: 'mensagens', descricao: 'WhatsApp enviado para empresas em atraso' },
