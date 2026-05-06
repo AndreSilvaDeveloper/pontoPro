@@ -499,6 +499,22 @@ export default function AdminDashboard() {
               </div>
 
               <div>
+                <label className="text-xs text-text-muted block mb-1 uppercase tracking-wider font-bold">Tipo do Registro</label>
+                <select
+                  value={a.novoTipo}
+                  onChange={(e) => a.setNovoTipo(e.target.value)}
+                  className="w-full bg-page border border-border-input p-3 rounded-xl text-text-primary text-sm outline-none focus:border-purple-500 appearance-none"
+                >
+                  <option value="ENTRADA">Entrada</option>
+                  <option value="SAIDA_ALMOCO">Saída Almoço</option>
+                  <option value="VOLTA_ALMOCO">Volta Almoço</option>
+                  <option value="SAIDA_INTERVALO">Saída Café</option>
+                  <option value="VOLTA_INTERVALO">Volta Café</option>
+                  <option value="SAIDA">Saída</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="text-xs text-text-muted block mb-1 uppercase tracking-wider font-bold">Motivo</label>
                 <input
                   type="text"
