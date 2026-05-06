@@ -26,6 +26,11 @@ export async function getConfigNumber(chave: string, defaultValue: number): Prom
   return Number.isFinite(n) ? n : defaultValue;
 }
 
+export async function getConfigBoolean(chave: string, defaultValue: boolean): Promise<boolean> {
+  const v = await getConfig(chave, defaultValue ? 'true' : 'false');
+  return v === 'true' || v === '1';
+}
+
 /** Limpa o cache de uma chave específica (chamar quando atualizar via PUT). */
 export function invalidateConfig(chave: string) {
   cache.delete(chave);
@@ -39,4 +44,5 @@ export const CONFIGS = {
   MSG_COBRANCA_ATRASO: 'mensagem.cobranca_atraso',
   MSG_TRIAL_EXPIRANDO: 'mensagem.trial_expirando',
   MSG_BOAS_VINDAS: 'mensagem.boas_vindas_admin',
+  SIGNUP_VERIFICAR_WHATSAPP: 'signup.verificar_whatsapp',
 } as const;

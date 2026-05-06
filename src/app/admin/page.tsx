@@ -38,7 +38,6 @@ import AdminRegistrosTable from '@/components/admin/AdminRegistrosTable';
 import BancoHorasEquipe from '@/components/admin/BancoHorasEquipe';
 import { useAdminDashboard, criarDataLocal } from '@/hooks/useAdminDashboard';
 import BillingAlertModal from '@/components/admin/BillingAlertModal';
-import ModalCompletarCadastro from '@/components/admin/ModalCompletarCadastro';
 import OnboardingWizard from '@/components/admin/OnboardingWizard';
 import ActionCard from '@/components/admin/ActionCard';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
@@ -84,7 +83,6 @@ export default function AdminDashboard() {
       <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-orb-indigo rounded-full blur-[100px] pointer-events-none" />
 
       <BillingAlertModal empresa={a.billingEmpresa || a.empresa} billing={a.billing} />
-      <ModalCompletarCadastro empresa={a.empresa} onComplete={a.carregarDados} />
 
       {/* Toast de Pendências */}
       {a.notificacaoVisivel && (

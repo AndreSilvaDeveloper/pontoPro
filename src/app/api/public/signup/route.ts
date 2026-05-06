@@ -87,11 +87,27 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    if (telefone && (telefone.length < 10 || telefone.length > 11)) {
+    if (!telefone || telefone.length < 10 || telefone.length > 11) {
       return NextResponse.json(
-        { ok: false, erro: "Telefone inválido. Informe 10 ou 11 dígitos." },
+        { ok: false, erro: "Informe um WhatsApp válido (DDD + número)." },
         { status: 400 }
       );
+    }
+
+    // Verificação de WhatsApp (se ligada no painel /saas/configuracoes)
+    {
+      const { getConfigBoolean, CONFIGS } = await import('@/lib/configs');
+      const exigirVerif = await getConfigBoolean(CONFIGS.SIGNUP_VERIFICAR_WHATSAPP, false);
+      if (exigirVerif) {
+        const { isTelefoneValidado, consumirValidacao } = await import('@/lib/whatsappVerification');
+        if (!isTelefoneValidado(telefone)) {
+          return NextResponse.json(
+            { ok: false, erro: 'Confirme seu WhatsApp pelo código antes de finalizar o cadastro.' },
+            { status: 400 }
+          );
+        }
+        consumirValidacao(telefone);
+      }
     }
 
     const senhaHash = await bcrypt.hash(password, 10);
