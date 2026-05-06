@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { listarCuponsPublicos } from '@/lib/cupons';
 
 export const runtime = 'nodejs';
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const cupons = await listarCuponsPublicos();

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPlanosPublicos } from '@/lib/planos-db';
 
 export const runtime = 'nodejs';
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const planos = await getPlanosPublicos();
