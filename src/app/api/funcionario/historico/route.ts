@@ -67,9 +67,10 @@ export async function GET(request: Request) {
     const ausencias = await prisma.ausencia.findMany({
         where: {
             usuarioId: session.user.id,
-            status: 'APROVADO', // Só conta se o Admin aprovou
-            dataInicio: { gte: new Date(`${inicio}T00:00:00`) },
-            dataFim: { lte: new Date(`${fim}T23:59:59`) }
+            status: { in: ['APROVADO', 'APROVADA'] }, // Só conta se o Admin aprovou
+            // Overlap: ausência cobre o período se começa antes/durante o fim E termina depois/durante o início
+            dataInicio: { lte: new Date(`${fim}T23:59:59`) },
+            dataFim: { gte: new Date(`${inicio}T00:00:00`) }
         }
     });
 
