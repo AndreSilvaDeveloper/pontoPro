@@ -15,10 +15,22 @@ export async function PUT(request: Request) {
   }
 
   try {
-    const { id, novoHorario, motivo } = await request.json();
+    const { id, novoHorario, novoTipo, motivo } = await request.json();
 
     if (!id || !novoHorario || !motivo) {
       return NextResponse.json({ erro: 'Dados incompletos' }, { status: 400 });
+    }
+
+    const TIPOS_VALIDOS = [
+      'ENTRADA',
+      'SAIDA_ALMOCO',
+      'VOLTA_ALMOCO',
+      'SAIDA_INTERVALO',
+      'VOLTA_INTERVALO',
+      'SAIDA',
+    ];
+    if (novoTipo !== undefined && novoTipo !== null && !TIPOS_VALIDOS.includes(String(novoTipo))) {
+      return NextResponse.json({ erro: 'Tipo de ponto inválido' }, { status: 400 });
     }
 
     // @ts-ignore
@@ -43,12 +55,17 @@ export async function PUT(request: Request) {
 
     const antes = formatInTimeZone(new Date(ponto.dataHora), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
     const depois = formatInTimeZone(new Date(novoHorario), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
+    const tipoMudou = novoTipo && novoTipo !== ponto.tipo;
 
     // Atualiza
+    // Importante: tipo e subTipo precisam ficar sincronizados. O totem usa
+    // subTipo (com fallback pra tipo) na lógica de auto-detecção do próximo
+    // ponto. Atualizar só `tipo` faria a próxima batida calcular errado.
     await prisma.ponto.update({
       where: { id },
       data: {
         dataHora: new Date(novoHorario),
+        ...(tipoMudou ? { tipo: String(novoTipo), subTipo: String(novoTipo) } : {}),
         descricao: ponto.descricao
           ? `${ponto.descricao} | Editado por Admin`
           : 'Editado por Admin',
@@ -58,8 +75,8 @@ export async function PUT(request: Request) {
     const detalhes = [
       `Funcionário: ${ponto.usuario.nome}`,
       `Ação: Edição de ponto`,
-      `Antes: ${antes}`,
-      `Depois: ${depois}`,
+      `Antes: ${antes}${tipoMudou ? ` (${ponto.tipo})` : ''}`,
+      `Depois: ${depois}${tipoMudou ? ` (${novoTipo})` : ''}`,
       `Motivo: "${motivo}"`,
     ].join(' | ');
 

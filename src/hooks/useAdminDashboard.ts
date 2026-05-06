@@ -118,6 +118,7 @@ export function useAdminDashboard() {
 
   const [pontoEmEdicao, setPontoEmEdicao] = useState<any>(null);
   const [novaHora, setNovaHora] = useState('');
+  const [novoTipo, setNovoTipo] = useState('');
   const [motivoEdicao, setMotivoEdicao] = useState('');
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
@@ -293,6 +294,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
   const abrirModalEdicao = useCallback((ponto: any) => {
     setPontoEmEdicao(ponto);
     setNovaHora(format(new Date(ponto.dataHora), 'HH:mm'));
+    setNovoTipo(ponto.subTipo || ponto.tipo || '');
     setMotivoEdicao('');
     setModalEdicaoAberto(true);
   }, []);
@@ -307,6 +309,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
       await axios.put('/api/admin/ponto/editar', {
         id: pontoEmEdicao.id,
         novoHorario: dataHoraFinal.toISOString(),
+        novoTipo: novoTipo || undefined,
         motivo: motivoEdicao,
       });
 
@@ -318,7 +321,7 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     } finally {
       setSalvandoEdicao(false);
     }
-  }, [carregarDados, motivoEdicao, novaHora, pontoEmEdicao]);
+  }, [carregarDados, motivoEdicao, novaHora, novoTipo, pontoEmEdicao]);
 
   const excluirPonto = useCallback(
     async (ponto: any) => {
@@ -518,6 +521,8 @@ const [ausenciaHoraFim, setAusenciaHoraFim] = useState<string>('');
     pontoEmEdicao,
     novaHora,
     setNovaHora,
+    novoTipo,
+    setNovoTipo,
     motivoEdicao,
     setMotivoEdicao,
     salvandoEdicao,
