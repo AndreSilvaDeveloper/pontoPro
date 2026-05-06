@@ -68,6 +68,10 @@ export async function GET() {
       totalFiliais,
     );
 
+    // Cupom ativo (se houver)
+    const { aplicarDescontoCupomEmpresa } = await import('@/lib/cupons');
+    const cupomInfo = await aplicarDescontoCupomEmpresa(billingEmpresa.id, calculo.totalMensal);
+
     // Adiciona preço anual para cada plano
     const planosComAnual = Object.values(PLANOS).map((p) => ({
       ...p,
@@ -89,6 +93,7 @@ export async function GET() {
       isFilial: Boolean(empresa.matrizId),
       precoNegociado: calculo.negociado,
       addonTotem: billingEmpresa.addonTotem === true,
+      cupom: cupomInfo,
     });
   } catch (err: any) {
     console.error("[PLANO_GET]", err);

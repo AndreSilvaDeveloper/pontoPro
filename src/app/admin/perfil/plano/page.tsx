@@ -14,8 +14,20 @@ import {
   TrendingUp,
   AlertTriangle,
   Smartphone,
+  Tag,
+  Sparkles,
 } from "lucide-react";
 import type { PlanoConfig, PlanoId, BillingCycle } from "@/config/planos";
+
+type CupomAtivo = {
+  uso: { id: string; cupomId: string; parcelasAplicadas: number; parcelasMax: number; valorAplicadoTotal: number };
+  cupom: { id: string; codigo: string; nome: string; tipo: string; valor: number; duracaoMeses: number; descricao: string | null };
+  desconto: number;
+  valorOriginal: number;
+  valorComDesconto: number;
+  parcelasRestantes: number;
+  resumoTexto: string;
+};
 
 type PrecoAnual = {
   mensal: number;
@@ -48,6 +60,7 @@ type PlanoData = {
   isFilial: boolean;
   precoNegociado?: boolean;
   addonTotem?: boolean;
+  cupom?: CupomAtivo | null;
 };
 
 function fmt(v: number) {
@@ -109,7 +122,7 @@ export default function PlanoPage() {
     );
   }
 
-  const { planoAtual, planoConfig, billingCycle, uso, calculo, planos, isFilial, addonTotem } = data;
+  const { planoAtual, planoConfig, billingCycle, uso, calculo, planos, isFilial, addonTotem, cupom } = data;
   const isYearly = billingCycle === "YEARLY";
 
   return (
@@ -141,6 +154,60 @@ export default function PlanoPage() {
           </div>
         )}
 
+        {/* Cupom ativo */}
+        {cupom && (
+          <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-950/40 via-orange-950/30 to-amber-950/40 p-5 shadow-xl shadow-amber-900/20 relative overflow-hidden">
+            <div className="absolute -top-8 -right-8 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="relative flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+                <Sparkles size={18} className="text-amber-300" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300/80">Cupom ativo</span>
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200">
+                    {cupom.cupom.codigo}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-amber-100 mt-1">{cupom.cupom.nome}</h3>
+                <p className="text-sm text-amber-200/90 mt-0.5">{cupom.resumoTexto}</p>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl bg-black/30 border border-amber-500/20 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-300/70">Valor cheio</div>
+                    <div className="text-lg font-bold text-text-muted line-through mt-0.5">
+                      R$ {fmt(cupom.valorOriginal)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-emerald-300/80">Você paga</div>
+                    <div className="text-lg font-extrabold text-emerald-300 mt-0.5">
+                      R$ {fmt(cupom.valorComDesconto)}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-black/30 border border-amber-500/20 p-3">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-300/70">Parcelas restantes</div>
+                    <div className="text-lg font-bold text-amber-200 mt-0.5">
+                      {cupom.parcelasRestantes}
+                      <span className="text-sm font-normal text-amber-300/70 ml-1">
+                        / {cupom.uso.parcelasMax === 9999 ? '∞' : cupom.uso.parcelasMax}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {cupom.cupom.descricao && (
+                  <p className="text-[12px] text-amber-200/70 mt-3 italic">"{cupom.cupom.descricao}"</p>
+                )}
+
+                <p className="text-[11px] text-amber-300/70 mt-3">
+                  💡 Após {cupom.parcelasRestantes} {cupom.parcelasRestantes === 1 ? 'parcela' : 'parcelas'} com desconto, o valor volta ao normal de <strong>R$ {fmt(cupom.valorOriginal)}/mês</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Plano atual + consumo */}
         <div className="grid gap-3 md:grid-cols-2">
           {/* Card plano atual */}
@@ -156,28 +223,56 @@ export default function PlanoPage() {
             </div>
 
             <div className="mb-4">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm text-text-muted">R$</span>
-                <span className="text-3xl font-extrabold">
-                  {fmt(calculo.total).split(",")[0]}
-                </span>
-                <span className="text-lg font-bold text-text-secondary">
-                  ,{fmt(calculo.total).split(",")[1]}
-                </span>
-                <span className="text-sm text-text-faint">
-                  /{isYearly ? "ano" : "mês"}
-                </span>
-              </div>
-              {isYearly && (
-                <p className="mt-1 text-xs text-emerald-400">
-                  Equivale a R$ {fmt(calculo.totalMensal * 0.9)}/mês (10% de desconto)
-                </p>
-              )}
-              {!calculo.negociado && calculo.total !== calculo.valorBase && !isYearly && (
-                <p className="mt-1 text-xs text-text-faint">
-                  Base R$ {fmt(calculo.valorBase)} + excedentes R${" "}
-                  {fmt(calculo.extraFunc + calculo.extraAdm + calculo.extraFil)}
-                </p>
+              {cupom ? (
+                <>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm text-text-muted line-through">
+                      R$ {fmt(cupom.valorOriginal)}
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      cupom ativo
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-sm text-emerald-400">R$</span>
+                    <span className="text-3xl font-extrabold text-emerald-300">
+                      {fmt(cupom.valorComDesconto).split(",")[0]}
+                    </span>
+                    <span className="text-lg font-bold text-emerald-300">
+                      ,{fmt(cupom.valorComDesconto).split(",")[1]}
+                    </span>
+                    <span className="text-sm text-text-faint">/mês</span>
+                  </div>
+                  <p className="mt-1 text-xs text-amber-300/90">
+                    Por {cupom.parcelasRestantes} {cupom.parcelasRestantes === 1 ? 'parcela' : 'parcelas'}, depois R$ {fmt(cupom.valorOriginal)}/mês
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm text-text-muted">R$</span>
+                    <span className="text-3xl font-extrabold">
+                      {fmt(calculo.total).split(",")[0]}
+                    </span>
+                    <span className="text-lg font-bold text-text-secondary">
+                      ,{fmt(calculo.total).split(",")[1]}
+                    </span>
+                    <span className="text-sm text-text-faint">
+                      /{isYearly ? "ano" : "mês"}
+                    </span>
+                  </div>
+                  {isYearly && (
+                    <p className="mt-1 text-xs text-emerald-400">
+                      Equivale a R$ {fmt(calculo.totalMensal * 0.9)}/mês (10% de desconto)
+                    </p>
+                  )}
+                  {!calculo.negociado && calculo.total !== calculo.valorBase && !isYearly && (
+                    <p className="mt-1 text-xs text-text-faint">
+                      Base R$ {fmt(calculo.valorBase)} + excedentes R${" "}
+                      {fmt(calculo.extraFunc + calculo.extraAdm + calculo.extraFil)}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 

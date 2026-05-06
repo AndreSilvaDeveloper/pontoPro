@@ -138,6 +138,83 @@ model Notificacao {
   @@index([tipo, criadoEm])
 }
 
+model Plano {
+  id                  String   @id                                    // STARTER | PROFESSIONAL | ENTERPRISE
+  nome                String
+  descricao           String
+  preco               Decimal  @db.Decimal(10, 2)
+  maxFuncionarios     Int
+  maxAdmins           Int
+  maxFiliais          Int                                              // -1 = ilimitado
+  extraFuncionario    Decimal  @db.Decimal(10, 2)
+  extraAdmin          Decimal  @db.Decimal(10, 2)
+  extraFilial         Decimal  @db.Decimal(10, 2)
+  reconhecimentoFacial Boolean  @default(false)
+  relatoriosPdf       String   @default("BASICO")                      // BASICO | COMPLETO
+  suporte             String   @default("EMAIL")                       // EMAIL | WHATSAPP_EMAIL | PRIORITARIO
+  totemIncluso        Boolean  @default(false)
+  totemAddonMatriz    Decimal  @db.Decimal(10, 2)
+  totemAddonFilial    Decimal  @db.Decimal(10, 2)
+  ordem               Int      @default(0)                             // ordem de exibição na landing
+  destaque            Boolean  @default(false)                         // marcar como "Mais popular" na landing
+  visivel             Boolean  @default(true)                          // se exibe na landing
+  atualizadoEm        DateTime @updatedAt
+}
+
+model Cupom {
+  id              String     @id @default(cuid())
+  codigo          String     @unique
+  nome            String
+  tipo            String                                              // PERCENTUAL | VALOR_FIXO | MESES_GRATIS | TRIAL_ESTENDIDO
+  valor           Decimal    @db.Decimal(10, 2)
+  duracaoMeses    Int        @default(1)                               // quantas parcelas o desconto vale (-1 = sempre)
+  descricao       String?
+  ativo           Boolean    @default(true)
+  visivelLanding  Boolean    @default(false)
+  destaque        String?                                              // texto-chamariz curto na landing
+  validoDe        DateTime?
+  validoAte       DateTime?
+  maxUsos         Int?
+  usos            Int        @default(0)
+  apenasNovos     Boolean    @default(false)
+  apenasPlanos    String[]                                             // vazio = todos os planos
+  apenasCiclo     String?                                              // null=todos | "MONTHLY" | "YEARLY"
+  criadoEm        DateTime   @default(now())
+  criadoPor       String?
+  atualizadoEm    DateTime   @updatedAt
+  usosRel         CupomUso[]
+
+  @@index([ativo, codigo])
+  @@index([visivelLanding, ativo])
+}
+
+model CupomUso {
+  id                 String   @id @default(cuid())
+  cupomId            String
+  cupom              Cupom    @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+  empresaId          String
+  parcelasAplicadas  Int      @default(0)                              // quantas parcelas já tiveram o desconto
+  parcelasMax        Int      @default(1)                              // limite (espelha duracaoMeses do cupom no momento de aplicar)
+  valorAplicadoTotal Decimal  @db.Decimal(10, 2) @default(0)
+  ativadoEm          DateTime @default(now())
+  expiradoEm         DateTime?
+
+  @@unique([cupomId, empresaId])
+  @@index([empresaId])
+}
+
+model ConfigSistema {
+  id           String   @id @default(cuid())
+  chave        String   @unique
+  valor        String   @db.Text
+  tipo         String   @default("texto")
+  descricao    String?
+  categoria    String?  @default("geral")
+  atualizadoEm DateTime @updatedAt
+
+  @@index([categoria])
+}
+
 model Fechamento {
   id              String   @id @default(cuid())
   empresaId       String

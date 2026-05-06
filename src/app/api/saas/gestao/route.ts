@@ -85,7 +85,31 @@ export async function POST() {
       },
     });
 
-    return NextResponse.json(empresas);
+    // Enriquece cada empresa com info resumida de cupom ativo (badge na tabela)
+    const ids = empresas.map(e => e.id);
+    const usosCupom = ids.length > 0
+      ? await (prisma as any).cupomUso.findMany({
+          where: { empresaId: { in: ids }, cupom: { ativo: true } },
+          include: { cupom: { select: { codigo: true, tipo: true, valor: true, duracaoMeses: true } } },
+        })
+      : [];
+    const cupomMap = new Map<string, any>();
+    for (const u of usosCupom) {
+      if (u.parcelasAplicadas < u.parcelasMax) {
+        cupomMap.set(u.empresaId, {
+          codigo: u.cupom.codigo,
+          tipo: u.cupom.tipo,
+          valor: Number(u.cupom.valor),
+          parcelasRestantes: u.parcelasMax - u.parcelasAplicadas,
+        });
+      }
+    }
+    const empresasComCupom = empresas.map(e => ({
+      ...e,
+      cupomAtivo: cupomMap.get(e.id) || null,
+    }));
+
+    return NextResponse.json(empresasComCupom);
   } catch (error) {
     console.error("Erro ao buscar empresas:", error);
     return NextResponse.json({ erro: "Erro ao buscar" }, { status: 500 });

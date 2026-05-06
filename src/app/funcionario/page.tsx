@@ -42,6 +42,7 @@ export default function Home() {
   const [statusMsg, setStatusMsg] = useState<{ tipo: 'sucesso' | 'erro' | 'info'; texto: string } | null>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [cameraErro, setCameraErro] = useState(false);
+  const [forcarFrontal, setForcarFrontal] = useState(true);
   const [horaAtual, setHoraAtual] = useState('');
 
   const [configs, setConfigs] = useState<any>({
@@ -983,9 +984,16 @@ export default function Home() {
                     audio={false}
                     ref={webcamRef}
                     screenshotFormat="image/jpeg"
-                    videoConstraints={{ facingMode: 'user' }}
+                    mirrored
+                    videoConstraints={{ facingMode: forcarFrontal ? { exact: 'user' } : 'user' }}
                     className="w-full h-full object-cover"
-                    onUserMediaError={() => setCameraErro(true)}
+                    onUserMediaError={() => {
+                      if (forcarFrontal) {
+                        setForcarFrontal(false);
+                      } else {
+                        setCameraErro(true);
+                      }
+                    }}
                   />
                   <div className="absolute top-3 right-3 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
                     AO VIVO

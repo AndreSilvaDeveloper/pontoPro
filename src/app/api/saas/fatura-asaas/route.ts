@@ -192,12 +192,17 @@ export async function POST(request: NextRequest) {
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
-    const { total: valorFinal } = calcularValorEmpresa(
+    const { total: valorOriginal } = calcularValorEmpresa(
       billingEmpresa,
       totalFuncionarios,
       totalAdmins,
       billingEmpresa.filiais?.length ?? 0,
     );
+
+    // Aplica cupom ativo (se houver)
+    const { aplicarDescontoCupomEmpresa } = await import('@/lib/cupons');
+    const cupomInfo = await aplicarDescontoCupomEmpresa(billingEmpresa.id, valorOriginal);
+    const valorFinal = cupomInfo ? cupomInfo.valorComDesconto : valorOriginal;
 
     // Ensure customer
     let customerId = billingEmpresa.asaasCustomerId;

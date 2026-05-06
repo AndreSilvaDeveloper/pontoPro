@@ -119,12 +119,8 @@ export default function NotificacoesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-page text-text-primary">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
-      </div>
-
-      <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+    <>
+      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/saas" className="text-text-muted hover:text-text-primary p-1.5 rounded-lg hover:bg-hover-bg transition-colors">
@@ -250,6 +246,6 @@ export default function NotificacoesPage() {
           )}
         </div>
       </main>
-    </div>
+    </>
   );
 }

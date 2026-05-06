@@ -31,6 +31,7 @@ import {
 import { PLANOS, PLANO_DEFAULT, getPrecoAnual, type PlanoId } from '@/config/planos'
 import { validarCNPJ } from '@/utils/cnpj'
 import { trackEvent, trackLead } from '@/lib/analytics'
+import CupomInput from '@/components/CupomInput'
 
 const PLANOS_ORDER: PlanoId[] = ['STARTER', 'PROFESSIONAL', 'ENTERPRISE']
 
@@ -44,6 +45,7 @@ function SignupForm() {
 
   // Plano selecionado
   const [plano, setPlano] = useState<PlanoId>(initialPlano)
+  const [cupomCodigo, setCupomCodigo] = useState<string | null>(null)
 
   // Dados do SaaS
   const [empresaNome, setEmpresaNome] = useState('')
@@ -143,6 +145,7 @@ function SignupForm() {
           password: senha,
           aceitarTermos: aceitar,
           plano,
+          cupom: cupomCodigo,
         }),
       })
 
@@ -402,6 +405,13 @@ function SignupForm() {
                     .
                   </span>
                 </label>
+
+                <CupomInput
+                  plano={plano}
+                  ciclo="MONTHLY"
+                  valorMensal={PLANOS[plano].preco}
+                  onChange={setCupomCodigo}
+                />
 
                 <Button
                   type="submit"

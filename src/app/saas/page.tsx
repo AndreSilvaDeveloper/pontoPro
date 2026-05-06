@@ -3,38 +3,19 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-  LogOut,
-  FileText,
   Loader2,
   X,
   Link as LinkIcon,
-  Plus,
-  Handshake,
-  Inbox,
-  Search,
-  BarChart3,
 } from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
-import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { ImpersonationBanner } from "@/components/impersonation/ImpersonationBanner";
-import { gerarRelatorioGeral } from "@/lib/saas-pdf";
 
 import StatsStrip, { type DashboardStats } from "./components/StatsStrip";
 import InsightsBoard from "./components/InsightsBoard";
 import ClientTable from "./components/ClientTable";
 import ModalEquipe from "./components/ModalEquipe";
 import ModalFatura from "./components/ModalFatura";
-import BellDropdown from "./components/BellDropdown";
-import PushToastListener from "./components/PushToastListener";
-import PushPermissionPrompt from "./components/PushPermissionPrompt";
-import CommandPalette from "./components/CommandPalette";
 import DashboardHero from "./components/DashboardHero";
 
 export default function SuperAdminPage() {
-  const router = useRouter();
-
   // === DADOS ===
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loadingListar, setLoadingListar] = useState(false);
@@ -91,8 +72,8 @@ export default function SuperAdminPage() {
     try {
       await axios.post("/api/admin/impersonate", { userId: user.id });
       setModalEquipeOpen(false);
-      if (user.cargo === "FUNCIONARIO") router.push("/funcionario");
-      else router.push("/admin");
+      const dest = user.cargo === "FUNCIONARIO" ? "/funcionario" : "/admin";
+      window.location.href = dest;
     } catch {
       alert("Não foi possível entrar como este usuário.");
     }
@@ -179,11 +160,6 @@ export default function SuperAdminPage() {
     }
   };
 
-  const handleRelatorioGeral = () => {
-    const url = gerarRelatorioGeral(empresas);
-    window.open(url, "_blank");
-  };
-
   // === CALLBACKS PARA COMPONENTES ===
   const openEquipe = (emp: any) => {
     setEmpresaSelecionada(emp);
@@ -202,101 +178,8 @@ export default function SuperAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-page text-text-primary">
-      <ImpersonationBanner />
-
-      {/* Prompt de permissão de notificação */}
-      <PushPermissionPrompt />
-
-      {/* Toast in-app quando push chega com painel aberto */}
-      <PushToastListener />
-
-      {/* Cmd+K busca rápida */}
-      <CommandPalette empresas={empresas} />
-
-      {/* Decorative blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-600/10 rounded-full blur-[100px]" />
-      </div>
-
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="WorkID" width={32} height={32} className="w-8 h-8 rounded-lg object-cover" priority />
-            <div>
-              <h1 className="text-lg font-bold text-text-primary">WorkID</h1>
-              <p className="text-[10px] text-text-muted uppercase tracking-widest">Painel Super Admin</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Busca rápida (atalho Cmd+K) */}
-            <button
-              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-              className="hidden md:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-faint px-3 py-2 rounded-xl border border-border-subtle text-xs transition-colors"
-              title="Busca rápida"
-            >
-              <Search size={14} />
-              <span>Buscar</span>
-              <kbd className="bg-page text-[10px] px-1.5 py-0.5 rounded border border-border-subtle ml-1">⌘K</kbd>
-            </button>
-
-            <BellDropdown />
-
-            <Link
-              href="/saas/leads"
-              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
-              title="Leads"
-            >
-              <Inbox size={16} />
-            </Link>
-
-            <Link
-              href="/saas/analytics"
-              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
-              title="Analytics de marketing"
-            >
-              <BarChart3 size={16} />
-            </Link>
-
-            <Link
-              href="/saas/revendedores"
-              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
-              title="Revendedores"
-            >
-              <Handshake size={16} />
-            </Link>
-
-            <button
-              onClick={handleRelatorioGeral}
-              className="hidden sm:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
-              title="Relatório geral PDF"
-            >
-              <FileText size={16} />
-            </button>
-
-            <Link
-              href="/saas/venda"
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors shadow-lg shadow-purple-600/20"
-            >
-              <Plus size={16} /> <span className="hidden sm:inline">Nova Venda</span>
-            </Link>
-
-            <button
-              onClick={() => { try { localStorage.removeItem('workid_rt'); } catch {} signOut({ callbackUrl: "/login" }); }}
-              className="flex items-center gap-2 text-text-muted hover:text-red-400 px-3 py-2 rounded-xl text-sm transition-colors"
-              title="Sair"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5 relative z-10">
+    <>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5">
         <DashboardHero
           mrr={stats?.mrr}
           totalAtivos={stats?.totalAtivos}
@@ -320,7 +203,7 @@ export default function SuperAdminPage() {
           onConfirmarPagamento={confirmarPagamentoManual}
           onVincular={openVincular}
         />
-      </main>
+      </div>
 
       {/* === MODAIS === */}
 
@@ -428,7 +311,6 @@ export default function SuperAdminPage() {
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 }

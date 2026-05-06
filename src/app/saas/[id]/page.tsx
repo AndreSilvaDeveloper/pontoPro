@@ -110,6 +110,10 @@ export default function ConfigEmpresaPage() {
   const [activeTab, setActiveTab] = useState<Tab>('visao');
   const [busy, setBusy] = useState<string | null>(null);
 
+  // Cupom + valor
+  const [cupomInfo, setCupomInfo] = useState<any>(null);
+  const [valorInfo, setValorInfo] = useState<any>(null);
+
   // Tab Plano & Cobrança
   const [planoSel, setPlanoSel] = useState('');
   const [cycleSel, setCycleSel] = useState('MONTHLY');
@@ -154,6 +158,8 @@ export default function ConfigEmpresaPage() {
       const res = await axios.get(`/api/saas/empresa/${idEmpresa}`);
       const emp = res.data.empresa || res.data;
       setEmpresa(emp);
+      setCupomInfo(res.data.cupom || null);
+      setValorInfo(res.data.valor || null);
 
       // Plano
       setPlanoSel(emp.plano || 'PROFESSIONAL');
@@ -344,7 +350,7 @@ export default function ConfigEmpresaPage() {
   const removeCustom = (i: number) => setCustom(custom.filter((_, idx) => idx !== i));
 
   if (loading) return (
-    <div className="min-h-screen bg-page text-text-primary flex items-center justify-center">
+    <div className="min-h-[60vh] flex items-center justify-center">
       <div className="animate-pulse text-text-muted">Carregando...</div>
     </div>
   );
@@ -352,8 +358,7 @@ export default function ConfigEmpresaPage() {
   const planoConfig = PLANOS[empresa?.plano as PlanoId] || PLANOS.PROFESSIONAL;
 
   return (
-    <div className="min-h-screen bg-page text-text-primary">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
         {/* === HEADER === */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -376,6 +381,47 @@ export default function ConfigEmpresaPage() {
             <ArrowLeft size={16} /> Voltar ao Painel
           </Link>
         </div>
+
+        {/* === CUPOM ATIVO === */}
+        {cupomInfo && (
+          <div className="rounded-2xl border-2 border-amber-500/40 bg-gradient-to-br from-amber-950/30 via-orange-950/20 to-amber-950/30 p-4 shadow-lg shadow-amber-900/10">
+            <div className="flex items-start gap-3 flex-wrap">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-300 text-lg">🏷️</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300/80">Cupom ativo</span>
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200">
+                    {cupomInfo.cupom.codigo}
+                  </span>
+                  <span className="text-xs text-amber-200/70">{cupomInfo.cupom.nome}</span>
+                </div>
+                <p className="text-sm text-amber-200/90 mt-1">{cupomInfo.resumoTexto}</p>
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[12px]">
+                  <div>
+                    <div className="text-[10px] uppercase text-amber-300/60">Valor cheio</div>
+                    <div className="text-text-muted line-through">R$ {cupomInfo.valorOriginal.toFixed(2).replace('.', ',')}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-emerald-300/60">Empresa paga</div>
+                    <div className="text-emerald-300 font-bold">R$ {cupomInfo.valorComDesconto.toFixed(2).replace('.', ',')}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-amber-300/60">Desconto</div>
+                    <div className="text-amber-200 font-bold">- R$ {cupomInfo.desconto.toFixed(2).replace('.', ',')}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase text-amber-300/60">Parcelas</div>
+                    <div className="text-amber-200">
+                      {cupomInfo.uso.parcelasAplicadas} aplicadas / {cupomInfo.parcelasRestantes} restantes
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* === TABS === */}
         <div className="border-b border-border-default flex gap-1 overflow-x-auto">
@@ -938,7 +984,6 @@ export default function ConfigEmpresaPage() {
           </div>
         )}
 
-      </div>
     </div>
   );
 }

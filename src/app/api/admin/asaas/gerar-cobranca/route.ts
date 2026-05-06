@@ -267,14 +267,21 @@ export async function POST() {
     const planoConfig = getPlanoConfig(billingEmpresa.plano);
     const cycle = (billingEmpresa.billingCycle ?? "MONTHLY") as BillingCycle;
     const billingMethod = billingEmpresa.billingMethod ?? "UNDEFINED";
-    const { total: valorFinal } = calcularValorEmpresa(
+    const { total: valorOriginal } = calcularValorEmpresa(
       billingEmpresa,
       totalFuncionarios,
       totalAdmins,
       totalFiliais,
     );
 
-    const description = `WorkID ${planoConfig.nome} - ${billingEmpresa.nome}`;
+    // Aplica cupom ativo (se houver) — boleto sai com valor descontado
+    const { aplicarDescontoCupomEmpresa } = await import('@/lib/cupons');
+    const cupomInfo = await aplicarDescontoCupomEmpresa(billingEmpresa.id, valorOriginal);
+    const valorFinal = cupomInfo ? cupomInfo.valorComDesconto : valorOriginal;
+
+    const description = cupomInfo
+      ? `WorkID ${planoConfig.nome} - ${billingEmpresa.nome} (cupom ${cupomInfo.cupom.codigo}: ${cupomInfo.resumoTexto})`
+      : `WorkID ${planoConfig.nome} - ${billingEmpresa.nome}`;
 
     // ====== 1) Já existe pagamento pendente? Reutiliza. ======
     let currentPayment = await getExistingPendingPayment(billingEmpresa.id);
