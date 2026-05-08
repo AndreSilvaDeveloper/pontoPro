@@ -17,7 +17,8 @@ type ConfirmState =
   | { aberto: false }
   | { aberto: true; opts: ConfirmOptions; resolver: (ok: boolean) => void };
 
-let estadoAtual: ConfirmState = { aberto: false };
+const ESTADO_FECHADO: ConfirmState = { aberto: false };
+let estadoAtual: ConfirmState = ESTADO_FECHADO;
 const listeners = new Set<() => void>();
 
 function setEstado(next: ConfirmState) {
@@ -34,6 +35,10 @@ function getSnapshot() {
   return estadoAtual;
 }
 
+function getServerSnapshot() {
+  return ESTADO_FECHADO;
+}
+
 /**
  * Abre um diálogo de confirmação e retorna uma Promise<boolean>.
  * Substitui o uso de `confirm()` / `prompt()` nativos.
@@ -45,8 +50,9 @@ export function confirmar(opts: ConfirmOptions): Promise<boolean> {
 }
 
 export function ConfirmDialog() {
-  // useSyncExternalStore funciona em SSR também — basta retornar o snapshot
-  const estado = useSyncExternalStore(subscribe, getSnapshot, () => ({ aberto: false } as ConfirmState));
+  // getServerSnapshot precisa retornar uma referência estável pra não disparar
+  // o detector de loop infinito do React.
+  const estado = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const [textoDigitado, setTextoDigitado] = useState('');
 
   useEffect(() => {
