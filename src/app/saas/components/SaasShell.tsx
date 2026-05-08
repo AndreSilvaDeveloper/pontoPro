@@ -29,6 +29,8 @@ import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBan
 import PushPermissionPrompt from './PushPermissionPrompt';
 import PushToastListener from './PushToastListener';
 import CommandPalette from './CommandPalette';
+import { Toaster } from 'sonner';
+import { ConfirmDialog } from '@/lib/saasUi';
 
 type NavItem = {
   href: string;
@@ -270,6 +272,18 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
       <PushPermissionPrompt />
       <PushToastListener />
       <CommandPalette empresas={empresas} />
+      <ConfirmDialog />
+      <Toaster
+        theme="dark"
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          classNames: {
+            toast: 'rounded-2xl border border-border-subtle bg-page shadow-xl',
+          },
+        }}
+      />
 
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />

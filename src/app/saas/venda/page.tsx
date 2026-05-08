@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
+import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, Copy, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PLANOS, type PlanoId } from "@/config/planos";
@@ -60,7 +61,7 @@ function NovaVendaPageInner() {
         plano: planoSelecionado,
       });
     } catch (error: any) {
-      alert(error.response?.data?.erro || "Erro ao criar.");
+      toast.error(error.response?.data?.erro || "Erro ao criar empresa.");
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ function NovaVendaPageInner() {
     if (!resultado) return;
     const text = `Empresa: ${resultado.dados.empresa}\nLogin: ${resultado.dados.login}\nSenha: ${resultado.senha}\nPlano: ${resultado.plano}`;
     navigator.clipboard.writeText(text);
-    alert("Credenciais copiadas!");
+    toast.success("Credenciais copiadas.");
   };
 
   const criarOutro = () => {

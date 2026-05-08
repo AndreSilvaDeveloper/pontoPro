@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { confirmar } from '@/lib/saasUi';
 
 type Props = {
   empresa: any;
@@ -105,7 +106,12 @@ export default function EmpresaActions({
   }, [menuAberto]);
 
   const reindexarTotem = async () => {
-    if (!confirm(`Re-indexar rostos de TODOS os funcionários (com foto) de "${empresa.nome}" e filiais? Pode demorar alguns segundos.`)) return;
+    const ok = await confirmar({
+      titulo: `Re-indexar rostos de ${empresa.nome}?`,
+      mensagem: 'Vai processar os funcionários (com foto) da matriz e filiais. Pode demorar alguns segundos.',
+      labelConfirmar: 'Re-indexar',
+    });
+    if (!ok) return;
     setReindexando(true);
     try {
       const res = await fetch(`/api/saas/empresa/${empresa.id}/reindexar-totem`, { method: 'POST' });
@@ -124,7 +130,12 @@ export default function EmpresaActions({
 
   const toggleTotem = async () => {
     const novo = !addonTotem;
-    if (!confirm(`${novo ? 'Ativar' : 'Desativar'} Modo Totem para "${empresa.nome}"? (cobrança extra é negociada com o cliente)`)) return;
+    const ok = await confirmar({
+      titulo: `${novo ? 'Ativar' : 'Desativar'} Modo Totem para ${empresa.nome}?`,
+      mensagem: 'A cobrança extra é negociada à parte com o cliente.',
+      labelConfirmar: novo ? 'Ativar' : 'Desativar',
+    });
+    if (!ok) return;
     setTogglingTotem(true);
     try {
       const res = await fetch(`/api/saas/empresa/${empresa.id}/addon-totem`, {

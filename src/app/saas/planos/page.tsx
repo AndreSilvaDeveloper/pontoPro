@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
+import { confirmar } from '@/lib/saasUi';
 import {
   Package,
   Loader2,
@@ -70,14 +72,20 @@ export default function PlanosPage() {
   };
   const saveEdit = async () => {
     if (!draft) return;
-    if (!confirm('Confirma alteração?\n\nEsta mudança afeta apenas NOVAS vendas. Empresas existentes mantêm seus preços contratados (precoNegociado já cuida disso).')) return;
+    const ok = await confirmar({
+      titulo: 'Confirmar alteração do plano?',
+      mensagem: 'Esta mudança afeta apenas NOVAS vendas. Empresas existentes mantêm os preços contratados.',
+      labelConfirmar: 'Salvar',
+    });
+    if (!ok) return;
     setSalvando(true);
     try {
       await axios.put('/api/saas/planos', draft);
+      toast.success('Plano atualizado.');
       await carregar();
       cancelEdit();
     } catch (e: any) {
-      alert(e.response?.data?.erro || 'Erro ao salvar');
+      toast.error(e.response?.data?.erro || 'Erro ao salvar.');
     } finally {
       setSalvando(false);
     }
@@ -88,7 +96,7 @@ export default function PlanosPage() {
       await axios.put('/api/saas/planos', { id, [campo]: valor });
       await carregar();
     } catch {
-      alert('Erro ao atualizar');
+      toast.error('Erro ao atualizar.');
     }
   };
 

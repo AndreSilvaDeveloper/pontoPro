@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
+import { confirmar } from '@/lib/saasUi';
 import {
   ArrowLeft, Save, Plus, Trash2, ShieldCheck, Database,
   CreditCard, Settings, AlertTriangle, Users, Building2,
@@ -185,7 +187,7 @@ export default function ConfigEmpresaPage() {
       setFluxoEstrito(emp.fluxoEstrito !== false);
       setCustom(Object.entries(restante).map(([k, v]) => ({ chave: k, valor: String(v) })));
     } catch {
-      alert('Erro ao carregar empresa');
+      toast.error('Erro ao carregar empresa.');
     } finally {
       setLoading(false);
     }
@@ -208,8 +210,9 @@ export default function ConfigEmpresaPage() {
     setBusy(`pay-${meses}`);
     try {
       await axios.put('/api/saas/confirmar-pagamento', { empresaId: idEmpresa, meses, limparTrial: true });
+      toast.success(meses === 1 ? 'Pagamento confirmado.' : `${meses} meses confirmados.`);
       await carregar();
-    } catch { alert('Erro ao confirmar pagamento'); }
+    } catch { toast.error('Erro ao confirmar pagamento.'); }
     finally { setBusy(null); }
   };
 
@@ -217,8 +220,9 @@ export default function ConfigEmpresaPage() {
     setBusy(bloquear ? 'bloq' : 'unbloq');
     try {
       await axios.put('/api/saas/toggle-bloqueio', { empresaId: idEmpresa, bloquear });
+      toast.success(bloquear ? 'Empresa bloqueada.' : 'Empresa ativada.');
       await carregar();
-    } catch { alert('Erro ao alterar status'); }
+    } catch { toast.error('Erro ao alterar status.'); }
     finally { setBusy(null); }
   };
 
@@ -226,7 +230,7 @@ export default function ConfigEmpresaPage() {
   const salvarPrecoNegociado = async () => {
     const valor = Number(precoNegVal);
     if (!Number.isFinite(valor) || valor <= 0) {
-      alert('Informe um valor válido (maior que zero).');
+      toast.warning('Informe um valor válido (maior que zero).');
       return;
     }
     setBusy('preco');
@@ -240,7 +244,7 @@ export default function ConfigEmpresaPage() {
       } else {
         const meses = Number(precoNegMeses);
         if (!Number.isFinite(meses) || meses < 1) {
-          alert('Informe um número de meses válido (1 ou mais).');
+          toast.warning('Informe um número de meses válido (1 ou mais).');
           setBusy(null);
           return;
         }
@@ -250,18 +254,24 @@ export default function ConfigEmpresaPage() {
       setPrecoNegVal('');
       setPrecoNegMotivo('');
       await carregar();
-      alert('Preço negociado aplicado!');
-    } catch { alert('Erro ao aplicar preço negociado'); }
+      toast.success('Preço negociado aplicado.');
+    } catch { toast.error('Erro ao aplicar preço negociado.'); }
     finally { setBusy(null); }
   };
 
   const removerPrecoNegociado = async () => {
-    if (!confirm('Remover o preço negociado? A empresa volta a pagar o preço de tabela do plano.')) return;
+    const ok = await confirmar({
+      titulo: 'Remover preço negociado?',
+      mensagem: 'A empresa volta a pagar o preço de tabela do plano.',
+      labelConfirmar: 'Remover',
+    });
+    if (!ok) return;
     setBusy('preco');
     try {
       await axios.put(`/api/saas/empresa/${idEmpresa}`, { removerPrecoNegociado: true });
+      toast.success('Preço negociado removido.');
       await carregar();
-    } catch { alert('Erro ao remover'); }
+    } catch { toast.error('Erro ao remover.'); }
     finally { setBusy(null); }
   };
 
@@ -286,8 +296,8 @@ export default function ConfigEmpresaPage() {
         billingAnchorAtISO: billingAnchor || null,
       });
       await carregar();
-      alert('Plano e cobrança salvos!');
-    } catch { alert('Erro ao salvar plano'); }
+      toast.success('Plano e cobrança salvos.');
+    } catch { toast.error('Erro ao salvar plano.'); }
     finally { setBusy(null); }
   };
 
@@ -309,8 +319,8 @@ export default function ConfigEmpresaPage() {
         fluxoEstrito,
       });
       await carregar();
-      alert('Configurações salvas!');
-    } catch { alert('Erro ao salvar configs'); }
+      toast.success('Configurações salvas.');
+    } catch { toast.error('Erro ao salvar configs.'); }
     finally { setBusy(null); }
   };
 
@@ -325,8 +335,8 @@ export default function ConfigEmpresaPage() {
         matrizId: matrizAlvoId,
       });
       await carregar();
-      alert('Empresa vinculada como filial!');
-    } catch { alert('Erro ao vincular'); }
+      toast.success('Empresa vinculada como filial.');
+    } catch { toast.error('Erro ao vincular.'); }
     finally { setBusy(null); }
   };
 
@@ -335,9 +345,9 @@ export default function ConfigEmpresaPage() {
     setBusy('excluir');
     try {
       await axios.delete('/api/saas/excluir-empresa', { data: { id: idEmpresa } });
-      alert('Empresa excluída!');
+      toast.success('Empresa excluída.');
       router.push('/saas');
-    } catch { alert('Erro ao excluir empresa'); }
+    } catch { toast.error('Erro ao excluir empresa.'); }
     finally { setBusy(null); }
   };
 

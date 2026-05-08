@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
   Settings,
   Loader2,
@@ -252,7 +253,7 @@ function ConfigRow({ config, onSave }: { config: Config; onSave: (chave: string,
       await onSave(config.chave, valor);
       setEditando(false);
     } catch {
-      alert('Erro ao salvar.');
+      toast.error('Erro ao salvar.');
     } finally {
       setSalvando(false);
     }
@@ -271,7 +272,7 @@ function ConfigRow({ config, onSave }: { config: Config; onSave: (chave: string,
       try {
         await onSave(config.chave, ativo ? 'false' : 'true');
       } catch {
-        alert('Erro ao salvar.');
+        toast.error('Erro ao salvar.');
       } finally {
         setSalvando(false);
       }

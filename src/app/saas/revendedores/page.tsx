@@ -5,6 +5,7 @@ import axios from 'axios';
 import Link from 'next/link';
 import { ArrowLeft, Handshake, PlusCircle, X, Save, Building2, Users, Globe, Trash2, Power, Edit3, ChevronDown, ChevronUp, Palette, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmar } from '@/lib/saasUi';
 import Image from 'next/image';
 
 export default function RevendedoresPage() {
@@ -71,7 +72,13 @@ export default function RevendedoresPage() {
   };
 
   const excluir = async (rev: any) => {
-    if (!confirm(`Excluir "${rev.nome}"? As ${rev.totalEmpresas} empresas serao desvinculadas (nao excluidas).`)) return;
+    const ok = await confirmar({
+      titulo: `Excluir ${rev.nome}?`,
+      mensagem: `As ${rev.totalEmpresas} empresa${rev.totalEmpresas === 1 ? '' : 's'} ser${rev.totalEmpresas === 1 ? 'á' : 'ão'} desvinculada${rev.totalEmpresas === 1 ? '' : 's'} (não excluída${rev.totalEmpresas === 1 ? '' : 's'}).`,
+      perigo: true,
+      labelConfirmar: 'Excluir',
+    });
+    if (!ok) return;
     setExcluindoId(rev.id);
     try {
       await axios.delete('/api/saas/revendedores', { data: { id: rev.id } });
