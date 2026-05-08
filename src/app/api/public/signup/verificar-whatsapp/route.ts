@@ -26,8 +26,9 @@ export async function POST(req: Request) {
   if (!telefone) {
     return NextResponse.json({ ok: false, erro: 'Informe o telefone.' }, { status: 400 });
   }
+  const canal = body?.canal === 'whatsapp' ? 'whatsapp' : 'sms';
 
-  const r = await pedirCodigoWhatsapp(telefone);
+  const r = await pedirCodigoWhatsapp(telefone, canal);
   if (!r.ok) {
     return NextResponse.json({ ok: false, erro: r.erro }, { status: 400 });
   }
@@ -53,7 +54,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ ok: false, erro: 'Telefone e código são obrigatórios.' }, { status: 400 });
   }
 
-  const r = validarCodigoWhatsapp(telefone, codigo);
+  const r = await validarCodigoWhatsapp(telefone, codigo);
   if (!r.ok) {
     return NextResponse.json({ ok: false, erro: r.erro }, { status: 400 });
   }

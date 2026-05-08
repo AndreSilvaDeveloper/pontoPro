@@ -62,11 +62,13 @@ function SignupForm() {
   const [showSenha, setShowSenha] = useState(false)
   const [showSenha2, setShowSenha2] = useState(false)
 
-  // Verificação WhatsApp
+  // Verificação WhatsApp/SMS
   const [etapa, setEtapa] = useState<'dados' | 'codigo'>('dados')
   const [codigoWa, setCodigoWa] = useState('')
   const [waCanal, setWaCanal] = useState<'whatsapp' | 'sms' | null>(null)
   const [reenviando, setReenviando] = useState(false)
+  const [canalEscolhido, setCanalEscolhido] = useState<'sms' | 'whatsapp'>('sms')
+  const [canaisDisponiveis, setCanaisDisponiveis] = useState<('sms' | 'whatsapp')[]>(['sms'])
 
   // PWA (versão curta, igual a pegada do login)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
@@ -82,6 +84,19 @@ function SignupForm() {
   }
 
   const senhaOk = useMemo(() => senha.length >= 8 && senha === senha2, [senha, senha2])
+
+  // Busca canais de verificação habilitados (SMS sempre; WhatsApp depende de config no painel SaaS).
+  useEffect(() => {
+    fetch('/api/public/signup/config')
+      .then(r => r.json())
+      .then(d => {
+        const c = Array.isArray(d?.canais) ? d.canais : ['sms']
+        setCanaisDisponiveis(c)
+        if (!c.includes(canalEscolhido)) setCanalEscolhido(c[0] || 'sms')
+      })
+      .catch(() => {})
+    // eslint-disable-next-line
+  }, [])
 
   useEffect(() => {
     const ua = window.navigator.userAgent.toLowerCase()
@@ -202,7 +217,7 @@ function SignupForm() {
       const res = await fetch('/api/public/signup/verificar-whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefone }),
+        body: JSON.stringify({ telefone, canal: canalEscolhido }),
       })
       const data = await res.json()
 
@@ -268,7 +283,7 @@ function SignupForm() {
       const res = await fetch('/api/public/signup/verificar-whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefone }),
+        body: JSON.stringify({ telefone, canal: canalEscolhido }),
       })
       const data = await res.json()
       if (!res.ok || !data?.ok) {
@@ -639,6 +654,38 @@ function SignupForm() {
                   valorMensal={PLANOS[plano].preco}
                   onChange={setCupomCodigo}
                 />
+
+                {/* Como receber o código de verificação (só aparece quando tem mais de 1 canal) */}
+                {canaisDisponiveis.length > 1 && (
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-wider text-text-muted font-bold">
+                      Receber o código por
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(['whatsapp', 'sms'] as const).map(c => {
+                        const habilitado = canaisDisponiveis.includes(c)
+                        const ativo = canalEscolhido === c
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            disabled={!habilitado}
+                            onClick={() => habilitado && setCanalEscolhido(c)}
+                            className={`py-3 rounded-xl border text-sm font-bold transition-all ${
+                              !habilitado
+                                ? 'border-border-subtle bg-page/40 text-text-faint cursor-not-allowed'
+                                : ativo
+                                  ? 'border-purple-500 bg-purple-500/15 text-purple-200'
+                                  : 'border-border-subtle bg-page/40 text-text-secondary hover:border-purple-500/40'
+                            }`}
+                          >
+                            {c === 'whatsapp' ? '💬 WhatsApp' : '📱 SMS'}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <Button
                   type="submit"

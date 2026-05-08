@@ -9,6 +9,7 @@ import axios from 'axios';
 import {
   LayoutDashboard,
   Inbox,
+  CalendarClock,
   Plus,
   Handshake,
   BarChart3,
@@ -50,6 +51,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'VENDAS',
     items: [
       { href: '/saas/leads', label: 'Leads', icon: Inbox },
+      { href: '/saas/agendamentos', label: 'Agendamentos', icon: CalendarClock },
       { href: '/saas/venda', label: 'Nova Venda', icon: Plus },
       { href: '/saas/revendedores', label: 'Revendedores', icon: Handshake },
     ],

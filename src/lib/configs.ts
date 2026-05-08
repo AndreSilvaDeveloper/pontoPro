@@ -45,4 +45,10 @@ export const CONFIGS = {
   MSG_TRIAL_EXPIRANDO: 'mensagem.trial_expirando',
   MSG_BOAS_VINDAS: 'mensagem.boas_vindas_admin',
   SIGNUP_VERIFICAR_WHATSAPP: 'signup.verificar_whatsapp',
+  SIGNUP_CANAL_WHATSAPP_DISPONIVEL: 'signup.canal_whatsapp_disponivel',
+  AGENDAMENTO_CONFIRMAR_AUTOMATICO: 'agendamento.confirmar_automatico',
+  AGENDAMENTO_LEMBRETE_1H: 'agendamento.lembrete_1h',
+  AGENDAMENTO_CANAL_DEFAULT: 'agendamento.canal_default',
+  AGENDAMENTO_ANTECEDENCIA_MIN_MIN: 'agendamento.antecedencia_min_min',
+  AGENDAMENTO_ANTECEDENCIA_MAX_DIAS: 'agendamento.antecedencia_max_dias',
 } as const;

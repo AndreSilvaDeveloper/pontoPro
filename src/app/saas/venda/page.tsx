@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { ArrowLeft, CheckCircle, Copy, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -26,12 +27,15 @@ const planoColors: Record<PlanoId, { border: string; bg: string; badge: string }
   },
 };
 
-export default function NovaVendaPage() {
+function NovaVendaPageInner() {
+  const search = useSearchParams();
+  const leadId = search.get('leadId') || '';
+
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoId>("PROFESSIONAL");
-  const [nomeEmpresa, setNomeEmpresa] = useState("");
+  const [nomeEmpresa, setNomeEmpresa] = useState(search.get('nomeEmpresa') || "");
   const [cnpj, setCnpj] = useState("");
-  const [nomeDono, setNomeDono] = useState("");
-  const [emailDono, setEmailDono] = useState("");
+  const [nomeDono, setNomeDono] = useState(search.get('nomeDono') || "");
+  const [emailDono, setEmailDono] = useState(search.get('emailDono') || "");
   const [senhaInicial, setSenhaInicial] = useState("1234");
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState<any>(null);
@@ -48,6 +52,7 @@ export default function NovaVendaPage() {
         emailDono,
         senhaInicial,
         plano: planoSelecionado,
+        ...(leadId ? { leadId } : {}),
       });
       setResultado({
         ...res.data,
@@ -256,5 +261,13 @@ export default function NovaVendaPage() {
         )}
       </main>
     </>
+  );
+}
+
+export default function NovaVendaPage() {
+  return (
+    <Suspense fallback={null}>
+      <NovaVendaPageInner />
+    </Suspense>
   );
 }

@@ -1,17 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Calendar, Clock, User, Phone, Send, CheckCircle2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, User, Phone, Send, CheckCircle2, MessageCircle, Loader2 } from 'lucide-react';
 import { LINKS } from '@/config/links';
 import { trackEvent, trackLead } from '@/lib/analytics';
 import { mascaraTelefone, telefoneValido } from '@/utils/mascaraTelefone';
-
-const HORARIOS = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00',
-];
 
 function getProximosDias(qtd: number) {
   const dias = [];
@@ -21,12 +16,20 @@ function getProximosDias(qtd: number) {
 
   while (dias.length < qtd) {
     const dow = d.getDay();
-    if (dow >= 1 && dow <= 5) { // seg-sex
+    if (dow >= 1 && dow <= 6) { // seg-sab (sab tem janela de 09-15)
       dias.push(new Date(d));
     }
     d.setDate(d.getDate() + 1);
   }
   return dias;
+}
+
+function diaToISO(d: Date) {
+  // Local YYYY-MM-DD, evita drift de timezone que toISOString() introduz.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
 }
 
 function formatDiaSemana(d: Date) {
@@ -47,26 +50,55 @@ export default function AgendarDemo() {
   const [empresa, setEmpresa] = useState('');
   const [dataSelecionada, setDataSelecionada] = useState<Date | null>(null);
   const [horario, setHorario] = useState('');
+  const [slots, setSlots] = useState<string[]>([]);
+  const [carregandoSlots, setCarregandoSlots] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [erro, setErro] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [waUrl, setWaUrl] = useState('');
 
   const dias = getProximosDias(10);
 
+  // Sempre que troca o dia, refaz a busca de horários disponíveis e zera o horário escolhido.
+  useEffect(() => {
+    if (!dataSelecionada) {
+      setSlots([]);
+      return;
+    }
+    let cancelado = false;
+    const dia = diaToISO(dataSelecionada);
+    setCarregandoSlots(true);
+    setHorario('');
+    fetch(`/api/public/horarios-disponiveis?dia=${dia}`)
+      .then(r => r.json())
+      .then(d => {
+        if (cancelado) return;
+        setSlots(Array.isArray(d?.slots) ? d.slots : []);
+      })
+      .catch(() => { if (!cancelado) setSlots([]); })
+      .finally(() => { if (!cancelado) setCarregandoSlots(false); });
+    return () => { cancelado = true; };
+  }, [dataSelecionada]);
+
   const enviar = async () => {
-    if (!nome.trim() || !telefoneValido(whatsapp) || !dataSelecionada || !horario) return;
+    if (!nome.trim() || !telefoneValido(whatsapp) || !dataSelecionada || !horario || enviando) return;
+    setEnviando(true);
+    setErro('');
 
     const dataFormatada = formatDataCompleta(dataSelecionada);
+    const dia = diaToISO(dataSelecionada);
 
-    // 1) Salva o lead no servidor antes de qualquer coisa — não dependemos do WhatsApp
+    // 1) Salva o lead+agendamento no servidor — bloqueia se 409 (slot tomado entre escolher e enviar).
     try {
       const params = new URLSearchParams(window.location.search);
-      await fetch('/api/public/agendar-demo', {
+      const resp = await fetch('/api/public/agendar-demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome: nome.trim(),
           whatsapp: whatsapp.trim(),
           empresa: empresa.trim(),
-          data: dataFormatada,
+          dia,
           horario,
           utm_source: params.get('utm_source') || undefined,
           utm_medium: params.get('utm_medium') || undefined,
@@ -76,9 +108,37 @@ export default function AgendarDemo() {
           referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
         }),
       });
+
+      if (resp.status === 409) {
+        const data = await resp.json().catch(() => ({}));
+        if (data?.motivo === 'duplicata') {
+          // Mesmo whatsapp já tem demo marcada — não recarrega slots, só avisa.
+          setErro(data?.erro || 'Você já tem uma demo marcada nesse WhatsApp.');
+        } else {
+          // Slot foi tomado por outra pessoa — limpa horário e recarrega disponíveis.
+          setHorario('');
+          setErro(data?.erro || 'Esse horário acabou de ser reservado. Escolha outro.');
+          try {
+            const r2 = await fetch(`/api/public/horarios-disponiveis?dia=${dia}`);
+            const d2 = await r2.json();
+            setSlots(Array.isArray(d2?.slots) ? d2.slots : []);
+          } catch { /* ignore */ }
+        }
+        setEnviando(false);
+        return;
+      }
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        setErro(data?.erro || 'Não foi possível registrar agora. Tente novamente.');
+        setEnviando(false);
+        return;
+      }
     } catch (err) {
-      // Se falhar, seguimos abrindo o WhatsApp do mesmo jeito — não trava o usuário
       console.error('Falha ao registrar lead:', err);
+      setErro('Falha de conexão. Tente novamente.');
+      setEnviando(false);
+      return;
     }
 
     // 2) Dispara evento de conversão pro GTM/GA4/Ads/Pixel
@@ -89,7 +149,9 @@ export default function AgendarDemo() {
     });
     trackLead({ tipo: 'agendar_demo', empresa: empresa.trim() || undefined });
 
-    // 3) Abre o WhatsApp como antes (UX preservada)
+    // 3) Monta o link do WhatsApp pra mostrar na tela de sucesso.
+    // Não chamamos window.open programaticamente porque alguns browsers
+    // bloqueiam pop-up disparado depois de await — o user precisa clicar.
     const msg = [
       `*Agendamento de Demonstração - WorkID*`,
       ``,
@@ -102,9 +164,9 @@ export default function AgendarDemo() {
       `_Enviado pelo formulário do site_`,
     ].filter(Boolean).join('\n');
 
-    const url = `https://wa.me/${LINKS.whatsapp.number}?text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank');
+    setWaUrl(`https://wa.me/${LINKS.whatsapp.number}?text=${encodeURIComponent(msg)}`);
     setEnviado(true);
+    setEnviando(false);
   };
 
   if (enviado) {
@@ -124,15 +186,26 @@ export default function AgendarDemo() {
           </p>
 
           <p className="text-gray-500 text-sm">
-            Vamos confirmar pelo WhatsApp em breve. Fique de olho nas mensagens!
+            Você vai receber uma confirmação automática no seu WhatsApp em alguns segundos.
+            Se quiser, mande já uma mensagem pra gente também:
           </p>
 
           <div className="flex flex-col gap-3 pt-4">
+            {waUrl && (
+              <a
+                href={waUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/30"
+              >
+                <Send size={18} /> Mandar mensagem no WhatsApp
+              </a>
+            )}
             <Link
               href="/signup"
               className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all text-center"
             >
-              Criar minha conta gratis
+              Criar minha conta grátis
             </Link>
             <Link
               href="/"
@@ -270,25 +343,36 @@ export default function AgendarDemo() {
               <label className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center gap-2">
                 <Clock size={14} className="text-purple-400" /> Escolha o horário
               </label>
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                {HORARIOS.map(h => {
-                  const selecionado = horario === h;
-                  return (
-                    <button
-                      key={h}
-                      type="button"
-                      onClick={() => setHorario(h)}
-                      className={`py-3 rounded-xl border font-bold text-sm transition-all min-h-[44px] ${
-                        selecionado
-                          ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/30'
-                          : 'bg-purple-950/20 border-purple-500/20 text-gray-400 hover:border-purple-500/40 hover:text-white'
-                      }`}
-                    >
-                      {h}
-                    </button>
-                  );
-                })}
-              </div>
+
+              {carregandoSlots ? (
+                <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
+                  <Loader2 size={16} className="animate-spin" /> Buscando horários disponíveis…
+                </div>
+              ) : slots.length === 0 ? (
+                <p className="text-sm text-gray-500 py-4">
+                  Não há horários disponíveis nesse dia. Escolha outro.
+                </p>
+              ) : (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                  {slots.map(h => {
+                    const selecionado = horario === h;
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => setHorario(h)}
+                        className={`py-3 rounded-xl border font-bold text-sm transition-all min-h-[44px] ${
+                          selecionado
+                            ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/30'
+                            : 'bg-purple-950/20 border-purple-500/20 text-gray-400 hover:border-purple-500/40 hover:text-white'
+                        }`}
+                      >
+                        {h}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -305,11 +389,19 @@ export default function AgendarDemo() {
                 </div>
               </div>
 
+              {erro && (
+                <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {erro}
+                </div>
+              )}
+
               <button
                 onClick={enviar}
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/30"
+                disabled={enviando}
+                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/30"
               >
-                <Send size={18} /> Confirmar pelo WhatsApp
+                {enviando ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                {enviando ? 'Reservando…' : 'Confirmar pelo WhatsApp'}
               </button>
 
               <p className="text-center text-xs text-gray-600">

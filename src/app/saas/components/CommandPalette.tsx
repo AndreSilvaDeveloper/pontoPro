@@ -8,6 +8,7 @@ import {
   Plus,
   UserPlus,
   Inbox,
+  CalendarClock,
   Handshake,
   Bell,
   FileText,
@@ -67,6 +68,7 @@ export default function CommandPalette({ empresas, onNovaVenda }: Props) {
   const acoesFixas: Acao[] = useMemo(() => [
     { id: 'a-venda', label: 'Nova venda', hint: 'Cadastrar empresa cliente', icon: Plus, onSelect: onNovaVenda, href: onNovaVenda ? undefined : '/saas/venda' },
     { id: 'a-leads', label: 'Ver leads', hint: 'Funil de vendas', icon: Inbox, href: '/saas/leads' },
+    { id: 'a-agendamentos', label: 'Agendamentos', hint: 'Demos marcadas pelo site', icon: CalendarClock, href: '/saas/agendamentos' },
     { id: 'a-analytics', label: 'Analytics de marketing', hint: 'Visitas, signups, conversões', icon: BarChart3, href: '/saas/analytics' },
     { id: 'a-rev', label: 'Revendedores', hint: 'Parceiros', icon: Handshake, href: '/saas/revendedores' },
     { id: 'a-notif', label: 'Notificações', hint: 'Histórico completo', icon: Bell, href: '/saas/notificacoes' },
