@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { TrendingUp, Sparkles } from 'lucide-react';
+import { TrendingUp, Sparkles, Eye, EyeOff } from 'lucide-react';
+
+const MRR_VISIBLE_KEY = 'saas-mrr-visivel';
 
 type Props = {
   mrr: number | undefined;
@@ -34,9 +36,23 @@ function fraseDoMomento(): string {
 export default function DashboardHero({ mrr, totalAtivos, totalEmpresas, loading }: Props) {
   const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
+  const [visivel, setVisivel] = useState(false);
 
   // Evita mismatch de SSR (saudação muda com a hora)
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    try {
+      setVisivel(localStorage.getItem(MRR_VISIBLE_KEY) === '1');
+    } catch {}
+  }, []);
+
+  const toggleVisivel = () => {
+    setVisivel(v => {
+      const next = !v;
+      try { localStorage.setItem(MRR_VISIBLE_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
 
   const primeiroNome = (session?.user?.name || '').split(' ')[0];
   const saudacao = mounted ? saudacaoPorHora() : 'Olá';
@@ -69,19 +85,31 @@ export default function DashboardHero({ mrr, totalAtivos, totalEmpresas, loading
           <div className="flex items-center gap-1.5 md:justify-end text-text-muted text-[11px] font-bold uppercase tracking-wider mb-1">
             <TrendingUp size={11} />
             <span>MRR · Receita recorrente</span>
+            <button
+              onClick={toggleVisivel}
+              className="ml-1 p-1 rounded-md hover:bg-elevated/60 text-text-muted hover:text-text-primary transition-colors"
+              aria-label={visivel ? 'Ocultar MRR' : 'Mostrar MRR'}
+              title={visivel ? 'Ocultar MRR' : 'Mostrar MRR'}
+            >
+              {visivel ? <EyeOff size={12} /> : <Eye size={12} />}
+            </button>
           </div>
           {loading ? (
             <div className="h-10 w-44 bg-elevated-solid/60 rounded-lg animate-pulse md:ml-auto" />
-          ) : (
+          ) : visivel ? (
             <p className="text-3xl md:text-4xl font-extrabold tabular-nums bg-gradient-to-r from-emerald-300 via-emerald-400 to-cyan-300 bg-clip-text text-transparent">
               {mrrFormatado}
             </p>
+          ) : (
+            <button
+              onClick={toggleVisivel}
+              className="text-3xl md:text-4xl font-extrabold tabular-nums text-text-faint hover:text-text-muted transition-colors tracking-widest select-none"
+              aria-label="Mostrar MRR"
+              title="Clique pra mostrar"
+            >
+              R$ ••••••
+            </button>
           )}
-          <p className="text-[11px] text-text-muted mt-1">
-            {loading
-              ? 'Calculando...'
-              : `${totalAtivos ?? 0} cliente${totalAtivos === 1 ? '' : 's'} ativo${totalAtivos === 1 ? '' : 's'} · ${totalEmpresas ?? 0} no total`}
-          </p>
         </div>
       </div>
     </div>
