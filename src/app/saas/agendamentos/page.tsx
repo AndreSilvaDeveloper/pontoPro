@@ -18,9 +18,12 @@ import {
   CalendarOff,
   Save,
   Briefcase,
+  List,
+  CalendarDays,
 } from 'lucide-react';
 import { formatInTimeZone } from 'date-fns-tz';
 import { ptBR } from 'date-fns/locale';
+import CalendarioSemanal from './_components/CalendarioSemanal';
 
 const TZ = 'America/Sao_Paulo';
 
@@ -98,6 +101,7 @@ export default function AgendamentosPage() {
   const [filtroStatus, setFiltroStatus] = useState('');
   const [escopo, setEscopo] = useState<'futuros' | 'todos' | 'passados'>('futuros');
   const [busca, setBusca] = useState('');
+  const [view, setView] = useState<'lista' | 'calendario'>('calendario');
 
   const [obsAberto, setObsAberto] = useState<string | null>(null);
   const [obsTexto, setObsTexto] = useState('');
@@ -159,7 +163,7 @@ export default function AgendamentosPage() {
 
   return (
     <>
-      <header className="sticky top-14 z-10 border-b border-border-subtle bg-page/80 backdrop-blur-xl">
+      <header className="sticky top-14 lg:top-0 z-10 border-b border-border-subtle bg-page/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <Link
@@ -172,14 +176,41 @@ export default function AgendamentosPage() {
             <h1 className="text-lg font-bold">Agendamentos</h1>
           </div>
 
-          <button
-            onClick={carregar}
-            className="inline-flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
-            disabled={loading}
-          >
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-            Atualizar
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center rounded-xl border border-border-subtle bg-elevated overflow-hidden">
+              <button
+                onClick={() => setView('lista')}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm transition-colors ${
+                  view === 'lista'
+                    ? 'bg-purple-500/20 text-purple-200'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+                aria-pressed={view === 'lista'}
+              >
+                <List size={14} /> Lista
+              </button>
+              <button
+                onClick={() => setView('calendario')}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm transition-colors border-l border-border-subtle ${
+                  view === 'calendario'
+                    ? 'bg-purple-500/20 text-purple-200'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+                aria-pressed={view === 'calendario'}
+              >
+                <CalendarDays size={14} /> Calendário
+              </button>
+            </div>
+
+            <button
+              onClick={carregar}
+              className="inline-flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-secondary px-3 py-2 rounded-xl border border-border-subtle text-sm transition-colors"
+              disabled={loading}
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+              Atualizar
+            </button>
+          </div>
         </div>
       </header>
 
@@ -237,7 +268,26 @@ export default function AgendamentosPage() {
           </div>
         </section>
 
+        {/* Calendário */}
+        {view === 'calendario' && (
+          <section>
+            {loading && agendamentos.length === 0 ? (
+              <div className="text-center py-16 text-text-muted">
+                <Loader2 className="animate-spin mx-auto mb-3" />
+                Carregando…
+              </div>
+            ) : (
+              <CalendarioSemanal
+                agendamentos={agendamentos}
+                onAtualizar={atualizar}
+                salvandoId={salvandoId}
+              />
+            )}
+          </section>
+        )}
+
         {/* Lista */}
+        {view === 'lista' && (
         <section className="space-y-3">
           {loading && agendamentos.length === 0 && (
             <div className="text-center py-16 text-text-muted">
@@ -450,6 +500,7 @@ export default function AgendamentosPage() {
             );
           })}
         </section>
+        )}
       </main>
     </>
   );

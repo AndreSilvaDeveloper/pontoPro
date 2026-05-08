@@ -151,7 +151,7 @@ export default function LeadsPage() {
 
   return (
     <>
-      <header className="sticky top-14 z-10 border-b border-border-subtle bg-page/80 backdrop-blur-xl">
+      <header className="sticky top-14 lg:top-0 z-10 border-b border-border-subtle bg-page/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <Link
