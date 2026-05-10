@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import {
   Settings,
   Loader2,
@@ -100,7 +101,7 @@ export default function ConfiguracoesPage() {
 
   return (
     <>
-      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+      <header className="sticky top-14 lg:top-0 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center">
@@ -252,7 +253,7 @@ function ConfigRow({ config, onSave }: { config: Config; onSave: (chave: string,
       await onSave(config.chave, valor);
       setEditando(false);
     } catch {
-      alert('Erro ao salvar.');
+      toast.error('Erro ao salvar.');
     } finally {
       setSalvando(false);
     }
@@ -271,7 +272,7 @@ function ConfigRow({ config, onSave }: { config: Config; onSave: (chave: string,
       try {
         await onSave(config.chave, ativo ? 'false' : 'true');
       } catch {
-        alert('Erro ao salvar.');
+        toast.error('Erro ao salvar.');
       } finally {
         setSalvando(false);
       }

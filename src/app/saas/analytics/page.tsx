@@ -22,7 +22,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+      <header className="sticky top-14 lg:top-0 z-30 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
           <Link
             href="/saas"

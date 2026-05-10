@@ -13,7 +13,13 @@ const CONFIGS_PADRAO = [
   { chave: 'cobranca.dia_vencimento_padrao', valor: '15', tipo: 'numero', categoria: 'operacional', descricao: 'Dia do mês usado como padrão para novas empresas' },
   { chave: 'cobranca.tolerancia_dias', valor: '10', tipo: 'numero', categoria: 'operacional', descricao: 'Dias de tolerância antes de bloquear acesso por inadimplência' },
   { chave: 'revendedor.comissao_padrao', valor: '20', tipo: 'numero', categoria: 'operacional', descricao: 'Percentual de comissão padrão (%) para novos revendedores' },
-  { chave: 'signup.verificar_whatsapp', valor: 'false', tipo: 'booleano', categoria: 'operacional', descricao: 'Exige confirmação por código (SMS) do número informado no cadastro de novos clientes' },
+  { chave: 'signup.verificar_whatsapp', valor: 'false', tipo: 'booleano', categoria: 'operacional', descricao: 'Exige confirmação por código (SMS/WhatsApp) do número informado no cadastro de novos clientes' },
+  { chave: 'signup.canal_whatsapp_disponivel', valor: 'false', tipo: 'booleano', categoria: 'operacional', descricao: 'Permite escolher WhatsApp como canal pra receber o código no cadastro (mantenha desligado até o sender estar aprovado pela Meta)' },
+  { chave: 'agendamento.confirmar_automatico', valor: 'true', tipo: 'booleano', categoria: 'operacional', descricao: 'Manda mensagem de confirmação automática quando alguém agenda uma demo' },
+  { chave: 'agendamento.lembrete_1h', valor: 'true', tipo: 'booleano', categoria: 'operacional', descricao: 'Manda lembrete 1h antes do horário marcado da demo' },
+  { chave: 'agendamento.canal_default', valor: 'sms', tipo: 'texto', categoria: 'operacional', descricao: 'Canal preferido pra confirmação/lembrete de agendamento (sms ou whatsapp)' },
+  { chave: 'agendamento.antecedencia_min_min', valor: '60', tipo: 'numero', categoria: 'operacional', descricao: 'Quantos minutos no mínimo antes do horário um lead pode agendar (evita marcação pra "daqui 5 min")' },
+  { chave: 'agendamento.antecedencia_max_dias', valor: '30', tipo: 'numero', categoria: 'operacional', descricao: 'Até quantos dias no futuro o lead pode agendar (limita "daqui 6 meses")' },
 
   // Mensagens (templates)
   { chave: 'mensagem.cobranca_atraso', valor: 'Olá! Vi que sua mensalidade do WorkID está em atraso. Posso te ajudar com o pagamento?', tipo: 'texto', categoria: 'mensagens', descricao: 'WhatsApp enviado para empresas em atraso' },

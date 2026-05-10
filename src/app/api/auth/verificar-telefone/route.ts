@@ -1,27 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../[...nextauth]/route';
-import { enviarCodigo, gerarCodigo } from '@/lib/sms';
+import { enviarOtp, validarOtp, type CanalMensagem } from '@/lib/messaging';
 
-// Armazena códigos em memória (TTL 10 min)
-// Em produção ideal seria Redis, mas para MVP funciona
-const codigosPendentes = new Map<string, { codigo: string; expira: number; telefone: string }>();
-
-// Limpar expirados periodicamente
-function limparExpirados() {
-  const agora = Date.now();
-  for (const [key, val] of codigosPendentes) {
-    if (val.expira < agora) codigosPendentes.delete(key);
-  }
-}
-
-// POST: Enviar código SMS
+// POST: enviar código de verificação
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
 
   try {
-    const { telefone } = await request.json();
+    const body = await request.json().catch(() => ({} as any));
+    const telefone = String(body?.telefone || '').trim();
     if (!telefone) return NextResponse.json({ erro: 'Telefone obrigatório' }, { status: 400 });
 
     const telLimpo = telefone.replace(/\D/g, '');
@@ -29,35 +18,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ erro: 'Telefone inválido' }, { status: 400 });
     }
 
-    // Feature flag: se SMS estiver desligado, pular verificação
     if (process.env.SMS_VERIFICACAO_ENABLED !== 'true') {
       return NextResponse.json({ ok: true, skipVerification: true });
     }
 
-    limparExpirados();
-
-    // Rate limit: máximo 3 envios por sessão em 10 min
-    const userId = (session.user as any).id;
-    const chave = `${userId}:${telLimpo}`;
-    const existente = codigosPendentes.get(chave);
-    if (existente && existente.expira > Date.now() + 8 * 60 * 1000) {
-      // Enviado há menos de 2 minutos
-      return NextResponse.json({ erro: 'Aguarde 2 minutos para reenviar' }, { status: 429 });
-    }
-
-    const codigoGerado = gerarCodigo();
-
-    const resultado = await enviarCodigo(telLimpo, codigoGerado);
+    const canal: CanalMensagem = body?.canal === 'whatsapp' ? 'whatsapp' : 'sms';
+    const resultado = await enviarOtp(telLimpo, canal);
 
     if (!resultado.ok) {
-      return NextResponse.json({ erro: 'Falha ao enviar código. Verifique o número.' }, { status: 500 });
+      return NextResponse.json(
+        { erro: 'Falha ao enviar código. Verifique o número.' },
+        { status: 500 },
+      );
     }
-
-    codigosPendentes.set(chave, {
-      codigo: codigoGerado,
-      expira: Date.now() + 10 * 60 * 1000, // 10 minutos
-      telefone: telLimpo,
-    });
 
     return NextResponse.json({ ok: true, canal: resultado.canal });
   } catch (error) {
@@ -66,7 +39,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT: Validar código
+// PUT: validar código
 export async function PUT(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ erro: 'Não autorizado' }, { status: 401 });
@@ -75,23 +48,11 @@ export async function PUT(request: Request) {
     const { telefone, codigo } = await request.json();
     if (!telefone || !codigo) return NextResponse.json({ erro: 'Campos obrigatórios' }, { status: 400 });
 
-    const telLimpo = telefone.replace(/\D/g, '');
-    const userId = (session.user as any).id;
-    const chave = `${userId}:${telLimpo}`;
-
-    limparExpirados();
-
-    const pendente = codigosPendentes.get(chave);
-    if (!pendente) {
-      return NextResponse.json({ erro: 'Código expirado ou não solicitado. Envie novamente.' }, { status: 400 });
+    const telLimpo = String(telefone).replace(/\D/g, '');
+    const resultado = await validarOtp(telLimpo, String(codigo).trim());
+    if (!resultado.ok) {
+      return NextResponse.json({ erro: resultado.erro }, { status: 400 });
     }
-
-    if (pendente.codigo !== codigo.trim()) {
-      return NextResponse.json({ erro: 'Código incorreto' }, { status: 400 });
-    }
-
-    // Código correto — limpar
-    codigosPendentes.delete(chave);
 
     return NextResponse.json({ ok: true, telefoneValidado: telLimpo });
   } catch (error) {

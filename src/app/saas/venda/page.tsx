@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
+import { toast } from "sonner";
 import { ArrowLeft, CheckCircle, Copy, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PLANOS, type PlanoId } from "@/config/planos";
@@ -26,12 +28,15 @@ const planoColors: Record<PlanoId, { border: string; bg: string; badge: string }
   },
 };
 
-export default function NovaVendaPage() {
+function NovaVendaPageInner() {
+  const search = useSearchParams();
+  const leadId = search.get('leadId') || '';
+
   const [planoSelecionado, setPlanoSelecionado] = useState<PlanoId>("PROFESSIONAL");
-  const [nomeEmpresa, setNomeEmpresa] = useState("");
+  const [nomeEmpresa, setNomeEmpresa] = useState(search.get('nomeEmpresa') || "");
   const [cnpj, setCnpj] = useState("");
-  const [nomeDono, setNomeDono] = useState("");
-  const [emailDono, setEmailDono] = useState("");
+  const [nomeDono, setNomeDono] = useState(search.get('nomeDono') || "");
+  const [emailDono, setEmailDono] = useState(search.get('emailDono') || "");
   const [senhaInicial, setSenhaInicial] = useState("1234");
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState<any>(null);
@@ -48,6 +53,7 @@ export default function NovaVendaPage() {
         emailDono,
         senhaInicial,
         plano: planoSelecionado,
+        ...(leadId ? { leadId } : {}),
       });
       setResultado({
         ...res.data,
@@ -55,7 +61,7 @@ export default function NovaVendaPage() {
         plano: planoSelecionado,
       });
     } catch (error: any) {
-      alert(error.response?.data?.erro || "Erro ao criar.");
+      toast.error(error.response?.data?.erro || "Erro ao criar empresa.");
     } finally {
       setLoading(false);
     }
@@ -65,7 +71,7 @@ export default function NovaVendaPage() {
     if (!resultado) return;
     const text = `Empresa: ${resultado.dados.empresa}\nLogin: ${resultado.dados.login}\nSenha: ${resultado.senha}\nPlano: ${resultado.plano}`;
     navigator.clipboard.writeText(text);
-    alert("Credenciais copiadas!");
+    toast.success("Credenciais copiadas.");
   };
 
   const criarOutro = () => {
@@ -79,7 +85,7 @@ export default function NovaVendaPage() {
 
   return (
     <>
-      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+      <header className="sticky top-14 lg:top-0 z-30 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
           <Link
             href="/saas"
@@ -256,5 +262,13 @@ export default function NovaVendaPage() {
         )}
       </main>
     </>
+  );
+}
+
+export default function NovaVendaPage() {
+  return (
+    <Suspense fallback={null}>
+      <NovaVendaPageInner />
+    </Suspense>
   );
 }

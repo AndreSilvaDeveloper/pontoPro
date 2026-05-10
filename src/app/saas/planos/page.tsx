@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
+import { confirmar } from '@/lib/saasUi';
 import {
   Package,
   Loader2,
@@ -70,14 +72,20 @@ export default function PlanosPage() {
   };
   const saveEdit = async () => {
     if (!draft) return;
-    if (!confirm('Confirma alteração?\n\nEsta mudança afeta apenas NOVAS vendas. Empresas existentes mantêm seus preços contratados (precoNegociado já cuida disso).')) return;
+    const ok = await confirmar({
+      titulo: 'Confirmar alteração do plano?',
+      mensagem: 'Esta mudança afeta apenas NOVAS vendas. Empresas existentes mantêm os preços contratados.',
+      labelConfirmar: 'Salvar',
+    });
+    if (!ok) return;
     setSalvando(true);
     try {
       await axios.put('/api/saas/planos', draft);
+      toast.success('Plano atualizado.');
       await carregar();
       cancelEdit();
     } catch (e: any) {
-      alert(e.response?.data?.erro || 'Erro ao salvar');
+      toast.error(e.response?.data?.erro || 'Erro ao salvar.');
     } finally {
       setSalvando(false);
     }
@@ -88,13 +96,13 @@ export default function PlanosPage() {
       await axios.put('/api/saas/planos', { id, [campo]: valor });
       await carregar();
     } catch {
-      alert('Erro ao atualizar');
+      toast.error('Erro ao atualizar.');
     }
   };
 
   return (
     <>
-      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+      <header className="sticky top-14 lg:top-0 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">

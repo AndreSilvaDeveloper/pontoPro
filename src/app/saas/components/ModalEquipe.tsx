@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Users, LogIn, KeyRound, Trash2, UserPlus, X, Loader2 } from "lucide-react";
 import axios from "axios";
+import { toast } from "sonner";
+import { confirmar } from "@/lib/saasUi";
 
 type Props = {
   open: boolean;
@@ -64,23 +66,35 @@ export default function ModalEquipe({
   }, [qEquipe, cargoEquipe]);
 
   const excluirUsuario = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja remover este acesso?")) return;
+    const ok = await confirmar({
+      titulo: "Remover este acesso?",
+      mensagem: "O usuário não conseguirá mais entrar no sistema.",
+      perigo: true,
+      labelConfirmar: "Remover",
+    });
+    if (!ok) return;
     try {
       await axios.delete("/api/saas/excluir-usuario", { data: { id: userId } });
+      toast.success("Acesso removido.");
       await carregarUsuarios({ q: qEquipe, cargo: cargoEquipe });
       onRecarregarEmpresas();
     } catch (e: any) {
-      alert(e.response?.data?.erro || "Erro ao excluir usuário");
+      toast.error(e.response?.data?.erro || "Erro ao excluir usuário.");
     }
   };
 
   const resetarSenha = async (user: any) => {
-    if (!confirm(`Resetar senha de ${user.nome} para 1234?`)) return;
+    const ok = await confirmar({
+      titulo: `Resetar senha de ${user.nome}?`,
+      mensagem: "A nova senha será 1234. O usuário deve trocar no próximo login.",
+      labelConfirmar: "Resetar senha",
+    });
+    if (!ok) return;
     try {
       await axios.post("/api/saas/resetar-senha", { usuarioId: user.id });
-      alert("Senha resetada para 1234");
+      toast.success("Senha resetada para 1234.");
     } catch (e: any) {
-      alert(e.response?.data?.erro || "Erro ao resetar senha");
+      toast.error(e.response?.data?.erro || "Erro ao resetar senha.");
     }
   };
 

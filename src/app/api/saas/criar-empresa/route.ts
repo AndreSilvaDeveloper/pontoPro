@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial, plano } = body;
+    const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial, plano, leadId } = body;
 
     if (cnpj && !validarCNPJ(String(cnpj))) {
       return NextResponse.json({ erro: "CNPJ inválido." }, { status: 400 });
@@ -137,6 +137,32 @@ export async function POST(request: Request) {
       prioridade: 'ALTA',
       metadata: { empresaId: empresa.id, plano: empresa.plano, donoEmail: emailDono },
     });
+
+    // Conversão automática Lead → Cliente: se a venda partiu de um lead conhecido,
+    // marca como CONVERTIDO e fecha agendamentos pendentes/confirmados como REALIZADO.
+    if (leadId) {
+      try {
+        await prisma.$transaction([
+          prisma.lead.update({
+            where: { id: String(leadId) },
+            data: { status: 'CONVERTIDO' },
+          }),
+          prisma.agendamento.updateMany({
+            where: {
+              leadId: String(leadId),
+              status: { in: ['PENDENTE', 'CONFIRMADO'] },
+            },
+            data: {
+              status: 'REALIZADO',
+              alteradoPor: 'criar-empresa',
+              alteradoEm: new Date(),
+            },
+          }),
+        ]);
+      } catch (e) {
+        console.error('[criar-empresa] falha ao converter lead:', e);
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import axios from 'axios';
+import { toast } from 'sonner';
+import { confirmar } from '@/lib/saasUi';
 import {
   Tag,
   Loader2,
@@ -110,9 +112,10 @@ export default function CuponsPage() {
   const toggleAtivo = async (c: Cupom) => {
     try {
       await axios.put(`/api/saas/cupons/${c.id}`, { ativo: !c.ativo });
+      toast.success(c.ativo ? `Cupom ${c.codigo} desativado.` : `Cupom ${c.codigo} ativado.`);
       await carregar();
     } catch {
-      alert('Erro ao alterar status.');
+      toast.error('Erro ao alterar status.');
     }
   };
 
@@ -121,20 +124,26 @@ export default function CuponsPage() {
       await axios.put(`/api/saas/cupons/${c.id}`, { visivelLanding: !c.visivelLanding });
       await carregar();
     } catch {
-      alert('Erro ao alterar visibilidade.');
+      toast.error('Erro ao alterar visibilidade.');
     }
   };
 
   const excluir = async (c: Cupom) => {
-    const confirma = c.usos > 0
-      ? confirm(`O cupom ${c.codigo} já foi usado ${c.usos}× e será DESATIVADO (não excluído de fato pra preservar histórico). Confirma?`)
-      : confirm(`Excluir cupom ${c.codigo}?`);
-    if (!confirma) return;
+    const ok = await confirmar({
+      titulo: c.usos > 0 ? `Desativar cupom ${c.codigo}?` : `Excluir cupom ${c.codigo}?`,
+      mensagem: c.usos > 0
+        ? `Esse cupom já foi usado ${c.usos}× e será apenas desativado, pra preservar o histórico das vendas.`
+        : 'O cupom será excluído permanentemente.',
+      perigo: c.usos === 0,
+      labelConfirmar: c.usos > 0 ? 'Desativar' : 'Excluir',
+    });
+    if (!ok) return;
     try {
       await axios.delete(`/api/saas/cupons/${c.id}`);
+      toast.success(c.usos > 0 ? 'Cupom desativado.' : 'Cupom excluído.');
       await carregar();
     } catch {
-      alert('Erro ao excluir.');
+      toast.error('Erro ao excluir.');
     }
   };
 
@@ -146,7 +155,7 @@ export default function CuponsPage() {
 
   return (
     <>
-      <header className="sticky top-14 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
+      <header className="sticky top-14 lg:top-0 z-10 bg-page/80 backdrop-blur-xl border-b border-border-subtle">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-fuchsia-500/15 border border-fuchsia-500/30 flex items-center justify-center">

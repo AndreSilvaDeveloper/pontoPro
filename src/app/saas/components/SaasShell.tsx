@@ -9,13 +9,13 @@ import axios from 'axios';
 import {
   LayoutDashboard,
   Inbox,
+  CalendarClock,
   Plus,
   Handshake,
   BarChart3,
   LogOut,
   Menu,
   X,
-  Search,
   PanelLeftClose,
   PanelLeftOpen,
   Megaphone,
@@ -26,10 +26,11 @@ import {
   Tag,
 } from 'lucide-react';
 import { ImpersonationBanner } from '@/components/impersonation/ImpersonationBanner';
-import BellDropdown from './BellDropdown';
 import PushPermissionPrompt from './PushPermissionPrompt';
 import PushToastListener from './PushToastListener';
 import CommandPalette from './CommandPalette';
+import { Toaster } from 'sonner';
+import { ConfirmDialog } from '@/lib/saasUi';
 
 type NavItem = {
   href: string;
@@ -50,6 +51,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: 'VENDAS',
     items: [
       { href: '/saas/leads', label: 'Leads', icon: Inbox },
+      { href: '/saas/agendamentos', label: 'Agendamentos', icon: CalendarClock },
       { href: '/saas/venda', label: 'Nova Venda', icon: Plus },
       { href: '/saas/revendedores', label: 'Revendedores', icon: Handshake },
     ],
@@ -89,6 +91,7 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [empresas, setEmpresas] = useState<any[]>([]);
+  const [badges, setBadges] = useState<Record<string, number>>({});
 
   useEffect(() => {
     try {
@@ -105,6 +108,30 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
       .then(r => setEmpresas(Array.isArray(r.data) ? r.data : []))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    let abortou = false;
+    const carregar = async () => {
+      try {
+        const r = await axios.get('/api/saas/sidebar-badges');
+        if (!abortou && r.data && typeof r.data === 'object') setBadges(r.data);
+      } catch { /* silencioso */ }
+    };
+    carregar();
+    const id = window.setInterval(carregar, 30_000);
+    // Recarrega badges quando o sw avisa de novo push (mantém em sincronia
+    // com o BellDropdown antigo, sem manter o botão visível).
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      bc = new BroadcastChannel('workid-push');
+      bc.addEventListener('message', carregar);
+    }
+    return () => {
+      abortou = true;
+      window.clearInterval(id);
+      if (bc) { bc.removeEventListener('message', carregar); bc.close(); }
+    };
+  }, [pathname]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -181,21 +208,34 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
                 {group.items.map(item => {
                   const Icon = item.icon;
                   const active = isActive(item);
+                  const count = badges[item.href] || 0;
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        title={!expanded ? item.label : undefined}
+                        title={!expanded ? `${item.label}${count > 0 ? ` (${count})` : ''}` : undefined}
                         className={`
-                          flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
+                          relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
                           ${active
                             ? 'bg-purple-600/15 text-purple-300 font-semibold'
                             : 'text-text-secondary hover:bg-elevated hover:text-text-primary'}
                           ${!expanded ? 'justify-center' : ''}
                         `}
                       >
-                        <Icon size={16} className="flex-shrink-0" />
+                        <span className="relative flex-shrink-0">
+                          <Icon size={16} />
+                          {!expanded && count > 0 && (
+                            <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-purple-600 text-white text-[9px] font-bold flex items-center justify-center">
+                              {count > 99 ? '99+' : count}
+                            </span>
+                          )}
+                        </span>
                         {expanded && <span className="truncate">{item.label}</span>}
+                        {expanded && count > 0 && (
+                          <span className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-purple-600 text-white text-[10px] font-bold flex items-center justify-center">
+                            {count > 99 ? '99+' : count}
+                          </span>
+                        )}
                       </Link>
                     </li>
                   );
@@ -232,6 +272,18 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
       <PushPermissionPrompt />
       <PushToastListener />
       <CommandPalette empresas={empresas} />
+      <ConfirmDialog />
+      <Toaster
+        theme="dark"
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          classNames: {
+            toast: 'rounded-2xl border border-border-subtle bg-page shadow-xl',
+          },
+        }}
+      />
 
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-orb-purple rounded-full blur-[100px]" />
@@ -257,7 +309,7 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className={`flex-1 min-w-0 ${mainOffsetClass} transition-[margin] duration-200`}>
-        <header className="sticky top-0 z-20 h-14 bg-page/80 backdrop-blur-xl border-b border-border-subtle flex items-center justify-between px-3 sm:px-6">
+        <header className="lg:hidden sticky top-0 z-20 h-14 bg-page/80 backdrop-blur-xl border-b border-border-subtle flex items-center justify-between px-3 sm:px-6">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setMobileOpen(true)}
@@ -272,27 +324,8 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <button
-              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-              className="hidden md:flex items-center gap-2 bg-elevated hover:bg-elevated-solid/50 text-text-faint px-3 py-1.5 rounded-lg border border-border-subtle text-xs transition-colors"
-              title="Busca rápida"
-            >
-              <Search size={13} />
-              <span>Buscar</span>
-              <kbd className="bg-page text-[9px] px-1.5 py-0.5 rounded border border-border-subtle ml-1">⌘K</kbd>
-            </button>
+          <div className="flex items-center gap-1.5 sm:gap-2" />
 
-            <BellDropdown />
-
-            <Link
-              href="/saas/venda"
-              className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow shadow-purple-600/20"
-            >
-              <Plus size={14} />
-              <span className="hidden sm:inline">Nova Venda</span>
-            </Link>
-          </div>
         </header>
 
         <main className="relative z-10">{children}</main>

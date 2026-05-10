@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { toast } from "sonner";
 import {
   Loader2,
   X,
@@ -14,6 +15,7 @@ import ClientTable from "./components/ClientTable";
 import ModalEquipe from "./components/ModalEquipe";
 import ModalFatura from "./components/ModalFatura";
 import DashboardHero from "./components/DashboardHero";
+import { confirmar } from "@/lib/saasUi";
 
 export default function SuperAdminPage() {
   // === DADOS ===
@@ -75,54 +77,72 @@ export default function SuperAdminPage() {
       const dest = user.cargo === "FUNCIONARIO" ? "/funcionario" : "/admin";
       window.location.href = dest;
     } catch {
-      alert("Não foi possível entrar como este usuário.");
+      toast.error("Não foi possível entrar como este usuário.");
     }
   };
 
   const alternarStatus = async (id: string, nome: string, status: string) => {
-    const acao = status === "ATIVO" ? "BLOQUEAR" : "ATIVAR";
-    if (!confirm(`Deseja ${acao} a empresa ${nome}?`)) return;
+    const bloqueando = status === "ATIVO";
+    const ok = await confirmar({
+      titulo: bloqueando ? `Bloquear ${nome}?` : `Ativar ${nome}?`,
+      mensagem: bloqueando
+        ? "A empresa perde acesso ao sistema até ser reativada."
+        : "A empresa volta a ter acesso normal ao sistema.",
+      perigo: bloqueando,
+      labelConfirmar: bloqueando ? "Bloquear" : "Ativar",
+    });
+    if (!ok) return;
     try {
       await axios.put("/api/saas/gestao", { empresaId: id, acao: "ALTERAR_STATUS" });
+      toast.success(bloqueando ? `${nome} foi bloqueada.` : `${nome} foi ativada.`);
       listarEmpresas();
       carregarStats();
     } catch {
-      alert("Erro ao alterar status");
+      toast.error("Erro ao alterar status.");
     }
   };
 
   const excluirEmpresa = async (id: string, nome: string) => {
-    const confirmacao = window.prompt(
-      `PERIGO: Isso apagará TODOS os dados de "${nome}".\nDigite "DELETAR" para confirmar:`
-    );
-    if (confirmacao !== "DELETAR") return;
+    const ok = await confirmar({
+      titulo: `Excluir ${nome}?`,
+      mensagem: "Isso apagará TODOS os dados desta empresa permanentemente. Esta ação não pode ser desfeita.",
+      perigo: true,
+      labelConfirmar: "Excluir empresa",
+      exigirDigitar: "DELETAR",
+    });
+    if (!ok) return;
     try {
       await axios.delete("/api/saas/excluir-empresa", { data: { id } });
-      alert("Empresa excluída!");
+      toast.success(`${nome} excluída.`);
       listarEmpresas();
       carregarStats();
     } catch (e: any) {
-      alert(e.response?.data?.erro || "Erro ao excluir");
+      toast.error(e.response?.data?.erro || "Erro ao excluir.");
     }
   };
 
   const confirmarPagamentoManual = async (empresaId: string) => {
-    if (!confirm("Deseja marcar a fatura deste mês como PAGA para este cliente?")) return;
+    const ok = await confirmar({
+      titulo: "Confirmar pagamento manualmente?",
+      mensagem: "A fatura do mês será marcada como PAGA para este cliente.",
+      labelConfirmar: "Marcar como pago",
+    });
+    if (!ok) return;
     setLoadingPagamento(empresaId);
     try {
       await axios.post("/api/saas/confirmar-pagamento", { empresaId });
-      alert("Pagamento confirmado com sucesso!");
+      toast.success("Pagamento confirmado.");
       listarEmpresas();
       carregarStats();
     } catch {
-      alert("Erro ao confirmar pagamento.");
+      toast.error("Erro ao confirmar pagamento.");
     } finally {
       setLoadingPagamento(null);
     }
   };
 
   const salvarVinculo = async () => {
-    if (!matrizAlvoId) return alert("Selecione uma matriz");
+    if (!matrizAlvoId) return toast.warning("Selecione uma matriz.");
     setLoadingVinculo(true);
     try {
       await axios.put("/api/saas/gestao", {
@@ -130,11 +150,11 @@ export default function SuperAdminPage() {
         acao: "VINCULAR_MATRIZ",
         matrizId: matrizAlvoId,
       });
-      alert("Empresa vinculada com sucesso!");
+      toast.success("Empresa vinculada à matriz.");
       setModalVincularOpen(false);
       listarEmpresas();
     } catch {
-      alert("Erro ao vincular");
+      toast.error("Erro ao vincular.");
     } finally {
       setLoadingVinculo(false);
     }
@@ -150,11 +170,11 @@ export default function SuperAdminPage() {
         email: adminData.email,
         senha: adminData.senha,
       });
-      alert(`Acesso criado para ${adminData.nome}!`);
+      toast.success(`Acesso criado para ${adminData.nome}.`);
       setModalAdminOpen(false);
       listarEmpresas();
     } catch (error: any) {
-      alert(error.response?.data?.erro || "Erro ao criar admin");
+      toast.error(error.response?.data?.erro || "Erro ao criar admin.");
     } finally {
       setLoadingAdmin(false);
     }
@@ -224,89 +244,150 @@ export default function SuperAdminPage() {
         empresa={empresaSelecionada}
       />
 
-      {/* Modal Vincular */}
+      {/* Modal Vincular Matriz */}
       {modalVincularOpen && empresaSelecionada && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative shadow-2xl">
-            <button
-              onClick={() => setModalVincularOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-text-primary"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-lg font-bold mb-1 text-text-primary flex items-center gap-2">
-              <LinkIcon size={20} className="text-yellow-500" /> Vincular Matriz
-            </h3>
-
-            <div className="space-y-4 mt-4">
-              <select
-                className="w-full bg-gray-800 p-3 rounded-lg text-text-primary border border-gray-700 outline-none focus:border-yellow-500"
-                value={matrizAlvoId}
-                onChange={(e) => setMatrizAlvoId(e.target.value)}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setModalVincularOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border-default bg-page shadow-2xl animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between p-5 border-b border-border-subtle">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <LinkIcon size={18} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-text-primary truncate">Vincular matriz</h3>
+                  <p className="text-xs text-text-muted truncate">{empresaSelecionada.nome}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setModalVincularOpen(false)}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-elevated/60 text-text-muted"
+                aria-label="Fechar"
               >
-                <option value="">Selecione a Matriz Principal...</option>
-                {empresas
-                  .filter((e) => e.id !== empresaSelecionada.id)
-                  .map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.nome}
-                    </option>
-                  ))}
-              </select>
+                <X size={16} />
+              </button>
+            </div>
 
+            <div className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs text-text-muted">Matriz principal</label>
+                <select
+                  className="w-full px-3 py-2.5 rounded-xl bg-elevated/60 border border-border-subtle text-sm text-text-primary outline-none focus:border-purple-500 transition-colors"
+                  value={matrizAlvoId}
+                  onChange={(e) => setMatrizAlvoId(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {empresas
+                    .filter((e) => e.id !== empresaSelecionada.id)
+                    .map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.nome}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border-subtle">
+              <button
+                onClick={() => setModalVincularOpen(false)}
+                className="px-4 py-2 rounded-xl border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:bg-elevated/60 transition-colors"
+              >
+                Cancelar
+              </button>
               <button
                 onClick={salvarVinculo}
                 disabled={loadingVinculo || !matrizAlvoId}
-                className="w-full bg-amber-600 hover:bg-amber-500 py-3 rounded-lg font-bold text-black disabled:opacity-50 transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold disabled:opacity-50 transition-colors"
               >
-                {loadingVinculo ? <Loader2 className="animate-spin mx-auto" size={18} /> : "CONFIRMAR"}
+                {loadingVinculo && <Loader2 size={14} className="animate-spin" />}
+                Vincular
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Admin */}
+      {/* Modal Novo Acesso */}
       {modalAdminOpen && empresaSelecionada && (
-        <div className="fixed inset-0 bg-overlay backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm relative">
-            <button
-              onClick={() => setModalAdminOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-text-primary"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-lg font-bold mb-4 text-text-primary">Novo Acesso</h3>
-
-            <form onSubmit={salvarNovoAdmin} className="space-y-3">
-              <input
-                className="w-full bg-gray-800 p-2.5 rounded text-text-primary border border-gray-700"
-                placeholder="Nome"
-                onChange={(e) => setAdminData({ ...adminData, nome: e.target.value })}
-                required
-              />
-              <input
-                className="w-full bg-gray-800 p-2.5 rounded text-text-primary border border-gray-700"
-                placeholder="Email"
-                type="email"
-                onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
-                required
-              />
-              <input
-                className="w-full bg-gray-800 p-2.5 rounded text-text-primary border border-gray-700"
-                placeholder="Senha"
-                value={adminData.senha}
-                onChange={(e) => setAdminData({ ...adminData, senha: e.target.value })}
-                required
-              />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setModalAdminOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-border-default bg-page shadow-2xl animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between p-5 border-b border-border-subtle">
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-text-primary">Novo acesso</h3>
+                <p className="text-xs text-text-muted truncate">{empresaSelecionada.nome}</p>
+              </div>
               <button
-                disabled={loadingAdmin}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded font-bold mt-2 disabled:opacity-50 transition-all active:scale-95"
+                onClick={() => setModalAdminOpen(false)}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-elevated/60 text-text-muted"
+                aria-label="Fechar"
               >
-                {loadingAdmin ? <Loader2 className="animate-spin mx-auto" size={18} /> : "CRIAR"}
+                <X size={16} />
               </button>
+            </div>
+
+            <form onSubmit={salvarNovoAdmin}>
+              <div className="p-5 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-text-muted">Nome</label>
+                  <input
+                    className="w-full px-3 py-2.5 rounded-xl bg-elevated/60 border border-border-subtle text-sm outline-none focus:border-purple-500 transition-colors"
+                    placeholder="Nome completo"
+                    value={adminData.nome}
+                    onChange={(e) => setAdminData({ ...adminData, nome: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-text-muted">Email</label>
+                  <input
+                    type="email"
+                    className="w-full px-3 py-2.5 rounded-xl bg-elevated/60 border border-border-subtle text-sm outline-none focus:border-purple-500 transition-colors"
+                    placeholder="email@empresa.com"
+                    value={adminData.email}
+                    onChange={(e) => setAdminData({ ...adminData, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-text-muted">Senha provisória</label>
+                  <input
+                    className="w-full px-3 py-2.5 rounded-xl bg-elevated/60 border border-border-subtle text-sm font-mono outline-none focus:border-purple-500 transition-colors"
+                    value={adminData.senha}
+                    onChange={(e) => setAdminData({ ...adminData, senha: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border-subtle">
+                <button
+                  type="button"
+                  onClick={() => setModalAdminOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-border-subtle text-sm text-text-secondary hover:text-text-primary hover:bg-elevated/60 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loadingAdmin}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold disabled:opacity-50 transition-colors"
+                >
+                  {loadingAdmin && <Loader2 size={14} className="animate-spin" />}
+                  Criar acesso
+                </button>
+              </div>
             </form>
           </div>
         </div>
