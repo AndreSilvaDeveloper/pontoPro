@@ -34,7 +34,6 @@ import { format, isValid, addDays } from "date-fns";
 import type { BillingStatus } from "@/lib/billing";
 import { validarCNPJ } from "@/utils/cnpj";
 
-import PaymentModal, { AsaasBundle, type PayMode } from "@/components/billing/PaymentModal";
 import TwoFactorCard from "@/components/admin/TwoFactorCard";
 
 // === FUNÇÕES AUXILIARES DE PIX (mantidas) ===
@@ -161,16 +160,8 @@ export default function PerfilAdmin() {
   const [fatura, setFatura] = useState<FaturaState | null>(null);
   const [loadingFatura, setLoadingFatura] = useState(true);
 
-  const [asaas, setAsaas] = useState<AsaasBundle | null>(null);
-  const [loadingAsaas, setLoadingAsaas] = useState(false);
-  const [msgAsaas, setMsgAsaas] = useState<string | null>(null);
-
-  const [openPay, setOpenPay] = useState(false);
-  const [payMode, setPayMode] = useState<PayMode>("PIX");
-
   useEffect(() => {
     carregarDadosFinanceiros();
-    carregarCobrancaAtual();
   }, []);
 
   const carregarDadosFinanceiros = async () => {
@@ -220,54 +211,6 @@ export default function PerfilAdmin() {
       console.error("Erro ao carregar financeiro", e);
     } finally {
       setLoadingFatura(false);
-    }
-  };
-
-  const carregarCobrancaAtual = async () => {
-    try {
-      const res = await axios.get("/api/admin/asaas/cobranca-atual");
-      if (!res.data?.ok) return;
-
-      if (res.data?.hasPayment) setAsaas(res.data.asaas);
-      else setAsaas(null);
-    } catch (e) {
-      console.error("Erro ao buscar cobrança atual", e);
-    }
-  };
-
-  const gerarCobrancaAsaas = async () => {
-    setLoadingAsaas(true);
-    setMsgAsaas(null);
-    try {
-      const res = await axios.post("/api/admin/asaas/gerar-cobranca");
-      if (!res.data?.ok) throw new Error("Falha ao gerar cobrança");
-      setAsaas(res.data.asaas);
-      setMsgAsaas("Cobrança carregada/atualizada!");
-    } catch (e) {
-      console.error("Erro ao gerar cobrança ASAAS", e);
-      setMsgAsaas("Erro ao gerar cobrança. Tente novamente.");
-    } finally {
-      setLoadingAsaas(false);
-    }
-  };
-
-  const abrirPagamento = async (mode: PayMode = "PIX") => {
-    setPayMode(mode);
-    setMsgAsaas(null);
-    setLoadingAsaas(true);
-    setOpenPay(true);
-    try {
-      // Tenta buscar cobrança existente
-      await carregarCobrancaAtual();
-      // Se não encontrou, gera uma nova
-      if (!asaas) {
-        await gerarCobrancaAsaas();
-      }
-    } catch {
-      // Se falhou ao buscar, tenta gerar
-      await gerarCobrancaAsaas();
-    } finally {
-      setLoadingAsaas(false);
     }
   };
 
@@ -718,19 +661,6 @@ export default function PerfilAdmin() {
 
   return (
     <div className="min-h-screen bg-page text-text-primary">
-      {/* MODAL */}
-      <PaymentModal
-        open={openPay}
-        onClose={() => setOpenPay(false)}
-        asaas={asaas}
-        loading={loadingAsaas}
-        onRefresh={carregarCobrancaAtual}
-        onGenerate={gerarCobrancaAsaas}
-        msg={msgAsaas}
-        setMsg={setMsgAsaas}
-        mode={payMode}
-      />
-
       <div className="mx-auto max-w-3xl p-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -855,73 +785,24 @@ export default function PerfilAdmin() {
         {/* Billing Alert */}
         {!loadingFatura && renderBillingAlert()}
 
-        {/* Realizar Pagamento — mostra sempre que não for trial nem cartão */}
-        {!loadingFatura && fatura && fatura.billing.phase !== "TRIAL" && fatura.billingMethod !== "CREDIT_CARD" && (
-          <div className="rounded-2xl border border-border-subtle bg-surface backdrop-blur-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
-                <CreditCard size={16} className="text-emerald-400" />
-                Realizar Pagamento
-              </h3>
-              {fatura.vencimento && isValid(fatura.vencimento) && (
-                <p className="text-xs text-text-faint">
-                  Vencimento: <span className="text-text-primary font-medium">{formatSafe(fatura.vencimento)}</span>
-                  {" "}&middot;{" "}
-                  <span className="text-emerald-400 font-bold">
-                    R$ {fatura.valor.toFixed(2).replace(".", ",")}
-                    {fatura.billingCycle === "YEARLY" ? "/ano" : "/mês"}
-                  </span>
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => abrirPagamento("PIX")}
-                className="group flex flex-col items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-5 transition-all hover:border-emerald-500/40 hover:bg-emerald-950/30"
-              >
-                <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
-                  <QrCode size={24} />
-                </div>
-                <div className="text-center">
-                  <p className="font-bold text-sm text-emerald-300">Pix</p>
-                  <p className="text-[11px] text-emerald-400/50 mt-0.5">QR Code e copia e cola</p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => abrirPagamento("BOLETO")}
-                className="group flex flex-col items-center gap-3 rounded-xl border border-border-input bg-surface p-5 transition-all hover:border-border-input hover:bg-elevated"
-              >
-                <div className="rounded-xl bg-elevated-solid p-3 text-text-muted group-hover:bg-elevated-solid transition-colors">
-                  <FileText size={24} />
-                </div>
-                <div className="text-center">
-                  <p className="font-bold text-sm text-text-secondary">Boleto</p>
-                  <p className="text-[11px] text-text-faint mt-0.5">Linha digitável e PDF</p>
-                </div>
-              </button>
-            </div>
+        {/* Fatura e pagamento — agora tem página própria (item "Fatura" na barra lateral) */}
+        <Link
+          href="/admin/fatura"
+          className="group flex items-center gap-4 rounded-2xl border border-amber-500/20 bg-amber-950/15 p-5 transition-all hover:border-amber-500/40 hover:bg-amber-950/25"
+        >
+          <div className="shrink-0 rounded-xl bg-amber-500/10 p-3 text-amber-400 group-hover:bg-amber-500/20 transition-colors">
+            <Receipt size={22} />
           </div>
-        )}
-
-        {/* Pagamento automático via cartão */}
-        {!loadingFatura && fatura && fatura.billingMethod === "CREDIT_CARD" && fatura.billing.phase !== "TRIAL" && (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-5 flex items-center gap-4">
-            <div className="shrink-0 rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
-              <CheckCircle size={22} />
-            </div>
-            <div>
-              <p className="font-bold text-emerald-300">Pagamento automático ativo</p>
-              <p className="text-sm text-emerald-400/60">
-                Cobrança recorrente via cartão de crédito.{" "}
-                <Link href="/admin/perfil/pagamento" className="underline hover:text-emerald-300 transition-colors">
-                  Gerenciar
-                </Link>
-              </p>
-            </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-amber-200">Fatura e pagamento</p>
+            <p className="text-sm text-amber-300/60">
+              {fatura && fatura.billingMethod === "CREDIT_CARD"
+                ? "Cobrança automática no cartão — toque para ver os detalhes."
+                : "Pague sua assinatura (Pix, boleto ou cartão) e acompanhe a cobrança."}
+            </p>
           </div>
-        )}
+          <ChevronRight size={18} className="shrink-0 text-amber-400/60 group-hover:text-amber-300 transition-colors" />
+        </Link>
 
         {/* Quick Links */}
         <div className="grid gap-3 sm:grid-cols-3">

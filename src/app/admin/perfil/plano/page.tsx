@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -68,6 +68,7 @@ function fmt(v: number) {
 }
 
 export default function PlanoPage() {
+  const router = useRouter();
   const [data, setData] = useState<PlanoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(false);
@@ -131,13 +132,13 @@ export default function PlanoPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href="/admin/perfil"
+            <button
+              onClick={() => router.back()}
               className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
               title="Voltar"
             >
               <ArrowLeft size={20} />
-            </Link>
+            </button>
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Meu Plano</h1>
               <p className="text-sm text-text-muted">

@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     select: {
       id: true,
       email: true,
+      cargo: true,
       assinaturaUrl: true,
       deveCadastrarFoto: true,
       deveDarCienciaCelular: true,
@@ -69,6 +70,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     email: user.email,
+    cargo: user.cargo,
     temAssinatura: !!user.assinaturaUrl,
     deveCadastrarFoto: user.deveCadastrarFoto,
     deveDarCienciaCelular: user.deveDarCienciaCelular,

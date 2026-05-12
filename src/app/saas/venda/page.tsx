@@ -4,9 +4,10 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle, Copy, Plus, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PLANOS, type PlanoId } from "@/config/planos";
+import LinkAcessoBox from "@/components/LinkAcessoBox";
 
 const planoKeys: PlanoId[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
 
@@ -37,7 +38,6 @@ function NovaVendaPageInner() {
   const [cnpj, setCnpj] = useState("");
   const [nomeDono, setNomeDono] = useState(search.get('nomeDono') || "");
   const [emailDono, setEmailDono] = useState(search.get('emailDono') || "");
-  const [senhaInicial, setSenhaInicial] = useState("1234");
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState<any>(null);
 
@@ -51,14 +51,13 @@ function NovaVendaPageInner() {
         cnpj,
         nomeDono,
         emailDono,
-        senhaInicial,
         plano: planoSelecionado,
         ...(leadId ? { leadId } : {}),
       });
       setResultado({
         ...res.data,
-        senha: senhaInicial,
         plano: planoSelecionado,
+        nomeDono,
       });
     } catch (error: any) {
       toast.error(error.response?.data?.erro || "Erro ao criar empresa.");
@@ -67,20 +66,12 @@ function NovaVendaPageInner() {
     }
   };
 
-  const copiarCredenciais = () => {
-    if (!resultado) return;
-    const text = `Empresa: ${resultado.dados.empresa}\nLogin: ${resultado.dados.login}\nSenha: ${resultado.senha}\nPlano: ${resultado.plano}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Credenciais copiadas.");
-  };
-
   const criarOutro = () => {
     setResultado(null);
     setNomeEmpresa("");
     setCnpj("");
     setNomeDono("");
     setEmailDono("");
-    setSenhaInicial("1234");
   };
 
   return (
@@ -101,41 +92,37 @@ function NovaVendaPageInner() {
         {resultado ? (
           /* Estado de sucesso */
           <div className="max-w-md mx-auto">
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 text-center">
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8">
               <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-emerald-400" />
               </div>
-              <h2 className="text-xl font-bold text-emerald-400 mb-2">Cliente Criado!</h2>
+              <h2 className="text-xl font-bold text-emerald-400 mb-1 text-center">Empresa criada!</h2>
+              <p className="text-sm text-text-muted text-center mb-6">
+                <strong className="text-text-primary">{resultado.dados.empresa}</strong> · plano {resultado.plano}
+              </p>
 
-              <div className="bg-surface rounded-xl p-4 text-left space-y-2 mt-6 text-sm">
-                <p className="text-text-muted">
-                  Empresa: <strong className="text-text-primary">{resultado.dados.empresa}</strong>
-                </p>
-                <p className="text-text-muted">
-                  Login: <strong className="text-text-primary select-all">{resultado.dados.login}</strong>
-                </p>
-                <p className="text-text-muted">
-                  Senha: <strong className="text-text-primary select-all">{resultado.senha}</strong>
-                </p>
-                <p className="text-text-muted">
-                  Plano: <strong className="text-text-primary">{resultado.plano}</strong>
-                </p>
-              </div>
+              <p className="text-sm text-text-secondary leading-relaxed mb-3">
+                Já mandamos um e-mail pra <strong className="text-text-primary">{resultado.dados.login}</strong> com o link
+                de ativação. Se quiser, copie o link e mande também no WhatsApp — é só {resultado.nomeDono?.trim().split(/\s+/)[0] || 'o responsável'} clicar
+                e criar a senha do painel.
+              </p>
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={copiarCredenciais}
-                  className="flex-1 flex items-center justify-center gap-2 bg-elevated-solid hover:bg-elevated-solid text-text-primary py-3 rounded-xl text-sm font-medium transition-colors"
-                >
-                  <Copy size={16} /> Copiar Credenciais
-                </button>
-                <button
-                  onClick={criarOutro}
-                  className="flex-1 flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl text-sm font-medium transition-colors"
-                >
-                  <Plus size={16} /> Criar Outro
-                </button>
-              </div>
+              {resultado.linkAtivacao && (
+                <LinkAcessoBox
+                  link={resultado.linkAtivacao}
+                  nome={resultado.nomeDono}
+                  textoAntes="Para acessar o painel da sua empresa na WorkID, abra este link e crie a sua senha"
+                />
+              )}
+
+              <p className="text-[11px] text-text-faint mt-3">O link vale por 7 dias e só pode ser usado uma vez.</p>
+
+              <button
+                onClick={criarOutro}
+                className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-xl text-sm font-medium transition-colors mt-5"
+              >
+                <Plus size={16} /> Criar Outra Empresa
+              </button>
             </div>
           </div>
         ) : (
@@ -233,15 +220,9 @@ function NovaVendaPageInner() {
                     />
                   </div>
 
-                  <div>
-                    <label className="text-xs text-text-faint mb-1 block">Senha Inicial</label>
-                    <input
-                      className="w-full bg-elevated p-3 rounded-xl text-text-primary border border-border-subtle outline-none focus:border-purple-500/50 text-sm"
-                      value={senhaInicial}
-                      onChange={(e) => setSenhaInicial(e.target.value)}
-                      required
-                    />
-                  </div>
+                  <p className="text-xs text-text-faint bg-elevated/50 border border-border-subtle rounded-lg px-3 py-2 leading-relaxed">
+                    O responsável vai receber um link por e-mail pra criar a própria senha — você não precisa definir senha nenhuma aqui.
+                  </p>
 
                   <button
                     disabled={loading}

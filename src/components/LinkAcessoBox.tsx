@@ -7,7 +7,16 @@ import { Copy, Check, MessageCircle } from 'lucide-react';
  * Caixinha pra entregar o link de ativação do funcionário:
  * mostra a URL, botão "Copiar" e botão "Abrir no WhatsApp" com a mensagem pronta.
  */
-export default function LinkAcessoBox({ link, nome }: { link: string; nome?: string }) {
+export default function LinkAcessoBox({
+  link,
+  nome,
+  textoAntes = 'Para usar o sistema de ponto, abra este link e crie a sua senha',
+}: {
+  link: string;
+  nome?: string;
+  /** Trecho da mensagem do WhatsApp antes do link (sem "Olá nome!" e sem o link). */
+  textoAntes?: string;
+}) {
   const [copiado, setCopiado] = useState(false);
 
   async function copiar() {
@@ -21,7 +30,7 @@ export default function LinkAcessoBox({ link, nome }: { link: string; nome?: str
   }
 
   const primeiro = (nome || '').trim().split(/\s+/)[0] || '';
-  const mensagem = `Olá${primeiro ? ' ' + primeiro : ''}! Para usar o sistema de ponto, abra este link e crie a sua senha: ${link}`;
+  const mensagem = `Olá${primeiro ? ' ' + primeiro : ''}! ${textoAntes}: ${link}`;
   const waUrl = `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
 
   return (

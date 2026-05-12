@@ -84,7 +84,11 @@ export default function AtivarPage() {
         return;
       }
 
-      if (!data.temAssinatura) router.replace('/cadastrar-assinatura');
+      // Admin / super admin / revendedor vão direto pro painel; funcionário segue o onboarding.
+      if (data.cargo === 'SUPER_ADMIN') router.replace('/saas');
+      else if (data.cargo === 'REVENDEDOR') router.replace('/revendedor');
+      else if (data.cargo === 'ADMIN') router.replace('/admin');
+      else if (!data.temAssinatura) router.replace('/cadastrar-assinatura');
       else if (data.deveCadastrarFoto) router.replace('/cadastrar-foto');
       else if (data.deveDarCienciaCelular) router.replace('/ciencia-celular');
       else router.replace('/funcionario');
