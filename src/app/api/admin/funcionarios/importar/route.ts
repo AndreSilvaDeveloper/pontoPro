@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
+import { htmlEmailAtivacao, assuntoEmailAtivacao } from '@/lib/emailFuncionario';
 import { BASE_URL } from '@/config/site';
 
 interface FuncionarioImport {
@@ -125,9 +126,20 @@ export async function POST(request: Request) {
       });
     }
 
-    // Criação dos válidos
-    const senhaInicial = '1234';
-    const hashedPassword = await hash(senhaInicial, 10);
+    // Cada funcionário ganha um link de ativação pra criar a própria senha (1º acesso).
+    function gerarTokenAtivacao() {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    }
+    function gerarSenhaProvisoria() {
+      const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+      const arr = new Uint32Array(8);
+      crypto.getRandomValues(arr);
+      let s = '';
+      for (const n of arr) s += ALFABETO[n % ALFABETO.length];
+      return s;
+    }
 
     const jornadaPadrao = {
       seg: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
@@ -168,6 +180,10 @@ export async function POST(request: Request) {
       }
 
       try {
+        const ativacaoToken = gerarTokenAtivacao();
+        const ativacaoTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const hashedPassword = await hash(gerarSenhaProvisoria(), 10);
+
         await prisma.usuario.create({
           data: {
             nome,
@@ -182,6 +198,8 @@ export async function POST(request: Request) {
             jornada,
             pontoLivre: !!gpsLivre,
             deveTrocarSenha: true,
+            ativacaoToken,
+            ativacaoTokenExpiry,
             deveCadastrarFoto: true,
             deveDarCienciaCelular: true,
             modoValidacaoPonto: 'GPS',
@@ -191,39 +209,13 @@ export async function POST(request: Request) {
 
         criados++;
 
-        // Envia email de boas-vindas (fire-and-forget)
-        const htmlEmail = `
-          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-            <div style="background-color: #5b21b6; padding: 30px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 26px;">WorkID</h1>
-              <p style="color: #ddd6fe; margin: 5px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Convite Oficial</p>
-            </div>
-            <div style="padding: 40px 30px;">
-              <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nome}</strong>!</p>
-              <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px; font-size: 15px;">
-                Seja bem-vindo(a) à equipe <strong>${nomeEmpresa}</strong>.<br>
-                Seu cadastro no sistema de ponto digital foi realizado com sucesso.
-              </p>
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-                <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold;">Suas Credenciais</p>
-                <div style="margin-bottom: 15px;">
-                  <span style="color: #94a3b8; font-size: 13px;">Login:</span><br>
-                  <strong style="color: #1e293b; font-size: 16px;">${email}</strong>
-                </div>
-                <div>
-                  <span style="color: #94a3b8; font-size: 13px;">Senha Provisória:</span><br>
-                  <strong style="color: #5b21b6; font-size: 18px;">${senhaInicial}</strong>
-                </div>
-              </div>
-              <div style="text-align: center; margin-bottom: 30px;">
-                <a href="${BASE_URL}/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px;">
-                  Acessar Sistema
-                </a>
-              </div>
-            </div>
-          </div>
-        `;
-        enviarEmailSeguro(email, `Bem-vindo à ${nomeEmpresa}!`, htmlEmail);
+        // Envia o e-mail com o link de ativação (fire-and-forget)
+        const linkAtivacao = `${BASE_URL}/ativar/${ativacaoToken}`;
+        enviarEmailSeguro(
+          email,
+          assuntoEmailAtivacao(nome, nomeEmpresa),
+          htmlEmailAtivacao({ nome, nomeEmpresa, link: linkAtivacao, email }),
+        );
       } catch (err: any) {
         errosCriacao.push(`${nome}: ${err.message || 'Erro desconhecido'}`);
       }

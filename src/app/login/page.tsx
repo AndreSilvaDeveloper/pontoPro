@@ -50,6 +50,14 @@ export default function LoginPage() {
   const [twoFACode, setTwoFACode] = useState('');
 
   useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('ativado') === '1') {
+        toast.success('Acesso ativado! É só entrar com o seu e-mail e a senha que você criou.', { duration: 7000 });
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
     const rt = localStorage.getItem('workid_rt');
     if (!rt) { setRestaurando(false); return; }
 
@@ -142,7 +150,7 @@ export default function LoginPage() {
           setLoading(false);
           return;
         }
-        toast.error('E-mail ou senha inválidos.', { id: toastId });
+        toast.error('E-mail/CPF ou senha incorretos.', { id: toastId });
         setLoading(false);
         return;
       }
@@ -469,22 +477,23 @@ export default function LoginPage() {
                 <>
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-text-primary tracking-tight">Bem-vindo de volta</h2>
-                    <p className="text-sm text-text-muted mt-1">Entre com seu e-mail e senha</p>
+                    <p className="text-sm text-text-muted mt-1">Entre com seu e-mail (ou CPF) e a senha</p>
                   </div>
 
                   <form onSubmit={handleLogin} className="space-y-4 animate-in slide-in-from-left-4 duration-300">
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-text-muted ml-1 uppercase tracking-wider">Email</label>
+                      <label className="text-[11px] font-bold text-text-muted ml-1 uppercase tracking-wider">E-mail ou CPF</label>
                       <div className="relative group">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-text-faint group-focus-within:text-purple-400 transition-colors">
                           <Mail size={18} />
                         </div>
                         <input
-                          type="email"
+                          type="text"
+                          autoComplete="username"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           className="w-full bg-page/60 border border-border-input text-text-primary py-3.5 pl-12 pr-4 rounded-xl focus:border-purple-500 focus:bg-page outline-none transition-all placeholder:text-text-dim"
-                          placeholder="seu@email.com"
+                          placeholder="seu@email.com ou seu CPF"
                           required
                         />
                       </div>

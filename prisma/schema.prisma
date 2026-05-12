@@ -82,6 +82,9 @@ model Usuario {
   criadoEm           DateTime  @default(now())
   resetToken         String?   @unique
   resetTokenExpiry   DateTime?
+  // Link de ativação (primeiro acesso do funcionário) — define a senha e já loga.
+  ativacaoToken       String?   @unique
+  ativacaoTokenExpiry DateTime?
   ipsPermitidos      String?
   telefone           String?
   modoValidacaoPonto String    @default("GPS")

@@ -26,6 +26,7 @@ import {
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { obterEndereco } from '@/utils/geocoding';
+import LinkAcessoBox from '@/components/LinkAcessoBox';
 
 // Importação dinâmica do mapa para não quebrar no Server Side
 const MapaCaptura = dynamic(() => import('@/components/MapaCaptura'), {
@@ -43,6 +44,7 @@ export interface Funcionario {
   nome: string;
   email: string;
   telefone?: string;
+  cpf?: string;
   pis?: string;
   tituloCargo?: string;
   latitudeBase: number;
@@ -111,12 +113,20 @@ export default function ModalFuncionario({
 }: ModalFuncionarioProps) {
   // === ESTADOS ===
   const [loading, setLoading] = useState(false);
+  // Após cadastrar, mostra o link de ativação pra entregar ao funcionário (WhatsApp/copiar).
+  const [linkCriado, setLinkCriado] = useState<{ link: string; nome: string } | null>(null);
+
+  const handleFechar = () => {
+    setLinkCriado(null);
+    onClose();
+  };
   const [capturandoIp, setCapturandoIp] = useState(false);
 
   // Form Fields
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
+  const [cpf, setCpf] = useState('');
   const [pis, setPis] = useState('');
   const [tituloCargo, setTituloCargo] = useState('');
   const [lat, setLat] = useState('');
@@ -164,6 +174,14 @@ export default function ModalFuncionario({
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
   };
 
+  const formatarCpf = (v: string) => {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+    if (d.length > 6) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+    if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`;
+    return d;
+  };
+
   const jornadaPadrao = {
     seg: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
     ter: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
@@ -191,6 +209,7 @@ export default function ModalFuncionario({
       setNome(funcionarioEdicao.nome);
       setEmail(funcionarioEdicao.email);
       setTelefone(funcionarioEdicao.telefone ? formatarTelefone(funcionarioEdicao.telefone) : '');
+      setCpf(funcionarioEdicao.cpf ? formatarCpf(funcionarioEdicao.cpf) : '');
       setPis(funcionarioEdicao.pis || '');
       setTituloCargo(funcionarioEdicao.tituloCargo || '');
       setLat(funcionarioEdicao.latitudeBase?.toString() || '');
@@ -213,6 +232,8 @@ export default function ModalFuncionario({
       setNome('');
       setEmail('');
       setTelefone('');
+      setCpf('');
+      setPis('');
       setTituloCargo('');
       setLat('');
       setLng('');
@@ -517,6 +538,7 @@ export default function ModalFuncionario({
       formData.append('nome', nome);
       formData.append('email', email);
       formData.append('telefone', telefone.replace(/\D/g, ''));
+      formData.append('cpf', cpf.replace(/\D/g, ''));
       formData.append('pis', pis.replace(/\D/g, ''));
       formData.append('tituloCargo', tituloCargo);
       formData.append('latitude', lat || '0');
@@ -536,12 +558,19 @@ export default function ModalFuncionario({
         formData.append('id', funcionarioEdicao.id);
         await axios.put('/api/admin/funcionarios', formData);
         toast.success('Atualizado com sucesso!');
-      } else {
-        await axios.post('/api/admin/funcionarios', formData);
-        toast.success('Cadastrado com sucesso! Senha inicial: 1234');
+        onSuccess();
+        onClose();
+        return;
       }
 
+      const res = await axios.post('/api/admin/funcionarios', formData);
       onSuccess();
+      toast.success('Funcionário cadastrado!');
+      if (res.data?.linkAtivacao) {
+        // Não fecha o modal: mostra o link de ativação pra mandar pro funcionário.
+        setLinkCriado({ link: res.data.linkAtivacao, nome });
+        return;
+      }
       onClose();
     } catch (error: any) {
       const msg = error.response?.data?.erro || 'Erro ao salvar.';
@@ -576,10 +605,10 @@ export default function ModalFuncionario({
                 <UserPlus size={18} className="text-emerald-400" />
               )}
             </div>
-            {funcionarioEdicao ? 'Editar Funcionário' : 'Novo Cadastro'}
+            {linkCriado ? 'Funcionário cadastrado' : funcionarioEdicao ? 'Editar Funcionário' : 'Novo Cadastro'}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleFechar}
             className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong rounded-xl text-text-muted hover:text-text-primary transition-colors border border-border-subtle active:scale-95"
           >
             <X size={18} />
@@ -588,6 +617,31 @@ export default function ModalFuncionario({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 space-y-6">
+          {linkCriado ? (
+            <div className="max-w-md mx-auto py-6 text-center space-y-5">
+              <div className="mx-auto w-14 h-14 rounded-full bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 size={30} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-text-primary">Tudo certo! ✅</h3>
+                <p className="text-sm text-text-muted mt-1.5 leading-relaxed">
+                  Já mandamos um e-mail com o link de ativação. Pra agilizar, copie o link e mande
+                  também no WhatsApp — é só o(a) <strong className="text-text-secondary">{linkCriado.nome}</strong> clicar
+                  e criar a senha. Não precisa decorar senha nenhuma agora.
+                </p>
+              </div>
+              <div className="text-left">
+                <LinkAcessoBox link={linkCriado.link} nome={linkCriado.nome} />
+              </div>
+              <p className="text-[11px] text-text-faint">O link vale por 7 dias. Se expirar, você gera um novo na lista de funcionários.</p>
+              <button
+                onClick={handleFechar}
+                className="w-full py-3 rounded-xl bg-hover-bg hover:bg-hover-bg-strong text-text-secondary font-bold text-sm transition-colors active:scale-95"
+              >
+                Concluir
+              </button>
+            </div>
+          ) : (
           <form id="formFuncionario" onSubmit={salvar} className="space-y-6">
             {/* 1. DADOS PESSOAIS */}
             <section className="space-y-4">
@@ -659,19 +713,35 @@ export default function ModalFuncionario({
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-text-muted mb-1.5 block">
-                  PIS / PASEP / NIS <span className="text-text-dim font-normal">(opcional · necessário para AFD)</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={11}
-                  className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors font-mono"
-                  value={pis}
-                  onChange={(e) => setPis(e.target.value.replace(/\D/g, ''))}
-                  placeholder="11 dígitos"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-text-muted mb-1.5 block">
+                    CPF <span className="text-text-dim font-normal">(opcional · permite o login pelo CPF)</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={14}
+                    className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors font-mono"
+                    value={cpf}
+                    onChange={(e) => setCpf(formatarCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-text-muted mb-1.5 block">
+                    PIS / PASEP / NIS <span className="text-text-dim font-normal">(opcional · necessário para AFD)</span>
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={11}
+                    className="w-full bg-page border border-border-input p-3.5 rounded-xl text-text-primary outline-none focus:border-purple-500 transition-colors font-mono"
+                    value={pis}
+                    onChange={(e) => setPis(e.target.value.replace(/\D/g, ''))}
+                    placeholder="11 dígitos"
+                  />
+                </div>
               </div>
             </section>
 
@@ -1344,9 +1414,11 @@ export default function ModalFuncionario({
               )}
             </section>
           </form>
+          )}
         </div>
 
         {/* Footer */}
+        {!linkCriado && (
         <div className="p-4 md:p-6 border-t border-border-subtle bg-surface-solid/80 backdrop-blur-sm md:rounded-b-2xl sticky bottom-0 z-10 flex-shrink-0" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 16px)' }}>
           <button
             onClick={salvar}
@@ -1364,6 +1436,7 @@ export default function ModalFuncionario({
             )}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

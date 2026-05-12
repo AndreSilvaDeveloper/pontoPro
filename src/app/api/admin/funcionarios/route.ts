@@ -5,6 +5,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { storagePut } from '@/lib/storage';
 import { hash } from 'bcryptjs';
 import { enviarEmailSeguro } from '@/lib/email';
+import { htmlEmailAtivacao, assuntoEmailAtivacao } from '@/lib/emailFuncionario';
 import { getPlanoConfig } from '@/config/planos';
 import { BASE_URL } from '@/config/site';
 import { reindexarRostoUsuario } from '@/lib/totem';
@@ -29,9 +30,12 @@ export async function GET(request: Request) {
       orderBy: { nome: 'asc' }
     });
     
-    // Remove a senha antes de enviar para o front
+    // Remove dados sensíveis antes de enviar para o front
     const seguros = funcionarios.map(f => {
-        const { senha, ...resto } = f;
+        const {
+          senha, resetToken, resetTokenExpiry, ativacaoToken, ativacaoTokenExpiry,
+          twoFactorSecret, twoFactorBackupCodes, ...resto
+        } = f;
         return resto;
     });
 
@@ -75,6 +79,7 @@ export async function POST(request: Request) {
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
     const telefone = formData.get('telefone') as string || '';
+    const cpf = (formData.get('cpf') as string || '').replace(/\D/g, '');
     const pis = (formData.get('pis') as string || '').replace(/\D/g, '');
     const exigirFotoFuncionario = formData.get('exigirFotoFuncionario') === 'true';
     const exigirCienciaCelular = formData.get('exigirCienciaCelular') === 'true';
@@ -101,13 +106,21 @@ export async function POST(request: Request) {
     // Se admin enviou foto, não precisa exigir do funcionário
     const deveCadastrarFoto = fotoPerfilUrl ? false : exigirFotoFuncionario;
 
-    // 4. Senha e Hash — gera senha provisória forte (8 chars alfanuméricos sem ambiguidade)
+    // 4. Senha provisória forte (nunca mostrada — só pra conta não ficar sem senha).
+    //    O acesso de verdade é pelo LINK DE ATIVAÇÃO abaixo, onde o funcionário cria a própria senha.
     const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sem 0/O/1/I/L pra evitar erro de leitura
     let senhaInicial = '';
     const arr = new Uint32Array(8);
     crypto.getRandomValues(arr);
     for (const n of arr) senhaInicial += ALFABETO[n % ALFABETO.length];
     const hashedPassword = await hash(senhaInicial, 10);
+
+    // Link de ativação: token aleatório válido por 7 dias.
+    const tokenBytes = new Uint8Array(32);
+    crypto.getRandomValues(tokenBytes);
+    const ativacaoToken = Array.from(tokenBytes, b => b.toString(16).padStart(2, '0')).join('');
+    const ativacaoTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const linkAtivacao = `${BASE_URL}/ativar/${ativacaoToken}`;
 
     // 5. JSON Parse (Jornada/Locais)
     let jornadaDados = undefined;
@@ -137,11 +150,14 @@ export async function POST(request: Request) {
         pontoLivre,
         locaisAdicionais: locaisAdicionaisDados,
         deveTrocarSenha: true,
+        ativacaoToken,
+        ativacaoTokenExpiry,
         deveCadastrarFoto,
         deveDarCienciaCelular: exigirCienciaCelular,
         modoValidacaoPonto: modoValidacaoPontoStr as any,
         ipsPermitidos,
         telefone: telefone || null,
+        cpf: cpf || null,
         pis: pis || null,
       }
     });
@@ -151,58 +167,12 @@ export async function POST(request: Request) {
       reindexarRostoUsuario(novoUsuario.id).catch(err => console.error('[funcionarios POST] reindexar:', err));
     }
 
-    // === 7. E-MAIL PROFISSIONAL ===
-    const htmlEmail = `
-      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-        
-        <div style="background-color: #5b21b6; padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 26px; letter-spacing: -0.5px;">WorkID</h1>
-            <p style="color: #ddd6fe; margin: 5px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Convite Oficial</p>
-        </div>
-
-        <div style="padding: 40px 30px;">
-            <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nome}</strong>! 👋</p>
-
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px; font-size: 15px;">
-                Seja bem-vindo(a) à equipe <strong>${nomeEmpresa}</strong>. <br>
-                Seu cadastro no sistema de ponto digital foi realizado com sucesso.
-            </p>
-
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-                <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Suas Credenciais de Acesso</p>
-                
-                <div style="margin-bottom: 15px;">
-                    <span style="color: #94a3b8; font-size: 13px;">Login (E-mail):</span><br>
-                    <strong style="color: #1e293b; font-size: 16px;">${email}</strong>
-                </div>
-                
-                <div>
-                    <span style="color: #94a3b8; font-size: 13px;">Senha Provisória:</span><br>
-                    <strong style="color: #5b21b6; font-size: 18px; letter-spacing: 1px; background: #ede9fe; padding: 2px 8px; rounded: 4px;">${senhaInicial}</strong>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-bottom: 30px;">
-                <a href="${BASE_URL}/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(91, 33, 182, 0.3);">
-                    Acessar Sistema Agora
-                </a>
-            </div>
-
-            <p style="color: #6b7280; font-size: 13px; text-align: center;">
-                Por segurança, recomendamos que você altere sua senha logo no primeiro acesso.
-            </p>
-        </div>
-
-        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-            <p style="color: #94a3b8; font-size: 12px; margin: 0; line-height: 1.5;">
-                © 2025 WorkID • Tecnologia em Gestão<br>
-                Este convite foi enviado por solicitação de <strong>${nomeEmpresa}</strong>.
-            </p>
-        </div>
-      </div>
-    `;
-
-    await enviarEmailSeguro(email, `Bem-vindo à ${nomeEmpresa}! 🚀`, htmlEmail);
+    // === 7. E-MAIL DE BOAS-VINDAS — leva direto pro link de ativação (1 clique) ===
+    await enviarEmailSeguro(
+      email,
+      assuntoEmailAtivacao(nome, nomeEmpresa),
+      htmlEmailAtivacao({ nome, nomeEmpresa, link: linkAtivacao, email }),
+    );
 
     // Verifica se excedeu limite do plano
     // @ts-ignore
@@ -227,7 +197,7 @@ export async function POST(request: Request) {
       avisoPlano = `Você tem ${excedentes} funcionário(s) acima do limite do plano ${planoConfig.nome} (${planoConfig.maxFuncionarios}). Custo adicional de R$ ${custoExtra}/mês será aplicado na próxima cobrança.`;
     }
 
-    return NextResponse.json({ ...novoUsuario, avisoPlano });
+    return NextResponse.json({ ...novoUsuario, avisoPlano, linkAtivacao });
 
   } catch (error) {
     console.error("Erro detalhado no POST:", error);
@@ -262,6 +232,7 @@ export async function PUT(request: Request) {
     const locaisTexto = formData.get('locaisAdicionais') as string;
 
     const telefone = formData.get('telefone') as string || '';
+    const cpf = (formData.get('cpf') as string || '').replace(/\D/g, '');
     const pis = (formData.get('pis') as string || '').replace(/\D/g, '');
     const exigirFotoFuncionarioStr = formData.get('exigirFotoFuncionario');
     const exigirCienciaCelularStr = formData.get('exigirCienciaCelular');
@@ -282,6 +253,7 @@ export async function PUT(request: Request) {
       modoValidacaoPonto: modoValidacaoPontoStr as any,
       ipsPermitidos,
       telefone: telefone || null,
+      cpf: cpf || null,
       pis: pis || null,
     };
 

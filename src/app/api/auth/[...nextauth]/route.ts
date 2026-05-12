@@ -27,12 +27,17 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const email = credentials.email.trim();
+        const login = credentials.email.trim();
         const password = credentials.password.trim();
 
-        // (A) BUSCA USER
+        // (A) BUSCA USER — aceita e-mail OU CPF (só números, com ou sem pontuação)
+        const soDigitos = login.replace(/\D/g, "");
+        const pareceCpf = soDigitos.length === 11 && /^[\d.\s-]+$/.test(login);
+
         const user = await prisma.usuario.findFirst({
-          where: { email: { equals: email, mode: "insensitive" } },
+          where: pareceCpf
+            ? { OR: [{ cpf: soDigitos }, { cpf: login }] }
+            : { email: { equals: login, mode: "insensitive" } },
           select: {
             id: true,
             nome: true,
