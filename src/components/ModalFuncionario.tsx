@@ -386,7 +386,7 @@ export default function ModalFuncionario({
         if (destino === 'PRINCIPAL') {
           setLat(String(pos.coords.latitude));
           setLng(String(pos.coords.longitude));
-          setMostrarMapaPrincipal(false);
+          setMostrarMapaPrincipal(true);
         } else {
           setNovoLocal({
             ...novoLocal,
@@ -966,30 +966,7 @@ export default function ModalFuncionario({
                     <div className="space-y-4">
                       {/* Sede Principal */}
                       <div className="bg-surface p-4 rounded-2xl border border-border-subtle space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                          <span className="text-xs font-bold text-purple-400 uppercase">Sede Principal</span>
-
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setModoMapaExtra('NONE');
-                                setMostrarMapaPrincipal((v) => !v);
-                              }}
-                              className="text-xs bg-hover-bg text-text-secondary px-3 py-2 rounded-xl flex items-center gap-1.5 border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
-                            >
-                              <MapPin size={12} /> {mostrarMapaPrincipal ? 'Ocultar mapa' : 'Editar no mapa'}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => pegarLocalizacaoAtual('PRINCIPAL')}
-                              className="text-xs bg-blue-500/10 text-blue-400 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-blue-500/20 hover:bg-blue-500/20 transition-colors active:scale-95"
-                            >
-                              <MapPin size={12} /> Pegar GPS
-                            </button>
-                          </div>
-                        </div>
+                        <span className="text-xs font-bold text-purple-400 uppercase block">Sede Principal</span>
 
                         {/* Endereço referência */}
                         <div className="space-y-1">
@@ -1035,8 +1012,29 @@ export default function ModalFuncionario({
                           </div>
                         </div>
 
+                        <div className="flex flex-wrap gap-2 justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModoMapaExtra('NONE');
+                              setMostrarMapaPrincipal((v) => !v);
+                            }}
+                            className="text-xs bg-hover-bg text-text-secondary px-3 py-2 rounded-xl flex items-center gap-1.5 border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
+                          >
+                            <MapPin size={12} /> {mostrarMapaPrincipal ? 'Ocultar mapa' : 'Editar no mapa'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => pegarLocalizacaoAtual('PRINCIPAL')}
+                            className="text-xs bg-blue-500/10 text-blue-400 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-blue-500/20 hover:bg-blue-500/20 transition-colors active:scale-95"
+                          >
+                            <MapPin size={12} /> Pegar GPS
+                          </button>
+                        </div>
+
                         {mostrarMapaPrincipal && (
-                          <div className="pt-2">
+                          <div className="pt-1">
                             <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} raio={Number(raio) || 0} />
                             <p className="text-[10px] text-text-faint mt-2">
                               Use CEP + número para máxima precisão, e ajuste clicando no mapa se necessário.
