@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { nomeEmpresa, cnpj, nomeDono, emailDono, senhaInicial, plano, leadId } = body;
+    const { nomeEmpresa, cnpj, nomeDono, emailDono, plano, leadId } = body;
 
     if (cnpj && !validarCNPJ(String(cnpj))) {
       return NextResponse.json({ erro: "CNPJ inválido." }, { status: 400 });
@@ -83,8 +83,21 @@ export async function POST(request: Request) {
       } as any,
     });
 
-    // 2) Cria o Dono (Admin)
-    const hashedPassword = await hash(senhaInicial, 10);
+    // 2) Cria o Dono (Admin) — sem senha definida ainda: ele cria a própria
+    //    pelo link de ativação. A senha provisória é aleatória e nunca é mostrada.
+    const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const arr = new Uint32Array(8);
+    crypto.getRandomValues(arr);
+    let senhaProvisoria = '';
+    for (const n of arr) senhaProvisoria += ALFABETO[n % ALFABETO.length];
+    const hashedPassword = await hash(senhaProvisoria, 10);
+
+    const tokenBytes = new Uint8Array(32);
+    crypto.getRandomValues(tokenBytes);
+    const ativacaoToken = Array.from(tokenBytes, b => b.toString(16).padStart(2, '0')).join('');
+    const ativacaoTokenExpiry = new Date(agora.getTime() + 7 * MS_DAY);
+    const linkAtivacao = `${BASE_URL}/ativar/${ativacaoToken}`;
+
     const dono = await prisma.usuario.create({
       data: {
         nome: nomeDono,
@@ -93,41 +106,45 @@ export async function POST(request: Request) {
         cargo: "ADMIN",
         empresaId: empresa.id,
         deveTrocarSenha: false,
+        ativacaoToken,
+        ativacaoTokenExpiry,
       } as any,
     });
 
-    // 3) E-mail de boas-vindas
+    // 3) E-mail de boas-vindas — leva direto pro link onde o gestor cria a senha
     const htmlEmail = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
         <div style="background-color: #5b21b6; padding: 30px; text-align: center;">
             <h1 style="color: #ffffff; margin: 0; font-size: 26px;">WorkID</h1>
-            <p style="color: #ddd6fe; margin: 5px 0 0; font-size: 13px; text-transform: uppercase;">Nova Conta Empresarial</p>
+            <p style="color: #ddd6fe; margin: 5px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Sua conta está pronta</p>
         </div>
         <div style="padding: 40px 30px;">
-            <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nomeDono}</strong>!</p>
-            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
-                A empresa <strong>${nomeEmpresa}</strong> foi ativada com sucesso em nossa plataforma. <br>
-                Seu período de teste é de <strong>14 dias</strong> e a <strong>primeira fatura</strong> vence 30 dias após o fim do teste.
+            <p style="color: #374151; font-size: 18px; margin-bottom: 20px;">Olá, <strong>${nomeDono}</strong>! 👋</p>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 28px; font-size: 15px;">
+                A conta da empresa <strong>${nomeEmpresa}</strong> foi criada na WorkID. Para começar a usar, é só
+                clicar no botão abaixo e criar a sua senha de acesso ao painel.<br><br>
+                Seu período de teste é de <strong>14 dias</strong> e a <strong>primeira fatura</strong> vence 30 dias depois do fim do teste.
             </p>
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 30px;">
-                <p style="margin: 0 0 15px; color: #64748b; font-size: 11px; text-transform: uppercase; font-weight: bold;">Credenciais de Gestor</p>
-                <div style="margin-bottom: 15px;">
-                    <span style="color: #94a3b8; font-size: 13px;">Login:</span><br>
-                    <strong style="color: #1e293b; font-size: 16px;">${emailDono}</strong>
-                </div>
-                <div>
-                    <span style="color: #94a3b8; font-size: 13px;">Senha Inicial:</span><br>
-                    <strong style="color: #5b21b6; font-size: 18px; background: #ede9fe; padding: 2px 8px; rounded: 4px;">${senhaInicial}</strong>
-                </div>
+            <div style="text-align: center; margin-bottom: 28px;">
+                <a href="${linkAtivacao}" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 44px; border-radius: 50px; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(91, 33, 182, 0.3);">
+                    Criar minha senha e entrar
+                </a>
             </div>
-            <div style="text-align: center; margin-bottom: 30px;">
-                <a href="${BASE_URL}/login" style="display: inline-block; background-color: #5b21b6; color: #ffffff; font-weight: bold; text-decoration: none; padding: 16px 40px; border-radius: 50px;">Acessar Painel</a>
+            <p style="color: #6b7280; font-size: 13px; text-align: center; margin-bottom: 24px;">
+                Se o botão não funcionar, copie e cole este endereço no navegador:<br>
+                <span style="color: #5b21b6; word-break: break-all;">${linkAtivacao}</span>
+            </p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px 20px;">
+                <p style="margin: 0; color: #64748b; font-size: 12px; line-height: 1.6;">
+                    Este link vale por <strong>7 dias</strong> e só pode ser usado uma vez. Depois disso, é só entrar em
+                    <strong>${BASE_URL.replace(/^https?:\/\//, '')}/login</strong> com o e-mail (<strong>${emailDono}</strong>) e a senha que você criou.
+                </p>
             </div>
         </div>
       </div>
     `;
 
-    await enviarEmailSeguro(emailDono, "Sua empresa foi ativada! 🚀", htmlEmail);
+    await enviarEmailSeguro(emailDono, `${nomeDono}, ative o acesso da ${nomeEmpresa} 🚀`, htmlEmail);
 
     criarNotificacaoSuperAdmin({
       tipo: 'NOVA_VENDA',
@@ -167,6 +184,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       dados: { empresa: empresa.nome, login: dono.email },
+      linkAtivacao,
     });
   } catch (error) {
     console.error(error);

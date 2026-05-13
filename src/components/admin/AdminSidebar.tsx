@@ -23,6 +23,7 @@ import {
   UserCircle,
   Smartphone,
   Lock,
+  Receipt,
 } from 'lucide-react';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
@@ -179,11 +180,28 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
         ))}
       </nav>
 
-      {/* Footer: perfil + logout */}
+      {/* Footer: fatura + perfil + logout */}
       <div className={`border-t border-border-subtle shrink-0 ${collapsed ? 'p-2 space-y-0.5' : 'p-2 space-y-0.5'}`}>
         <Link
+          href="/admin/fatura"
+          className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all ${
+            pathname === '/admin/fatura'
+              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+              : 'text-amber-300/90 hover:bg-amber-500/10 hover:text-amber-200 border border-transparent'
+          } ${collapsed ? 'p-2 justify-center' : 'px-3 py-2'}`}
+          title={collapsed ? 'Fatura' : undefined}
+        >
+          <Receipt size={18} className="text-amber-400" />
+          {!collapsed && <span>Fatura</span>}
+        </Link>
+
+        <Link
           href="/admin/perfil"
-          className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all text-text-secondary hover:bg-hover-bg hover:text-text-primary ${collapsed ? 'p-2 justify-center' : 'px-3 py-2'}`}
+          className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all ${
+            pathname === '/admin/perfil'
+              ? 'bg-purple-500/15 text-purple-300 border border-purple-500/20'
+              : 'text-text-secondary hover:bg-hover-bg hover:text-text-primary border border-transparent'
+          } ${collapsed ? 'p-2 justify-center' : 'px-3 py-2'}`}
           title={collapsed ? 'Minha Conta' : undefined}
         >
           <UserCircle size={18} />

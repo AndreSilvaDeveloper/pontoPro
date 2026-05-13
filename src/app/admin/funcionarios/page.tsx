@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X, FileCheck, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, UserPlus, RefreshCw, User, Pencil, Trash2, Users, Monitor, Phone, Search, X, FileCheck, FileSpreadsheet, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 import ModalFuncionario, { Funcionario } from '@/components/ModalFuncionario';
 import ModalImportarFuncionarios from '@/components/ModalImportarFuncionarios';
+import LinkAcessoBox from '@/components/LinkAcessoBox';
 
 export default function GestaoFuncionarios() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
@@ -21,7 +22,8 @@ export default function GestaoFuncionarios() {
 
   // Confirmação inline
   const [confirmandoExclusao, setConfirmandoExclusao] = useState<string | null>(null);
-  const [confirmandoReset, setConfirmandoReset] = useState<string | null>(null);
+  const [confirmandoReenvio, setConfirmandoReenvio] = useState<string | null>(null);
+  const [linkReenviado, setLinkReenviado] = useState<{ id: string; link: string; nome: string } | null>(null);
   const [regenerandoTermos, setRegenerandoTermos] = useState(false);
   const [showImportar, setShowImportar] = useState(false);
 
@@ -65,14 +67,15 @@ export default function GestaoFuncionarios() {
     }
   };
 
-  const resetarSenha = async (id: string) => {
+  const reenviarAcesso = async (func: Funcionario) => {
     try {
-      await axios.post('/api/admin/funcionarios/resetar-senha', { usuarioId: id });
-      toast.success('Senha resetada! Senha padrão: 1234');
+      const res = await axios.post('/api/admin/funcionarios/reenviar-acesso', { usuarioId: func.id });
+      setLinkReenviado({ id: func.id, link: res.data.linkAtivacao, nome: func.nome });
+      toast.success('Novo link de acesso gerado e e-mail reenviado.');
     } catch (error) {
-      toast.error('Erro ao resetar.');
+      toast.error('Erro ao gerar o link.');
     } finally {
-      setConfirmandoReset(null);
+      setConfirmandoReenvio(null);
     }
   };
 
@@ -232,7 +235,7 @@ export default function GestaoFuncionarios() {
                 </div>
               </div>
 
-              {/* Confirmação inline de exclusão */}
+              {/* Confirmação inline / link de acesso */}
               {confirmandoExclusao === func.id ? (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in duration-200">
                   <p className="text-sm text-red-300">Excluir <strong>{func.nome}</strong>?</p>
@@ -241,12 +244,18 @@ export default function GestaoFuncionarios() {
                     <button onClick={() => setConfirmandoExclusao(null)} className="px-3 py-1.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-lg text-xs font-bold transition-colors">Não</button>
                   </div>
                 </div>
-              ) : confirmandoReset === func.id ? (
+              ) : linkReenviado?.id === func.id ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 space-y-2.5 animate-in fade-in duration-200">
+                  <p className="text-sm text-emerald-300">Link de acesso de <strong>{func.nome}</strong> — copie e mande pra ele (também já reenviamos por e-mail):</p>
+                  <LinkAcessoBox link={linkReenviado.link} nome={func.nome} />
+                  <button onClick={() => setLinkReenviado(null)} className="w-full py-2 rounded-lg bg-hover-bg hover:bg-hover-bg-strong text-text-secondary text-xs font-bold transition-colors active:scale-95">Fechar</button>
+                </div>
+              ) : confirmandoReenvio === func.id ? (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in duration-200">
-                  <p className="text-sm text-amber-400">Resetar senha de <strong>{func.nome}</strong>?</p>
+                  <p className="text-sm text-amber-400">Gerar um novo link de acesso para <strong>{func.nome}</strong>? O link antigo deixa de funcionar.</p>
                   <div className="flex gap-2">
-                    <button onClick={() => resetarSenha(func.id)} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-all active:scale-95">Sim</button>
-                    <button onClick={() => setConfirmandoReset(null)} className="px-3 py-1.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-lg text-xs font-bold transition-colors">Não</button>
+                    <button onClick={() => reenviarAcesso(func)} className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition-all active:scale-95">Sim</button>
+                    <button onClick={() => setConfirmandoReenvio(null)} className="px-3 py-1.5 bg-hover-bg hover:bg-hover-bg-strong text-text-secondary rounded-lg text-xs font-bold transition-colors">Não</button>
                   </div>
                 </div>
               ) : (
@@ -260,14 +269,15 @@ export default function GestaoFuncionarios() {
                   </button>
 
                   <button
-                    onClick={() => setConfirmandoReset(func.id)}
-                    className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 bg-hover-bg text-yellow-500 rounded-xl text-[11px] sm:text-xs font-bold hover:bg-hover-bg-strong transition-colors leading-tight active:scale-95"
+                    onClick={() => setConfirmandoReenvio(func.id)}
+                    className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-2.5 px-2 bg-hover-bg text-purple-300 rounded-xl text-[11px] sm:text-xs font-bold hover:bg-hover-bg-strong transition-colors leading-tight active:scale-95"
+                    title="Gerar e enviar um novo link de acesso"
                   >
-                    <RefreshCw size={14} />
+                    <Send size={14} />
                     <span className="sm:hidden text-center">
-                      Resetar<br />Senha
+                      Reenviar<br />Acesso
                     </span>
-                    <span className="hidden sm:inline whitespace-nowrap">Resetar Senha</span>
+                    <span className="hidden sm:inline whitespace-nowrap">Reenviar Acesso</span>
                   </button>
 
                   <button

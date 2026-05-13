@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, FileText, RefreshCw } from "lucide-react";
 
 type HistoricoItem = {
@@ -72,6 +72,7 @@ function badge(status?: string | null) {
 
 
 export default function HistoricoFaturasPage() {
+  const router = useRouter();
   const [items, setItems] = useState<HistoricoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -117,13 +118,13 @@ export default function HistoricoFaturasPage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href="/admin/perfil"
+            <button
+              onClick={() => router.back()}
               className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
               title="Voltar"
             >
               <ArrowLeft size={20} />
-            </Link>
+            </button>
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Histórico de faturas</h1>
               <p className="text-text-muted text-sm">

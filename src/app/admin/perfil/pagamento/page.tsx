@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -50,6 +50,7 @@ function fmtDate(iso: string | null) {
 }
 
 export default function PagamentoPage() {
+  const router = useRouter();
   const [data, setData] = useState<PagamentoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -164,13 +165,13 @@ export default function PagamentoPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <Link
-            href="/admin/perfil"
+          <button
+            onClick={() => router.back()}
             className="p-2.5 bg-hover-bg hover:bg-hover-bg-strong text-text-primary rounded-xl border border-border-subtle transition-all active:scale-95"
             title="Voltar"
           >
             <ArrowLeft size={20} />
-          </Link>
+          </button>
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">Pagamento</h1>
             <p className="text-sm text-text-muted">
