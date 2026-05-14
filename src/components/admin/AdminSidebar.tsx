@@ -24,11 +24,21 @@ import {
   Smartphone,
   Lock,
   Receipt,
+  MessageCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 
-type MenuItem = { href: string; label: string; icon: any; badge?: number; accent?: string; tour?: string; locked?: boolean };
+type MenuItem = {
+  href?: string;
+  onClick?: () => void;
+  label: string;
+  icon: any;
+  badge?: number;
+  accent?: string;
+  tour?: string;
+  locked?: boolean;
+};
 type MenuCategory = { label: string; items: MenuItem[] };
 
 interface Props {
@@ -57,6 +67,16 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
 
   // Fechar mobile quando mudar de rota
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const abrirSuporte = async () => {
+    try {
+      const r = await fetch('/api/me/contato-suporte');
+      const d = await r.json();
+      if (d?.ativo && d?.link) {
+        window.open(d.link, '_blank', 'noopener,noreferrer');
+      }
+    } catch { /* silencioso — se falhar, melhor não fazer nada do que mostrar erro */ }
+  };
 
   const categories: MenuCategory[] = [
     {
@@ -98,6 +118,8 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
       label: 'Configurações',
       items: [
         { href: '/admin/feriados', label: 'Feriados', icon: CalendarDays },
+        { onClick: abrirSuporte, label: 'Falar com o suporte', icon: MessageCircle, accent: 'emerald' },
+        { href: '/admin/fatura', label: 'Fatura', icon: Receipt, accent: 'amber' },
         { href: '/admin/totem', label: 'Totens', icon: Smartphone, locked: !addonTotemEfetivo },
         { href: '/admin/configuracoes', label: 'Configurações', icon: Settings, tour: 'sidebar-configuracoes' },
       ],
@@ -141,37 +163,65 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
               </p>
             )}
             <ul className="space-y-0.5 px-2">
-              {cat.items.map((item) => {
-                const active = pathname === item.href;
+              {cat.items.map((item, idx) => {
+                const active = item.href ? pathname === item.href : false;
                 const Icon = item.icon;
+                const iconColor = active
+                  ? 'text-purple-400'
+                  : item.locked
+                    ? 'text-text-faint'
+                    : item.accent === 'purple'
+                      ? 'text-purple-400'
+                      : item.accent === 'amber'
+                        ? 'text-amber-400'
+                        : item.accent === 'emerald'
+                          ? 'text-emerald-400'
+                          : 'text-text-muted';
+                const baseClass = `flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                  active
+                    ? 'bg-purple-500/15 text-purple-300 border border-purple-500/20'
+                    : item.locked
+                      ? 'text-text-faint hover:bg-hover-bg hover:text-text-secondary border border-transparent'
+                      : 'text-text-secondary hover:bg-hover-bg hover:text-text-primary border border-transparent'
+                }`;
+                const inner = (
+                  <>
+                    <Icon size={18} className={iconColor} />
+                    {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
+                    {!collapsed && item.locked && (
+                      <Lock size={12} className="text-text-faint shrink-0" />
+                    )}
+                    {!collapsed && item.badge && item.badge > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
+                    {collapsed && item.badge && item.badge > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
+                    )}
+                  </>
+                );
                 return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      data-tour={item.tour}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                        active
-                          ? 'bg-purple-500/15 text-purple-300 border border-purple-500/20'
-                          : item.locked
-                            ? 'text-text-faint hover:bg-hover-bg hover:text-text-secondary border border-transparent'
-                            : 'text-text-secondary hover:bg-hover-bg hover:text-text-primary border border-transparent'
-                      }`}
-                      title={collapsed ? `${item.label}${item.locked ? ' (bloqueado)' : ''}` : undefined}
-                    >
-                      <Icon size={18} className={active ? 'text-purple-400' : item.locked ? 'text-text-faint' : item.accent === 'purple' ? 'text-purple-400' : item.accent === 'amber' ? 'text-amber-400' : 'text-text-muted'} />
-                      {!collapsed && <span className="flex-1 truncate">{item.label}</span>}
-                      {!collapsed && item.locked && (
-                        <Lock size={12} className="text-text-faint shrink-0" />
-                      )}
-                      {!collapsed && item.badge && item.badge > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center">
-                          {item.badge > 99 ? '99+' : item.badge}
-                        </span>
-                      )}
-                      {collapsed && item.badge && item.badge > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
-                      )}
-                    </Link>
+                  <li key={item.href || `${cat.label}-${idx}`}>
+                    {item.href ? (
+                      <Link
+                        href={item.href}
+                        data-tour={item.tour}
+                        className={baseClass}
+                        title={collapsed ? `${item.label}${item.locked ? ' (bloqueado)' : ''}` : undefined}
+                      >
+                        {inner}
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={item.onClick}
+                        data-tour={item.tour}
+                        className={`w-full ${baseClass}`}
+                        title={collapsed ? item.label : undefined}
+                      >
+                        {inner}
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -180,21 +230,8 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
         ))}
       </nav>
 
-      {/* Footer: fatura + perfil + logout */}
-      <div className={`border-t border-border-subtle shrink-0 ${collapsed ? 'p-2 space-y-0.5' : 'p-2 space-y-0.5'}`}>
-        <Link
-          href="/admin/fatura"
-          className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all ${
-            pathname === '/admin/fatura'
-              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
-              : 'text-amber-300/90 hover:bg-amber-500/10 hover:text-amber-200 border border-transparent'
-          } ${collapsed ? 'p-2 justify-center' : 'px-3 py-2'}`}
-          title={collapsed ? 'Fatura' : undefined}
-        >
-          <Receipt size={18} className="text-amber-400" />
-          {!collapsed && <span>Fatura</span>}
-        </Link>
-
+      {/* Footer: perfil + logout */}
+      <div className={`border-t border-border-subtle shrink-0 p-2 space-y-0.5`}>
         <Link
           href="/admin/perfil"
           className={`flex items-center gap-3 rounded-xl text-sm font-medium transition-all ${
