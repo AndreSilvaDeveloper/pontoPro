@@ -188,7 +188,7 @@ export default function ModalFuncionario({
     qua: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
     qui: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
     sex: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
-    sab: { e1: '08:00', s1: '12:00', e2: '', s2: '', ativo: false },
+    sab: { e1: '', s1: '', e2: '', s2: '', ativo: false },
     dom: { e1: '', s1: '', e2: '', s2: '', ativo: false },
   };
 
@@ -215,7 +215,17 @@ export default function ModalFuncionario({
       setLat(funcionarioEdicao.latitudeBase?.toString() || '');
       setLng(funcionarioEdicao.longitudeBase?.toString() || '');
       setRaio(funcionarioEdicao.raioPermitido?.toString() || '100');
-      setJornada(funcionarioEdicao.jornada || jornadaPadrao);
+      // Sanea jornada: dias inativos não devem carregar horários "fantasma" do default antigo
+      const jornadaCarregada: any = funcionarioEdicao.jornada || jornadaPadrao;
+      const jornadaSaneada: any = { ...jornadaCarregada };
+      for (const d of ['sab', 'dom']) {
+        const cfg = jornadaSaneada[d];
+        if (cfg && !cfg.ativo) {
+          jornadaSaneada[d] = { ...cfg, e1: '', s1: '', e2: '', s2: '' };
+          if (jornadaSaneada[d].regra) delete jornadaSaneada[d].regra;
+        }
+      }
+      setJornada(jornadaSaneada);
       setPontoLivre(funcionarioEdicao.pontoLivre || false);
       setLocaisExtras(funcionarioEdicao.locaisAdicionais || []);
       setModoValidacao(funcionarioEdicao.modoValidacaoPonto || 'GPS');
@@ -273,13 +283,29 @@ export default function ModalFuncionario({
         }
       }
 
-      // ✅ Se está desativando o sábado, remove a regra (limpa)
+      // ✅ Se está desativando o sábado, remove a regra e limpa horários
       if (dia === 'sab' && campo === 'ativo' && valor === false) {
-        if (novoDia.regra) {
-          const copy = { ...novoDia };
-          delete copy.regra;
-          return { ...prev, [dia]: copy };
+        const copy = { ...novoDia, e1: '', s1: '', e2: '', s2: '' };
+        if (copy.regra) delete copy.regra;
+        return { ...prev, [dia]: copy };
+      }
+
+      // ✅ Mesmo pattern pro domingo
+      if (dia === 'dom' && campo === 'ativo' && valor === true) {
+        if (!novoDia.regra || novoDia.regra?.tipo !== 'DOMINGOS_DO_MES') {
+          novoDia.regra = { tipo: 'DOMINGOS_DO_MES', quais: [] };
+        } else {
+          novoDia.regra = {
+            tipo: 'DOMINGOS_DO_MES',
+            quais: uniqSortedNumbers(Array.isArray(novoDia.regra?.quais) ? novoDia.regra.quais : []),
+          };
         }
+      }
+
+      if (dia === 'dom' && campo === 'ativo' && valor === false) {
+        const copy = { ...novoDia, e1: '', s1: '', e2: '', s2: '' };
+        if (copy.regra) delete copy.regra;
+        return { ...prev, [dia]: copy };
       }
 
       return { ...prev, [dia]: novoDia };
@@ -301,6 +327,25 @@ export default function ModalFuncionario({
           // mantém o sábado ativo (por segurança)
           ativo: true,
           regra: { tipo: 'SABADOS_DO_MES', quais: novos },
+        },
+      };
+    });
+  };
+
+  const toggleDomingoDoMes = (n: number) => {
+    setJornada((prev: any) => {
+      const dom = prev?.dom || {};
+      const regra = dom?.regra && dom.regra.tipo === 'DOMINGOS_DO_MES' ? dom.regra : { tipo: 'DOMINGOS_DO_MES', quais: [] };
+      const atuais = uniqSortedNumbers(Array.isArray(regra.quais) ? regra.quais : []);
+      const has = atuais.includes(n);
+      const novos = has ? atuais.filter((x) => x !== n) : uniqSortedNumbers([...atuais, n]);
+
+      return {
+        ...prev,
+        dom: {
+          ...dom,
+          ativo: true,
+          regra: { tipo: 'DOMINGOS_DO_MES', quais: novos },
         },
       };
     });
@@ -386,7 +431,7 @@ export default function ModalFuncionario({
         if (destino === 'PRINCIPAL') {
           setLat(String(pos.coords.latitude));
           setLng(String(pos.coords.longitude));
-          setMostrarMapaPrincipal(false);
+          setMostrarMapaPrincipal(true);
         } else {
           setNovoLocal({
             ...novoLocal,
@@ -583,6 +628,14 @@ export default function ModalFuncionario({
   const sabQuais: number[] = useMemo(() => {
     const regra = jornada?.sab?.regra;
     if (jornada?.sab?.ativo && regra?.tipo === 'SABADOS_DO_MES') {
+      return uniqSortedNumbers(Array.isArray(regra?.quais) ? regra.quais : []);
+    }
+    return [];
+  }, [jornada]);
+
+  const domQuais: number[] = useMemo(() => {
+    const regra = jornada?.dom?.regra;
+    if (jornada?.dom?.ativo && regra?.tipo === 'DOMINGOS_DO_MES') {
       return uniqSortedNumbers(Array.isArray(regra?.quais) ? regra.quais : []);
     }
     return [];
@@ -887,6 +940,46 @@ export default function ModalFuncionario({
                             </div>
                           )}
 
+                          {/* Regra do domingo (domingos do mês) */}
+                          {dia === 'dom' && (
+                            <div className="mt-2 bg-page border border-border-input rounded-xl p-3 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <p className="text-[10px] text-text-faint font-bold uppercase">
+                                  Domingos do mês que trabalha
+                                </p>
+                                <span className="text-[10px] text-text-faint">
+                                  (marque 1-5)
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-5 gap-2">
+                                {[1, 2, 3, 4, 5].map((n) => {
+                                  const active = domQuais.includes(n);
+                                  return (
+                                    <button
+                                      key={n}
+                                      type="button"
+                                      onClick={() => toggleDomingoDoMes(n)}
+                                      className={`py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                                        active
+                                          ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/30'
+                                          : 'bg-hover-bg border-border-default text-text-secondary hover:border-white/20'
+                                      }`}
+                                      title={`${n}º domingo do mês`}
+                                    >
+                                      {n}º
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              <div className="text-[10px] text-text-muted leading-relaxed">
+                                • Marque os domingos que o funcionário trabalha (ex.: <b>1º</b> e <b>3º</b>). <br />
+                                • Se não marcar nenhum, todo domingo trabalhado entra como <b>hora extra</b> no banco.
+                              </div>
+                            </div>
+                          )}
+
                           {diaErros.length > 0 && (
                             <div className="text-[10px] text-yellow-200 bg-yellow-900/10 border border-yellow-500/20 rounded-xl p-2">
                               {diaErros.map((m, i) => (
@@ -966,30 +1059,7 @@ export default function ModalFuncionario({
                     <div className="space-y-4">
                       {/* Sede Principal */}
                       <div className="bg-surface p-4 rounded-2xl border border-border-subtle space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                          <span className="text-xs font-bold text-purple-400 uppercase">Sede Principal</span>
-
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setModoMapaExtra('NONE');
-                                setMostrarMapaPrincipal((v) => !v);
-                              }}
-                              className="text-xs bg-hover-bg text-text-secondary px-3 py-2 rounded-xl flex items-center gap-1.5 border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
-                            >
-                              <MapPin size={12} /> {mostrarMapaPrincipal ? 'Ocultar mapa' : 'Editar no mapa'}
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => pegarLocalizacaoAtual('PRINCIPAL')}
-                              className="text-xs bg-blue-500/10 text-blue-400 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-blue-500/20 hover:bg-blue-500/20 transition-colors active:scale-95"
-                            >
-                              <MapPin size={12} /> Pegar GPS
-                            </button>
-                          </div>
-                        </div>
+                        <span className="text-xs font-bold text-purple-400 uppercase block">Sede Principal</span>
 
                         {/* Endereço referência */}
                         <div className="space-y-1">
@@ -1035,8 +1105,29 @@ export default function ModalFuncionario({
                           </div>
                         </div>
 
+                        <div className="flex flex-wrap gap-2 justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModoMapaExtra('NONE');
+                              setMostrarMapaPrincipal((v) => !v);
+                            }}
+                            className="text-xs bg-hover-bg text-text-secondary px-3 py-2 rounded-xl flex items-center gap-1.5 border border-border-default hover:bg-hover-bg-strong transition-colors active:scale-95"
+                          >
+                            <MapPin size={12} /> {mostrarMapaPrincipal ? 'Ocultar mapa' : 'Editar no mapa'}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => pegarLocalizacaoAtual('PRINCIPAL')}
+                            className="text-xs bg-blue-500/10 text-blue-400 px-3 py-2 rounded-xl flex items-center gap-1.5 border border-blue-500/20 hover:bg-blue-500/20 transition-colors active:scale-95"
+                          >
+                            <MapPin size={12} /> Pegar GPS
+                          </button>
+                        </div>
+
                         {mostrarMapaPrincipal && (
-                          <div className="pt-2">
+                          <div className="pt-1">
                             <MapaCaptura latInicial={lat} lngInicial={lng} aoSelecionar={aoClicarNoMapa} raio={Number(raio) || 0} />
                             <p className="text-[10px] text-text-faint mt-2">
                               Use CEP + número para máxima precisão, e ajuste clicando no mapa se necessário.

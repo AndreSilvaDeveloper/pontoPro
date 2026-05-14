@@ -54,7 +54,7 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
     qua: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
     qui: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
     sex: { e1: '08:00', s1: '12:00', e2: '13:00', s2: '17:00', ativo: true },
-    sab: { e1: '08:00', s1: '12:00', e2: '', s2: '', ativo: false },
+    sab: { e1: '', s1: '', e2: '', s2: '', ativo: false },
     dom: { e1: '', s1: '', e2: '', s2: '', ativo: false },
   };
 
@@ -66,6 +66,14 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
       const merged: any = {};
       for (const dia of DIAS) {
         merged[dia.chave] = { ...jornadaPadrao[dia.chave], ...(j[dia.chave] || {}) };
+      }
+      // Sanea sab/dom inativos: zera horários "fantasma" do default antigo
+      for (const d of ['sab', 'dom']) {
+        const cfg = merged[d];
+        if (cfg && !cfg.ativo) {
+          merged[d] = { ...cfg, e1: '', s1: '', e2: '', s2: '' };
+          if (merged[d].regra) delete merged[d].regra;
+        }
       }
       setJornada(merged);
     }
@@ -88,11 +96,26 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
       }
 
       if (dia === 'sab' && campo === 'ativo' && valor === false) {
-        if (novoDia.regra) {
-          const copy = { ...novoDia };
-          delete copy.regra;
-          return { ...prev, [dia]: copy };
+        const copy = { ...novoDia, e1: '', s1: '', e2: '', s2: '' };
+        if (copy.regra) delete copy.regra;
+        return { ...prev, [dia]: copy };
+      }
+
+      if (dia === 'dom' && campo === 'ativo' && valor === true) {
+        if (!novoDia.regra || novoDia.regra?.tipo !== 'DOMINGOS_DO_MES') {
+          novoDia.regra = { tipo: 'DOMINGOS_DO_MES', quais: [] };
+        } else {
+          novoDia.regra = {
+            tipo: 'DOMINGOS_DO_MES',
+            quais: uniqSortedNumbers(Array.isArray(novoDia.regra?.quais) ? novoDia.regra.quais : []),
+          };
         }
+      }
+
+      if (dia === 'dom' && campo === 'ativo' && valor === false) {
+        const copy = { ...novoDia, e1: '', s1: '', e2: '', s2: '' };
+        if (copy.regra) delete copy.regra;
+        return { ...prev, [dia]: copy };
       }
 
       return { ...prev, [dia]: novoDia };
@@ -121,6 +144,33 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
   const sabQuais: number[] = useMemo(() => {
     const regra = jornada?.sab?.regra;
     if (jornada?.sab?.ativo && regra?.tipo === 'SABADOS_DO_MES') {
+      return uniqSortedNumbers(Array.isArray(regra?.quais) ? regra.quais : []);
+    }
+    return [];
+  }, [jornada]);
+
+  const toggleDomingoDoMes = (n: number) => {
+    setJornada((prev: any) => {
+      const dom = prev?.dom || {};
+      const regra = dom?.regra && dom.regra.tipo === 'DOMINGOS_DO_MES' ? dom.regra : { tipo: 'DOMINGOS_DO_MES', quais: [] };
+      const atuais = uniqSortedNumbers(Array.isArray(regra.quais) ? regra.quais : []);
+      const has = atuais.includes(n);
+      const novos = has ? atuais.filter((x: number) => x !== n) : uniqSortedNumbers([...atuais, n]);
+
+      return {
+        ...prev,
+        dom: {
+          ...dom,
+          ativo: true,
+          regra: { tipo: 'DOMINGOS_DO_MES', quais: novos },
+        },
+      };
+    });
+  };
+
+  const domQuais: number[] = useMemo(() => {
+    const regra = jornada?.dom?.regra;
+    if (jornada?.dom?.ativo && regra?.tipo === 'DOMINGOS_DO_MES') {
       return uniqSortedNumbers(Array.isArray(regra?.quais) ? regra.quais : []);
     }
     return [];
@@ -425,6 +475,45 @@ export default function ModalEditarJornada({ usuario, aoFechar, aoSalvar }: Moda
 
                           <div className="text-[10px] text-text-muted leading-relaxed">
                             Se não marcar nenhum, o sistema considera folga e <b>não cobra meta</b> no sábado.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Regra do domingo (domingos do mês) */}
+                      {dia.chave === 'dom' && (
+                        <div className="mt-2 bg-page border border-border-input rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[10px] text-text-faint font-bold uppercase">
+                              Domingos do mês que trabalha
+                            </p>
+                            <span className="text-[10px] text-text-faint">
+                              (marque 1-5)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-5 gap-2">
+                            {[1, 2, 3, 4, 5].map((n) => {
+                              const active = domQuais.includes(n);
+                              return (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  onClick={() => toggleDomingoDoMes(n)}
+                                  className={`py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${
+                                    active
+                                      ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/30'
+                                      : 'bg-hover-bg border-border-default text-text-secondary hover:border-white/20'
+                                  }`}
+                                  title={`${n}º domingo do mês`}
+                                >
+                                  {n}º
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          <div className="text-[10px] text-text-muted leading-relaxed">
+                            Marque os domingos que o funcionário trabalha (ex: 1º e 3º). Se não marcar nenhum, todo domingo trabalhado entra como <b>hora extra</b> no banco.
                           </div>
                         </div>
                       )}
