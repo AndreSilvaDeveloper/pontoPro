@@ -32,6 +32,16 @@ function getNumeroDoSabadoNoMes(date: Date): number {
   }
   return count;
 }
+function getNumeroDoDomingoNoMes(date: Date): number {
+  if (getDay(date) !== 0) return 0;
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  let count = 0;
+  for (let day = 1; day <= date.getDate(); day++) {
+    if (new Date(y, m, day).getDay() === 0) count++;
+  }
+  return count;
+}
 
 function calcMetaDoDia(
   date: Date,
@@ -83,6 +93,17 @@ function calcMetaDoDia(
       sab.setDate(sab.getDate() + (6 - idx));
       const hoje = new Date(); hoje.setHours(23, 59, 59, 999);
       if (sab <= hoje && !trabalhouSabado) minutos += Math.round(metaSabRegular / 5);
+    }
+  }
+
+  if (idx === 0) {
+    const configDom = jornada['dom'];
+    const domRegra = configDom?.regra;
+    const quaisDom = domRegra?.tipo === 'DOMINGOS_DO_MES' && Array.isArray(domRegra?.quais) ? domRegra.quais : [];
+    if (configDom?.ativo && domRegra?.tipo === 'DOMINGOS_DO_MES' && quaisDom.length > 0) {
+      const n = getNumeroDoDomingoNoMes(date);
+      if (n === 0 || !quaisDom.includes(n)) return 0;
+      return calcMin(configDom) || 480;
     }
   }
 

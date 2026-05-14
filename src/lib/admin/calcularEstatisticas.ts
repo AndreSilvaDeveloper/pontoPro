@@ -104,6 +104,21 @@ function getNumeroDoSabadoNoMes(date: Date) {
   return count; // 1..5
 }
 
+function getNumeroDoDomingoNoMes(date: Date) {
+  if (getDay(date) !== 0) return 0;
+
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+
+  let count = 0;
+  for (let day = 1; day <= d; day++) {
+    const cur = new Date(y, m, day);
+    if (getDay(cur) === 0) count++;
+  }
+  return count;
+}
+
 export function calcularEstatisticas(args: {
   filtroUsuario: string;
   registros: any[];
@@ -239,6 +254,20 @@ export function calcularEstatisticas(args: {
     };
 
     let minutosConfigurados = calcMinutosConfig(config);
+
+    // ✅ DOMINGO: suportar regra de domingos do mês (similar ao sábado)
+    if (diaSemanaIndex === 0) {
+      const configDom = jornadaConfig['dom'];
+      if (configDom?.ativo) {
+        const regraD = configDom?.regra;
+        const quaisDom = regraD?.tipo === 'DOMINGOS_DO_MES' && Array.isArray(regraD?.quais) ? regraD.quais : [];
+        if (regraD?.tipo === 'DOMINGOS_DO_MES' && quaisDom.length > 0) {
+          const numero = getNumeroDoDomingoNoMes(data);
+          const trabalhaNesteDomingo = numero > 0 && quaisDom.includes(numero);
+          if (!trabalhaNesteDomingo) return 0;
+        }
+      }
+    }
 
     // --- LÓGICA HÍBRIDA INTELIGENTE ---
     // Detecta se o sábado é "regular" (sem regra especial) e tem meta configurada
