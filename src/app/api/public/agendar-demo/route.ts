@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     if (!whatsapp || whatsapp.length < 10 || whatsapp.length > 13) {
       return NextResponse.json({ ok: false, erro: 'WhatsApp inválido.' }, { status: 400 });
     }
-    if (!estaDentroDaJanela(dia, horario)) {
+    if (!(await estaDentroDaJanela(dia, horario))) {
       return NextResponse.json(
         { ok: false, erro: 'Horário fora do atendimento.' },
         { status: 400 }

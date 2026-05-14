@@ -31,6 +31,19 @@ export async function getConfigBoolean(chave: string, defaultValue: boolean): Pr
   return v === 'true' || v === '1';
 }
 
+/**
+ * Lê e parseia uma config JSON. Retorna o default se faltar, vier vazio ou der parse error.
+ */
+export async function getConfigJson<T>(chave: string, defaultValue: T): Promise<T> {
+  const raw = await getConfig(chave, '');
+  if (!raw) return defaultValue;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return defaultValue;
+  }
+}
+
 /** Limpa o cache de uma chave específica (chamar quando atualizar via PUT). */
 export function invalidateConfig(chave: string) {
   cache.delete(chave);
@@ -51,4 +64,11 @@ export const CONFIGS = {
   AGENDAMENTO_CANAL_DEFAULT: 'agendamento.canal_default',
   AGENDAMENTO_ANTECEDENCIA_MIN_MIN: 'agendamento.antecedencia_min_min',
   AGENDAMENTO_ANTECEDENCIA_MAX_DIAS: 'agendamento.antecedencia_max_dias',
+  AGENDAMENTO_SLOT_DURACAO_MIN: 'agendamento.slot_duracao_min',
+  AGENDAMENTO_FERIADOS_BLOQUEADOS: 'agendamento.feriados_bloqueados',
+  AGENDAMENTO_JANELAS: 'agendamento.janelas',
+  CONTATO_TELEFONE_PRINCIPAL: 'contato.telefone_principal',
+  CONTATO_EMAIL_SUPORTE: 'contato.email_suporte',
+  CONTATO_WHATSAPP_LINK: 'contato.whatsapp_link',
+  SITE_URL_PUBLICA: 'site.url_publica',
 } as const;

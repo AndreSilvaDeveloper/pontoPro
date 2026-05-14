@@ -8,15 +8,20 @@ import { LINKS } from '@/config/links';
 import { trackEvent, trackLead } from '@/lib/analytics';
 import { mascaraTelefone, telefoneValido } from '@/utils/mascaraTelefone';
 
-function getProximosDias(qtd: number) {
-  const dias = [];
+function getProximosDias(qtd: number, diasAtivos: Set<number>, feriados: Set<string>) {
+  // Se a config não foi carregada ainda, devolve vazio (a UI fica em "carregando").
+  if (diasAtivos.size === 0) return [];
+  const dias: Date[] = [];
   const hoje = new Date();
-  let d = new Date(hoje);
-  d.setDate(d.getDate() + 1); // começa amanhã
+  // Começa hoje — se ainda houver slot respeitando antecedencia_min_min, o lead consegue agendar pro mesmo dia.
+  const d = new Date(hoje);
 
-  while (dias.length < qtd) {
+  // Limite defensivo para não loopar caso só haja um dia ativo: andar até 90 dias.
+  let guard = 90;
+  while (dias.length < qtd && guard-- > 0) {
     const dow = d.getDay();
-    if (dow >= 1 && dow <= 6) { // seg-sab (sab tem janela de 09-15)
+    const iso = diaToISO(d);
+    if (diasAtivos.has(dow) && !feriados.has(iso)) {
       dias.push(new Date(d));
     }
     d.setDate(d.getDate() + 1);
@@ -56,8 +61,31 @@ export default function AgendarDemo() {
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [waUrl, setWaUrl] = useState('');
+  const [diasAtivos, setDiasAtivos] = useState<Set<number>>(new Set());
+  const [feriados, setFeriados] = useState<Set<string>>(new Set());
+  const [carregandoJanelas, setCarregandoJanelas] = useState(true);
 
-  const dias = getProximosDias(10);
+  // Carrega as janelas de atendimento configuradas no painel super admin.
+  useEffect(() => {
+    let cancelado = false;
+    fetch('/api/public/janelas-atendimento')
+      .then(r => r.json())
+      .then(d => {
+        if (cancelado) return;
+        const ativos = new Set<number>();
+        const janelas = d?.janelas || {};
+        for (const k of Object.keys(janelas)) {
+          if (janelas[k]) ativos.add(Number(k));
+        }
+        setDiasAtivos(ativos);
+        setFeriados(new Set(Array.isArray(d?.feriadosBloqueados) ? d.feriadosBloqueados : []));
+      })
+      .catch(() => { /* mantém vazio → mostra "carregando" */ })
+      .finally(() => { if (!cancelado) setCarregandoJanelas(false); });
+    return () => { cancelado = true; };
+  }, []);
+
+  const dias = getProximosDias(10, diasAtivos, feriados);
 
   // Sempre que troca o dia, refaz a busca de horários disponíveis e zera o horário escolhido.
   useEffect(() => {
@@ -315,26 +343,36 @@ export default function AgendarDemo() {
             <label className="text-xs text-gray-400 font-bold uppercase tracking-wider flex items-center gap-2">
               <Calendar size={14} className="text-purple-400" /> Escolha o dia
             </label>
-            <div className="grid grid-cols-5 gap-2">
-              {dias.map((d, i) => {
-                const selecionado = dataSelecionada?.toDateString() === d.toDateString();
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setDataSelecionada(d)}
-                    className={`py-3 px-2 rounded-xl border text-center transition-all min-h-[60px] ${
-                      selecionado
-                        ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/30'
-                        : 'bg-purple-950/20 border-purple-500/20 text-gray-400 hover:border-purple-500/40 hover:text-white'
-                    }`}
-                  >
-                    <p className="text-[10px] uppercase font-bold">{formatDiaSemana(d)}</p>
-                    <p className="text-sm font-bold mt-0.5">{formatDiaMes(d)}</p>
-                  </button>
-                );
-              })}
-            </div>
+            {carregandoJanelas ? (
+              <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
+                <Loader2 size={16} className="animate-spin" /> Buscando dias disponíveis…
+              </div>
+            ) : dias.length === 0 ? (
+              <p className="text-sm text-gray-500 py-4">
+                Sem dias disponíveis para agendamento no momento. Fale com a gente pelo WhatsApp.
+              </p>
+            ) : (
+              <div className="grid grid-cols-5 gap-2">
+                {dias.map((d, i) => {
+                  const selecionado = dataSelecionada?.toDateString() === d.toDateString();
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setDataSelecionada(d)}
+                      className={`py-3 px-2 rounded-xl border text-center transition-all min-h-[60px] ${
+                        selecionado
+                          ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/30'
+                          : 'bg-purple-950/20 border-purple-500/20 text-gray-400 hover:border-purple-500/40 hover:text-white'
+                      }`}
+                    >
+                      <p className="text-[10px] uppercase font-bold">{formatDiaSemana(d)}</p>
+                      <p className="text-sm font-bold mt-0.5">{formatDiaMes(d)}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Escolher horário */}
