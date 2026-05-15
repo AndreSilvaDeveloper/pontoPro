@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { asaas } from "@/lib/asaas";
 import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 import { getBillingStatus } from "@/lib/billing";
+import { getToleranceDays } from "@/lib/billing-server";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,8 @@ export async function GET() {
     if (!result) return NextResponse.json({ ok: false }, { status: 404 });
 
     const { billingEmpresa, isFilial } = result;
-    const billing = getBillingStatus(billingEmpresa as any);
+    const toleranceDays = await getToleranceDays();
+    const billing = getBillingStatus(billingEmpresa as any, { toleranceDays });
 
     const ids = [
       billingEmpresa.id,

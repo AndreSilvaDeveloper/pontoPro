@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
+import { getToleranceDays } from "@/lib/billing-server";
 import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 
 export const runtime = "nodejs";
@@ -86,7 +87,8 @@ export async function GET() {
     if (matriz) billingEmpresa = matriz;
   }
 
-  const billing = getBillingStatus(billingEmpresa as any);
+  const toleranceDays = await getToleranceDays();
+  const billing = getBillingStatus(billingEmpresa as any, { toleranceDays });
 
   // IDs envolvidos (matriz + filiais)
   const idsEmpresas = [

@@ -56,12 +56,11 @@ export type BillingStatus = {
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 /**
- * Tolerância após vencer o anchor antes de bloquear.
- * Ex.: venceu dia 01
- * - até dia 11 => libera com alerta
- * - a partir do dia 12 => bloqueia
+ * Tolerância padrão (em dias) após vencer o anchor antes de bloquear.
+ * Pode ser sobrescrita via `options.toleranceDays` em getBillingStatus —
+ * super admin controla pela config `cobranca.tolerancia_dias` em /saas/configuracoes.
  */
-const TOLERANCE_DAYS = 10;
+const DEFAULT_TOLERANCE_DAYS = 10;
 
 function toDate(v?: Date | string | null): Date | null {
   if (!v) return null;
@@ -121,9 +120,19 @@ function buildOk(due: Date | null, message = "Assinatura em dia."): BillingStatu
   });
 }
 
+export type BillingOptions = {
+  /** Sobrescreve a tolerância padrão (em dias). Vem da config `cobranca.tolerancia_dias`. */
+  toleranceDays?: number;
+};
+
 export function getBillingStatus(
-  empresa?: Partial<EmpresaBillingShape> | null
+  empresa?: Partial<EmpresaBillingShape> | null,
+  options?: BillingOptions,
 ): BillingStatus {
+  const TOLERANCE_DAYS = Number.isFinite(options?.toleranceDays as number)
+    ? Math.max(0, Math.floor(options!.toleranceDays as number))
+    : DEFAULT_TOLERANCE_DAYS;
+
   if (!empresa) {
     return buildOk(null, "Sem dados de cobrança.");
   }

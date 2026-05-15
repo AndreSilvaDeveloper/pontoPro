@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 import { getBillingStatus, buildBillingBlockPayload } from "@/lib/billing";
+import { getToleranceDays } from "@/lib/billing-server";
 import { verifyToken, consumeBackupCode } from "@/lib/twoFactor";
 
 export const runtime = "nodejs";
@@ -306,8 +307,9 @@ export const authOptions: NextAuthOptions = {
               if (matriz) billingEmpresa = matriz;
             }
 
-            // Usa getBillingStatus() (com tolerância de 10 dias, anchor, etc.)
-            const st = getBillingStatus(billingEmpresa as any);
+            // Usa getBillingStatus() (com tolerância configurável, anchor, etc.)
+            const toleranceDays = await getToleranceDays();
+            const st = getBillingStatus(billingEmpresa as any, { toleranceDays });
 
             if (st.blocked) {
               const billingData = {

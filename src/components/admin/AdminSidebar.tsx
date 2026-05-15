@@ -53,6 +53,7 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [suporteLink, setSuporteLink] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('admin_sidebar_collapsed');
@@ -68,14 +69,35 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
   // Fechar mobile quando mudar de rota
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  const abrirSuporte = async () => {
-    try {
-      const r = await fetch('/api/me/contato-suporte');
-      const d = await r.json();
-      if (d?.ativo && d?.link) {
-        window.open(d.link, '_blank', 'noopener,noreferrer');
-      }
-    } catch { /* silencioso — se falhar, melhor não fazer nada do que mostrar erro */ }
+  // Pré-busca o link do suporte uma vez no mount, pra que o clique no item de menu
+  // possa chamar window.open de forma síncrona (evita o popup blocker que aciona
+  // quando há await entre o gesto do usuário e a abertura da janela).
+  useEffect(() => {
+    let cancelado = false;
+    fetch('/api/me/contato-suporte')
+      .then(r => r.json())
+      .then(d => {
+        if (!cancelado && d?.ativo && d?.link) setSuporteLink(d.link);
+      })
+      .catch(() => { /* silencioso */ });
+    return () => { cancelado = true; };
+  }, []);
+
+  const abrirSuporte = () => {
+    if (suporteLink) {
+      window.open(suporteLink, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    // Fallback: abre uma aba em branco de forma síncrona (ainda dentro do gesto)
+    // e redireciona quando o fetch responder. Evita popup blocker.
+    const w = window.open('about:blank', '_blank');
+    fetch('/api/me/contato-suporte')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ativo && d?.link && w) w.location.href = d.link;
+        else if (w) w.close();
+      })
+      .catch(() => { if (w) w.close(); });
   };
 
   const categories: MenuCategory[] = [
