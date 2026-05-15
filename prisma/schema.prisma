@@ -52,6 +52,9 @@ model Empresa {
   rekognitionCollection String? // ID da coleção AWS Rekognition criada pra essa empresa
   totens                TotemDevice[]
 
+  // Módulo Financeiro (addon — controla salário, descontos, folha)
+  addonFinanceiro Boolean @default(false)
+
   // Preço negociado (override do preço de tabela do plano).
   // Quando definido e dentro da validade, substitui inteiramente o cálculo padrão.
   // expiraEm = null significa "sem prazo" (vigente até alterar manualmente).
@@ -66,34 +69,34 @@ model Empresa {
 }
 
 model Usuario {
-  id                 String    @id @default(cuid())
-  nome               String
-  email              String    @unique
-  senha              String
-  tituloCargo        String?
-  fotoPerfilUrl      String?
-  jornada            Json?
-  assinaturaUrl      String?
-  cargo              String    @default("FUNCIONARIO")
-  deveTrocarSenha    Boolean   @default(false)
-  deveCadastrarFoto  Boolean   @default(false)
-  rekognitionFaceId  String? // ID do rosto na coleção AWS Rekognition (1:N)
-  empresaId          String?
-  latitudeBase       Float     @default(0)
-  longitudeBase      Float     @default(0)
-  raioPermitido      Int       @default(100)
-  pontoLivre         Boolean   @default(false)
-  locaisAdicionais   Json?
-  criadoEm           DateTime  @default(now())
-  resetToken         String?   @unique
-  resetTokenExpiry   DateTime?
+  id                  String    @id @default(cuid())
+  nome                String
+  email               String    @unique
+  senha               String
+  tituloCargo         String?
+  fotoPerfilUrl       String?
+  jornada             Json?
+  assinaturaUrl       String?
+  cargo               String    @default("FUNCIONARIO")
+  deveTrocarSenha     Boolean   @default(false)
+  deveCadastrarFoto   Boolean   @default(false)
+  rekognitionFaceId   String? // ID do rosto na coleção AWS Rekognition (1:N)
+  empresaId           String?
+  latitudeBase        Float     @default(0)
+  longitudeBase       Float     @default(0)
+  raioPermitido       Int       @default(100)
+  pontoLivre          Boolean   @default(false)
+  locaisAdicionais    Json?
+  criadoEm            DateTime  @default(now())
+  resetToken          String?   @unique
+  resetTokenExpiry    DateTime?
   // Link de ativação (primeiro acesso do funcionário) — define a senha e já loga.
   ativacaoToken       String?   @unique
   ativacaoTokenExpiry DateTime?
-  ipsPermitidos      String?
-  telefone           String?
-  modoValidacaoPonto String    @default("GPS")
-  temaPreferido      String    @default("dark") // dark | light | system
+  ipsPermitidos       String?
+  telefone            String?
+  modoValidacaoPonto  String    @default("GPS")
+  temaPreferido       String    @default("dark") // dark | light | system
 
   // === 2FA (TOTP) ===
   twoFactorSecret      String? // base32 secret, só preenchido quando 2FA ativado
@@ -126,6 +129,15 @@ model Usuario {
   fechamentosCriados     Fechamento[] @relation("fechamento_admin")
 
   notificacoes Notificacao[] @relation("notif_destinatario")
+
+  // === Módulo Financeiro (addon opcional, controlado pelo super admin) ===
+  salarioBase       Decimal?         @db.Decimal(10, 2) // referência fixa (sugestão pra base de proventos do mês)
+  descontosLancados Desconto[]       @relation("desconto_funcionario")
+  descontosCriados  Desconto[]       @relation("desconto_criado_por")
+  proventosLancados Provento[]       @relation("provento_funcionario")
+  proventosCriados  Provento[]       @relation("provento_criado_por")
+  folhasFuncionario FolhaPagamento[] @relation("folha_funcionario")
+  folhasCriadas     FolhaPagamento[] @relation("folha_criada_por")
 }
 
 model Notificacao {
@@ -597,4 +609,106 @@ model Agendamento {
   @@index([leadId])
   @@index([dataHora])
   @@map("agendamento")
+}
+
+// =====================================================
+// ===== MÓDULO FINANCEIRO (addon opcional) ============
+// =====================================================
+
+/// Lançamento de desconto pra um funcionário, vinculado a um mês de folha de pagamento.
+/// Suporta parcelamento (cria N registros com mesmo lote, cada um em seu mês).
+model Desconto {
+  id                 String   @id @default(cuid())
+  empresaId          String
+  funcionarioId      String
+  tipo               String   @default("OUTROS") // COMPRA | ADIANTAMENTO | VALE | EMPRESTIMO | OUTROS
+  descricao          String
+  valorOriginal      Decimal  @db.Decimal(10, 2)
+  percentualDesconto Decimal? @db.Decimal(5, 2) // 0-100, abatimento sobre valorOriginal (ex.: 5 = 5%)
+  valorFinal         Decimal  @db.Decimal(10, 2)
+  mesReferencia      Int // 1-12 — mês em que entra na folha
+  anoReferencia      Int // ex.: 2026
+  parcelaAtual       Int      @default(1)
+  parcelaTotal       Int      @default(1)
+  loteId             String? // agrupa parcelas do mesmo lançamento
+  observacao         String?
+  criadoPorId        String?
+  criadoPorNome      String?
+  criadoEm           DateTime @default(now())
+  atualizadoEm       DateTime @updatedAt
+
+  funcionario Usuario  @relation("desconto_funcionario", fields: [funcionarioId], references: [id], onDelete: Cascade)
+  criadoPor   Usuario? @relation("desconto_criado_por", fields: [criadoPorId], references: [id])
+
+  @@index([empresaId, anoReferencia, mesReferencia])
+  @@index([funcionarioId, anoReferencia, mesReferencia])
+  @@index([loteId])
+}
+
+/// Snapshot da folha de pagamento de um funcionário em um mês específico.
+/// Criado quando admin clica "fechar folha" — congela valores e dispara push.
+model FolhaPagamento {
+  id             String    @id @default(cuid())
+  empresaId      String
+  funcionarioId  String
+  mes            Int // 1-12
+  ano            Int // ex.: 2026
+  salarioBruto   Decimal   @default(0) @db.Decimal(10, 2)
+  totalProventos Decimal   @default(0) @db.Decimal(10, 2) // hora extra etc. (opcional)
+  totalDescontos Decimal   @default(0) @db.Decimal(10, 2)
+  valorLiquido   Decimal   @default(0) @db.Decimal(10, 2)
+  status         String    @default("RASCUNHO") // RASCUNHO | FECHADA | ASSINADA | RECUSADA | PAGA
+  fechadaEm      DateTime?
+  pagaEm         DateTime?
+  comprovanteUrl String?
+  observacao     String?
+  /// JSON com snapshot detalhado: descontos individuais, saldo banco horas, etc.
+  detalhamento   Json
+  adminCriadorId String
+  criadoEm       DateTime  @default(now())
+  atualizadoEm   DateTime  @updatedAt
+
+  // Assinatura do funcionário (espelha padrão de Fechamento de ponto)
+  assinadoEm          DateTime?
+  assinaturaUrl       String?
+  ipAssinatura        String?
+  userAgentAssinatura String?
+  recusadoEm          DateTime?
+  recusadoMotivo      String?
+
+  funcionario  Usuario @relation("folha_funcionario", fields: [funcionarioId], references: [id], onDelete: Cascade)
+  adminCriador Usuario @relation("folha_criada_por", fields: [adminCriadorId], references: [id])
+
+  @@unique([funcionarioId, ano, mes])
+  @@index([empresaId, ano, mes])
+  @@index([status])
+}
+
+/// Lançamento de provento (crédito/acréscimo) pra um funcionário em um mês.
+/// Ex.: salário do mês, periculosidade, adicional noturno, HE, comissão, bônus.
+/// Suporta parcelamento (cria N registros agrupados por loteId).
+model Provento {
+  id            String   @id @default(cuid())
+  empresaId     String
+  funcionarioId String
+  tipo          String   @default("OUTROS") // SALARIO | PERICULOSIDADE | ADICIONAL_NOTURNO | HORA_EXTRA | COMISSAO | BONUS | OUTROS
+  descricao     String
+  valor         Decimal  @db.Decimal(10, 2)
+  mesReferencia Int // 1-12
+  anoReferencia Int
+  parcelaAtual  Int      @default(1)
+  parcelaTotal  Int      @default(1)
+  loteId        String?
+  observacao    String?
+  criadoPorId   String?
+  criadoPorNome String?
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  funcionario Usuario  @relation("provento_funcionario", fields: [funcionarioId], references: [id], onDelete: Cascade)
+  criadoPor   Usuario? @relation("provento_criado_por", fields: [criadoPorId], references: [id])
+
+  @@index([empresaId, anoReferencia, mesReferencia])
+  @@index([funcionarioId, anoReferencia, mesReferencia])
+  @@index([loteId])
 }

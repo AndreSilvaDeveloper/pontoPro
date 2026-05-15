@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Clock, History, FileText, MessageSquare,
   MoreHorizontal, PenTool, PenLine, LogOut, X, Lightbulb, FileSignature,
-  MessageCircle,
+  MessageCircle, Wallet,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { getNotifCount } from './NotificacaoSolicitacao';
@@ -19,7 +19,8 @@ const navFixos = [
 ];
 
 const navMais = [
-  { href: '/funcionario/fechamentos', label: 'Fechamentos', icon: FileSignature, descricao: 'Conferir e assinar folha do mês', badgeKey: 'fechamentos' },
+  { href: '/funcionario/fechamentos', label: 'Fechamentos', icon: FileSignature, descricao: 'Conferir e assinar folha de ponto', badgeKey: 'fechamentos' },
+  { href: '/funcionario/folha', label: 'Folha de pagamento', icon: Wallet, descricao: 'Conferir e assinar pagamentos', badgeKey: 'folha' },
   { href: '/funcionario/sugestoes', label: 'Pontos que faltam', icon: Lightbulb, descricao: 'Sugestões de pontos não batidos' },
   { href: '/funcionario/ausencias', label: 'Ausências', icon: PenTool, descricao: 'Atestados e justificativas' },
   { href: '/funcionario/assinatura', label: 'Minha Assinatura', icon: PenLine, descricao: 'Cadastrar/atualizar assinatura' },
@@ -31,6 +32,7 @@ export default function BottomNav() {
   const [comunicadosNaoLidos, setComunicadosNaoLidos] = useState(0);
   const [contrachequesNovos, setContrachequesNovos] = useState(0);
   const [fechamentosPendentes, setFechamentosPendentes] = useState(0);
+  const [folhasPendentes, setFolhasPendentes] = useState(0);
   const [maisAberto, setMaisAberto] = useState(false);
   const [suporteLink, setSuporteLink] = useState<string | null>(null);
 
@@ -69,16 +71,28 @@ export default function BottomNav() {
         }
       } catch {}
     };
+    const fetchFolhas = async () => {
+      try {
+        const res = await fetch('/api/funcionario/folha');
+        if (res.ok) {
+          const data = await res.json();
+          setFolhasPendentes(Array.isArray(data?.folhas) ? data.folhas.filter((f: any) => f.status === 'FECHADA').length : 0);
+        }
+      } catch {}
+    };
     fetchComunicados();
     fetchContracheques();
     fetchFechamentos();
+    fetchFolhas();
     window.addEventListener('comunicados-update', fetchComunicados);
     window.addEventListener('contracheques-update', fetchContracheques);
     window.addEventListener('fechamentos-update', fetchFechamentos);
+    window.addEventListener('folha-update', fetchFolhas);
     return () => {
       window.removeEventListener('comunicados-update', fetchComunicados);
       window.removeEventListener('contracheques-update', fetchContracheques);
       window.removeEventListener('fechamentos-update', fetchFechamentos);
+      window.removeEventListener('folha-update', fetchFolhas);
     };
   }, []);
 
@@ -119,6 +133,7 @@ export default function BottomNav() {
     if (key === 'comunicados') return comunicadosNaoLidos;
     if (key === 'contracheques') return contrachequesNovos;
     if (key === 'fechamentos') return fechamentosPendentes;
+    if (key === 'folha') return folhasPendentes;
     return 0;
   };
 

@@ -8,12 +8,14 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 export default function AdminPrompts({
   empresaNome,
   addonTotemEfetivo,
+  addonFinanceiroEfetivo,
   logoUrl,
   nomeExibicao,
   corPrimaria,
 }: {
   empresaNome?: string;
   addonTotemEfetivo?: boolean;
+  addonFinanceiroEfetivo?: boolean;
   logoUrl?: string | null;
   nomeExibicao?: string | null;
   corPrimaria?: string;
@@ -54,6 +56,7 @@ export default function AdminPrompts({
         pendenciasAjuste={pendAjuste}
         pendenciasAusencia={pendAusencia}
         addonTotemEfetivo={addonTotemEfetivo === true}
+        addonFinanceiroEfetivo={addonFinanceiroEfetivo === true}
         logoUrl={logoUrl}
         nomeExibicao={nomeExibicao}
         corPrimaria={corPrimaria}

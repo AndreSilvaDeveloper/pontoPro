@@ -25,6 +25,7 @@ import {
   Lock,
   Receipt,
   MessageCircle,
+  Wallet,
 } from 'lucide-react';
 import Image from 'next/image';
 import { signOut } from 'next-auth/react';
@@ -47,6 +48,7 @@ interface Props {
   empresaNome?: string;
   onNovaAusencia?: () => void;
   addonTotemEfetivo?: boolean;
+  addonFinanceiroEfetivo?: boolean;
   logoUrl?: string | null;
   nomeExibicao?: string | null;
   corPrimaria?: string;
@@ -58,6 +60,7 @@ export default function AdminSidebar({
   empresaNome = 'Admin',
   onNovaAusencia,
   addonTotemEfetivo = false,
+  addonFinanceiroEfetivo = false,
   logoUrl = null,
   nomeExibicao = null,
   corPrimaria = '#7c3aed',
@@ -159,6 +162,16 @@ export default function AdminSidebar({
       ],
     },
   ];
+
+  // Categoria Financeiro só aparece quando o addon está ativo (super admin libera por empresa)
+  if (addonFinanceiroEfetivo) {
+    categories.splice(4, 0, {
+      label: 'Financeiro',
+      items: [
+        { href: '/admin/financeiro', label: 'Folha de pagamento', icon: Wallet, accent: 'emerald' },
+      ],
+    });
+  }
 
   const SidebarContent = () => (
     <div className="h-full flex flex-col">

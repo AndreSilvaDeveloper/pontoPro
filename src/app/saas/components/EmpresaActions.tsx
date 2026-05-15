@@ -15,6 +15,7 @@ import {
   PlayCircle,
   Trash2,
   Loader2,
+  Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -49,8 +50,10 @@ export default function EmpresaActions({
   layout = 'row',
 }: Props) {
   const [togglingTotem, setTogglingTotem] = useState(false);
+  const [togglingFinanceiro, setTogglingFinanceiro] = useState(false);
   const [reindexando, setReindexando] = useState(false);
   const [addonTotem, setAddonTotem] = useState<boolean>(empresa.addonTotem === true);
+  const [addonFinanceiro, setAddonFinanceiro] = useState<boolean>(empresa.addonFinanceiro === true);
 
   const [menuAberto, setMenuAberto] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -128,6 +131,34 @@ export default function EmpresaActions({
     }
   };
 
+  const toggleFinanceiro = async () => {
+    const novo = !addonFinanceiro;
+    const ok = await confirmar({
+      titulo: `${novo ? 'Ativar' : 'Desativar'} Módulo Financeiro para ${empresa.nome}?`,
+      mensagem: novo
+        ? 'A empresa passa a controlar salários, descontos e folha de pagamento. A cobrança extra é negociada à parte.'
+        : 'Os dados financeiros (salários, descontos, folhas) permanecem salvos — só o menu fica oculto.',
+      labelConfirmar: novo ? 'Ativar' : 'Desativar',
+    });
+    if (!ok) return;
+    setTogglingFinanceiro(true);
+    try {
+      const res = await fetch(`/api/saas/empresa/${empresa.id}/addon-financeiro`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ativo: novo }),
+      });
+      if (res.ok) {
+        setAddonFinanceiro(novo);
+        toast.success(`Módulo Financeiro ${novo ? 'ativado' : 'desativado'}.`);
+      } else {
+        toast.error('Erro ao alterar.');
+      }
+    } finally {
+      setTogglingFinanceiro(false);
+    }
+  };
+
   const toggleTotem = async () => {
     const novo = !addonTotem;
     const ok = await confirmar({
@@ -192,6 +223,23 @@ export default function EmpresaActions({
           <span className={labelClass}>Totem</span>
           <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${addonTotem ? 'bg-cyan-500/25 text-cyan-200' : 'bg-elevated text-text-faint'}`}>
             {addonTotem ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        <button
+          onClick={toggleFinanceiro}
+          disabled={togglingFinanceiro}
+          className={`flex items-center gap-1.5 ${btnPadding} ${btnTextSize} font-medium rounded-lg border transition-colors disabled:opacity-50 ${addonFinanceiro
+            ? 'text-emerald-400 hover:bg-emerald-600/15 border-emerald-500/30 bg-emerald-500/5'
+            : 'text-text-faint hover:text-text-secondary hover:bg-hover-bg border-border-subtle'}`}
+          title={addonFinanceiro ? 'Módulo Financeiro ATIVO — clique para desativar' : 'Módulo Financeiro inativo — clique para ativar (cobrança extra)'}
+        >
+          {togglingFinanceiro
+            ? <Loader2 className="animate-spin" size={iconSize} />
+            : <Wallet size={iconSize} />}
+          <span className={labelClass}>Financeiro</span>
+          <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${addonFinanceiro ? 'bg-emerald-500/25 text-emerald-200' : 'bg-elevated text-text-faint'}`}>
+            {addonFinanceiro ? 'ON' : 'OFF'}
           </span>
         </button>
 

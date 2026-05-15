@@ -39,6 +39,7 @@ export async function POST() {
         billingMethod: true,
 
         addonTotem: true,
+        addonFinanceiro: true,
 
         precoNegociado: true,
         precoNegociadoMotivo: true,

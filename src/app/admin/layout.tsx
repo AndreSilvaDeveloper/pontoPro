@@ -74,9 +74,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     }
   }
 
-  // Buscar nome da empresa, addon Totem efetivo e branding (filial herda da matriz)
+  // Buscar nome da empresa, addons efetivos e branding (filial herda da matriz)
   let empresaNome: string | undefined;
   let addonTotemEfetivo = false;
+  let addonFinanceiroEfetivo = false;
   let logoUrl: string | null = null;
   let nomeExibicao: string | null = null;
   let corPrimaria: string = '#7c3aed';
@@ -90,6 +91,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           select: {
             nome: true,
             addonTotem: true,
+            addonFinanceiro: true,
             matrizId: true,
             logoUrl: true,
             nomeExibicao: true,
@@ -100,15 +102,17 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     });
     empresaNome = u?.empresa?.nome;
     addonTotemEfetivo = u?.empresa?.addonTotem === true;
+    addonFinanceiroEfetivo = u?.empresa?.addonFinanceiro === true;
     logoUrl = u?.empresa?.logoUrl ?? null;
     nomeExibicao = u?.empresa?.nomeExibicao ?? null;
     corPrimaria = u?.empresa?.corPrimaria || '#7c3aed';
     if (u?.empresa?.matrizId) {
       const matriz = await prisma.empresa.findUnique({
         where: { id: u.empresa.matrizId },
-        select: { addonTotem: true, logoUrl: true, nomeExibicao: true, corPrimaria: true },
+        select: { addonTotem: true, addonFinanceiro: true, logoUrl: true, nomeExibicao: true, corPrimaria: true },
       });
       if (!addonTotemEfetivo) addonTotemEfetivo = matriz?.addonTotem === true;
+      if (!addonFinanceiroEfetivo) addonFinanceiroEfetivo = matriz?.addonFinanceiro === true;
       // Filial herda branding da matriz quando próprio é vazio
       if (!logoUrl) logoUrl = matriz?.logoUrl ?? null;
       if (!nomeExibicao) nomeExibicao = matriz?.nomeExibicao ?? null;
@@ -121,6 +125,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       <AdminPrompts
         empresaNome={empresaNome}
         addonTotemEfetivo={addonTotemEfetivo}
+        addonFinanceiroEfetivo={addonFinanceiroEfetivo}
         logoUrl={logoUrl}
         nomeExibicao={nomeExibicao}
         corPrimaria={corPrimaria}
