@@ -1,6 +1,16 @@
 // src/lib/billing-server.ts
 import { prisma } from "@/lib/db";
 import { getBillingStatus, type EmpresaBillingShape, type BillingStatus } from "@/lib/billing";
+import { getConfigNumber, CONFIGS } from "@/lib/configs";
+
+/**
+ * Lê a tolerância de dias configurada pela super admin
+ * (config `cobranca.tolerancia_dias`). Default 10 se a config não existir.
+ * O getConfigNumber tem cache de 60s, então chamar a cada request é barato.
+ */
+export async function getToleranceDays(): Promise<number> {
+  return getConfigNumber(CONFIGS.COBRANCA_TOLERANCIA, 10);
+}
 
 export type BillingEmpresaResult = {
   empUser: Pick<EmpresaBillingShape, "id" | "nome" | "status" | "cobrancaAtiva" | "trialAte" | "pagoAte" | "diaVencimento" | "billingAnchorAt"> & {
@@ -55,7 +65,8 @@ export async function getBillingEmpresaByEmpresaId(empresaId: string): Promise<B
     if (matriz) billingEmpresa = matriz;
   }
 
-  const billing = getBillingStatus(billingEmpresa as any);
+  const toleranceDays = await getToleranceDays();
+  const billing = getBillingStatus(billingEmpresa as any, { toleranceDays });
 
   return {
     empUser: empUser as any,

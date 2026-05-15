@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/db";
 import { getBillingStatus } from "@/lib/billing";
+import { getToleranceDays } from "@/lib/billing-server";
 import AdminPrompts from "@/components/admin/AdminPrompts";
 import BotaoSuporteWhatsApp from "@/components/BotaoSuporteWhatsApp";
 
@@ -66,7 +67,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           if (matriz) billingEmpresa = matriz;
         }
 
-        const st = getBillingStatus(billingEmpresa as any);
+        const toleranceDays = await getToleranceDays();
+        const st = getBillingStatus(billingEmpresa as any, { toleranceDays });
         if (st.blocked) redirect("/acesso_bloqueado");
       }
     }

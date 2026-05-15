@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
+import { getToleranceDays } from "@/lib/billing-server";
 import { asaas } from "@/lib/asaas";
 import { getPlanoConfig, calcularValorEmpresa, type BillingCycle } from "@/config/planos";
 
@@ -235,7 +236,8 @@ export async function POST() {
       if (matriz) billingEmpresa = matriz;
     }
 
-    const billing = getBillingStatus(billingEmpresa as any);
+    const toleranceDays = await getToleranceDays();
+    const billing = getBillingStatus(billingEmpresa as any, { toleranceDays });
 
     const anchorISO = billingEmpresa.billingAnchorAt
       ? new Date(billingEmpresa.billingAnchorAt as any).toISOString()

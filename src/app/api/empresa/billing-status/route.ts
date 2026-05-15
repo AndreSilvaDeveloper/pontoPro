@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getBillingStatus } from "@/lib/billing";
+import { getToleranceDays } from "@/lib/billing-server";
 
 export const runtime = "nodejs";
 
@@ -70,7 +71,8 @@ export async function GET() {
     if (matriz) billingEmpresa = matriz;
   }
 
-  const st = getBillingStatus(billingEmpresa as any);
+  const toleranceDays = await getToleranceDays();
+  const st = getBillingStatus(billingEmpresa as any, { toleranceDays });
 
   const cargo = (usuario.cargo || "FUNCIONARIO").toString().toUpperCase();
   const isAdmin = (ADMIN_CARGOS as readonly string[]).includes(cargo);
