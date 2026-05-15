@@ -5,7 +5,19 @@ import InstallPrompt from '@/components/InstallPrompt';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 
-export default function AdminPrompts({ empresaNome, addonTotemEfetivo }: { empresaNome?: string; addonTotemEfetivo?: boolean }) {
+export default function AdminPrompts({
+  empresaNome,
+  addonTotemEfetivo,
+  logoUrl,
+  nomeExibicao,
+  corPrimaria,
+}: {
+  empresaNome?: string;
+  addonTotemEfetivo?: boolean;
+  logoUrl?: string | null;
+  nomeExibicao?: string | null;
+  corPrimaria?: string;
+}) {
   const [pendAjuste, setPendAjuste] = useState(0);
   const [pendAusencia, setPendAusencia] = useState(0);
 
@@ -42,6 +54,9 @@ export default function AdminPrompts({ empresaNome, addonTotemEfetivo }: { empre
         pendenciasAjuste={pendAjuste}
         pendenciasAusencia={pendAusencia}
         addonTotemEfetivo={addonTotemEfetivo === true}
+        logoUrl={logoUrl}
+        nomeExibicao={nomeExibicao}
+        corPrimaria={corPrimaria}
       />
     </>
   );

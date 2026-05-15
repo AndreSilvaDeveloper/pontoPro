@@ -33,6 +33,32 @@ export async function POST(request: Request) {
 
     if (!usuario) return NextResponse.json({ erro: 'Usuário não encontrado' }, { status: 404 });
 
+    // === Whitelist de IPs (opcional, configurada pelo admin) ===
+    // Quando ativa, bloqueia a batida se o IP da requisição não estiver na lista.
+    // Aceita IPv4/IPv6, um por linha (ou separados por vírgula).
+    const cfgEmpresa = (usuario.empresa?.configuracoes as any) || {};
+    if (cfgEmpresa.ipWhitelistAtiva === true) {
+      const listaRaw: string = cfgEmpresa.ipWhitelist || '';
+      const ipsPermitidos = listaRaw
+        .split(/[\n,]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      // Extrai IP do request (proxy/NPM coloca em x-forwarded-for)
+      const fwd = request.headers.get('x-forwarded-for') || '';
+      const ipReq = fwd.split(',')[0].trim() ||
+                    request.headers.get('x-real-ip') ||
+                    '';
+      const ipNorm = ipReq.replace(/^::ffff:/, ''); // strip IPv4-mapped IPv6 prefix
+
+      if (ipsPermitidos.length > 0 && !ipsPermitidos.includes(ipNorm)) {
+        return NextResponse.json(
+          { erro: `Bater ponto não permitido a partir deste IP (${ipNorm || 'desconhecido'}). Fale com seu administrador.` },
+          { status: 403 }
+        );
+      }
+    }
+
     // === NOVA LÓGICA: VALIDAÇÃO DE SEQUÊNCIA (MÁQUINA DE ESTADOS) ===
     // Isso evita duplicidade e garante a ordem correta dos pontos
     const hoje = new Date();

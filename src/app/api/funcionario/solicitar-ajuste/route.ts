@@ -68,6 +68,8 @@ export async function POST(request: Request) {
     // - INCLUSÃO (sem pontoId): tipo é obrigatório e vem do payload
     // ============================
     let tipoEfetivo: string | null = null;
+    // Mantido fora do `if` pra reaproveitar na lógica de auto-aprovação abaixo.
+    let horarioOriginal: Date | null = null;
 
     if (pontoId) {
       const pontoAtual = await prisma.ponto.findUnique({
@@ -85,6 +87,7 @@ export async function POST(request: Request) {
       }
 
       tipoEfetivo = pontoAtual.subTipo;
+      horarioOriginal = pontoAtual.dataHora;
 
       // ✅ trava “ajuste para o mesmo horário do próprio registro” (mesmo minuto)
       const { ini: atualIni, fim: atualFim } = rangeMinuto(pontoAtual.dataHora);
@@ -200,8 +203,10 @@ export async function POST(request: Request) {
     }
 
     // ============================
-    // VERIFICA AUTO-GESTÃO
-    // Se empresa permite, funcionário cria/edita ponto diretamente (sem aprovação)
+    // VERIFICA AUTO-GESTÃO / AUTO-APROVAÇÃO
+    // - autoGestao (permitirEdicaoFunc): funcionário cria/edita ponto direto, sem solicitação
+    // - autoAprovarAjusteMin: ajustes pequenos (≤ N min) são aprovados automaticamente,
+    //   mantendo registro auditável com status APROVADO
     // ============================
     // @ts-ignore
     const empresaIdSess = session.user.empresaId as string;
@@ -209,7 +214,11 @@ export async function POST(request: Request) {
       where: { id: empresaIdSess },
       select: { configuracoes: true },
     });
-    const autoGestao = !!(empresaCfg?.configuracoes as any)?.permitirEdicaoFunc;
+    const cfg = (empresaCfg?.configuracoes as any) || {};
+    const autoGestao = !!cfg.permitirEdicaoFunc;
+    const autoAprovarAjusteMin = typeof cfg.autoAprovarAjusteMinutos === 'number'
+      ? Math.max(0, Math.floor(cfg.autoAprovarAjusteMinutos))
+      : 0;
 
     if (autoGestao) {
       if (pontoId) {
@@ -244,6 +253,48 @@ export async function POST(request: Request) {
       });
 
       return NextResponse.json({ success: true, autoGestao: true });
+    }
+
+    // ============================
+    // AUTO-APROVAÇÃO de ajustes pequenos (só para AJUSTE, não inclusão)
+    // Se a diferença entre o horário atual e o novo é ≤ N minutos, aplica direto
+    // mas mantém SolicitacaoAjuste com status APROVADO pro histórico.
+    // ============================
+    if (pontoId && horarioOriginal && autoAprovarAjusteMin > 0) {
+      const diffMin = Math.abs(novoHorarioDate.getTime() - horarioOriginal.getTime()) / 60_000;
+      if (diffMin <= autoAprovarAjusteMin) {
+        const agora = new Date();
+
+        await prisma.ponto.update({
+          where: { id: pontoId },
+          data: { dataHora: novoHorarioDate },
+        });
+
+        const solicitacaoAuto = await prisma.solicitacaoAjuste.create({
+          data: {
+            usuarioId: session.user.id,
+            pontoId,
+            tipo: null,
+            novoHorario: novoHorarioDate,
+            motivo,
+            status: 'APROVADO',
+            decididoPorId: null,
+            decididoPorNome: `Auto-aprovação (≤${autoAprovarAjusteMin} min)`,
+            decididoEm: agora,
+          },
+        });
+
+        const fmtSP = (d: Date) => d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        await registrarLog({
+          empresaId: empresaIdSess,
+          usuarioId: session.user.id,
+          autor: session.user.name || 'Funcionário',
+          acao: 'AJUSTE_AUTO_APROVADO',
+          detalhes: `Ajuste auto-aprovado (Δ=${diffMin.toFixed(1)}min ≤ ${autoAprovarAjusteMin}min): novo horário ${fmtSP(novoHorarioDate)} | Motivo: "${motivo}"`,
+        });
+
+        return NextResponse.json({ success: true, autoAprovado: true, solicitacao: solicitacaoAuto });
+      }
     }
 
     // ============================

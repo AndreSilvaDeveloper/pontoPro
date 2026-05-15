@@ -159,12 +159,31 @@ export default function AdminDashboard() {
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-3">
-              <div className="bg-purple-500/20 p-2 rounded-lg border border-purple-500/30">
-                <LayoutDashboard size={24} className="text-purple-400" />
-              </div>
+              {a.empresa.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.empresa.logoUrl}
+                  alt={a.empresa.nomeExibicao || a.empresa.nome}
+                  className="w-12 h-12 object-contain rounded-lg border"
+                  style={{
+                    backgroundColor: (a.empresa.corPrimaria || '#7c3aed') + '15',
+                    borderColor: (a.empresa.corPrimaria || '#7c3aed') + '4d',
+                  }}
+                />
+              ) : (
+                <div
+                  className="p-2 rounded-lg border"
+                  style={{
+                    backgroundColor: (a.empresa.corPrimaria || '#7c3aed') + '20',
+                    borderColor: (a.empresa.corPrimaria || '#7c3aed') + '4d',
+                  }}
+                >
+                  <LayoutDashboard size={24} style={{ color: a.empresa.corPrimaria || '#a855f7' }} />
+                </div>
+              )}
               <div>
                 <h1 data-tour="admin-title" className="text-xl md:text-2xl font-bold text-text-primary tracking-tight">
-                  {a.empresa.nome}
+                  {a.empresa.nomeExibicao || a.empresa.nome}
                 </h1>
                 <p className="text-text-muted text-xs font-medium uppercase tracking-widest">Painel Administrativo</p>
               </div>

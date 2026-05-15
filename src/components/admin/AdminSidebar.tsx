@@ -47,9 +47,21 @@ interface Props {
   empresaNome?: string;
   onNovaAusencia?: () => void;
   addonTotemEfetivo?: boolean;
+  logoUrl?: string | null;
+  nomeExibicao?: string | null;
+  corPrimaria?: string;
 }
 
-export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia = 0, empresaNome = 'Admin', onNovaAusencia, addonTotemEfetivo = false }: Props) {
+export default function AdminSidebar({
+  pendenciasAjuste = 0,
+  pendenciasAusencia = 0,
+  empresaNome = 'Admin',
+  onNovaAusencia,
+  addonTotemEfetivo = false,
+  logoUrl = null,
+  nomeExibicao = null,
+  corPrimaria = '#7c3aed',
+}: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -154,12 +166,25 @@ export default function AdminSidebar({ pendenciasAjuste = 0, pendenciasAusencia 
       <div className={`border-b border-border-subtle ${collapsed ? 'p-3' : 'p-4'}`}>
         <div className="flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-2 min-w-0">
-            <div className="bg-purple-500/20 p-1.5 rounded-lg border border-purple-500/30 shrink-0">
-              <LayoutDashboard size={20} className="text-purple-400" />
-            </div>
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt={nomeExibicao || empresaNome || 'Logo'}
+                className="w-9 h-9 object-contain rounded-lg shrink-0 border"
+                style={{ borderColor: corPrimaria + '40', backgroundColor: corPrimaria + '15' }}
+              />
+            ) : (
+              <div
+                className="p-1.5 rounded-lg shrink-0 border"
+                style={{ backgroundColor: corPrimaria + '20', borderColor: corPrimaria + '4d' }}
+              >
+                <LayoutDashboard size={20} style={{ color: corPrimaria }} />
+              </div>
+            )}
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-bold text-text-primary truncate">{empresaNome}</p>
+                <p className="text-sm font-bold text-text-primary truncate">{nomeExibicao || empresaNome}</p>
                 <p className="text-[10px] text-text-dim uppercase tracking-wider">Painel</p>
               </div>
             )}

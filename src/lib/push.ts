@@ -77,13 +77,66 @@ export async function enviarPushSeguro(usuarioId: string, payload: PushPayload) 
   }
 }
 
+function getHoraSP(date = new Date()): number {
+  const hh = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    hour12: false,
+  }).format(date);
+  return parseInt(hh, 10);
+}
+
+/**
+ * Retorna true se o horário atual (SP) está dentro da janela "não perturbar"
+ * configurada pela empresa.
+ *
+ * Janela é definida por { inicio, fim } em horas (0-23). Se `inicio > fim`,
+ * a janela cruza a meia-noite (ex.: inicio=18, fim=8 = "das 18h às 8h").
+ */
+async function estaEmJanelaNaoPerturbar(empresaId: string): Promise<boolean> {
+  try {
+    const emp = await prisma.empresa.findUnique({
+      where: { id: empresaId },
+      select: { configuracoes: true },
+    });
+    const cfg = (emp?.configuracoes as any) || {};
+    if (cfg.naoPerturbarAtivo !== true) return false;
+
+    const inicio = typeof cfg.naoPerturbarInicio === 'number' ? cfg.naoPerturbarInicio : 18;
+    const fim = typeof cfg.naoPerturbarFim === 'number' ? cfg.naoPerturbarFim : 8;
+    if (inicio === fim) return false; // janela vazia/ambígua → não bloqueia
+
+    const hora = getHoraSP();
+    if (inicio < fim) {
+      // janela contínua no mesmo dia (ex.: 13-17): bloqueia se hora ∈ [inicio, fim)
+      return hora >= inicio && hora < fim;
+    }
+    // janela cruzando meia-noite (ex.: 18-8): bloqueia se hora >= inicio OU hora < fim
+    return hora >= inicio || hora < fim;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Envia push para todos os admins de uma empresa.
+ *
+ * Respeita a janela "não perturbar" da empresa por padrão.
+ * Use `options.bypassNaoPerturbar` em alertas urgentes (raro).
  */
-export async function enviarPushAdmins(empresaId: string, payload: PushPayload) {
+export async function enviarPushAdmins(
+  empresaId: string,
+  payload: PushPayload,
+  options?: { bypassNaoPerturbar?: boolean },
+) {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) return;
 
   try {
+    if (!options?.bypassNaoPerturbar) {
+      const naoPerturbar = await estaEmJanelaNaoPerturbar(empresaId);
+      if (naoPerturbar) return; // silencioso — admin escolheu não receber agora
+    }
+
     const admins = await prisma.usuario.findMany({
       where: { empresaId, cargo: 'ADMIN' },
       select: { id: true },
