@@ -24,6 +24,52 @@ async function assertAdmin() {
   return { empresaId, userId, userNome: userNome || 'Admin' };
 }
 
+/** PATCH — edita um provento (valor, descrição, observação). Body: { valor?, descricao?, observacao? } */
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const ctx = await assertAdmin();
+  if (!ctx) return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });
+
+  const { id } = await params;
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ erro: 'json_invalido' }, { status: 400 });
+
+  const prov = await prisma.provento.findFirst({
+    where: { id, empresaId: ctx.empresaId },
+    include: { funcionario: { select: { nome: true } } },
+  });
+  if (!prov) return NextResponse.json({ erro: 'Provento não encontrado' }, { status: 404 });
+
+  const dados: { valor?: number; descricao?: string; observacao?: string | null } = {};
+
+  if (body.valor !== undefined) {
+    const v = Number(body.valor);
+    if (!Number.isFinite(v) || v <= 0) return NextResponse.json({ erro: 'valor inválido' }, { status: 400 });
+    dados.valor = Math.round(v * 100) / 100;
+  }
+  if (typeof body.descricao === 'string' && body.descricao.trim()) {
+    dados.descricao = body.descricao.trim().slice(0, 120);
+  }
+  if (body.observacao !== undefined) {
+    dados.observacao = body.observacao ? String(body.observacao).slice(0, 500) : null;
+  }
+  if (Object.keys(dados).length === 0) {
+    return NextResponse.json({ erro: 'Nenhum campo pra atualizar' }, { status: 400 });
+  }
+
+  const atualizado = await prisma.provento.update({ where: { id }, data: dados });
+
+  await registrarLog({
+    empresaId: ctx.empresaId,
+    usuarioId: ctx.userId,
+    autor: ctx.userNome,
+    acao: 'PROVENTO_EDITADO',
+    detalhes: `Editou provento de ${prov.funcionario?.nome || 'funcionário'} ("${prov.descricao}")`
+      + (dados.valor !== undefined ? `: valor R$ ${Number(prov.valor).toFixed(2)} → R$ ${dados.valor.toFixed(2)}` : ''),
+  });
+
+  return NextResponse.json({ ok: true, valor: Number(atualizado.valor) });
+}
+
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await assertAdmin();
   if (!ctx) return NextResponse.json({ erro: 'Acesso negado' }, { status: 403 });

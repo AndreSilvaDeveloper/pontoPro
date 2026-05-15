@@ -224,20 +224,6 @@ export default function FinanceiroPage() {
     }
   };
 
-  const excluirLancamento = async (natureza: Natureza, id: string, lote: boolean) => {
-    if (!confirm(lote ? 'Excluir todas as parcelas deste lote?' : `Excluir este ${natureza === 'PROVENTO' ? 'provento' : 'desconto'}?`)) return;
-    const url = natureza === 'PROVENTO'
-      ? `/api/admin/financeiro/proventos/${id}${lote ? '?lote=1' : ''}`
-      : `/api/admin/financeiro/descontos/${id}${lote ? '?lote=1' : ''}`;
-    try {
-      await axios.delete(url);
-      toast.success('Lançamento removido.');
-      await carregar();
-    } catch {
-      toast.error('Erro ao excluir.');
-    }
-  };
-
   return (
     <div className="min-h-screen bg-page text-text-primary relative overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
       <div className="fixed top-[-10%] left-[-10%] w-[500px] h-[500px] bg-orb-purple rounded-full blur-[100px] pointer-events-none" />
@@ -577,7 +563,7 @@ export default function FinanceiroPage() {
           mes={mes}
           ano={ano}
           onClose={() => setDetalheModal(null)}
-          onExcluir={excluirLancamento}
+          onMudou={carregar}
         />
       )}
     </div>
@@ -602,6 +588,7 @@ function ModalLancarLancamento({
   const [valorOriginal, setValorOriginal] = useState('');
   const [percDesconto, setPercDesconto] = useState('');
   const [parcelas, setParcelas] = useState(1);
+  const [parcelasFixas, setParcelasFixas] = useState(false);
   const [mes, setMes] = useState(mesAtual);
   const [ano, setAno] = useState(anoAtual);
   const [observacao, setObservacao] = useState('');
@@ -609,9 +596,11 @@ function ModalLancarLancamento({
 
   const valor = parseBRL(valorOriginal);
   const pct = isProvento ? 0 : parseBRL(percDesconto);
-  const valorFinalPorParcela = parcelas > 0
-    ? Math.round(((valor / parcelas) * (1 - pct / 100)) * 100) / 100
-    : 0;
+  // Valor base por parcela: fixo (valor cheio repetido) ou dividido entre as parcelas.
+  const valorBasePorParcela = parcelasFixas
+    ? valor
+    : (parcelas > 0 ? valor / parcelas : 0);
+  const valorFinalPorParcela = Math.round((valorBasePorParcela * (1 - pct / 100)) * 100) / 100;
   const totalFinal = valorFinalPorParcela * parcelas;
 
   const corPrincipal = isProvento ? 'emerald' : 'purple';
@@ -630,6 +619,7 @@ function ModalLancarLancamento({
           mesReferencia: mes,
           anoReferencia: ano,
           parcelas,
+          parcelasFixas,
           observacao: observacao.trim() || undefined,
         });
       } else {
@@ -642,6 +632,7 @@ function ModalLancarLancamento({
           mesReferencia: mes,
           anoReferencia: ano,
           parcelas,
+          parcelasFixas,
           observacao: observacao.trim() || undefined,
         });
       }
@@ -775,9 +766,32 @@ function ModalLancarLancamento({
           </div>
 
           {parcelas > 1 && (
-            <p className="text-[11px] text-text-muted bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-              <Calendar size={12} className="inline mr-1" /> Cria {parcelas} parcelas a partir de <b>{MESES[mes - 1]}/{ano}</b>, uma por mês.
-            </p>
+            <div className="space-y-2">
+              <label className="text-[10px] uppercase font-bold text-text-dim tracking-wider">Modo do valor nas parcelas</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => setParcelasFixas(false)}
+                  className={`text-xs font-semibold px-2 py-2 rounded-lg border transition-colors text-left ${
+                    !parcelasFixas ? 'bg-purple-500/15 border-purple-500/40 text-purple-200' : 'bg-elevated border-border-subtle text-text-muted hover:bg-hover-bg'
+                  }`}
+                >
+                  Dividir o total
+                  <span className="block text-[10px] font-normal text-text-faint mt-0.5">{brl(valor)} ÷ {parcelas}</span>
+                </button>
+                <button
+                  onClick={() => setParcelasFixas(true)}
+                  className={`text-xs font-semibold px-2 py-2 rounded-lg border transition-colors text-left ${
+                    parcelasFixas ? 'bg-purple-500/15 border-purple-500/40 text-purple-200' : 'bg-elevated border-border-subtle text-text-muted hover:bg-hover-bg'
+                  }`}
+                >
+                  Valor fixo por parcela
+                  <span className="block text-[10px] font-normal text-text-faint mt-0.5">{brl(valor)} × {parcelas}</span>
+                </button>
+              </div>
+              <p className="text-[11px] text-text-muted bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                <Calendar size={12} className="inline mr-1" /> Cria {parcelas} parcelas a partir de <b>{MESES[mes - 1]}/{ano}</b>, uma por mês. Você pode editar o valor de cada parcela depois.
+              </p>
+            </div>
           )}
 
           <div>
@@ -795,12 +809,12 @@ function ModalLancarLancamento({
           <div className="bg-elevated/50 border border-border-subtle rounded-xl p-3 space-y-1 text-xs">
             <div className="flex justify-between text-text-muted">
               <span>Valor {parcelas > 1 ? '(por parcela)' : ''}:</span>
-              <span className="font-mono">{brl(parcelas > 0 ? valor / parcelas : 0)}</span>
+              <span className="font-mono">{brl(valorBasePorParcela)}</span>
             </div>
             {!isProvento && pct > 0 && (
               <div className="flex justify-between text-text-muted">
                 <span>Abatimento ({pct}%):</span>
-                <span className="font-mono text-emerald-400">- {brl((parcelas > 0 ? valor / parcelas : 0) * (pct / 100))}</span>
+                <span className="font-mono text-emerald-400">- {brl(valorBasePorParcela * (pct / 100))}</span>
               </div>
             )}
             <div className={`flex justify-between font-bold pt-1 border-t border-border-subtle ${isProvento ? 'text-emerald-300' : 'text-text-primary'}`}>
@@ -835,14 +849,73 @@ function ModalLancarLancamento({
 }
 
 function ModalDetalhe({
-  linha, mes, ano, onClose, onExcluir,
+  linha, mes, ano, onClose, onMudou,
 }: {
   linha: Linha;
   mes: number;
   ano: number;
   onClose: () => void;
-  onExcluir: (natureza: Natureza, id: string, lote: boolean) => void;
+  onMudou: () => void;
 }) {
+  const [proventos, setProventos] = useState<Provento[]>(linha.proventos);
+  const [descontos, setDescontos] = useState<Desconto[]>(linha.descontos);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [editValor, setEditValor] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  const totalProventos = proventos.reduce((a, p) => a + p.valor, 0);
+  const totalDescontos = descontos.reduce((a, d) => a + d.valorFinal, 0);
+  const liquido = Math.max(0, totalProventos - totalDescontos);
+
+  const iniciarEdicao = (id: string, valorAtual: number) => {
+    setEditandoId(id);
+    setEditValor(valorAtual.toFixed(2).replace('.', ','));
+  };
+
+  const salvarEdicao = async (natureza: Natureza, id: string) => {
+    const novoValor = parseBRL(editValor);
+    if (novoValor <= 0) { toast.error('Valor deve ser maior que zero.'); return; }
+    setSalvando(true);
+    try {
+      if (natureza === 'PROVENTO') {
+        const r = await axios.patch(`/api/admin/financeiro/proventos/${id}`, { valor: novoValor });
+        setProventos(prev => prev.map(p => p.id === id ? { ...p, valor: r.data.valor } : p));
+      } else {
+        const r = await axios.patch(`/api/admin/financeiro/descontos/${id}`, { valorOriginal: novoValor });
+        setDescontos(prev => prev.map(d => d.id === id
+          ? { ...d, valorOriginal: r.data.valorOriginal, valorFinal: r.data.valorFinal }
+          : d));
+      }
+      toast.success('Valor atualizado.');
+      setEditandoId(null);
+      onMudou();
+    } catch (e: any) {
+      toast.error(e?.response?.data?.erro || 'Erro ao salvar.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const excluir = async (natureza: Natureza, id: string, lote: boolean) => {
+    if (!confirm(lote ? 'Excluir todas as parcelas deste lote?' : `Excluir este ${natureza === 'PROVENTO' ? 'provento' : 'desconto'}?`)) return;
+    const base = natureza === 'PROVENTO' ? 'proventos' : 'descontos';
+    try {
+      await axios.delete(`/api/admin/financeiro/${base}/${id}${lote ? '?lote=1' : ''}`);
+      toast.success('Lançamento removido.');
+      onMudou();
+      if (lote) {
+        // Lote afeta vários meses — fecha o modal pra recarregar limpo.
+        onClose();
+      } else if (natureza === 'PROVENTO') {
+        setProventos(prev => prev.filter(p => p.id !== id));
+      } else {
+        setDescontos(prev => prev.filter(d => d.id !== id));
+      }
+    } catch {
+      toast.error('Erro ao excluir.');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-overlay backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in" onClick={onClose}>
       <div className="bg-page border border-border-default rounded-t-3xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -858,15 +931,15 @@ function ModalDetalhe({
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/20">
               <p className="text-[9px] uppercase font-bold text-emerald-300">Proventos</p>
-              <p className="text-sm font-mono font-bold text-emerald-300">+{brl(linha.totalProventos)}</p>
+              <p className="text-sm font-mono font-bold text-emerald-300">+{brl(totalProventos)}</p>
             </div>
             <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/20">
               <p className="text-[9px] uppercase font-bold text-red-300">Descontos</p>
-              <p className="text-sm font-mono font-bold text-red-300">-{brl(linha.totalDescontos)}</p>
+              <p className="text-sm font-mono font-bold text-red-300">-{brl(totalDescontos)}</p>
             </div>
             <div className="bg-elevated/50 rounded-xl p-3 border border-border-subtle">
               <p className="text-[9px] uppercase font-bold text-text-dim">Líquido</p>
-              <p className="text-sm font-mono font-bold text-text-primary">{brl(linha.valorLiquido)}</p>
+              <p className="text-sm font-mono font-bold text-text-primary">{brl(liquido)}</p>
             </div>
           </div>
 
@@ -875,11 +948,11 @@ function ModalDetalhe({
             <h3 className="text-[10px] uppercase font-bold text-emerald-300 tracking-wider mb-2 flex items-center gap-1">
               <TrendUp size={12} /> Proventos
             </h3>
-            {linha.proventos.length === 0 ? (
+            {proventos.length === 0 ? (
               <p className="text-center text-text-faint text-xs italic py-3">Nenhum provento lançado neste mês.</p>
             ) : (
               <ul className="space-y-2">
-                {linha.proventos.map(p => (
+                {proventos.map(p => (
                   <li key={p.id} className="bg-elevated/40 border border-border-subtle rounded-xl p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -894,11 +967,36 @@ function ModalDetalhe({
                           )}
                         </div>
                         <p className="text-sm font-semibold text-text-primary mt-1">{p.descricao}</p>
-                        <p className="text-[11px] font-mono font-bold text-emerald-300 mt-1">+{brl(p.valor)}</p>
+                        {editandoId === p.id ? (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            <span className="text-text-faint text-xs">R$</span>
+                            <input
+                              type="text"
+                              value={editValor}
+                              onChange={e => setEditValor(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') salvarEdicao('PROVENTO', p.id); if (e.key === 'Escape') setEditandoId(null); }}
+                              className="w-24 bg-page border border-emerald-500/40 rounded-md px-2 py-1 text-xs text-right text-text-primary font-mono outline-none"
+                              autoFocus
+                            />
+                            <button onClick={() => salvarEdicao('PROVENTO', p.id)} disabled={salvando} className="p-1 rounded-md text-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50">
+                              {salvando ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                            </button>
+                            <button onClick={() => setEditandoId(null)} className="p-1 rounded-md text-text-muted hover:bg-hover-bg"><X size={12} /></button>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] font-mono font-bold text-emerald-300 mt-1">+{brl(p.valor)}</p>
+                        )}
                       </div>
                       <div className="flex flex-col gap-1">
                         <button
-                          onClick={() => onExcluir('PROVENTO', p.id, false)}
+                          onClick={() => iniciarEdicao(p.id, p.valor)}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-colors"
+                          title="Editar valor"
+                        >
+                          <Edit3 size={10} /> Editar
+                        </button>
+                        <button
+                          onClick={() => excluir('PROVENTO', p.id, false)}
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 transition-colors"
                           title="Excluir só esta parcela"
                         >
@@ -906,7 +1004,7 @@ function ModalDetalhe({
                         </button>
                         {p.parcelaTotal > 1 && (
                           <button
-                            onClick={() => onExcluir('PROVENTO', p.id, true)}
+                            onClick={() => excluir('PROVENTO', p.id, true)}
                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-red-500/5 border border-red-500/15 text-red-300/80 hover:bg-red-500/15 transition-colors"
                           >
                             <Trash2 size={10} /> Todas
@@ -925,11 +1023,11 @@ function ModalDetalhe({
             <h3 className="text-[10px] uppercase font-bold text-red-300 tracking-wider mb-2 flex items-center gap-1">
               <TrendingDown size={12} /> Descontos
             </h3>
-            {linha.descontos.length === 0 ? (
+            {descontos.length === 0 ? (
               <p className="text-center text-text-faint text-xs italic py-3">Nenhum desconto neste mês.</p>
             ) : (
               <ul className="space-y-2">
-                {linha.descontos.map(d => (
+                {descontos.map(d => (
                   <li key={d.id} className="bg-elevated/40 border border-border-subtle rounded-xl p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -944,18 +1042,43 @@ function ModalDetalhe({
                           )}
                         </div>
                         <p className="text-sm font-semibold text-text-primary mt-1">{d.descricao}</p>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] text-text-muted">
-                          <span className="font-mono">{brl(d.valorOriginal)}</span>
-                          {d.percentualDesconto != null && d.percentualDesconto > 0 && (
-                            <span className="text-emerald-400">-{d.percentualDesconto}%</span>
-                          )}
-                          <span>→</span>
-                          <span className="font-mono font-bold text-red-300">-{brl(d.valorFinal)}</span>
-                        </div>
+                        {editandoId === d.id ? (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            <span className="text-text-faint text-xs">R$</span>
+                            <input
+                              type="text"
+                              value={editValor}
+                              onChange={e => setEditValor(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') salvarEdicao('DESCONTO', d.id); if (e.key === 'Escape') setEditandoId(null); }}
+                              className="w-24 bg-page border border-red-500/40 rounded-md px-2 py-1 text-xs text-right text-text-primary font-mono outline-none"
+                              autoFocus
+                            />
+                            <button onClick={() => salvarEdicao('DESCONTO', d.id)} disabled={salvando} className="p-1 rounded-md text-emerald-400 hover:bg-emerald-500/15 disabled:opacity-50">
+                              {salvando ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                            </button>
+                            <button onClick={() => setEditandoId(null)} className="p-1 rounded-md text-text-muted hover:bg-hover-bg"><X size={12} /></button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-1 text-[11px] text-text-muted">
+                            <span className="font-mono">{brl(d.valorOriginal)}</span>
+                            {d.percentualDesconto != null && d.percentualDesconto > 0 && (
+                              <span className="text-emerald-400">-{d.percentualDesconto}%</span>
+                            )}
+                            <span>→</span>
+                            <span className="font-mono font-bold text-red-300">-{brl(d.valorFinal)}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col gap-1">
                         <button
-                          onClick={() => onExcluir('DESCONTO', d.id, false)}
+                          onClick={() => iniciarEdicao(d.id, d.valorOriginal)}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-colors"
+                          title="Editar valor"
+                        >
+                          <Edit3 size={10} /> Editar
+                        </button>
+                        <button
+                          onClick={() => excluir('DESCONTO', d.id, false)}
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 transition-colors"
                           title="Excluir só esta parcela"
                         >
@@ -963,7 +1086,7 @@ function ModalDetalhe({
                         </button>
                         {d.parcelaTotal > 1 && (
                           <button
-                            onClick={() => onExcluir('DESCONTO', d.id, true)}
+                            onClick={() => excluir('DESCONTO', d.id, true)}
                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide bg-red-500/5 border border-red-500/15 text-red-300/80 hover:bg-red-500/15 transition-colors"
                           >
                             <Trash2 size={10} /> Todas

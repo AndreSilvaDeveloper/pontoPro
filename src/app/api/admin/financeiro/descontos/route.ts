@@ -97,6 +97,8 @@ export async function POST(req: Request) {
   const mesRefIni = parseInt(String(body.mesReferencia), 10);
   const anoRefIni = parseInt(String(body.anoReferencia), 10);
   const parcelas = Math.max(1, Math.min(60, parseInt(String(body.parcelas || 1), 10)));
+  // parcelasFixas: cada parcela recebe o valor cheio digitado (repete N vezes).
+  const parcelasFixas = body.parcelasFixas === true;
   const observacao = body.observacao ? String(body.observacao).slice(0, 500) : null;
 
   if (!funcionarioId) return NextResponse.json({ erro: 'funcionarioId obrigatório' }, { status: 400 });
@@ -113,8 +115,10 @@ export async function POST(req: Request) {
   });
   if (!func) return NextResponse.json({ erro: 'Funcionário não encontrado nesta empresa' }, { status: 404 });
 
-  // Valor por parcela = valor total / N parcelas, arredondado.
-  const valorPorParcela = Math.round((valorTotal / parcelas) * 100) / 100;
+  // Valor por parcela: fixo (valor cheio) ou dividido entre as N parcelas.
+  const valorPorParcela = parcelasFixas
+    ? Math.round(valorTotal * 100) / 100
+    : Math.round((valorTotal / parcelas) * 100) / 100;
   const valorFinalPorParcela = calcularValorFinal(valorPorParcela, percDesc);
 
   const loteId = parcelas > 1 ? randomUUID() : null;
