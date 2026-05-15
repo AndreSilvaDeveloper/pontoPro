@@ -196,7 +196,7 @@ export default function SaasShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto py-3 px-2">
           {NAV_GROUPS.map(group => (
             <div key={group.title} className="mb-4">
               {expanded && (

@@ -190,3 +190,30 @@ body {
   background: rgba(168, 85, 247, 0.45);
 }
 .sidebar-scroll { scrollbar-width: thin; scrollbar-color: rgba(168,85,247,0.25) transparent; }
+
+/* Global themed scrollbars — matches o dark theme em todas as páginas (body, modais, listas) */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.3) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.3);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.15s;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.55);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
