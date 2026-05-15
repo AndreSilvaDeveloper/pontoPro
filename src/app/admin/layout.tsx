@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/db";
 import { getBillingStatus } from "@/lib/billing";
 import AdminPrompts from "@/components/admin/AdminPrompts";
+import BotaoSuporteWhatsApp from "@/components/BotaoSuporteWhatsApp";
 
 export const runtime = "nodejs";
 
@@ -100,6 +101,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     <>
       <AdminPrompts empresaNome={empresaNome} addonTotemEfetivo={addonTotemEfetivo} />
       <div className="lg:pl-64">{children}</div>
+      <BotaoSuporteWhatsApp />
     </>
   );
 }

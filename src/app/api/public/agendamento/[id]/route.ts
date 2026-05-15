@@ -100,7 +100,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (action === 'reagendar') {
     const dia = String(body?.dia || '').trim();
     const horario = String(body?.horario || '').trim();
-    if (!estaDentroDaJanela(dia, horario)) {
+    if (!(await estaDentroDaJanela(dia, horario))) {
       return NextResponse.json({ ok: false, erro: 'Horário fora do atendimento.' }, { status: 400 });
     }
     const novaData = dataHoraDoSlot(dia, horario);

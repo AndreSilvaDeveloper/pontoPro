@@ -7,6 +7,7 @@ import {
   diaSemanaDe,
   gerarSlots,
   horarioDoSlot,
+  getFeriadosBloqueados,
 } from '@/lib/agendamento';
 import { getConfigNumber, CONFIGS } from '@/lib/configs';
 
@@ -34,8 +35,14 @@ export async function GET(req: Request) {
   }
 
   const diaSemana = diaSemanaDe(dia);
-  const slots = gerarSlots(diaSemana);
+  const slots = await gerarSlots(diaSemana);
   if (slots.length === 0) {
+    return NextResponse.json({ dia, diaSemana, slots: [], fechado: true });
+  }
+
+  // Feriados bloqueados pela super admin (ex.: 2026-12-25).
+  const feriados = await getFeriadosBloqueados();
+  if (feriados.has(dia)) {
     return NextResponse.json({ dia, diaSemana, slots: [], fechado: true });
   }
 

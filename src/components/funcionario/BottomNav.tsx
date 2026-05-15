@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   Clock, History, FileText, MessageSquare,
   MoreHorizontal, PenTool, PenLine, LogOut, X, Lightbulb, FileSignature,
+  MessageCircle,
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { getNotifCount } from './NotificacaoSolicitacao';
@@ -81,6 +82,17 @@ export default function BottomNav() {
   }, []);
 
   useEffect(() => { setMaisAberto(false); }, [pathname]);
+
+  const abrirSuporte = async () => {
+    try {
+      const r = await fetch('/api/me/contato-suporte');
+      const d = await r.json();
+      if (d?.ativo && d?.link) {
+        window.open(d.link, '_blank', 'noopener,noreferrer');
+      }
+    } catch { /* silencioso */ }
+    setMaisAberto(false);
+  };
 
   const getBadge = (key: string): number => {
     if (key === 'solicitacoes') return notifCount;
@@ -183,6 +195,19 @@ export default function BottomNav() {
                   </Link>
                 );
               })}
+
+              <button
+                onClick={abrirSuporte}
+                className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-emerald-500/10 transition-colors"
+              >
+                <div className="p-2.5 rounded-xl bg-emerald-500/15 text-emerald-400 shrink-0">
+                  <MessageCircle size={18} />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-semibold text-emerald-300">Falar com o suporte</p>
+                  <p className="text-xs text-text-muted">Abrir WhatsApp da equipe WorkID</p>
+                </div>
+              </button>
 
               <button
                 onClick={() => { localStorage.removeItem('workid_rt'); signOut({ callbackUrl: '/login' }); }}

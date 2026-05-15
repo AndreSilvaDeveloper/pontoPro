@@ -9,6 +9,7 @@ import InstallPrompt from '@/components/InstallPrompt';
 import PushNotificationPrompt from '@/components/PushNotificationPrompt';
 import BannerNovidades from '@/components/funcionario/BannerNovidades';
 import OfflineIndicator from '@/components/funcionario/OfflineIndicator';
+import BotaoSuporteWhatsApp from '@/components/BotaoSuporteWhatsApp';
 
 export default function FuncionarioLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -95,6 +96,7 @@ export default function FuncionarioLayout({ children }: { children: React.ReactN
       <BannerNovidades />
       {children}
       <BottomNav />
+      <BotaoSuporteWhatsApp acimaDoBottomNav />
     </>
   );
 }
