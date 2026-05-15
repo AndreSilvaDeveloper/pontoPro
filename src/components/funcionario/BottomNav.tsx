@@ -32,6 +32,7 @@ export default function BottomNav() {
   const [contrachequesNovos, setContrachequesNovos] = useState(0);
   const [fechamentosPendentes, setFechamentosPendentes] = useState(0);
   const [maisAberto, setMaisAberto] = useState(false);
+  const [suporteLink, setSuporteLink] = useState<string | null>(null);
 
   useEffect(() => {
     const update = () => setNotifCount(getNotifCount());
@@ -83,15 +84,34 @@ export default function BottomNav() {
 
   useEffect(() => { setMaisAberto(false); }, [pathname]);
 
-  const abrirSuporte = async () => {
-    try {
-      const r = await fetch('/api/me/contato-suporte');
-      const d = await r.json();
-      if (d?.ativo && d?.link) {
-        window.open(d.link, '_blank', 'noopener,noreferrer');
-      }
-    } catch { /* silencioso */ }
+  // Pré-busca o link do suporte uma vez no mount, pra que o clique seja síncrono
+  // (evita popup blocker que aciona quando há await entre o gesto e o window.open).
+  useEffect(() => {
+    let cancelado = false;
+    fetch('/api/me/contato-suporte')
+      .then(r => r.json())
+      .then(d => {
+        if (!cancelado && d?.ativo && d?.link) setSuporteLink(d.link);
+      })
+      .catch(() => { /* silencioso */ });
+    return () => { cancelado = true; };
+  }, []);
+
+  const abrirSuporte = () => {
     setMaisAberto(false);
+    if (suporteLink) {
+      window.open(suporteLink, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    // Fallback: janela em branco síncrona, redirecionada quando o fetch responder.
+    const w = window.open('about:blank', '_blank');
+    fetch('/api/me/contato-suporte')
+      .then(r => r.json())
+      .then(d => {
+        if (d?.ativo && d?.link && w) w.location.href = d.link;
+        else if (w) w.close();
+      })
+      .catch(() => { if (w) w.close(); });
   };
 
   const getBadge = (key: string): number => {

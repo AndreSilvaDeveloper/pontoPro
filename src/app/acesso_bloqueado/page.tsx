@@ -40,6 +40,7 @@ export default function BloqueadoPage() {
 
   const [data, setData] = useState<any>(null);
   const [payload, setPayload] = useState<BlockPayload | null>(null);
+  const [suporteBaseUrl, setSuporteBaseUrl] = useState<string | null>(null);
 
   const [payLoading, setPayLoading] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
@@ -163,6 +164,20 @@ export default function BloqueadoPage() {
 
     fetchStatus();
 
+    // Pré-busca o link de suporte (config contato.whatsapp_link) pra montar o botão
+    // do WhatsApp de forma síncrona no clique, evitando o popup blocker.
+    fetch("/api/me/contato-suporte")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ativo && d?.link) {
+          // strip da query string — vamos compor nossa própria mensagem contextual de bloqueio
+          setSuporteBaseUrl(String(d.link).split("?")[0]);
+        }
+      })
+      .catch(() => {
+        // silencioso — fallback do botão tenta de novo no clique
+      });
+
     intervalRef.current = window.setInterval(() => {
       if (mountedRef.current) fetchStatus({ silent: true });
     }, 10_000);
@@ -189,17 +204,38 @@ export default function BloqueadoPage() {
     payload?.motivo ||
     "Pendencia detectada. Regularize para liberar o acesso.";
 
-  const pixKey = empresa?.chavePix || payload?.pixKey || null;
-
   const msgFuncionario = useMemo(() => {
     return `Seu acesso esta temporariamente indisponivel.\n\nEntre em contato com o administrador da sua empresa (${nomeEmpresa}) para mais informacoes.`;
   }, [nomeEmpresa]);
 
   const isBlocked = Boolean(data?.billing?.blocked) || data?.ok === false;
 
-  const whatsappSuporte = `https://wa.me/5532991473554?text=${encodeURIComponent(
-    `Olá! Preciso de suporte com meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nE-mail: ${payload?.email || ""}`
-  )}`;
+  const mensagemSuporte = `Olá! Preciso de suporte com meu acesso no WorkID.\nEmpresa: ${nomeEmpresa}\nE-mail: ${payload?.email || ""}`;
+  const whatsappSuporte = suporteBaseUrl
+    ? `${suporteBaseUrl}?text=${encodeURIComponent(mensagemSuporte)}`
+    : null;
+
+  const abrirSuporteWhatsApp = () => {
+    if (whatsappSuporte) {
+      openInNewTab(whatsappSuporte);
+      return;
+    }
+    // Config ainda não carregou: abre placeholder síncrono e redireciona quando responder.
+    const w = window.open("about:blank", "_blank");
+    fetch("/api/me/contato-suporte")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.ativo && d?.link && w) {
+          const base = String(d.link).split("?")[0];
+          w.location.href = `${base}?text=${encodeURIComponent(mensagemSuporte)}`;
+        } else if (w) {
+          w.close();
+        }
+      })
+      .catch(() => {
+        if (w) w.close();
+      });
+  };
 
   return (
     <>
@@ -213,38 +249,9 @@ export default function BloqueadoPage() {
           <CardContent className="space-y-4 text-gray-300">
             {/* ====== ADMIN: mostra motivo ====== */}
             {isAdmin && (
-              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm space-y-3">
-                <div>
-                  <p className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-1">Motivo do bloqueio</p>
-                  <p className="text-gray-300">{motivoAdmin}</p>
-                </div>
-
-                {pixKey && (
-                  <div className="pt-2 border-t border-border-default">
-                    <p className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-2">Chave Pix</p>
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2">
-                      <p className="flex-1 text-xs break-all select-all font-mono text-indigo-300">{pixKey}</p>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="shrink-0 text-xs"
-                        onClick={async () => {
-                          try {
-                            await navigator.clipboard.writeText(pixKey);
-                            setAutoMsg("Chave Pix copiada!");
-                            window.setTimeout(() => setAutoMsg(null), 2500);
-                          } catch {
-                            setAutoMsg("Copie manualmente.");
-                            window.setTimeout(() => setAutoMsg(null), 3000);
-                          }
-                        }}
-                      >
-                        Copiar
-                      </Button>
-                    </div>
-                  </div>
-                )}
+              <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm">
+                <p className="font-semibold text-text-primary text-xs uppercase tracking-wider mb-1">Motivo do bloqueio</p>
+                <p className="text-gray-300">{motivoAdmin}</p>
               </div>
             )}
 
@@ -277,7 +284,7 @@ export default function BloqueadoPage() {
                 <Button
                   type="button"
                   className="w-full h-11 text-sm font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600/20 rounded-xl transition-all"
-                  onClick={() => openInNewTab(whatsappSuporte)}
+                  onClick={abrirSuporteWhatsApp}
                 >
                   Para falar com suporte via WhatsApp
                 </Button>
