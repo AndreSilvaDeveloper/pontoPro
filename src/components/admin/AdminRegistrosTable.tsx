@@ -117,15 +117,13 @@ export default function AdminRegistrosTable(props: {
                       {reg.subTipo === 'COMPENSACAO_FOLGA' ? 'Compensação' : reg.subTipo === 'PAGAMENTO_HE' ? 'Pagamento HE' : 'Correção'}
                     </span>
                     {excluirAjuste && (
-                      <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity ml-1">
-                        <button
-                          onClick={() => excluirAjuste(reg)}
-                          className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors text-xs font-bold md:p-1"
-                          title="Excluir ajuste"
-                        >
-                          <Trash2 size={14} /> <span className="md:hidden">Excluir</span>
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => excluirAjuste(reg)}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors ml-1"
+                        title="Excluir ajuste"
+                      >
+                        <Trash2 size={12} /> Excluir
+                      </button>
                     )}
                   </div>
                 ) : reg.tipo === 'PONTO' ? (
@@ -139,21 +137,21 @@ export default function AdminRegistrosTable(props: {
                         {reg.subTipo?.replace('_', ' ')}
                       </span>
 
-                      <div className="flex gap-3 mt-1 md:gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-wrap gap-1.5 mt-1">
                         <button
                           onClick={() => abrirModalEdicao(reg)}
-                          className="flex items-center gap-1 text-purple-400 hover:text-purple-300 transition-colors text-xs font-bold md:p-1"
-                          title="Editar"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 hover:text-purple-200 transition-colors"
+                          title="Editar horário deste ponto"
                         >
-                          <Edit2 size={14} /> <span className="md:hidden">Editar</span>
+                          <Edit2 size={12} /> Editar
                         </button>
 
                         <button
                           onClick={() => excluirPonto(reg)}
-                          className="flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors text-xs font-bold md:p-1"
-                          title="Excluir"
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors"
+                          title="Excluir este registro de ponto"
                         >
-                          <Trash2 size={14} /> <span className="md:hidden">Excluir</span>
+                          <Trash2 size={12} /> Excluir
                         </button>
                       </div>
                     </div>
@@ -171,15 +169,13 @@ export default function AdminRegistrosTable(props: {
                       {reg.subTipo?.replace('_', ' ')}
                     </span>
 
-                    <div className="flex gap-2 md:gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => excluirAusencia(reg)}
-                        className="text-red-400 hover:text-red-300 transition-colors font-bold md:p-1"
-                        title="Excluir"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => excluirAusencia(reg)}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors"
+                      title="Excluir esta ausência"
+                    >
+                      <Trash2 size={12} /> Excluir
+                    </button>
                   </div>
                 )}
               </div>
