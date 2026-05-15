@@ -74,9 +74,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     }
   }
 
-  // Buscar nome da empresa e addon Totem efetivo (próprio ou herdado da matriz)
+  // Buscar nome da empresa, addon Totem efetivo e branding (filial herda da matriz)
   let empresaNome: string | undefined;
   let addonTotemEfetivo = false;
+  let logoUrl: string | null = null;
+  let nomeExibicao: string | null = null;
+  let corPrimaria: string = '#7c3aed';
   // @ts-ignore
   const emailSess = session.user.email;
   if (emailSess) {
@@ -84,24 +87,44 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       where: { email: emailSess },
       select: {
         empresa: {
-          select: { nome: true, addonTotem: true, matrizId: true },
+          select: {
+            nome: true,
+            addonTotem: true,
+            matrizId: true,
+            logoUrl: true,
+            nomeExibicao: true,
+            corPrimaria: true,
+          },
         },
       },
     });
     empresaNome = u?.empresa?.nome;
     addonTotemEfetivo = u?.empresa?.addonTotem === true;
-    if (!addonTotemEfetivo && u?.empresa?.matrizId) {
+    logoUrl = u?.empresa?.logoUrl ?? null;
+    nomeExibicao = u?.empresa?.nomeExibicao ?? null;
+    corPrimaria = u?.empresa?.corPrimaria || '#7c3aed';
+    if (u?.empresa?.matrizId) {
       const matriz = await prisma.empresa.findUnique({
         where: { id: u.empresa.matrizId },
-        select: { addonTotem: true },
+        select: { addonTotem: true, logoUrl: true, nomeExibicao: true, corPrimaria: true },
       });
-      addonTotemEfetivo = matriz?.addonTotem === true;
+      if (!addonTotemEfetivo) addonTotemEfetivo = matriz?.addonTotem === true;
+      // Filial herda branding da matriz quando próprio é vazio
+      if (!logoUrl) logoUrl = matriz?.logoUrl ?? null;
+      if (!nomeExibicao) nomeExibicao = matriz?.nomeExibicao ?? null;
+      if (corPrimaria === '#7c3aed' && matriz?.corPrimaria) corPrimaria = matriz.corPrimaria;
     }
   }
 
   return (
     <>
-      <AdminPrompts empresaNome={empresaNome} addonTotemEfetivo={addonTotemEfetivo} />
+      <AdminPrompts
+        empresaNome={empresaNome}
+        addonTotemEfetivo={addonTotemEfetivo}
+        logoUrl={logoUrl}
+        nomeExibicao={nomeExibicao}
+        corPrimaria={corPrimaria}
+      />
       <div className="lg:pl-64">{children}</div>
       <BotaoSuporteWhatsApp />
     </>

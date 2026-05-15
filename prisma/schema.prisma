@@ -58,6 +58,11 @@ model Empresa {
   precoNegociado         Decimal?  @db.Decimal(10, 2)
   precoNegociadoMotivo   String?
   precoNegociadoExpiraEm DateTime?
+
+  // Identidade visual da empresa (personalização do painel admin/funcionário)
+  logoUrl      String?
+  nomeExibicao String? // nome exibido na sidebar/header (fallback: nome)
+  corPrimaria  String? @default("#7c3aed")
 }
 
 model Usuario {
